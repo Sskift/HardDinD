@@ -4,8 +4,7 @@
 stop() { kill -TERM "$pid" 2>/dev/null; }
 trap stop INT TERM
 
-# Container networks inherit the uplink MTU: every packet costs a trip
-# through UML, so jumbo frames are much faster.
+# Container networks inherit the uplink MTU.
 mtu=$(cat "/sys/class/net/$(cat /run/udock.nic)/mtu")
 
 dockerd \

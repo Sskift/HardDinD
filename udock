@@ -7,7 +7,9 @@
 # Settings live in $UDOCK_HOME/config (shell syntax); see defaults below.
 set -euo pipefail
 
-UDOCK_HOME=${UDOCK_HOME:-/root/udock}
+# installed as $UDOCK_HOME/src/udock (install.sh), so home is two levels up
+UDOCK_HOME=${UDOCK_HOME:-$(dirname "$(dirname "$(realpath "$0")")")}
+UMID=udock             # UML instance name; must differ per install on one host
 MEM=4G                 # guest RAM
 SHARES=/root           # host dirs visible at the same path in the guest
 AUTO_PORTS=1           # forward every `docker run -p` port to the host automatically
@@ -16,12 +18,14 @@ PORT_BIND=127.0.0.1    # host address forwarded ports listen on
 API_PORT=23760         # host port for the TLS docker API (always on 127.0.0.1)
 DNS=""                 # guest DNS server; empty = 10.0.2.3, relayed to the host's resolver
 PROXY=auto             # guest HTTP(S) proxy; auto = derive from host HTTPS_PROXY
-MTU=65520              # guest<->udock-net link MTU; big frames mean fewer UML round trips
-VEC=0                  # 1 = batched vector TX; it waits for a 10ms UML tick, so off is faster
+MTU=9000               # guest link MTU. libslirp has no TCP window scaling, so a 64K window
+                       # must hold several segments: 32K segments stall the guest's receiver
+                       # (window rounds down to 0). 9000 ~ 500MB/s with a wide margin.
+VEC=1                  # batched vector I/O. vec=0 (one writev per packet) livelocks the guest
+                       # when the socket fills: EAGAIN marks the NIC in_error -> TX_BUSY forever
 # shellcheck source=/dev/null
 [ -f "$UDOCK_HOME/config" ] && . "$UDOCK_HOME/config"
 
-UMID=udock
 kernel=$UDOCK_HOME/vmlinux-udock
 disk=$UDOCK_HOME/disk.img
 log=$UDOCK_HOME/udock.log
@@ -183,16 +187,22 @@ stop() {
   running || { echo "udock: not running" >&2; return 0; }
   local pid i
   pid=$(guest_pid)
-  # ctrl-alt-del -> SIGINT to guest init -> dockerd stops cleanly -> poweroff
-  uml_mconsole "$UMID" cad >/dev/null 2>&1 || true
+  # ctrl-alt-del -> SIGINT to guest init -> dockerd stops cleanly -> poweroff.
+  # mconsole blocks forever if the guest kernel is wedged, hence the timeouts.
+  timeout 5 uml_mconsole "$UMID" cad >/dev/null 2>&1 || true
   for i in $(seq 60); do
     kill -0 "$pid" 2>/dev/null || break
     sleep 1
   done
   if kill -0 "$pid" 2>/dev/null; then
     echo "udock: clean shutdown timed out, halting" >&2
-    uml_mconsole "$UMID" sysrq s >/dev/null 2>&1 || true
-    uml_mconsole "$UMID" halt >/dev/null 2>&1 || kill "$pid"
+    timeout 5 uml_mconsole "$UMID" sysrq s >/dev/null 2>&1 || true
+    timeout 5 uml_mconsole "$UMID" halt >/dev/null 2>&1 || kill "$pid" 2>/dev/null
+    for i in $(seq 10); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 1
+    done
+    kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null
   fi
   stop_net
   echo "udock: stopped" >&2

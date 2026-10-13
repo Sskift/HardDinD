@@ -1,7 +1,8 @@
 #!/bin/sh
 # udock's docker shim: boot the UML guest on first use, then run the real CLI
 # against it. Installed as /usr/local/bin/docker.
-UDOCK_HOME=${UDOCK_HOME:-/root/udock}
-udock ensure || exit 1
-eval "$(udock env)"
+UDOCK_HOME=${UDOCK_HOME:-$(dirname "$(dirname "$(realpath "$0")")")}
+export UDOCK_HOME
+"$UDOCK_HOME/src/udock" ensure || exit 1
+eval "$("$UDOCK_HOME/src/udock" env)"
 exec "$UDOCK_HOME/bin/docker-cli" "$@"
