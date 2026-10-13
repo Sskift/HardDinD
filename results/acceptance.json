@@ -3,19 +3,45 @@
   "requirements": {
     "docker_functionality": {
       "status": "incomplete",
-      "evidence": ["starpub-2026-10-14/docker.json"],
-      "remaining": ["external networking", "outer bind-mount semantics", "complete upstream compatibility coverage", "production lifecycle"]
+      "evidence": [
+        "starpub-2026-10-14-handoff/docker-cow-1.json",
+        "starpub-2026-10-14-handoff/docker-cow-2.json",
+        "starpub-2026-10-14-handoff/suite-evidence-validation.json"
+      ],
+      "remaining": [
+        "external networking",
+        "outer bind-mount semantics",
+        "complete upstream compatibility coverage",
+        "production lifecycle"
+      ]
     },
     "native_performance": {
       "status": "fail",
-      "evidence": ["starpub-2026-10-14/comparison.json"],
+      "evidence": [
+        "starpub-2026-10-14-handoff/native-comparison.json",
+        "starpub-2026-10-14-handoff/handoff-comparison.json"
+      ],
       "same_host_and_resources": false,
-      "remaining": ["syscall overhead", "fork/exec overhead", "parallel threads in one address space", "storage and networking workload comparison"]
+      "remaining": [
+        "syscall overhead",
+        "fork/exec overhead",
+        "parallel threads in one address space",
+        "storage and networking workload comparison"
+      ]
     },
     "gpu_in_container": {
       "status": "fail",
-      "evidence": ["starpub-2026-10-14/docker.json"],
-      "remaining": ["NVIDIA device ABI backend", "CUDA compute inside Docker", "memory mapping and pinned memory", "multi-GPU and process lifecycle", "GPU performance comparison"]
+      "evidence": [
+        "starpub-2026-10-14-handoff/docker-cow-1.json",
+        "starpub-2026-10-14-handoff/docker-cow-2.json"
+      ],
+      "remaining": [
+        "NVIDIA device ABI backend",
+        "CUDA compute inside Docker",
+        "memory mapping and pinned memory",
+        "multi-GPU and process lifecycle",
+        "GPU performance comparison"
+      ]
     }
   }
 }

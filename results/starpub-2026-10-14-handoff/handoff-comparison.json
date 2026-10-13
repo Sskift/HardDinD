@@ -1,0 +1,114 @@
+{
+  "kind": "interleaved_kernel_microbench",
+  "full_performance_acceptance": false,
+  "order_per_spin": [
+    "before",
+    "after",
+    "after",
+    "before"
+  ],
+  "results": {
+    "0": {
+      "before": {
+        "kernel_sha256": "0fd4fe846f2993c24f4d89a7194adb487ea3fa5f5e4e5b258a33396732ebab63",
+        "median_seconds": {
+          "syscall_1": 2.156503808,
+          "exec_1": 0.44360447999999997,
+          "threads_1": 0.35453824,
+          "threads_4": 1.511074944,
+          "processes_1": 0.373290112,
+          "processes_4": 0.395879552
+        },
+        "mean_host_cpu_seconds_per_boot": 29.9919665
+      },
+      "after": {
+        "kernel_sha256": "91c5ad4f354b509079e9c943fe6dd3aff7b6e66830b30195ecfba5995f81053d",
+        "median_seconds": {
+          "syscall_1": 2.025858944,
+          "exec_1": 0.44835008,
+          "threads_1": 0.35577420800000004,
+          "threads_4": 1.5071648,
+          "processes_1": 0.409839232,
+          "processes_4": 0.41901363199999997
+        },
+        "mean_host_cpu_seconds_per_boot": 29.653115999999997
+      },
+      "after_over_before": {
+        "syscall_1": 0.9394182085302396,
+        "exec_1": 1.0106978180202328,
+        "threads_1": 1.0034861345281119,
+        "threads_4": 0.9974123427725898,
+        "processes_1": 1.0979107638404308,
+        "processes_4": 1.0584371682829425
+      }
+    },
+    "256": {
+      "before": {
+        "kernel_sha256": "0fd4fe846f2993c24f4d89a7194adb487ea3fa5f5e4e5b258a33396732ebab63",
+        "median_seconds": {
+          "syscall_1": 0.5055316480000001,
+          "exec_1": 0.452895104,
+          "threads_1": 0.34882726399999997,
+          "threads_4": 1.422685568,
+          "processes_1": 0.35990208,
+          "processes_4": 0.41845568
+        },
+        "mean_host_cpu_seconds_per_boot": 27.355832499999998
+      },
+      "after": {
+        "kernel_sha256": "91c5ad4f354b509079e9c943fe6dd3aff7b6e66830b30195ecfba5995f81053d",
+        "median_seconds": {
+          "syscall_1": 0.542435456,
+          "exec_1": 0.424003712,
+          "threads_1": 0.352273152,
+          "threads_4": 1.438998912,
+          "processes_1": 0.356253952,
+          "processes_4": 0.38766643199999995
+        },
+        "mean_host_cpu_seconds_per_boot": 26.653765999999997
+      },
+      "after_over_before": {
+        "syscall_1": 1.0729999954424216,
+        "exec_1": 0.9362073209782369,
+        "threads_1": 1.0098784939012106,
+        "threads_4": 1.0114665843015005,
+        "processes_1": 0.9898635539977985,
+        "processes_4": 0.9264217228452962
+      }
+    },
+    "4096": {
+      "before": {
+        "kernel_sha256": "0fd4fe846f2993c24f4d89a7194adb487ea3fa5f5e4e5b258a33396732ebab63",
+        "median_seconds": {
+          "syscall_1": 0.67213952,
+          "exec_1": 0.366234368,
+          "threads_1": 0.35134361599999997,
+          "threads_4": 1.4108613120000002,
+          "processes_1": 0.35581849600000004,
+          "processes_4": 0.379370624
+        },
+        "mean_host_cpu_seconds_per_boot": 27.254841499999998
+      },
+      "after": {
+        "kernel_sha256": "91c5ad4f354b509079e9c943fe6dd3aff7b6e66830b30195ecfba5995f81053d",
+        "median_seconds": {
+          "syscall_1": 0.702704768,
+          "exec_1": 0.369133952,
+          "threads_1": 0.353905408,
+          "threads_4": 1.441044352,
+          "processes_1": 0.351458304,
+          "processes_4": 0.373636736
+        },
+        "mean_host_cpu_seconds_per_boot": 27.8696635
+      },
+      "after_over_before": {
+        "syscall_1": 1.0454745586154495,
+        "exec_1": 1.007917290820724,
+        "threads_1": 1.0072914146816319,
+        "threads_4": 1.0213933430191044,
+        "processes_1": 0.9877460220617648,
+        "processes_4": 0.9848857880993971
+      }
+    }
+  }
+}

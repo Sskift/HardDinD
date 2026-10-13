@@ -1,6 +1,6 @@
 WORK ?= $(CURDIR)/.work
 
-.PHONY: check kernel probe-root native core docker-root docker-test acceptance
+.PHONY: check kernel kernel-handoff-experiment probe-root native core host-probes docker-root docker-test acceptance
 check:
 	python3 -m unittest discover -s tests -v
 	python3 -m py_compile scripts/*.py
@@ -10,6 +10,9 @@ check:
 kernel:
 	bash scripts/build-kernel.sh "$(WORK)"
 
+kernel-handoff-experiment:
+	HANDOFF_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
 probe-root:
 	bash scripts/make-probe-root.sh "$(WORK)"
 
@@ -18,6 +21,9 @@ core:
 
 native:
 	python3 scripts/run-native.py "$(WORK)"
+
+host-probes:
+	python3 scripts/run-host-probes.py "$(WORK)"
 
 docker-root:
 	bash scripts/make-docker-root.sh "$(WORK)"

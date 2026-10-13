@@ -1,0 +1,223 @@
+{
+  "kernel_release": "5.15.0-177-generic",
+  "architecture": "x86_64",
+  "euid": 0,
+  "protocol_sha256": "6cdf28bed888bb0a7c3fa04c165787b0f825ad3bb5047df77d5156612560dd7a",
+  "namespaces": [
+    {
+      "syscall": "unshare",
+      "namespace": "plain",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "user",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "mount",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "network",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "pid",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "cgroup",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "user_mount",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "unshare",
+      "namespace": "user_network",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "plain",
+      "errno": 0,
+      "allowed": true
+    },
+    {
+      "syscall": "clone",
+      "namespace": "user",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "mount",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "network",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "pid",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "cgroup",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "user_mount",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone",
+      "namespace": "user_network",
+      "errno": 1,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "plain",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "user",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "mount",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "network",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "pid",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "cgroup",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "user_mount",
+      "errno": 38,
+      "allowed": false
+    },
+    {
+      "syscall": "clone3",
+      "namespace": "user_network",
+      "errno": 38,
+      "allowed": false
+    }
+  ],
+  "handoff": [
+    {
+      "test": "handoff",
+      "processes": 0,
+      "rounds": 100000,
+      "spin": 0,
+      "sleeps": 194086,
+      "wakes": 193468,
+      "interrupted": 2028,
+      "verified": true
+    },
+    {
+      "test": "handoff",
+      "processes": 0,
+      "rounds": 100000,
+      "spin": 256,
+      "sleeps": 914,
+      "wakes": 417,
+      "interrupted": 519,
+      "verified": true
+    },
+    {
+      "test": "handoff",
+      "processes": 0,
+      "rounds": 100000,
+      "spin": 4096,
+      "sleeps": 0,
+      "wakes": 0,
+      "interrupted": 0,
+      "verified": true
+    },
+    {
+      "test": "handoff",
+      "processes": 1,
+      "rounds": 100000,
+      "spin": 0,
+      "sleeps": 194877,
+      "wakes": 193859,
+      "interrupted": 4299,
+      "verified": true
+    },
+    {
+      "test": "handoff",
+      "processes": 1,
+      "rounds": 100000,
+      "spin": 256,
+      "sleeps": 791,
+      "wakes": 418,
+      "interrupted": 395,
+      "verified": true
+    },
+    {
+      "test": "handoff",
+      "processes": 1,
+      "rounds": 100000,
+      "spin": 4096,
+      "sleeps": 2,
+      "wakes": 2,
+      "interrupted": 1,
+      "verified": true
+    }
+  ],
+  "host_process_status": {
+    "CapEff": "00000000a80425fb",
+    "CapBnd": "00000000a80425fb",
+    "NoNewPrivs": "0",
+    "Seccomp": "2",
+    "Seccomp_filters": "1"
+  },
+  "complete": true,
+  "product_acceptance": false
+}

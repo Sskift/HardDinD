@@ -1,0 +1,107 @@
+{
+  "kind": "kernel_microbench_only",
+  "mode": "seccomp",
+  "cpus": 4,
+  "spin": 0,
+  "kernel_sha256": "0fd4fe846f2993c24f4d89a7194adb487ea3fa5f5e4e5b258a33396732ebab63",
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 17.373613018542528,
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 2.215298816
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 2.0977088
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 1.67716096
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.434955264
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.406415872
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.414494464
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.356122624
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.37037184
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.354008576
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 1.61437184
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 1.609404416
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 2.032232192
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.350571264
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.356920576
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.443752192
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.402590208
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.451017472
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.37829632
+    }
+  ],
+  "host_cpu_seconds": 30.66796,
+  "docker_acceptance": "not_tested",
+  "gpu_acceptance": "not_tested"
+}
