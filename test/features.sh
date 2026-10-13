@@ -100,6 +100,8 @@ check "--network none"             bash -c '! docker run --rm --label udock-test
 check "--network host (guest)"     R --network host alpine ip addr show vec0
 check "-p publish (guest-side)"    bash -c 'docker run -d --label udock-test -p 18080:80 nginx:alpine >/dev/null && sleep 2 &&
   docker run --rm --label udock-test --network host alpine wget -qO- http://127.0.0.1:18080/ | grep -qi nginx'
+check "-p reachable from host (auto-forward)" bash -c 'docker run -d --label udock-test -p 18090:80 nginx:alpine >/dev/null &&
+  for i in $(seq 40); do curl -sf -m 2 -o /dev/null http://127.0.0.1:18090/ && exit 0; sleep 0.25; done; exit 1'
 check "IPv6 network"               bash -c 'docker network create --ipv6 udt-v6 >/dev/null && docker run --rm --label udock-test --network udt-v6 alpine sh -c "ip -6 addr | grep -q global"; rc=$?; docker network rm udt-v6 >/dev/null; exit $rc'
 
 # --- compose / swarm ---

@@ -2,7 +2,7 @@
 # udock: run a real dockerd inside a User-Mode Linux guest, so docker works in
 # an unprivileged container (no CAP_SYS_ADMIN, seccomp on, read-only cgroups).
 #
-#   udock start|stop|restart|status|logs|env|update-guest
+#   udock start|stop|restart|status|ports|logs|env|update-guest
 #
 # Settings live in $UDOCK_HOME/config (shell syntax); see defaults below.
 set -euo pipefail
@@ -10,8 +10,9 @@ set -euo pipefail
 UDOCK_HOME=${UDOCK_HOME:-/root/udock}
 MEM=4G                 # guest RAM
 SHARES=/root           # host dirs visible at the same path in the guest
-PORTS=""               # host ports forwarded to the same guest port, e.g. "8080 5432"
-PORT_BIND=127.0.0.1    # host address those ports listen on
+AUTO_PORTS=1           # forward every `docker run -p` port to the host automatically
+PORTS=""               # extra host ports forwarded to the same guest port (--network host services)
+PORT_BIND=127.0.0.1    # host address forwarded ports listen on
 API_PORT=23760         # host port for the TLS docker API (always on 127.0.0.1)
 DNS=""                 # guest DNS server; empty = 10.0.2.3, relayed to the host's resolver
 PROXY=auto             # guest HTTP(S) proxy; auto = derive from host HTTPS_PROXY
@@ -26,6 +27,8 @@ disk=$UDOCK_HOME/disk.img
 log=$UDOCK_HOME/udock.log
 netsock=$UDOCK_HOME/net.sock
 netpid=$UDOCK_HOME/net.pid
+ctlsock=$UDOCK_HOME/ctl.sock
+portdpid=$UDOCK_HOME/portd.pid
 # UML writes its own pid here and refuses to boot a second guest with the
 # same umid; the disk image is also flock()ed by the ubd driver.
 pidfile=$HOME/.uml/$UMID/pid
@@ -49,7 +52,68 @@ stop_net() {
     pgrep -x udock-net >/dev/null || break
     sleep 0.1
   done
-  rm -f "$netpid" "$netsock"
+  rm -f "$netpid" "$netsock" "$ctlsock"
+}
+
+net_ctl() { "$UDOCK_HOME/bin/udock-net" -C "$ctlsock" "$@"; }
+
+# Forwards we want: PORTS plus every port a running container publishes on a
+# guest-wide address (a guest-loopback publish can't be reached through NAT).
+wanted_ports() {
+  local port ids
+  for port in $PORTS; do
+    echo "tcp $PORT_BIND $port $port"
+  done
+  [ "$AUTO_PORTS" = 1 ] || return 0
+  ids=$(docker_cli ps -q 2>/dev/null) || return 0
+  [ -n "$ids" ] || return 0
+  # shellcheck disable=SC2086
+  docker_cli inspect -f '{{range $p, $b := .NetworkSettings.Ports}}{{range $b}}{{$p}} {{.HostIp}} {{.HostPort}}{{"\n"}}{{end}}{{end}}' $ids 2>/dev/null |
+    awk -v bind="$PORT_BIND" '$3 != "" && ($2 == "0.0.0.0" || $2 == "::" || $2 == "10.0.2.15") {
+      split($1, a, "/"); print a[2], bind, $3, $3 }'
+}
+
+# Reconcile udock-net's forwards with wanted_ports. Idempotent, so a missed
+# docker event is fixed by the next one.
+sync_ports() {
+  local want have raw proto addr hp gp
+  want=$(wanted_ports | sort -u)
+  raw=$(net_ctl list 2>/dev/null) || return 0
+  have=$(echo "$raw" | awk -v api="$API_PORT" '$1 != "ok" && !($3 == api && $4 == 2376)' | sort -u)
+  while read -r proto addr hp gp; do
+    [ -n "$proto" ] || continue
+    net_ctl add "$proto" "$addr" "$hp" "$gp" >/dev/null || echo "udock: cannot forward $proto $addr:$hp (host port busy?)"
+  done < <(comm -13 <(echo "$have") <(echo "$want"))
+  while read -r proto addr hp gp; do
+    [ -n "$proto" ] && net_ctl del "$proto" "$addr" "$hp" >/dev/null
+  done < <(comm -23 <(echo "$have") <(echo "$want"))
+}
+
+# Background loop: resync on every container start/stop.
+portd() {
+  # a long-lived loop: an API hiccup must not kill it
+  set +e
+  export LC_ALL=C   # sort and comm must agree on ordering
+  while running; do
+    sync_ports
+    docker_cli events --filter type=container --filter event=start --filter event=die --format '{{.Action}}' 2>/dev/null |
+      while read -r _; do sync_ports; done
+    sleep 1
+  done
+}
+
+portd_running() { [ -f "$portdpid" ] && kill -0 "$(cat "$portdpid")" 2>/dev/null; }
+
+start_portd() {
+  portd_running && return 0
+  setsid "$(realpath "$0")" _portd </dev/null >>"$log" 2>&1 &
+  echo $! >"$portdpid"
+}
+
+stop_portd() {
+  # setsid made it a group leader: take down the events pipeline with it
+  portd_running && kill -- "-$(cat "$portdpid")" 2>/dev/null
+  rm -f "$portdpid"
 }
 
 guest_proxy() {
@@ -64,7 +128,8 @@ guest_proxy() {
 
 start() {
   if running; then
-    api_up || wait_api "$(guest_pid)"
+    api_up || wait_api "$(guest_pid)" || return 1
+    start_portd
     return
   fi
   mkdir -p "$UDOCK_HOME/tmp"
@@ -72,11 +137,9 @@ start() {
 
   # Userspace NAT first: UML connects to its socket when vec0 comes up.
   stop_net
-  local fwd=(-f "tcp:127.0.0.1:$API_PORT:2376") port i
-  for port in $PORTS; do
-    fwd+=(-f "tcp:$PORT_BIND:$port:$port")
-  done
-  setsid "$UDOCK_HOME/bin/udock-net" -s "$netsock" -m "$MTU" "${fwd[@]}" </dev/null >>"$log" 2>&1 &
+  local i
+  setsid "$UDOCK_HOME/bin/udock-net" -s "$netsock" -c "$ctlsock" -m "$MTU" \
+    -f "tcp:127.0.0.1:$API_PORT:2376" </dev/null >>"$log" 2>&1 &
   echo $! >"$netpid"
   for i in $(seq 50); do
     [ -S "$netsock" ] && break
@@ -99,7 +162,7 @@ start() {
   # UML keeps guest RAM in a file under TMPDIR, which must allow exec mappings
   # (/dev/shm here is noexec).
   TMPDIR=$UDOCK_HOME/tmp setsid "$kernel" "${args[@]}" </dev/null >>"$log" 2>&1 &
-  wait_api $!
+  wait_api $! && start_portd
 }
 
 # wait_api <guest-pid>: the pid file only appears partway through boot, so
@@ -116,6 +179,7 @@ wait_api() {
 }
 
 stop() {
+  stop_portd
   running || { echo "udock: not running" >&2; return 0; }
   local pid i
   pid=$(guest_pid)
@@ -163,12 +227,14 @@ status() {
 
 case ${1:-} in
   start) start ;;
-  ensure) running && api_up || start ;;
+  ensure) if running && api_up; then start_portd; else start; fi ;;
   stop) stop ;;
   restart) stop; start ;;
   status) status ;;
   logs) tail -n "${2:-100}" -f "$log" ;;
+  ports) net_ctl list | grep -v '^ok$' | awk '{ printf "%s %s:%s -> guest :%s\n", $1, $2, $3, $4 }' ;;
+  _portd) portd ;;
   update-guest) update_guest ;;
   env) printf 'export DOCKER_HOST=%s DOCKER_TLS_VERIFY=1 DOCKER_CERT_PATH=%s\n' "$DOCKER_HOST" "$DOCKER_CERT_PATH" ;;
-  *) echo "usage: udock start|stop|restart|status|logs [n]|env|update-guest" >&2; exit 2 ;;
+  *) echo "usage: udock start|stop|restart|status|ports|logs [n]|env|update-guest" >&2; exit 2 ;;
 esac

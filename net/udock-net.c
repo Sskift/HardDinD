@@ -6,7 +6,8 @@
  * them to libslirp, which turns guest TCP/UDP flows into ordinary host
  * sockets: no tap device, no CAP_NET_ADMIN, no namespaces.
  *
- *   udock-net -s SOCKET [-m MTU] [-f [udp:]HOSTADDR:HOSTPORT:GUESTPORT]...
+ *   udock-net -s SOCKET [-c CTLSOCK] [-m MTU] [-f tcp|udp:HOSTADDR:HOSTPORT:GUESTPORT]...
+ *   udock-net -C CTLSOCK add|del|list ...      (talk to a running instance)
  *
  * Guest view: 10.0.2.15/24, gateway 10.0.2.2 (= host loopback), DNS 10.0.2.3.
  */
@@ -18,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
@@ -167,59 +169,196 @@ static int run_timers(void)
 	return (int)next;
 }
 
-/* -f [udp:]HOSTADDR:HOSTPORT:GUESTPORT */
-static void add_forward(Slirp *slirp, const char *spec)
-{
-	char buf[128], *host, *hport, *gport;
-	int udp = 0;
-	struct in_addr haddr, gaddr;
+/* ---- port forwards ---- */
 
-	if (strncmp(spec, "udp:", 4) == 0) {
-		udp = 1;
-		spec += 4;
-	} else if (strncmp(spec, "tcp:", 4) == 0) {
-		spec += 4;
-	}
-	snprintf(buf, sizeof(buf), "%s", spec);
-	host = buf;
-	if (!(hport = strchr(host, ':')) || !(gport = strchr(hport + 1, ':'))) {
-		fprintf(stderr, "udock-net: bad forward '%s'\n", spec);
-		exit(2);
-	}
-	*hport++ = 0;
-	*gport++ = 0;
-	if (!inet_aton(host, &haddr)) {
-		fprintf(stderr, "udock-net: bad address '%s'\n", host);
-		exit(2);
-	}
+struct fwd {
+	int udp;
+	struct in_addr haddr;
+	int hport, gport;
+};
+static struct fwd fwds[1024];
+static int nfwds;
+
+static struct fwd *fwd_find(int udp, struct in_addr haddr, int hport)
+{
+	for (int i = 0; i < nfwds; i++)
+		if (fwds[i].udp == udp && fwds[i].haddr.s_addr == haddr.s_addr && fwds[i].hport == hport)
+			return &fwds[i];
+	return NULL;
+}
+
+/* Returns NULL on success, else a reason. Adding an identical forward is a no-op. */
+static const char *fwd_add(Slirp *slirp, int udp, struct in_addr haddr, int hport, int gport)
+{
+	struct fwd *f = fwd_find(udp, haddr, hport);
+	struct in_addr gaddr;
+
+	if (f && f->gport == gport)
+		return NULL;
+	if (f)
+		return "host port already forwarded to another guest port";
+	if (nfwds == (int)(sizeof(fwds) / sizeof(fwds[0])))
+		return "too many forwards";
 	inet_aton("10.0.2.15", &gaddr);
-	if (slirp_add_hostfwd(slirp, udp, haddr, atoi(hport), gaddr, atoi(gport)) < 0) {
-		fprintf(stderr, "udock-net: cannot forward %s:%s (port in use?)\n", host, hport);
-		exit(1);
+	if (slirp_add_hostfwd(slirp, udp, haddr, hport, gaddr, gport) < 0)
+		return "cannot bind host port (in use?)";
+	fwds[nfwds++] = (struct fwd){ udp, haddr, hport, gport };
+	return NULL;
+}
+
+static const char *fwd_del(Slirp *slirp, int udp, struct in_addr haddr, int hport)
+{
+	struct fwd *f = fwd_find(udp, haddr, hport);
+
+	if (!f)
+		return "no such forward";
+	slirp_remove_hostfwd(slirp, udp, haddr, hport);
+	*f = fwds[--nfwds];
+	return NULL;
+}
+
+/* "tcp|udp ADDR HOSTPORT [GUESTPORT]" -> fields; returns token count or -1 */
+static int parse_fwd(char *proto, char *addr, char *hport, char *gport,
+		     int *udp, struct in_addr *haddr, int *hp, int *gp)
+{
+	if (!proto || !addr || !hport)
+		return -1;
+	if (strcmp(proto, "tcp") == 0)
+		*udp = 0;
+	else if (strcmp(proto, "udp") == 0)
+		*udp = 1;
+	else
+		return -1;
+	if (!inet_aton(addr, haddr))
+		return -1;
+	*hp = atoi(hport);
+	*gp = gport ? atoi(gport) : *hp;
+	return (*hp > 0 && *hp < 65536 && *gp > 0 && *gp < 65536) ? 0 : -1;
+}
+
+/*
+ * Control socket: one line per connection, one reply.
+ *   add tcp|udp HOSTADDR HOSTPORT GUESTPORT  -> "ok" | "err REASON"
+ *   del tcp|udp HOSTADDR HOSTPORT            -> "ok" | "err REASON"
+ *   list                                     -> "tcp 127.0.0.1 8080 80" lines, then "ok"
+ */
+static void handle_ctl(Slirp *slirp, int fd)
+{
+	char line[256], reply[64 * 1024], *save, *cmd, *a[4];
+	struct timeval tv = { 1, 0 };
+	struct in_addr haddr;
+	const char *err = NULL;
+	int udp, hp, gp, len = 0, n;
+	ssize_t r;
+
+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	while (len < (int)sizeof(line) - 1 && (r = read(fd, line + len, sizeof(line) - 1 - len)) > 0) {
+		len += r;
+		if (memchr(line, '\n', len))
+			break;
 	}
+	line[len] = 0;
+	line[strcspn(line, "\r\n")] = 0;
+
+	cmd = strtok_r(line, " ", &save);
+	for (int i = 0; i < 4; i++)
+		a[i] = strtok_r(NULL, " ", &save);
+	reply[0] = 0;
+
+	if (!cmd) {
+		err = "empty command";
+	} else if (strcmp(cmd, "list") == 0) {
+		n = 0;
+		for (int i = 0; i < nfwds; i++)
+			n += snprintf(reply + n, sizeof(reply) - n, "%s %s %d %d\n", fwds[i].udp ? "udp" : "tcp",
+				      inet_ntoa(fwds[i].haddr), fwds[i].hport, fwds[i].gport);
+	} else if (strcmp(cmd, "add") == 0) {
+		if (!a[3] || parse_fwd(a[0], a[1], a[2], a[3], &udp, &haddr, &hp, &gp) < 0)
+			err = "usage: add tcp|udp HOSTADDR HOSTPORT GUESTPORT";
+		else if ((err = fwd_add(slirp, udp, haddr, hp, gp)) == NULL)
+			fprintf(stderr, "udock-net: forward %s %s:%d -> %d\n", a[0], a[1], hp, gp);
+	} else if (strcmp(cmd, "del") == 0) {
+		if (parse_fwd(a[0], a[1], a[2], NULL, &udp, &haddr, &hp, &gp) < 0)
+			err = "usage: del tcp|udp HOSTADDR HOSTPORT";
+		else if ((err = fwd_del(slirp, udp, haddr, hp)) == NULL)
+			fprintf(stderr, "udock-net: unforward %s %s:%d\n", a[0], a[1], hp);
+	} else {
+		err = "unknown command";
+	}
+
+	n = strlen(reply);
+	snprintf(reply + n, sizeof(reply) - n, err ? "err %s\n" : "ok\n", err);
+	if (write(fd, reply, strlen(reply)) < 0)
+		fprintf(stderr, "udock-net: ctl reply: %s\n", strerror(errno));
+	close(fd);
+}
+
+static int unix_listen(const char *path, int type)
+{
+	struct sockaddr_un addr = { .sun_family = AF_UNIX };
+	int fd = socket(AF_UNIX, type, 0);
+
+	if (fd < 0)
+		die("socket");
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path);
+	unlink(path);
+	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+		die(path);
+	if (listen(fd, 8) < 0)
+		die("listen");
+	return fd;
+}
+
+/* udock-net -C CTLSOCK COMMAND...: send one control command, print the reply */
+static int ctl_client(const char *path, int argc, char **argv)
+{
+	struct sockaddr_un addr = { .sun_family = AF_UNIX };
+	char buf[4096];
+	int fd, n = 0, ok = 0;
+	ssize_t r;
+
+	for (int i = 0; i < argc; i++)
+		n += snprintf(buf + n, sizeof(buf) - n, "%s%s", i ? " " : "", argv[i]);
+	snprintf(buf + n, sizeof(buf) - n, "\n");
+
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path);
+	if (fd < 0 || connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+		die(path);
+	if (write(fd, buf, strlen(buf)) < 0)
+		die("write");
+	while ((r = read(fd, buf, sizeof(buf) - 1)) > 0) {
+		buf[r] = 0;
+		fputs(buf, stdout);
+		ok = strstr(buf, "ok\n") != NULL;
+	}
+	return ok ? 0 : 1;
 }
 
 int main(int argc, char **argv)
 {
-	const char *path = NULL;
-	const char *fwds[256];
-	int nfwds = 0, mtu = 1500, opt;
+	const char *path = NULL, *ctl = NULL, *specs[256];
+	int nspecs = 0, mtu = 1500, opt, lfd, cfd = -1;
 	static uint8_t frame[MAX_FRAME];
 
-	while ((opt = getopt(argc, argv, "s:m:f:")) != -1) {
+	while ((opt = getopt(argc, argv, "+s:c:C:m:f:")) != -1) {
 		switch (opt) {
 		case 's': path = optarg; break;
+		case 'c': ctl = optarg; break;
+		case 'C': return ctl_client(optarg, argc - optind, argv + optind);
 		case 'm': mtu = atoi(optarg); break;
 		case 'f':
-			if (nfwds < 256)
-				fwds[nfwds++] = optarg;
+			if (nspecs < 256)
+				specs[nspecs++] = optarg;
 			break;
 		default: goto usage;
 		}
 	}
 	if (!path) {
 usage:
-		fprintf(stderr, "usage: udock-net -s SOCKET [-m MTU] [-f [udp:]HOSTADDR:HOSTPORT:GUESTPORT]...\n");
+		fprintf(stderr,
+			"usage: udock-net -s SOCKET [-c CTLSOCK] [-m MTU] [-f tcp|udp:HOSTADDR:HOSTPORT:GUESTPORT]...\n"
+			"       udock-net -C CTLSOCK add|del|list ...\n");
 		return 2;
 	}
 	signal(SIGPIPE, SIG_IGN);
@@ -238,19 +377,31 @@ usage:
 	Slirp *slirp = slirp_new(&cfg, &callbacks, NULL);
 	if (!slirp)
 		die("slirp_new");
-	for (int i = 0; i < nfwds; i++)
-		add_forward(slirp, fwds[i]);
 
-	int lfd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
-	if (lfd < 0)
-		die("socket");
-	struct sockaddr_un addr = { .sun_family = AF_UNIX };
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path);
-	unlink(path);
-	if (bind(lfd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-		die("bind");
-	if (listen(lfd, 1) < 0)
-		die("listen");
+	/* -f tcp:127.0.0.1:23760:2376 (same fields as the control "add" command) */
+	for (int i = 0; i < nspecs; i++) {
+		char buf[128], *save, *f[4];
+		struct in_addr haddr;
+		int udp, hp, gp;
+		const char *err;
+
+		snprintf(buf, sizeof(buf), "%s", specs[i]);
+		f[0] = strtok_r(buf, ":", &save);
+		for (int j = 1; j < 4; j++)
+			f[j] = strtok_r(NULL, ":", &save);
+		if (!f[3] || parse_fwd(f[0], f[1], f[2], f[3], &udp, &haddr, &hp, &gp) < 0) {
+			fprintf(stderr, "udock-net: bad forward '%s'\n", specs[i]);
+			return 2;
+		}
+		if ((err = fwd_add(slirp, udp, haddr, hp, gp))) {
+			fprintf(stderr, "udock-net: %s: %s\n", specs[i], err);
+			return 1;
+		}
+	}
+
+	lfd = unix_listen(path, SOCK_SEQPACKET);
+	if (ctl)
+		cfd = unix_listen(ctl, SOCK_STREAM);
 	fprintf(stderr, "udock-net: listening on %s, mtu %d, %d forwards\n", path, mtu, nfwds);
 
 	for (;;) {
@@ -258,8 +409,9 @@ usage:
 		int t;
 
 		npfds = 0;
-		/* slot 0: the guest link, or the listener while detached */
+		/* slot 0: the guest link, or the listener while detached; slot 1: control */
 		add_poll(guest_fd >= 0 ? guest_fd : lfd, SLIRP_POLL_IN, NULL);
+		add_poll(cfd, SLIRP_POLL_IN, NULL);
 		slirp_pollfds_fill(slirp, &timeout, add_poll, NULL);
 		t = run_timers();
 		if (t >= 0 && (uint32_t)t < timeout)
@@ -290,6 +442,11 @@ usage:
 					break;
 				}
 			}
+		}
+		if (n > 0 && pfds[1].revents) {
+			int c = accept(cfd, NULL, NULL);
+			if (c >= 0)
+				handle_ctl(slirp, c);
 		}
 		slirp_pollfds_poll(slirp, n < 0, get_revents, NULL);
 		run_timers();

@@ -7,7 +7,8 @@
 ```
 宿主容器 (无特权)
 ├── docker (shim) ──TLS──▶ 127.0.0.1:23760
-├── udock-net  (libslirp 用户态 NAT, 端口转发只绑 127.0.0.1)
+├── udock portd (订阅 docker events，-p 端口自动同步给 udock-net)
+├── udock-net  (libslirp 用户态 NAT；端口转发默认只绑 127.0.0.1，可运行时增删)
 │      ▲ 以太网帧 / UNIX seqpacket
 └── vmlinux-udock (UML 内核, 单核)
        ├── vec0 10.0.2.15, 网关 10.0.2.2 = 宿主 loopback
@@ -20,6 +21,7 @@
 ```sh
 docker ps                 # shim 会自动 udock start，第一次约 10s
 udock status|stop|restart|logs
+udock ports               # 当前转发到宿主的端口
 eval "$(udock env)"       # 让别的工具直接用 DOCKER_HOST
 ```
 
@@ -28,8 +30,9 @@ eval "$(udock env)"       # 让别的工具直接用 DOCKER_HOST
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `MEM` | `4G` | guest 内存 |
-| `PORTS` | 空 | 要转发到宿主的端口，如 `"8080 5432"`；容器里仍需 `-p 8080:80` |
-| `PORT_BIND` | `127.0.0.1` | 上面端口绑定的宿主地址 |
+| `AUTO_PORTS` | `1` | `docker run -p` / compose `ports:` 发布的端口自动转发到宿主，容器停掉自动撤销 |
+| `PORTS` | 空 | 额外要转发的端口（如 `--network host` 的服务），如 `"8080 5432"` |
+| `PORT_BIND` | `127.0.0.1` | 转发端口绑定的宿主地址，要对外开放改成 `0.0.0.0` |
 | `SHARES` | `/root` | 原路径挂进 guest 的宿主目录 |
 | `PROXY` | `auto` | dockerd 拉镜像用的代理；auto 取宿主 `HTTPS_PROXY`，127.0.0.1 自动换成 10.0.2.2 |
 | `DNS` | 空 | 空 = 10.0.2.3（转发到宿主 resolver） |
@@ -41,7 +44,7 @@ eval "$(udock env)"       # 让别的工具直接用 DOCKER_HOST
 ```
 kernel/docker.config   在 UML defconfig 上额外开启的选项 (namespace/cgroup/netfilter/overlay…)
 kernel/build.sh        编内核 (顺带把 UML 写死的 HZ=100 改成 1000)
-net/udock-net.c        libslirp <-> UML vector(bess) 网卡的桥
+net/udock-net.c        libslirp <-> UML vector(bess) 网卡的桥；-C 控制端口转发 (add/del/list)
 guest/udock-init       guest 的 PID 1：挂载、网络、hostfs，然后 tini -> udock-run
 guest/udock-run        起 dockerd；收到 SIGINT 时停 dockerd 并关机
 build-rootfs.sh        Alpine + docker 磁盘镜像 + TLS 证书
@@ -83,6 +86,6 @@ ln -sf /root/udock/src/udock /usr/local/bin/udock && ln -sf /root/udock/src/dock
 
 - 单核：UML 不支持 SMP。
 - 系统调用和起进程慢，所以 `apt/apk install`、编译这类负载明显变慢。
-- 端口要先在 `PORTS` 里登记，改了要重启。
+- `-p 127.0.0.1:x:y` 这种只绑 guest 回环的发布不会转发（NAT 进不去）；用 `-p x:y` 即可，宿主侧默认就只绑 127.0.0.1。
 - 只有 root 能用：证书在 `/root/udock/certs`。
 - 不支持 GPU。
