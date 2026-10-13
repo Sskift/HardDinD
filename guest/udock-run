@@ -1,0 +1,28 @@
+#!/bin/sh
+# Runs dockerd inside the guest. SIGINT (sent by `udock stop` via mconsole
+# ctrl-alt-del, forwarded by tini) stops dockerd and powers the guest off.
+stop() { kill -TERM "$pid" 2>/dev/null; }
+trap stop INT TERM
+
+# Container networks inherit the uplink MTU: every packet costs a trip
+# through UML, so jumbo frames are much faster.
+mtu=$(cat "/sys/class/net/$(cat /run/udock.nic)/mtu")
+
+dockerd \
+  --host=unix:///var/run/docker.sock \
+  --host=tcp://0.0.0.0:2376 \
+  --tlsverify \
+  --tlscacert=/etc/udock/ca.pem \
+  --tlscert=/etc/udock/server-cert.pem \
+  --tlskey=/etc/udock/server-key.pem \
+  --mtu="$mtu" \
+  --default-network-opt="bridge=com.docker.network.driver.mtu=$mtu" \
+  >/dev/console 2>&1 &
+pid=$!
+
+# The first wait returns early when the trap fires; the second waits for exit.
+wait "$pid"
+wait "$pid"
+echo "udock: dockerd exited, powering off" >/dev/console
+sync
+poweroff -f

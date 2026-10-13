@@ -1,0 +1,51 @@
+#!/bin/sh
+# PID 1 of the udock UML guest: mount the basics, bring up networking,
+# mount host shares, then hand over to tini -> udock-run (dockerd).
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# kernel cmdline: udock.shares=/a,/b  udock.proxy=http://10.0.2.2:3128  udock.dns=1.2.3.4
+mount -t proc proc /proc
+for arg in $(cat /proc/cmdline); do
+  case $arg in
+    udock.shares=*) shares=${arg#udock.shares=} ;;
+    udock.proxy=*) proxy=${arg#udock.proxy=} ;;
+    udock.dns=*) dns=${arg#udock.dns=} ;;
+  esac
+done
+
+mount -o remount,rw /
+mount -t sysfs sysfs /sys
+mount -t cgroup2 cgroup2 /sys/fs/cgroup
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /dev/shm
+mount -t devpts devpts /dev/pts -o gid=5,mode=620,ptmxmode=666
+mount -t tmpfs tmpfs /dev/shm
+mount -t tmpfs tmpfs /run
+mount -t tmpfs tmpfs /tmp
+
+# `udock stop` sends ctrl-alt-del via mconsole; deliver it to init as SIGINT
+# instead of the kernel's default immediate reboot.
+echo 0 > /proc/sys/kernel/ctrl-alt-del
+
+hostname udock
+ip link set lo up
+# vec0 = udock-net; eth0 = legacy slirp transport
+for nic in vec0 eth0; do [ -e "/sys/class/net/$nic" ] && break; done
+echo "$nic" > /run/udock.nic
+ip link set "$nic" up
+ip addr add 10.0.2.15/24 dev "$nic"
+ip route add default via 10.0.2.2
+echo "nameserver ${dns:-10.0.2.3}" > /etc/resolv.conf
+
+# Host directories appear at the same path in the guest, so
+# `docker run -v /root/proj:/w` means the same thing on both sides.
+for dir in $(echo "${shares:-}" | tr , ' '); do
+  mkdir -p "$dir"
+  mount -t hostfs none "$dir" -o "$dir" || echo "udock: failed to share $dir"
+done
+
+if [ -n "${proxy:-}" ]; then
+  export HTTP_PROXY=$proxy HTTPS_PROXY=$proxy NO_PROXY=localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+fi
+
+exec /sbin/tini -- /sbin/udock-run

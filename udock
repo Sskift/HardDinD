@@ -1,0 +1,174 @@
+#!/bin/bash
+# udock: run a real dockerd inside a User-Mode Linux guest, so docker works in
+# an unprivileged container (no CAP_SYS_ADMIN, seccomp on, read-only cgroups).
+#
+#   udock start|stop|restart|status|logs|env|update-guest
+#
+# Settings live in $UDOCK_HOME/config (shell syntax); see defaults below.
+set -euo pipefail
+
+UDOCK_HOME=${UDOCK_HOME:-/root/udock}
+MEM=4G                 # guest RAM
+SHARES=/root           # host dirs visible at the same path in the guest
+PORTS=""               # host ports forwarded to the same guest port, e.g. "8080 5432"
+PORT_BIND=127.0.0.1    # host address those ports listen on
+API_PORT=23760         # host port for the TLS docker API (always on 127.0.0.1)
+DNS=""                 # guest DNS server; empty = 10.0.2.3, relayed to the host's resolver
+PROXY=auto             # guest HTTP(S) proxy; auto = derive from host HTTPS_PROXY
+MTU=65520              # guest<->udock-net link MTU; big frames mean fewer UML round trips
+VEC=0                  # 1 = batched vector TX; it waits for a 10ms UML tick, so off is faster
+# shellcheck source=/dev/null
+[ -f "$UDOCK_HOME/config" ] && . "$UDOCK_HOME/config"
+
+UMID=udock
+kernel=$UDOCK_HOME/vmlinux-udock
+disk=$UDOCK_HOME/disk.img
+log=$UDOCK_HOME/udock.log
+netsock=$UDOCK_HOME/net.sock
+netpid=$UDOCK_HOME/net.pid
+# UML writes its own pid here and refuses to boot a second guest with the
+# same umid; the disk image is also flock()ed by the ubd driver.
+pidfile=$HOME/.uml/$UMID/pid
+
+export DOCKER_HOST=tcp://127.0.0.1:$API_PORT DOCKER_TLS_VERIFY=1 DOCKER_CERT_PATH=$UDOCK_HOME/certs
+docker_cli() { "$UDOCK_HOME/bin/docker-cli" "$@"; }
+
+running() { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; }
+guest_pid() { cat "$pidfile"; }
+# udock-net accepts on the host side even while the guest isn't answering yet
+api_up() { timeout 5 "$UDOCK_HOME/bin/docker-cli" version >/dev/null 2>&1; }
+
+# Kill the udock-net serving this UDOCK_HOME, found by its socket argument
+# (the pid file alone misses orphans left by a crashed start).
+stop_net() {
+  local p i
+  for p in $(pgrep -x udock-net); do
+    tr '\0' ' ' <"/proc/$p/cmdline" 2>/dev/null | grep -qF -- "-s $netsock " && kill "$p" 2>/dev/null
+  done
+  for i in $(seq 20); do
+    pgrep -x udock-net >/dev/null || break
+    sleep 0.1
+  done
+  rm -f "$netpid" "$netsock"
+}
+
+guest_proxy() {
+  # The guest's gateway 10.0.2.2 is the host's loopback, so a proxy on
+  # 127.0.0.1:PORT on the host is 10.0.2.2:PORT from the guest.
+  local p=$PROXY
+  if [ "$p" = auto ]; then
+    p=${HTTPS_PROXY:-${https_proxy:-${HTTP_PROXY:-${http_proxy:-}}}}
+  fi
+  echo "$p" | sed -E 's#//(127\.0\.0\.1|localhost)(:|/|$)#//10.0.2.2\2#'
+}
+
+start() {
+  if running; then
+    api_up || wait_api "$(guest_pid)"
+    return
+  fi
+  mkdir -p "$UDOCK_HOME/tmp"
+  echo "=== udock start $(date -Is)" >>"$log"
+
+  # Userspace NAT first: UML connects to its socket when vec0 comes up.
+  stop_net
+  local fwd=(-f "tcp:127.0.0.1:$API_PORT:2376") port i
+  for port in $PORTS; do
+    fwd+=(-f "tcp:$PORT_BIND:$port:$port")
+  done
+  setsid "$UDOCK_HOME/bin/udock-net" -s "$netsock" -m "$MTU" "${fwd[@]}" </dev/null >>"$log" 2>&1 &
+  echo $! >"$netpid"
+  for i in $(seq 50); do
+    [ -S "$netsock" ] && break
+    kill -0 "$(cat "$netpid")" 2>/dev/null || { echo "udock: udock-net failed, see $log" >&2; return 1; }
+    sleep 0.1
+  done
+
+  local args=(
+    "umid=$UMID" "mem=$MEM"
+    "ubd0=$disk" root=/dev/ubda rw init=/sbin/udock-init
+    "vec0:transport=bess,dst=$netsock,mtu=$MTU,vec=$VEC"
+    con=null con0=null,fd:1 ssl=null
+    "udock.shares=$(echo "$SHARES" | tr ' ' ,)"
+  )
+  local proxy
+  proxy=$(guest_proxy)
+  [ -z "$proxy" ] || args+=("udock.proxy=$proxy")
+  [ -z "$DNS" ] || args+=("udock.dns=$DNS")
+
+  # UML keeps guest RAM in a file under TMPDIR, which must allow exec mappings
+  # (/dev/shm here is noexec).
+  TMPDIR=$UDOCK_HOME/tmp setsid "$kernel" "${args[@]}" </dev/null >>"$log" 2>&1 &
+  wait_api $!
+}
+
+# wait_api <guest-pid>: the pid file only appears partway through boot, so
+# watch the process we launched instead.
+wait_api() {
+  local i
+  for i in $(seq 120); do
+    api_up && { echo "udock: docker is up ($DOCKER_HOST)" >&2; return 0; }
+    kill -0 "$1" 2>/dev/null || { stop_net; echo "udock: guest exited during boot, see $log" >&2; return 1; }
+    sleep 1
+  done
+  echo "udock: docker API not up after 120s, see $log" >&2
+  return 1
+}
+
+stop() {
+  running || { echo "udock: not running" >&2; return 0; }
+  local pid i
+  pid=$(guest_pid)
+  # ctrl-alt-del -> SIGINT to guest init -> dockerd stops cleanly -> poweroff
+  uml_mconsole "$UMID" cad >/dev/null 2>&1 || true
+  for i in $(seq 60); do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "udock: clean shutdown timed out, halting" >&2
+    uml_mconsole "$UMID" sysrq s >/dev/null 2>&1 || true
+    uml_mconsole "$UMID" halt >/dev/null 2>&1 || kill "$pid"
+  fi
+  stop_net
+  echo "udock: stopped" >&2
+}
+
+# Replace the guest scripts inside disk.img (guest must be stopped).
+update_guest() {
+  ! running || { echo "udock: stop the guest first" >&2; return 1; }
+  local here f
+  here=$(dirname "$(realpath "$0")")
+  # debugfs ignores the ext4 journal; replay it first, or the guest's own
+  # recovery on next boot overwrites what we write here.
+  e2fsck -fy "$disk" >/dev/null 2>&1 || [ $? -le 1 ] || { echo "udock: e2fsck failed on $disk" >&2; return 1; }
+  for f in udock-init udock-run; do
+    debugfs -w -R "rm /sbin/$f" "$disk" >/dev/null 2>&1 || true
+    debugfs -w -R "write $here/guest/$f /sbin/$f" "$disk" >/dev/null 2>&1
+    debugfs -w -R "sif /sbin/$f mode 0100755" "$disk" >/dev/null 2>&1
+  done
+  echo "udock: guest scripts updated" >&2
+}
+
+status() {
+  if running; then
+    echo "running (pid $(guest_pid), mem $MEM, api $DOCKER_HOST)"
+    docker_cli info --format 'containers {{.Containers}} ({{.ContainersRunning}} running), images {{.Images}}, server {{.ServerVersion}}' 2>/dev/null \
+      || echo "docker API not answering"
+  else
+    echo "stopped"
+    return 1
+  fi
+}
+
+case ${1:-} in
+  start) start ;;
+  ensure) running && api_up || start ;;
+  stop) stop ;;
+  restart) stop; start ;;
+  status) status ;;
+  logs) tail -n "${2:-100}" -f "$log" ;;
+  update-guest) update_guest ;;
+  env) printf 'export DOCKER_HOST=%s DOCKER_TLS_VERIFY=1 DOCKER_CERT_PATH=%s\n' "$DOCKER_HOST" "$DOCKER_CERT_PATH" ;;
+  *) echo "usage: udock start|stop|restart|status|logs [n]|env|update-guest" >&2; exit 2 ;;
+esac
