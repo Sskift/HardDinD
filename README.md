@@ -43,30 +43,31 @@ eval "$(udock env)"       # 让别的工具直接用 DOCKER_HOST
 
 ```
 kernel/docker.config   在 UML defconfig 上额外开启的选项 (namespace/cgroup/netfilter/overlay…)
-kernel/build.sh        编内核 (顺带把 UML 写死的 HZ=100 改成 1000)
+kernel/build.sh        编内核 (顺带把 UML 写死的 HZ=100 改成 1000，缩短网卡批量发送的等待)
 net/udock-net.c        libslirp <-> UML vector(bess) 网卡的桥；-C 控制端口转发 (add/del/list)
 guest/udock-init       guest 的 PID 1：挂载、网络、hostfs，然后 tini -> udock-run
 guest/udock-run        起 dockerd；收到 SIGINT 时停 dockerd 并关机
 build-rootfs.sh        Alpine + docker 磁盘镜像 + TLS 证书
+install.sh             一键安装
 udock, docker          宿主侧管理脚本和 docker shim
+test/features.sh       docker 功能矩阵（PASS/FAIL）
 test/bench.sh          基准测试
 ```
 
 安装后的布局：`/root/udock/{vmlinux-udock,disk.img,certs/,bin/,src/,linux-6.6.158/}`，`/usr/local/bin/{udock,docker}` 软链到 `src/`。
 
-## 从零搭建
+## 安装
+
+在目标容器里以 root 运行（需要 x86_64、能 ptrace；会 apt 装编译依赖，编内核约 1 分钟，做磁盘镜像要下载 Alpine + docker）：
 
 ```sh
-apt-get install -y build-essential flex bison bc libslirp-dev uml-utilities e2fsprogs
-cd /root/udock && curl -O https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.158.tar.xz && tar xf linux-6.6.158.tar.xz
-src/kernel/build.sh linux-6.6.158 /root/udock/vmlinux-udock
-src/net/build.sh /root/udock/bin/udock-net
-src/build-rootfs.sh /root/udock            # 200G 稀疏文件
-# docker 静态 CLI -> /root/udock/bin/docker-cli；compose/buildx -> ~/.docker/cli-plugins/
-ln -sf /root/udock/src/udock /usr/local/bin/udock && ln -sf /root/udock/src/docker /usr/local/bin/docker
+curl -fsSL https://raw.githubusercontent.com/Sskift/HardDinD/main/install.sh | bash
+# 或者在 clone 下来的目录里：./install.sh
 ```
 
-改了 `guest/` 里的脚本：`udock stop && udock update-guest`。
+装到 `$UDOCK_HOME`（默认 `/root/udock`），并把 `udock`、`docker` 软链到 `/usr/local/bin`。可选环境变量见 `install.sh` 开头（`UDOCK_HOME`、`UDOCK_CACHE`、`NO_LINK`、`NO_START`、`KEEP_BUILD`、`DISK_SIZE`）。同一台机器装多套时，每套的 `config` 里设不同的 `UMID` 和 `API_PORT`。
+
+改了 `guest/` 里的脚本：`udock stop && udock update-guest`。验证：`test/features.sh`（功能矩阵）、`test/bench.sh`（基准）。
 
 ## 实测（72 核 Docker 容器，宿主 Ubuntu 22.04 / 5.15；同一套 Alpine 程序，宿主 chroot vs udock 容器）
 
@@ -77,7 +78,7 @@ ln -sf /root/udock/src/udock /usr/local/bin/udock && ln -sf /root/udock/src/dock
 | 起进程 (fork+exec×1000) | 0.48s | 10–11s | **慢 ~20 倍**，约 10ms/个 |
 | 写 1GB + fsync | 6.1s | 2.8–3.1s | 不慢（guest 的 flush 会对 disk.img 做 fdatasync，确实落盘） |
 | 建 5000 小文件 | 0.9–1.1s | 1.2–1.7s | 略慢 |
-| 宿主 ↔ 容器网络 | — | ~14 MB/s | 受 libslirp 64KB 窗口限制 |
+| 宿主 ↔ 容器网络 (iperf3) | — | 宿主→容器 ~500 MB/s，容器→宿主 ~420 MB/s | MTU 9000；libslirp 不支持窗口扩大，MTU 再大反而会卡死 |
 | 经代理下外网 | 25–230 KB/s | 同量级 | 瓶颈在代理，不在 udock |
 
 启动约 10s，停止约 2s；空闲 CPU 0.4%，内存约 380MB 常驻（随用量涨到 `MEM`）。

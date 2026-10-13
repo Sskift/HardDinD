@@ -48,12 +48,20 @@ api_up() { timeout 5 "$UDOCK_HOME/bin/docker-cli" version >/dev/null 2>&1; }
 # Kill the udock-net serving this UDOCK_HOME, found by its socket argument
 # (the pid file alone misses orphans left by a crashed start).
 stop_net() {
-  local p i
+  local p i pids=()
   for p in $(pgrep -x udock-net); do
-    tr '\0' ' ' <"/proc/$p/cmdline" 2>/dev/null | grep -qF -- "-s $netsock " && kill "$p" 2>/dev/null
+    if tr '\0' ' ' <"/proc/$p/cmdline" 2>/dev/null | grep -qF -- "-s $netsock "; then
+      kill "$p" 2>/dev/null
+      pids+=("$p")
+    fi
   done
+  local alive
   for i in $(seq 20); do
-    pgrep -x udock-net >/dev/null || break
+    alive=0
+    for p in "${pids[@]}"; do
+      kill -0 "$p" 2>/dev/null && alive=1
+    done
+    [ "$alive" = 0 ] && break
     sleep 0.1
   done
   rm -f "$netpid" "$netsock" "$ctlsock"
