@@ -1,0 +1,158 @@
+{
+  "kind": "diagnostic_microbench_comparison",
+  "performance_acceptance": "not_established",
+  "limitations": [
+    "three repetitions only",
+    "not an upstream native Docker baseline",
+    "not complete workload coverage",
+    "outer process and guest do not have identical resource limits"
+  ],
+  "kernel_sha256": "0fd4fe846f2993c24f4d89a7194adb487ea3fa5f5e4e5b258a33396732ebab63",
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "rows": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "native_seconds": 0.06235138,
+      "profiles": {
+        "ptrace-1cpu-spin0": {
+          "seconds": 2.040548864,
+          "ratio_to_native": 32.72660306796738
+        },
+        "seccomp-4cpu-spin0": {
+          "seconds": 2.238862848,
+          "ratio_to_native": 35.9071899932287
+        },
+        "seccomp-4cpu-spin256": {
+          "seconds": 0.550011648,
+          "ratio_to_native": 8.821162386462017
+        },
+        "seccomp-4cpu-spin4096": {
+          "seconds": 0.609314816,
+          "ratio_to_native": 9.772274743558203
+        }
+      }
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "native_seconds": 0.035809627,
+      "profiles": {
+        "ptrace-1cpu-spin0": {
+          "seconds": 0.436252928,
+          "ratio_to_native": 12.182559957968845
+        },
+        "seccomp-4cpu-spin0": {
+          "seconds": 0.469971712,
+          "ratio_to_native": 13.124172223296267
+        },
+        "seccomp-4cpu-spin256": {
+          "seconds": 0.413856256,
+          "ratio_to_native": 11.557122781535815
+        },
+        "seccomp-4cpu-spin4096": {
+          "seconds": 0.364971008,
+          "ratio_to_native": 10.191980162206102
+        }
+      }
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "native_seconds": 0.364802038,
+      "profiles": {
+        "ptrace-1cpu-spin0": {
+          "seconds": 0.343984128,
+          "ratio_to_native": 0.9429336795536214
+        },
+        "seccomp-4cpu-spin0": {
+          "seconds": 0.383654656,
+          "ratio_to_native": 1.0516790369466082
+        },
+        "seccomp-4cpu-spin256": {
+          "seconds": 0.404266752,
+          "ratio_to_native": 1.1081811774308126
+        },
+        "seccomp-4cpu-spin4096": {
+          "seconds": 0.345933056,
+          "ratio_to_native": 0.9482761058478517
+        }
+      }
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "native_seconds": 0.422001513,
+      "profiles": {
+        "ptrace-1cpu-spin0": {
+          "seconds": 1.4383488,
+          "ratio_to_native": 3.408397258518834
+        },
+        "seccomp-4cpu-spin0": {
+          "seconds": 1.447217664,
+          "ratio_to_native": 3.429413448572162
+        },
+        "seccomp-4cpu-spin256": {
+          "seconds": 1.453380864,
+          "ratio_to_native": 3.444018135546353
+        },
+        "seccomp-4cpu-spin4096": {
+          "seconds": 1.447230464,
+          "ratio_to_native": 3.429443780216968
+        }
+      }
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "native_seconds": 0.355782973,
+      "profiles": {
+        "ptrace-1cpu-spin0": {
+          "seconds": 0.397415168,
+          "ratio_to_native": 1.1170157038403297
+        },
+        "seccomp-4cpu-spin0": {
+          "seconds": 0.410674176,
+          "ratio_to_native": 1.1542828273572272
+        },
+        "seccomp-4cpu-spin256": {
+          "seconds": 0.418743808,
+          "ratio_to_native": 1.1769641601145426
+        },
+        "seccomp-4cpu-spin4096": {
+          "seconds": 0.387018496,
+          "ratio_to_native": 1.087793754536983
+        }
+      }
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "native_seconds": 0.393829934,
+      "profiles": {
+        "ptrace-1cpu-spin0": {
+          "seconds": 3.069908736,
+          "ratio_to_native": 7.795011173528521
+        },
+        "seccomp-4cpu-spin0": {
+          "seconds": 0.44773888,
+          "ratio_to_native": 1.13688382051731
+        },
+        "seccomp-4cpu-spin256": {
+          "seconds": 0.43468288,
+          "ratio_to_native": 1.1037324552378998
+        },
+        "seccomp-4cpu-spin4096": {
+          "seconds": 0.428923392,
+          "ratio_to_native": 1.0891081529622886
+        }
+      }
+    }
+  ],
+  "host_cpu_seconds": {
+    "ptrace-1cpu-spin0": 22.678949,
+    "seccomp-4cpu-spin0": 30.229325,
+    "seccomp-4cpu-spin256": 29.340567999999998,
+    "seccomp-4cpu-spin4096": 26.783322000000002
+  }
+}

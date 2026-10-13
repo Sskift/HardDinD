@@ -1,0 +1,21 @@
+{
+  "scope": "complete_docker_native_performance_gpu",
+  "requirements": {
+    "docker_functionality": {
+      "status": "incomplete",
+      "evidence": ["starpub-2026-10-14/docker.json"],
+      "remaining": ["external networking", "outer bind-mount semantics", "complete upstream compatibility coverage", "production lifecycle"]
+    },
+    "native_performance": {
+      "status": "fail",
+      "evidence": ["starpub-2026-10-14/comparison.json"],
+      "same_host_and_resources": false,
+      "remaining": ["syscall overhead", "fork/exec overhead", "parallel threads in one address space", "storage and networking workload comparison"]
+    },
+    "gpu_in_container": {
+      "status": "fail",
+      "evidence": ["starpub-2026-10-14/docker.json"],
+      "remaining": ["NVIDIA device ABI backend", "CUDA compute inside Docker", "memory mapping and pinned memory", "multi-GPU and process lifecycle", "GPU performance comparison"]
+    }
+  }
+}

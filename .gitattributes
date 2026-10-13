@@ -1,0 +1,4 @@
+# Unified diffs contain context-prefix spaces before kernel tabs.
+kernel/patches/*.patch -whitespace
+# Keep console evidence byte-for-byte, including guest CRLF output.
+results/**/*.log -text -whitespace

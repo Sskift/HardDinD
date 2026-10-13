@@ -1,6 +1,7 @@
-# build outputs / runtime state never belong in the repo
-*.o
-/udock-net
-vmlinux-udock*
-disk.img
-certs/
+.work/
+build/
+__pycache__/
+*.pyc
+results/*.log
+results/*.json
+!results/acceptance.json

@@ -1,92 +1,62 @@
 # HardDinD
 
-**Hard Docker-in-Docker**：在**没有特权**的容器里跑原版 Docker（无 `CAP_SYS_ADMIN`、seccomp 开着、cgroup 只读、不能建 namespace）。
+目标：**在现有无特权 Docker 容器内，提供完整 Docker 功能、与原生一致的性能、可用 GPU。**
 
-思路：Docker 依赖的内核功能被宿主拦了，那就自带一个内核。用 User-Mode Linux（UML）把 Linux 6.6 编成一个普通进程，靠 ptrace 截获 guest 的系统调用，里面跑原版 dockerd / containerd / runc。
+**重建中，尚未达到这三个目标。当前是可复现的内核开发和验收仓库，不能当成已完成的 Docker 替代品安装。**
 
-```
-宿主容器 (无特权)
-├── docker (shim) ──TLS──▶ 127.0.0.1:23760
-├── udock portd (订阅 docker events，-p 端口自动同步给 udock-net)
-├── udock-net  (libslirp 用户态 NAT；端口转发默认只绑 127.0.0.1，可运行时增删)
-│      ▲ 以太网帧 / UNIX seqpacket
-└── vmlinux-udock (UML 内核, 单核)
-       ├── vec0 10.0.2.15, 网关 10.0.2.2 = 宿主 loopback
-       ├── hostfs: 宿主 /root 原路径挂进 guest，所以 -v /root/x:/x 两边同义
-       └── Alpine + dockerd 29 (disk.img, ext4, overlay2)
-```
+旧版保存于 Git 标签 `archive/uml-6.6.158-20261014`。旧包装命令和安装器已移除。开发分支为 `codex/runtime-rebuild`。
 
-## 用法（宿主容器里，root）
+## 当前实现
 
-```sh
-docker ps                 # shim 会自动 udock start，第一次约 10s
-udock status|stop|restart|logs
-udock ports               # 当前转发到宿主的端口
-eval "$(udock env)"       # 让别的工具直接用 DOCKER_HOST
-```
+- 固定 Linux 7.2.10 源码和 SHA256，启用 UML seccomp、SMP，以及 Docker 所需的 namespace、cgroup、文件系统和网络功能。
+- 第一个内核补丁：`seccomp_spin=0..10000`，在内核与用户进程交接时进行有上限的轮询，再退回 futex 睡眠。默认 0 保留上游行为。实验同时记录延迟和 CPU 消耗。
+- 同一份静态程序分别测外层原生执行、ptrace、seccomp；区分多进程与同一进程多线程。
+- 在独立 guest 中运行原版 Docker 29.8.2，执行功能测试。没有关闭 Docker 自身的 bridge、iptables 或 cgroup 来绕过失败。
+- CUDA 测试实际分配显存、上传数据、运行 PTX、下载结果并校验全部元素。外层成功和内部 Docker 成功分开记录。
+- 验收失败、缺测、跳过均不算通过。`make acceptance` 目前应返回非零。
 
-配置写在 `/root/udock/config`（shell 语法），改完 `udock restart`：
+## 已知未完成项
 
-| 变量 | 默认 | 说明 |
-|---|---|---|
-| `MEM` | `4G` | guest 内存 |
-| `AUTO_PORTS` | `1` | `docker run -p` / compose `ports:` 发布的端口自动转发到宿主，容器停掉自动撤销 |
-| `PORTS` | 空 | 额外要转发的端口（如 `--network host` 的服务），如 `"8080 5432"` |
-| `PORT_BIND` | `127.0.0.1` | 转发端口绑定的宿主地址，要对外开放改成 `0.0.0.0` |
-| `SHARES` | `/root` | 原路径挂进 guest 的宿主目录 |
-| `PROXY` | `auto` | dockerd 拉镜像用的代理；auto 取宿主 `HTTPS_PROXY`，127.0.0.1 自动换成 10.0.2.2 |
-| `DNS` | 空 | 空 = 10.0.2.3（转发到宿主 resolver） |
+1. 系统调用和 fork/exec 的速度还未达到原生。
+2. UML 仍将同一地址空间的用户态线程串行化；只增加 `ncpus` 不能解决。
+3. GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。Star­pub 外层的 4 张 A100 已完成真实计算；不能据此声称内部支持 GPU。
+4. 对外网络、外层目录共享语义和长期运行管理尚未重建；当前 Docker 测试只在隔离的实验 guest 内执行。
+5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
 
-宿主的 `127.0.0.1:PORT` 在 guest 里是 `10.0.2.2:PORT`。容器要用宿主上的代理，就加 `-e HTTPS_PROXY=http://10.0.2.2:PORT`（build 时用 `--build-arg`）。
+具体机器证据位于 [results/starpub-2026-10-14](results/starpub-2026-10-14/)，总状态为 [results/acceptance.json](results/acceptance.json)。性能数据是微基准，不代表完整 Docker 或 GPU 性能。
 
-## 目录
+## 开发与复现
 
-```
-kernel/docker.config   在 UML defconfig 上额外开启的选项 (namespace/cgroup/netfilter/overlay…)
-kernel/build.sh        编内核 (顺带把 UML 写死的 HZ=100 改成 1000，缩短网卡批量发送的等待)
-net/udock-net.c        libslirp <-> UML vector(bess) 网卡的桥；-C 控制端口转发 (add/del/list)
-guest/udock-init       guest 的 PID 1：挂载、网络、hostfs，然后 tini -> udock-run
-guest/udock-run        起 dockerd；收到 SIGINT 时停 dockerd 并关机
-build-rootfs.sh        Alpine + docker 磁盘镜像 + TLS 证书
-install.sh             一键安装
-udock, docker          宿主侧管理脚本和 docker shim
-test/features.sh       docker 功能矩阵（PASS/FAIL）
-test/bench.sh          基准测试
-```
-
-安装后的布局：`/root/udock/{vmlinux-udock,disk.img,certs/,bin/,src/,linux-6.6.158/}`，`/usr/local/bin/{udock,docker}` 软链到 `src/`。
-
-## 安装
-
-在目标容器里以 root 运行（需要 x86_64、能 ptrace；会 apt 装编译依赖，编内核约 1 分钟，做磁盘镜像要下载 Alpine + docker）：
+内核构建和运行要求 Linux x86_64；需要 Python 3.9+、GCC、make、flex、bison、bc、libelf 开发文件、e2fsprogs、patch 和 tar。准备 Docker rootfs 需要容器内 root，以设置文件所有权和执行 chroot，不要求外层特权容器。GPU 测试镜像使用外层已安装的 NVIDIA `libcuda`、PTX JIT 库及其 glibc 依赖，另行记录哈希；这些库不纳入 Git，也不能代替 GPU 设备后端。
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Sskift/HardDinD/main/install.sh | bash
-# 或者在 clone 下来的目录里：./install.sh
+make check
+make kernel WORK=/root/harddind-rebuild
+make probe-root WORK=/root/harddind-rebuild
+make native WORK=/root/harddind-rebuild
+make core WORK=/root/harddind-rebuild
+make docker-root WORK=/root/harddind-rebuild
+make docker-test WORK=/root/harddind-rebuild
+make acceptance
 ```
 
-装到 `$UDOCK_HOME`（默认 `/root/udock`），并把 `udock`、`docker` 软链到 `/usr/local/bin`。可选环境变量见 `install.sh` 开头（`UDOCK_HOME`、`UDOCK_CACHE`、`NO_LINK`、`NO_START`、`KEEP_BUILD`、`DISK_SIZE`）。同一台机器装多套时，每套的 `config` 里设不同的 `UMID` 和 `API_PORT`。
+工作目录必须专用于实验。磁盘已存在时构建器拒绝覆盖；同一磁盘的测试必须串行执行。Star­pub 已有的 `/root/udock` 不会被这些脚本更新。
 
-改了 `guest/` 里的脚本：`udock stop && udock update-guest`。验证：`test/features.sh`（功能矩阵）、`test/bench.sh`（基准）。
+对照不同内核路径：
 
-## 实测（72 核 Docker 容器，宿主 Ubuntu 22.04 / 5.15；同一套 Alpine 程序，宿主 chroot vs udock 容器）
+```sh
+python3 scripts/run-core.py /root/harddind-rebuild --mode ptrace --cpus 1
+python3 scripts/run-core.py /root/harddind-rebuild --mode seccomp --cpus 4 --spin 0
+python3 scripts/run-core.py /root/harddind-rebuild --mode seccomp --cpus 4 --spin 256
+python3 scripts/run-core.py /root/harddind-rebuild --mode seccomp --cpus 4 --spin 4096
+```
 
-| 项目 | 宿主 | udock | 结论 |
-|---|---|---|---|
-| 纯计算 (awk 2e7 次) | 22.3s | 14.9s | 不慢（宿主还更慢，疑似 seccomp 触发的 CPU 漏洞缓解） |
-| 系统调用 (dd 4k×200k) | 0.26s | 8.5s | **慢 ~30 倍**，约 20µs/次 |
-| 起进程 (fork+exec×1000) | 0.48s | 10–11s | **慢 ~20 倍**，约 10ms/个 |
-| 写 1GB + fsync | 6.1s | 2.8–3.1s | 不慢（guest 的 flush 会对 disk.img 做 fdatasync，确实落盘） |
-| 建 5000 小文件 | 0.9–1.1s | 1.2–1.7s | 略慢 |
-| 宿主 ↔ 容器网络 (iperf3) | — | 宿主→容器 ~500 MB/s，容器→宿主 ~420 MB/s | MTU 9000；libslirp 不支持窗口扩大，MTU 再大反而会卡死 |
-| 经代理下外网 | 25–230 KB/s | 同量级 | 瓶颈在代理，不在 udock |
+每轮保存退出码、超时状态、原始日志、程序和内核哈希、测量值。只有出现完整的结束标记和全部预期数据才算实验成功。实验成功与项目验收通过是两个独立状态。
 
-启动约 10s，停止约 2s；空闲 CPU 0.4%，内存约 380MB 常驻（随用量涨到 `MEM`）。
+执行 `python3 scripts/summarize.py /root/harddind-rebuild/results` 汇总原生与 guest 微基准。汇总器检查两边程序哈希相同、各组数据完整，不将微基准自动判为完整性能验收通过。
 
-## 限制
+## 开发方向
 
-- 单核：UML 不支持 SMP。
-- 系统调用和起进程慢，所以 `apt/apk install`、编译这类负载明显变慢。
-- `-p 127.0.0.1:x:y` 这种只绑 guest 回环的发布不会转发（NAT 进不去）；用 `-p x:y` 即可，宿主侧默认就只绑 127.0.0.1。
-- 只有 root 能用：证书在 `/root/udock/certs`。
-- 不支持 GPU。
+先解决 UML 执行核心的系统调用开销、同一地址空间的并行线程和 GPU ABI，再决定 Moby/containerd 需要哪些后端改造。当前没有把 Moby fork 或完整 GPU 后端伪装成已实现。
+
+GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、UVM、锁页内存与进程退出。仅创建 `/dev/nvidia*`、转发 `nvidia-smi` 或在外层代跑计算，均不能满足目标。
