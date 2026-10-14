@@ -16,6 +16,7 @@ import subprocess
 import uuid
 from guest_cleanup import cleanup_group
 from gpu_probe_checks import FD_CHECKS
+from result_checks import memfd_backing_evidence
 
 
 def sha(path):
@@ -35,6 +36,8 @@ def main():
     p.add_argument('--name', required=True)
     p.add_argument('--fd-registration', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
+    p.add_argument('--memfd-ram', action='store_true')
+    p.add_argument('--memfd-stub', action='store_true')
     args = p.parse_args()
     if not 1 <= args.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
@@ -73,7 +76,9 @@ def main():
                          repo / 'sources.lock.json',
                          repo / 'kernel/experiments/0012-um-gpu-control-transport.patch',
                          repo / 'kernel/experiments/0013-um-gpu-register-fd.patch',
-                         repo / 'kernel/patches/0014-um-check-usercopy-read-permission.patch']:
+                         repo / 'kernel/patches/0014-um-check-usercopy-read-permission.patch',
+                         repo / 'kernel/patches/0015-um-opt-in-memfd-backing.patch',
+                         repo / 'scripts/result_checks.py']:
                 shutil.copy2(path, sources / path.name)
             shutil.copy2(work / 'linux-7.2.10/.harddind-patches.json', output / 'kernel-patches.json')
             program = output / 'gpu-guest-probe'
@@ -134,6 +139,8 @@ poweroff -f
                                f'ubd0={cow},{disk}', 'root=/dev/ubda', 'rw',
                                'init=/sbin/harddind-gpu-control-init', 'con=null',
                                'con0=null,fd:1', 'ssl=null', 'panic=1']
+                    if args.memfd_ram: command.append('memfd_ram=1')
+                    if args.memfd_stub: command.append('memfd_stub=1')
                     if name == 'guest':
                         command.append('gpu_bridge=1')
                 traced = ['strace', '-f', '-qq', '-yy', '-tt', '-T', '-s', '80',
@@ -181,6 +188,10 @@ poweroff -f
                              and row['device_ioctl_count'] == (36 + args.gpu_count if fd_mode else 153))
                 else:
                     valid = valid and row['device_ioctl_count'] == (37 + args.gpu_count if fd_mode else 154)
+                if name in ('guest', 'disabled'):
+                    row['memory_backing'] = memfd_backing_evidence(content, args.memfd_ram, args.memfd_stub)
+                    if args.memfd_ram or args.memfd_stub:
+                        valid = valid and row['memory_backing']['verified']
                 row['status'] = 'pass' if (valid and row['exit_code'] == 0 and not row['timed_out']
                                           and row['inputs_unchanged'] and row['cleanup']['clean_shutdown']) else 'fail'
                 with gzip.GzipFile(str(trace) + '.gz', 'wb', mtime=0) as gz:

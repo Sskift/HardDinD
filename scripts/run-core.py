@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 import uuid
-from result_checks import broker_cache_evidence, deferred_ipi_evidence, mprotect_evidence
+from result_checks import memfd_backing_evidence, broker_cache_evidence, deferred_ipi_evidence, mprotect_evidence
 from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
@@ -22,6 +22,8 @@ p.add_argument("--cpus", type=int, default=4)
 p.add_argument("--timeout", type=int, default=180)
 p.add_argument("--spin", type=int, default=0)
 p.add_argument("--kernel", type=pathlib.Path)
+p.add_argument("--memfd-ram", action="store_true")
+p.add_argument("--memfd-stub", action="store_true")
 p.add_argument("--threads-experiment", action="store_true")
 p.add_argument("--broker-cache", action="store_true")
 p.add_argument("--defer-ipi", action="store_true")
@@ -84,6 +86,8 @@ if a.defer_ipi:
     cmd.append("defer_ipi=1")
 if a.mprotect_sync:
     cmd.append("mprotect_sync=1")
+if a.memfd_ram: cmd.append("memfd_ram=1")
+if a.memfd_stub: cmd.append("memfd_stub=1")
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 started = time.monotonic()
 usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -147,6 +151,9 @@ if a.mapping_semantics:
     passed = passed and mapping_passed
 ipi_stats = deferred_ipi_evidence(text)
 protect_stats = mprotect_evidence(text)
+backing = memfd_backing_evidence(text, a.memfd_ram, a.memfd_stub)
+if a.memfd_ram or a.memfd_stub:
+    passed = passed and backing["verified"]
 if a.mprotect_sync:
     passed = passed and protect_stats["verified"]
 if a.defer_ipi:
@@ -158,6 +165,7 @@ report = {"kind": "kernel_microbench_only", "mode": a.mode, "cpus": a.cpus,
           "spin": a.spin, "threads_experiment": a.threads_experiment,
           "broker_cache": a.broker_cache,
           "broker_cache_stats": cache_stats,
+          "memfd_ram": a.memfd_ram, "memfd_stub": a.memfd_stub, "memory_backing": backing,
           "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
           "mprotect_sync": a.mprotect_sync, "mprotect_stats": protect_stats,
           "mapping_semantics": mapping_passed, "mapping_semantics_sha256": mapping_sha,

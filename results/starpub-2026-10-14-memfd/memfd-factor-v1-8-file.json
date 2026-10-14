@@ -1,0 +1,292 @@
+{
+  "kind": "kernel_microbench_only",
+  "mode": "seccomp",
+  "cpus": 4,
+  "spin": 256,
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 1620,
+    "stores": 1624
+  },
+  "memfd_ram": false,
+  "memfd_stub": false,
+  "memory_backing": {
+    "verified": true,
+    "ram_requested": false,
+    "stub_requested": false,
+    "ram_allocations": [
+      {
+        "backend": "file",
+        "bytes": 4096
+      },
+      {
+        "backend": "file",
+        "bytes": 3054870528
+      },
+      {
+        "backend": "file",
+        "bytes": 4096
+      }
+    ],
+    "stub_backend": "file"
+  },
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": true,
+    "received": 8843,
+    "deferred": 8665,
+    "handled": 8843
+  },
+  "mprotect_sync": false,
+  "mprotect_stats": {
+    "verified": false,
+    "pages": null
+  },
+  "mapping_semantics": true,
+  "mapping_semantics_sha256": "e8d75c79bd3b0ddc1c587c173f881a6444de248fe9d84bdf1a23af65d1bd0741",
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "thread_semantics": true,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "kernel_sha256": "d872149b71ff0026201bebe5a8f482bb883a3c6c47c56d02d4411e444766bc5a",
+  "kernel_unchanged": true,
+  "cleanup": {
+    "process_group": 1831099,
+    "forced_cleanup": false,
+    "initial_live_pids": [
+      1850319
+    ],
+    "initial_zombie_pids": [],
+    "initial_processes": [
+      {
+        "pid": 1850319,
+        "state": "R",
+        "ppid": 1,
+        "process_group": 1831099,
+        "start_time_ticks": "1386408172",
+        "comm": "uml-userspace",
+        "wchan": "0",
+        "exe_errno": 2
+      }
+    ],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 23.36297343298793,
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.545523712
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.686157824
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.918683904
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 1.012297472
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.80411136
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.23137536
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.35446528
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.346250752
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.421658112
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.491006976
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.529008384
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.397308928
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.393723648
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.405891072
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.36809088
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.527872256
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.474887168
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.629886208
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.568915968,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.67432448,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.665201408,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.067064832,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.07160192,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.098930944,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.406411776,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.53304704,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.43382016,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.261627904,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.663629824,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.816526592,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.645700608,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.681837824,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.450772736,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.66676096,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.607358464,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 1.171546368,
+      "verified": true
+    }
+  ],
+  "host_cpu_seconds": 32.984244,
+  "docker_acceptance": "not_tested",
+  "gpu_acceptance": "not_tested"
+}

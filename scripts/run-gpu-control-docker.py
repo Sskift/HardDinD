@@ -14,6 +14,7 @@ import sys
 import tarfile
 import harddind
 from gpu_probe_checks import FD_CHECKS
+from result_checks import memfd_backing_evidence
 
 
 CHECKS = {'open', 'real_driver_version', 'cross_page_user_pointer', 'invalid_user_pointer',
@@ -31,6 +32,8 @@ def main():
     p.add_argument('--name', required=True)
     p.add_argument('--fd-registration', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
+    p.add_argument('--memfd-ram', action='store_true')
+    p.add_argument('--memfd-stub', action='store_true')
     a = p.parse_args()
     if not 1 <= a.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
@@ -51,7 +54,7 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     inputs = [a.kernel.resolve(), a.disk.resolve(), a.probe.resolve(),
               repo / 'scripts/harddind.py', pathlib.Path(__file__).resolve(),
-              repo / 'scripts/gpu_probe_checks.py']
+              repo / 'scripts/gpu_probe_checks.py', repo / 'scripts/result_checks.py']
     report = {'kind': 'docker_gpu_fd_registration' if fd_mode else 'docker_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -62,6 +65,8 @@ def main():
                                                  'concurrent_client_a', 'concurrent_client_b',
                                                  'instance_restart',
                                                  'inputs_unchanged', 'normal_shutdown']}}
+    if a.memfd_ram or a.memfd_stub:
+        report['checks']['memory_backing'] = 'not_tested'
     sources = out / 'sources'; sources.mkdir()
     for f in inputs[3:]: shutil.copy2(f, sources / f.name)
     base = [sys.executable, str(repo / 'scripts/harddind.py'), str(work), a.name]
@@ -95,9 +100,14 @@ def main():
             validate_control(name, *run(command))
         try:
             start = base + ['start', '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
-                            '--gpu-control-experiment']
+                            *(['--memfd-ram'] if a.memfd_ram else []),
+                            *(['--memfd-stub'] if a.memfd_stub else []), '--gpu-control-experiment']
             require(start)
             report['ready_state'] = harddind.read_state(instance)
+            if a.memfd_ram or a.memfd_stub:
+                log_text = (instance / ('guest-' + report['ready_state']['run'] + '.log')).read_text(errors='replace')
+                report['memory_backing'] = memfd_backing_evidence(log_text, a.memfd_ram, a.memfd_stub)
+                report['checks']['memory_backing'] = 'pass' if report['memory_backing']['verified'] else 'fail'
             rc, text = run(start[:-1])
             report['checks']['configuration_mismatch_rejected'] = 'pass' if (
                 rc != 0 and 'running instance uses different inputs' in text) else 'fail'

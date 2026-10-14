@@ -32,7 +32,13 @@ if [ "$ready" = 1 ]; then
     echo "HARDDIND_SUITE_SHA256=$(sha256sum /docker-suite.sh | cut -d' ' -f1)"
     sh /docker-suite.sh
     failed=$?
-    if [ "$failed" != 0 ]; then grep -E 'level=(error|warning)' /run/dockerd.log | tail -80; fi
+    # Swarm failure dumps include unstructured goroutine stacks. Filtering
+    # only warning/error lines discards the evidence needed to diagnose them.
+    if [ "$failed" != 0 ]; then
+        echo HARDDIND_DAEMON_FAILURE_LOG_BEGIN
+        cat /run/dockerd.log
+        echo HARDDIND_DAEMON_FAILURE_LOG_END
+    fi
 else
     echo 'HARDDIND_RESULT {"name":"daemon_start","status":"fail"}'
     tail -70 /run/dockerd.log

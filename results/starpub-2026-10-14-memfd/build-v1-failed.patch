@@ -1,0 +1,139 @@
+--- a/arch/um/os-Linux/mem.c
++++ b/arch/um/os-Linux/mem.c
+@@ -53,6 +53,37 @@
+ 	}
+ }
+ 
++int uml_memfd_ram;
++int uml_memfd_stub;
++
++static int __init memfd_option(char *line, int *add, int *value)
++{
++	if (!strcmp(line, "1"))
++		*value = 1;
++	else if (!strcmp(line, "0"))
++		*value = 0;
++	else
++		fatal("memfd backing options require a value of 0 or 1\n");
++	*add = 0;
++	return 0;
++}
++
++static int __init memfd_ram_setup(char *line, int *add)
++{
++	return memfd_option(line, add, &uml_memfd_ram);
++}
++__uml_setup("memfd_ram=", memfd_ram_setup,
++"memfd_ram=<0|1>\n"
++"    Experimental executable memfd for UML physical memory. Default 0.\n");
++
++static int __init memfd_stub_setup(char *line, int *add)
++{
++	return memfd_option(line, add, &uml_memfd_stub);
++}
++__uml_setup("memfd_stub=", memfd_stub_setup,
++"memfd_stub=<0|1>\n"
++"    Require a sealed memfd stub, with pre-MFD_EXEC compatibility. Default 0.\n");
++
+ /* Set by make_tempfile() during early boot. */
+ char *tempdir = NULL;
+ 
+@@ -213,7 +244,19 @@
+ {
+ 	int err, fd;
+ 
+-	fd = create_tmp_file(len);
++	if (uml_memfd_ram) {
++		/* Linux before 6.3 allows executable memfds without MFD_EXEC.
++		 * Probe actual executable mappings below, never silently fall back. */
++		fd = memfd_create("uml-ram", MFD_CLOEXEC);
++		if (fd < 0 || ftruncate64(fd, len) < 0) {
++			perror("memfd RAM");
++			exit(1);
++		}
++	} else {
++		fd = create_tmp_file(len);
++	}
++	os_info("HARDDIND_RAM backend=%s bytes=%llu\n",
++		uml_memfd_ram ? "memfd" : "file", len);
+ 
+ 	err = os_set_exec_close(fd);
+ 	if (err < 0) {
+@@ -226,16 +269,25 @@
+ void __init check_tmpexec(void)
+ {
+ 	void *addr;
+-	int err, fd = create_tmp_file(UM_KERN_PAGE_SIZE);
++	int err, fd;
++
++	/* The executable stub fallback still uses tempdir independently of RAM. */
++	if (tempdir == NULL)
++		tempdir = choose_tempdir();
++	if (tempdir == NULL) {
++		perror("choose_tempdir");
++		exit(1);
++	}
++	fd = create_mem_file(UM_KERN_PAGE_SIZE);
+ 
+ 	addr = mmap(NULL, UM_KERN_PAGE_SIZE,
+ 		    PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd, 0);
+-	os_info("Checking PROT_EXEC mmap in %s...", tempdir);
++	os_info("Checking PROT_EXEC mmap in %s...", uml_memfd_ram ? "memfd" : tempdir);
+ 	if (addr == MAP_FAILED) {
+ 		err = errno;
+ 		os_warn("%s\n", strerror(err));
+ 		close(fd);
+-		if (err == EPERM)
++		if (err == EPERM && !uml_memfd_ram)
+ 			os_warn("%s must be not mounted noexec\n", tempdir);
+ 		exit(1);
+ 	}
+--- a/arch/um/os-Linux/skas/process.c
++++ b/arch/um/os-Linux/skas/process.c
+@@ -399,6 +399,13 @@
+ 	stub_exe_fd = memfd_create("uml-userspace",
+ 				   MFD_EXEC | MFD_CLOEXEC | MFD_ALLOW_SEALING);
+ 
++	/* Only EINVAL permits the old-kernel retry: a policy denial must not be
++	 * mistaken for an unsupported flag. The existing fallback stays default. */
++	if (stub_exe_fd < 0 && errno == EINVAL && uml_memfd_stub)
++		stub_exe_fd = memfd_create("uml-userspace", MFD_CLOEXEC | MFD_ALLOW_SEALING);
++	if (stub_exe_fd < 0 && uml_memfd_stub)
++		panic("Required executable memfd stub unavailable: %d", -errno);
++
+ 	if (stub_exe_fd < 0) {
+ 		printk(UM_KERN_INFO "Could not create executable memfd, using temporary file!");
+ 
+@@ -432,8 +439,11 @@
+ 	}
+ 
+ 	if (!tmpfile) {
+-		fcntl(stub_exe_fd, F_ADD_SEALS,
+-		      F_SEAL_WRITE | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_SEAL);
++		int seals = F_SEAL_WRITE | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_SEAL;
++
++		if (fcntl(stub_exe_fd, F_ADD_SEALS, seals) < 0 ||
++		    (fcntl(stub_exe_fd, F_GET_SEALS) & seals) != seals)
++			panic("Could not seal stub binary: %d", -errno);
+ 	} else {
+ 		if (fchmod(stub_exe_fd, 00500) < 0) {
+ 			unlink(tmpfile);
+@@ -452,6 +462,7 @@
+ 		free(tmpfile);
+ 	}
+ 
++	os_info("HARDDIND_STUB backend=%s\n", tmpfile ? "file" : "memfd");
+ 	return 0;
+ }
+ __initcall(init_stub_exe_fd);
+--- a/arch/um/include/shared/os.h
++++ b/arch/um/include/shared/os.h
+@@ -196,6 +196,8 @@
+ 
+ /* mem.c */
+ extern int create_mem_file(unsigned long long len);
++extern int uml_memfd_ram;
++extern int uml_memfd_stub;
+ 
+ /* tlb.c */
+ extern void report_enomem(void);

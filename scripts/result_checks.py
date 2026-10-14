@@ -54,3 +54,16 @@ def docker_evidence(log, exit_code, timed_out):
     return {"checks": rows, "finished": finished, "checks_complete": complete,
             "suite_status": int(endings[0]) if len(endings) == 1 else None,
             "subset_passed": passed}
+
+
+def memfd_backing_evidence(log, ram=False, stub=False):
+    """Require the actual backing report, not just an accepted boot option."""
+    memory = re.findall(r'^HARDDIND_RAM backend=(file|memfd) bytes=(\d+)$', log, re.M)
+    executable = re.findall(r'^HARDDIND_STUB backend=(file|memfd)$', log, re.M)
+    expected_ram = 'memfd' if ram else 'file'
+    verified = (bool(memory) and all(mode == expected_ram and int(size) > 0 for mode, size in memory)
+                and any(int(size) >= 1024 * 1024 for _, size in memory)
+                and len(executable) == 1 and (not stub or executable[0] == 'memfd'))
+    return {'verified': verified, 'ram_requested': ram, 'stub_requested': stub,
+            'ram_allocations': [{'backend': mode, 'bytes': int(size)} for mode, size in memory],
+            'stub_backend': executable[0] if len(executable) == 1 else None}

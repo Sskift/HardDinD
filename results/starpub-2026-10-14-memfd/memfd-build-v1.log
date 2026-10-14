@@ -1,0 +1,78 @@
+GPU_EXPERIMENT=1 bash scripts/build-kernel.sh "/root/harddind-rebuild"
+make[1]: Entering directory '/root/harddind-rebuild/linux-7.2.10'
+make[2]: Entering directory '/root/harddind-rebuild/thread-build'
+  CC      arch/um/os-Linux/execvp.o
+  CC      arch/um/os-Linux/file.o
+  CC      arch/um/drivers/fd.o
+  CC      arch/x86/um/os-Linux/registers.o
+  CC      arch/um/kernel/exec.o
+  CC      arch/um/os-Linux/helper.o
+  AR      arch/x86/um/os-Linux/built-in.a
+  CC      arch/x86/um/syscalls_64.o
+  CC      arch/um/drivers/chan_kern.o
+  CC      arch/um/os-Linux/irq.o
+  CC      arch/um/drivers/chan_user.o
+  CC      arch/um/drivers/line.o
+  CC      arch/um/os-Linux/main.o
+  CC      arch/um/os-Linux/mem.o
+/root/harddind-rebuild/linux-7.2.10/arch/um/os-Linux/mem.c: In function ‘memfd_option’:
+/root/harddind-rebuild/linux-7.2.10/arch/um/os-Linux/mem.c:66:17: error: implicit declaration of function ‘fatal’ [-Werror=implicit-function-declaration]
+   66 |                 fatal("memfd backing options require a value of 0 or 1\n");
+      |                 ^~~~~
+cc1: some warnings being treated as errors
+make[6]: *** [/root/harddind-rebuild/linux-7.2.10/scripts/Makefile.build:289: arch/um/os-Linux/mem.o] Error 1
+make[5]: *** [/root/harddind-rebuild/linux-7.2.10/scripts/Makefile.build:550: arch/um/os-Linux] Error 2
+make[5]: *** Waiting for unfinished jobs....
+  CC      arch/um/kernel/irq.o
+  CC      arch/um/kernel/ksyms.o
+  CC      arch/um/kernel/mem.o
+  CC      arch/um/kernel/physmem.o
+  CC      arch/um/drivers/vector_kern.o
+  CC      fs/hostfs/hostfs_user.o
+  AR      arch/x86/um/built-in.a
+  CC      fs/hostfs/hostfs_user_exp.o
+  CC      fs/hostfs/hostfs_kern.o
+  CC      arch/um/kernel/process.o
+  CC      arch/um/kernel/reboot.o
+  CC      arch/um/kernel/sigio.o
+  CC      arch/um/drivers/vector_user.o
+  CC      arch/um/kernel/signal.o
+  CC      arch/um/drivers/mconsole_kern.o
+  CC      arch/um/drivers/ubd_kern.o
+  CC      arch/um/kernel/sysrq.o
+  AR      fs/hostfs/built-in.a
+  AR      fs/built-in.a
+  CC      arch/um/kernel/time.o
+  CC      arch/um/kernel/tlb.o
+  CC      arch/um/kernel/trap.o
+  CC      arch/um/kernel/um_arch.o
+  CC      arch/um/kernel/umid.o
+  CC      arch/um/kernel/kmsg_dump.o
+  CC      arch/um/drivers/ubd_user.o
+  CC      arch/um/drivers/null.o
+  CC      arch/um/drivers/port_kern.o
+  CC      arch/um/kernel/load_file.o
+  CC      arch/um/kernel/gpu.o
+  CC      arch/um/kernel/skas/mmu.o
+  CC      arch/um/kernel/skas/process.o
+  CC      arch/um/kernel/early_printk.o
+  CC      arch/um/kernel/skas/uaccess.o
+  CC      arch/um/drivers/port_user.o
+  CC      arch/um/drivers/pty.o
+  CC      arch/um/drivers/tty.o
+  CC      arch/um/kernel/smp.o
+  CC      arch/um/drivers/xterm.o
+  CC      arch/um/drivers/xterm_kern.o
+  CC      arch/um/drivers/cow_user.o
+  CC      arch/um/drivers/random.o
+  CC      arch/um/drivers/virtio_uml.o
+  AR      arch/um/kernel/skas/built-in.a
+  AR      arch/um/kernel/built-in.a
+  AR      arch/um/drivers/built-in.a
+make[4]: *** [/root/harddind-rebuild/linux-7.2.10/scripts/Makefile.build:550: arch/um] Error 2
+make[3]: *** [/root/harddind-rebuild/linux-7.2.10/Makefile:2198: .] Error 2
+make[2]: *** [/root/harddind-rebuild/linux-7.2.10/Makefile:248: __sub-make] Error 2
+make[2]: Leaving directory '/root/harddind-rebuild/thread-build'
+make[1]: *** [Makefile:248: __sub-make] Error 2
+make[1]: Leaving directory '/root/harddind-rebuild/linux-7.2.10'
+make: *** [Makefile:58: kernel-gpu-experiment] Error 2

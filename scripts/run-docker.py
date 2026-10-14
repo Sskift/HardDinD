@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 import uuid
-from result_checks import docker_evidence, broker_cache_evidence, deferred_ipi_evidence, mprotect_evidence
+from result_checks import memfd_backing_evidence, docker_evidence, broker_cache_evidence, deferred_ipi_evidence, mprotect_evidence
 from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
@@ -20,6 +20,8 @@ p.add_argument("work", type=pathlib.Path)
 p.add_argument("--timeout", type=int, default=240)
 p.add_argument("--disk", type=pathlib.Path, help="Pristine Docker rootfs; it is opened as a COW backing file")
 p.add_argument("--kernel", type=pathlib.Path)
+p.add_argument("--memfd-ram", action="store_true")
+p.add_argument("--memfd-stub", action="store_true")
 p.add_argument("--threads-experiment", action="store_true")
 p.add_argument("--broker-cache", action="store_true")
 p.add_argument("--defer-ipi", action="store_true")
@@ -70,6 +72,8 @@ if a.mprotect_sync:
 if a.checks:
     cmd.append("docker_checks=" + a.checks)
 timed_out = False
+if a.memfd_ram: cmd.append("memfd_ram=1")
+if a.memfd_stub: cmd.append("memfd_stub=1")
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 start = time.monotonic()
 with log.open("w") as f:
@@ -99,6 +103,10 @@ if suite_sha != expected_suite_sha:
 cache_stats = broker_cache_evidence(text)
 ipi_stats = deferred_ipi_evidence(text)
 protect_stats = mprotect_evidence(text)
+backing = memfd_backing_evidence(text, a.memfd_ram, a.memfd_stub)
+if (a.memfd_ram or a.memfd_stub) and not backing["verified"]:
+    evidence["subset_passed"] = False
+    evidence["finished"] = False
 if a.mprotect_sync and not protect_stats["verified"]:
     evidence["subset_passed"] = False
     evidence["finished"] = False
@@ -116,6 +124,7 @@ report = {"kind": "docker_subset_in_candidate", **evidence, "exit_code": rc,
           "disk_mode": "isolated_cow", "threads_experiment": a.threads_experiment,
           "broker_cache": a.broker_cache,
           "broker_cache_stats": cache_stats,
+          "memfd_ram": a.memfd_ram, "memfd_stub": a.memfd_stub, "memory_backing": backing,
           "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
           "mprotect_sync": a.mprotect_sync, "mprotect_stats": protect_stats,
           "mapping_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()

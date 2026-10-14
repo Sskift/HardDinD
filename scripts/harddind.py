@@ -23,6 +23,7 @@ import time
 import uuid
 from guest_cleanup import cleanup_group, group_members
 from port_driver import PortDriver
+from result_checks import memfd_backing_evidence
 
 
 def sha(path):
@@ -156,6 +157,7 @@ def serve(a, work, instance):
     config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu,
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend'),
               'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment,
+              'memfd_ram': a.memfd_ram, 'memfd_stub': a.memfd_stub,
               'shares': share_specs(a.share)}
     if config['shares']:
         config['virtiofsd'] = str(a.virtiofsd)
@@ -170,6 +172,8 @@ def serve(a, work, instance):
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
         previous.setdefault('gpu_control_experiment', False)
+        previous.setdefault('memfd_ram', False)
+        previous.setdefault('memfd_stub', False)
         if previous.get('shares'):
             previous.setdefault('share_profile', False)
             previous.setdefault('share_inline_flock', False)
@@ -259,6 +263,8 @@ def serve(a, work, instance):
                f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={a.mtu},mac=02:00:00:00:02:15']
         if a.gpu_control_experiment:
             cmd.append('gpu_bridge=1')
+        if a.memfd_ram: cmd.append('memfd_ram=1')
+        if a.memfd_stub: cmd.append('memfd_stub=1')
         for _, path, share, _ in filesystems:
             cmd += [f'virtio_uml.device={path}:26', 'harddind_share='+share_argument(share)]
         inherited = [guest_end.fileno()]
@@ -304,6 +310,12 @@ def serve(a, work, instance):
                             console = (instance / f'guest-{run}.log').read_text(errors='replace')
                             if f'HARDDIND_RUNTIME_MTU={a.mtu}' not in console:
                                 state['fixture_error'] = 'guest fixture does not confirm requested MTU'
+                                break
+                        if a.memfd_ram or a.memfd_stub:
+                            console = (instance / f'guest-{run}.log').read_text(errors='replace')
+                            state['memory_backing'] = memfd_backing_evidence(console, a.memfd_ram, a.memfd_stub)
+                            if not state['memory_backing']['verified']:
+                                state['fixture_error'] = 'kernel did not confirm requested memfd backing'
                                 break
                         state['phase'] = 'ready'; state['ready_at'] = time.time(); write_state(instance, state)
                 except (OSError, http.client.HTTPException, RuntimeError):
@@ -390,6 +402,8 @@ def main():
         s.add_argument('--network-batch', type=int, choices=range(1, 65), default=1, metavar='1..64', help='experimental link batch size (default 1)')
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
+        s.add_argument('--memfd-ram', action='store_true', help='use experimental memfd RAM backing')
+        s.add_argument('--memfd-stub', action='store_true', help='require sealed memfd userspace executable')
         s.add_argument('--gpu-control-experiment', action='store_true', help='enable experimental NVIDIA control queries; no CUDA or GPU mmap support yet')
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
         s.add_argument('--virtiofsd', type=pathlib.Path, help='immutable filesystem backend binary for controlled comparisons')
@@ -423,10 +437,11 @@ def main():
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment, 'shares': shares}
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment,
+              'memfd_ram': a.memfd_ram, 'memfd_stub': a.memfd_stub, 'shares': shares}
             if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile,
                                         share_inline_flock=a.share_inline_flock, virtiofsd=str(a.virtiofsd))
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'memfd_ram': False, 'memfd_stub': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
@@ -434,6 +449,8 @@ def main():
                '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch), '--mtu', str(a.mtu)]
         if a.publish_ports: cmd.append('--publish-ports')
         if a.gpu_control_experiment: cmd.append('--gpu-control-experiment')
+        if a.memfd_ram: cmd.append('--memfd-ram')
+        if a.memfd_stub: cmd.append('--memfd-stub')
         for share in shares: cmd += ['--share', share['target']]
         cmd += ['--share-cache', a.share_cache]
         if a.share_profile: cmd.append('--share-profile')

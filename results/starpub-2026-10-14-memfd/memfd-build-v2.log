@@ -1,0 +1,54 @@
+GPU_EXPERIMENT=1 bash scripts/build-kernel.sh "/root/harddind-rebuild"
+make[1]: Entering directory '/root/harddind-rebuild/linux-7.2.10'
+make[2]: Entering directory '/root/harddind-rebuild/thread-build'
+  CC      arch/um/os-Linux/mem.o
+  CC      arch/um/os-Linux/process.o
+  CC      arch/um/os-Linux/sigio.o
+  CC      arch/um/os-Linux/signal.o
+  CC      arch/um/os-Linux/start_up.o
+  CC      arch/um/os-Linux/time.o
+  CC      arch/um/os-Linux/tty.o
+  CC      arch/um/os-Linux/umid.o
+  CC      arch/um/os-Linux/util.o
+  CC      arch/um/os-Linux/smp.o
+  CC      arch/um/os-Linux/skas/mem.o
+  CC      arch/um/os-Linux/skas/process.o
+  AR      arch/um/os-Linux/skas/built-in.a
+  AR      arch/um/os-Linux/built-in.a
+  AR      arch/um/built-in.a
+  AR      built-in.a
+  AR      built-in-fixup.a
+  COPY    vmlinux.a
+  LD      vmlinux.o
+  MODPOST vmlinux.symvers
+  UPD     include/generated/utsversion.h
+  CC      init/version-timestamp.o
+  KSYMS   .tmp_vmlinux0.kallsyms.S
+  AS      .tmp_vmlinux0.kallsyms.o
+  LD      .tmp_vmlinux1
+  NM      .tmp_vmlinux1.syms
+  KSYMS   .tmp_vmlinux1.kallsyms.S
+  AS      .tmp_vmlinux1.kallsyms.o
+  LD      .tmp_vmlinux2
+  NM      .tmp_vmlinux2.syms
+  KSYMS   .tmp_vmlinux2.kallsyms.S
+  AS      .tmp_vmlinux2.kallsyms.o
+  LD      vmlinux.unstripped
+  NM      System.map
+  OBJCOPY vmlinux
+  GEN     modules.builtin.modinfo
+  GEN     modules.builtin
+  LINK linux
+make[2]: Leaving directory '/root/harddind-rebuild/thread-build'
+make[1]: Leaving directory '/root/harddind-rebuild/linux-7.2.10'
+{
+  "object": "/root/harddind-rebuild/thread-build/arch/um/kernel/skas/stub.o",
+  "section": ".__syscall_stub",
+  "relocation_targets": [
+    "stub_thread_start",
+    "stub_thread_start"
+  ],
+  "external_targets": [],
+  "passed": true
+}
+/root/harddind-rebuild/thread-build/linux
