@@ -24,7 +24,8 @@
         "starpub-2026-10-14-shares/shared-never-v1.json",
         "starpub-2026-10-14-shared-locks/shared-flock-v1.json",
         "starpub-2026-10-14-shared-locks/shared-flock-v2.json",
-        "starpub-2026-10-14-shared-locks/shared-profile-v1.json"
+        "starpub-2026-10-14-shared-locks/shared-profile-v1.json",
+        "starpub-2026-10-14-shared-inline/shared-inline-v1.json"
       ],
       "remaining": [
         "published ports: IPv6, multiple outer addresses sharing a port, Swarm ingress and abnormal recovery; IPv4 subset passed",
@@ -36,7 +37,8 @@
         "intermittent forced host-process cleanup in pre-idle-fix build; identity was not recorded",
         "Swarm leave timeout observed once; not causally attributed or closed",
         "Compose and broader upstream command scenarios",
-        "intermittent forced cleanup also observed in ipi-idle MTU1500 baseline; initial process identity incomplete; cause unresolved"
+        "intermittent forced cleanup also observed in ipi-idle MTU1500 baseline; initial process identity incomplete; cause unresolved",
+        "shared-inline-v1 shutdown exceeded 45 seconds after guest STOPPED marker; forced termination, cause unresolved"
       ]
     },
     "native_performance": {

@@ -21,7 +21,7 @@ import subprocess
 import sys
 import time
 import uuid
-from guest_cleanup import cleanup_group
+from guest_cleanup import cleanup_group, group_members
 from port_driver import PortDriver
 
 
@@ -123,6 +123,28 @@ def mconsole(instance, path, command):
             client.unlink(missing_ok=True)
 
 
+def shutdown_diagnostics(instance, state):
+    """Read only this guest's process group and request guest stack dumps."""
+    report = {'captured_at': time.time(), 'process_group': state['guest_pid'], 'processes': [], 'sysrq': {}}
+    live_pids, zombies = group_members(state['guest_pid'])
+    for pid in live_pids + zombies:
+        path = pathlib.Path('/proc') / str(pid)
+        row = {'pid': pid}
+        for name in ('stat', 'comm', 'wchan', 'syscall'):
+            try: row[name] = (path / name).read_text().strip()
+            except OSError as error: row[name + '_error'] = str(error)
+        report['processes'].append(row)
+    for key in ('w', 't', 'l'):
+        try:
+            mconsole(instance, pathlib.Path(state['mconsole']), 'sysrq ' + key)
+            report['sysrq'][key] = 'requested; output is in the guest console log'
+        except (OSError, RuntimeError) as error:
+            report['sysrq'][key] = str(error)
+    path = instance / ('shutdown-diagnostic-' + state['run'] + '.json')
+    path.write_text(json.dumps(report, indent=2) + '\n')
+    return str(path)
+
+
 def serve(a, work, instance):
     os.umask(0o077)
     lock = (instance / 'instance.lock').open('a')
@@ -135,7 +157,9 @@ def serve(a, work, instance):
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend'),
               'publish_ports': a.publish_ports, 'shares': share_specs(a.share)}
     if config['shares']:
-        config['virtiofsd_sha256'] = sha(work / 'virtiofsd')
+        config['virtiofsd'] = str(a.virtiofsd)
+        config['virtiofsd_sha256'] = sha(a.virtiofsd)
+        config['share_inline_flock'] = a.share_inline_flock
         config['share_cache'] = a.share_cache
         config['share_profile'] = a.share_profile
     if a.publish_ports:
@@ -144,7 +168,10 @@ def serve(a, work, instance):
     if config_file.exists():
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
-        if previous.get('shares'): previous.setdefault('share_profile', False)
+        if previous.get('shares'):
+            previous.setdefault('share_profile', False)
+            previous.setdefault('share_inline_flock', False)
+            previous.setdefault('virtiofsd', str((work / 'virtiofsd').resolve()))
         previous.setdefault('network_batch', 1)
         previous.setdefault('mtu', 1500)
         previous.setdefault('publish_ports', False)
@@ -178,11 +205,12 @@ def serve(a, work, instance):
         for share in config['shares']:
             path = instance / (share['tag']+'.sock')
             path.unlink(missing_ok=True)
-            cmd = [str(work/'virtiofsd'), '--socket-path', str(path), '--shared-dir', share['source'],
+            cmd = [str(a.virtiofsd), '--socket-path', str(path), '--shared-dir', share['source'],
                    '--tag', share['tag'], '--sandbox', 'chroot', '--cache', a.share_cache,
                    '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts', '--shared-flock',
                    '--thread-pool-size', '4']
             if a.share_profile: cmd.append('--profile-requests')
+            if a.share_inline_flock: cmd.append('--inline-flock')
             with (instance/f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                       start_new_session=True, preexec_fn=parent_death)
@@ -290,7 +318,15 @@ def serve(a, work, instance):
             if guest.poll() is None:
                 try:
                     mconsole(instance, pathlib.Path(state['mconsole']), 'cad')
-                    guest.wait(timeout=45)
+                    deadline = time.monotonic() + 45
+                    try:
+                        guest.wait(timeout=15)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            state['shutdown_diagnostics'] = shutdown_diagnostics(instance, state)
+                        except Exception as error:
+                            state['shutdown_diagnostics_error'] = str(error)
+                        guest.wait(timeout=max(0, deadline - time.monotonic()))
                 except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
                     state['shutdown_error'] = str(error)
                     forced = True
@@ -351,6 +387,8 @@ def main():
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
+        s.add_argument('--virtiofsd', type=pathlib.Path, help='immutable filesystem backend binary for controlled comparisons')
+        s.add_argument('--share-inline-flock', action='store_true', help='experimental inline nonblocking flock; requires a compatible backend')
         s.add_argument('--share-profile', action='store_true', help='diagnostic virtiofs timings; adds measurement overhead')
         s.add_argument('--share-cache', choices=('auto', 'never'), default='never', help='default: never; MAP_SHARED unsupported; auto can return stale external changes')
     for name in ('status', 'stop'):
@@ -374,13 +412,16 @@ def main():
         a.disk = a.disk or work / 'runtime.ext4'
         try: shares = share_specs(a.share)
         except (OSError, ValueError) as error: p.error(str(error))
-        if a.share_profile and not shares: p.error('--share-profile requires --share')
+        if (a.share_profile or a.share_inline_flock or a.virtiofsd) and not shares:
+            p.error('filesystem backend options require --share')
+        if shares: a.virtiofsd = (a.virtiofsd or work / 'virtiofsd').resolve()
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
             requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'shares': shares}
-            if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile)
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'shares': [], 'share_profile': False}.get(key)) != value for key, value in requested.items()):
+            if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile,
+                                        share_inline_flock=a.share_inline_flock, virtiofsd=str(a.virtiofsd))
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
@@ -390,6 +431,8 @@ def main():
         for share in shares: cmd += ['--share', share['target']]
         cmd += ['--share-cache', a.share_cache]
         if a.share_profile: cmd.append('--share-profile')
+        if a.share_inline_flock: cmd.append('--share-inline-flock')
+        if shares: cmd += ['--virtiofsd', str(a.virtiofsd)]
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         until = time.monotonic() + 150
