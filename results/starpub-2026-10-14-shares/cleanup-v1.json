@@ -1,0 +1,64 @@
+{
+  "experiment_groups": [
+    {
+      "instance": "shared-auto-v1",
+      "group": 1925776,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-auto-v1",
+      "group": 1925744,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-auto-v1",
+      "group": 1925734,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-auto-v2",
+      "group": 2069020,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-auto-v2",
+      "group": 2069011,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-auto-v2",
+      "group": 2068996,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-never-v1",
+      "group": 2115460,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-never-v1",
+      "group": 2115401,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "shared-never-v1",
+      "group": 2115378,
+      "live": [],
+      "zombies": []
+    }
+  ],
+  "old_service_health": {
+    "exit_code": 0,
+    "ServerVersion": "29.8.2",
+    "ContainersRunning": 0,
+    "Images": 6
+  }
+}

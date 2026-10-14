@@ -53,7 +53,7 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 共享目录后端正在实验：UML 内核增加 `VIRTIO_UML`、`FUSE_FS` 和 `VIRTIO_FS`，通过 vhost-user 连接外层独立的 virtiofsd，不依赖 KVM 或外层 `/dev/fuse`。源码固定 virtiofsd 1.13.2，`make virtiofs WORK=... RUST_TOOLCHAIN=...` 校验 Rust 1.98.1 的提交与架构，Cargo 使用上游锁文件，原生依赖解包到实验工作目录。`start --share /absolute/directory` 在 guest 同一路径挂载导出目录，随后可使用普通 Docker bind mount；每个目录有独立服务进程，实例退出时检查清理结果。
 
-第一轮 `shared-auto-v1` 因上游服务的 `unshare(CLONE_FS)` 被外层 seccomp 拒绝而启动失败，Docker 侧 18 项均为缺测。`virtiofs/patches/0001` 改为分别保护临时工作目录和 umask，保留 4 个服务线程及普通 I/O 并发；两项 8 线程、各 256 次循环的并发检查通过，真实共享目录回归仍需完成。原生 18 项中 16 项通过，两项 inotify 因 UID 0 的 `inotify_init1` 返回 EMFILE 失败；独立探测中 UID 1001 可创建实例，两者仅打开 4 个 FD，未调整宿主配额。原始失败、构建和探测证据在 `results/starpub-2026-10-14-shares`。这些检查不能据此声明外层 bind mount 已达标。
+第一轮 `shared-auto-v1` 因上游服务的 `unshare(CLONE_FS)` 被外层 seccomp 拒绝而启动失败，Docker 侧 18 项均为缺测。`virtiofs/patches/0001` 改为分别保护临时工作目录和 umask，保留 4 个服务线程及普通 I/O 并发；两项 8 线程、各 256 次循环的并发检查通过。随后真实 Docker bind mount 在 `auto` 模式通过 8/18 项，在 `never` 模式通过 14/21 项（增加了非 root 通知与并发创建检查）。无缓存修复了普通读写和元数据陈旧问题，但共享 mmap、跨层文件锁、外层向内部的通知仍失败；未因此缩减目标。原生两项 root inotify 检查也失败，独立 UID 1001 对照可创建实例，未调整宿主配额。相同程序的读写吞吐仍明显低于原生，原始失败、原因定位、性能和清理证据见 [共享目录实测](results/starpub-2026-10-14-shares/README.md)。
 
 `make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。第二个补丁修复实测发现的失败回滚问题：端口冲突后的网络配置被删除，导致再次启动没有端口映射。
 

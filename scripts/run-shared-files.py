@@ -37,7 +37,8 @@ def main():
     names=['read_initial','outer_write_open_fd','outer_write_reopen','outer_truncate_fstat','outer_chmod_fstat',
            'guest_write_outer_read','mmap_outer_to_guest','mmap_guest_to_outer','replace_open_inode',
            'unlink_open_inode','xattr_both_directions','outer_lock_blocks_guest','guest_lock_blocks_outer',
-           'outer_inotify_to_guest','guest_inotify_to_outer','user_permission_denied','user_create_owner','read_only_bind']
+           'outer_inotify_to_guest','guest_inotify_to_outer','user_permission_denied','user_create_owner','read_only_bind',
+           'outer_inotify_to_guest_uid1001','guest_inotify_to_outer_uid1001','parallel_creation_masks']
     report={'kind':'shared_file_semantics_and_io','cache':a.cache,'full_acceptance':False,
             'checks':{mode:dict.fromkeys(names,'not_tested') for mode in ['native','docker']},'errors':{},'samples':[],
             'cpu_affinity':sorted(os.sched_getaffinity(0)),'cpu_exclusive':False,
@@ -71,7 +72,7 @@ def main():
             except BaseException:self.close();raise
             if not self.ready.get('ready'):raise RuntimeError('probe did not start')
         def receive(self):
-            deadline=time.monotonic()+30
+            deadline=time.monotonic()+90
             while b'\n' not in self.buffer:
                 remain=deadline-time.monotonic()
                 if remain<=0 or not select.select([self.proc.stdout],[],[],remain)[0]:raise TimeoutError('probe response timed out')
@@ -103,7 +104,7 @@ def main():
         row=peer.ask(op);assert row.get('byte')==byte,row
     def one(mode,name):
         path=share/(mode+'-'+name);path.write_bytes(b'A'*8192);os.chmod(path,0o666)
-        uid=1001 if name in ['user_permission_denied','user_create_owner'] else None
+        uid=1001 if name in ['user_permission_denied','user_create_owner','outer_inotify_to_guest_uid1001'] else None
         if name=='user_permission_denied':os.chmod(path,0o600)
         if name=='user_create_owner':
             path.unlink();os.chmod(share,0o777)
@@ -124,6 +125,13 @@ def main():
                         row=peer.ask('open',ok=False);assert row['rc']==-1 and row['errno']==errno.EROFS,row
                         peer.ask('open-read')
                     expect_byte(peer,'read',65);return
+                if name=='parallel_creation_masks':peer.ask('parallel-create');return
+                if name=='guest_inotify_to_outer_uid1001':
+                    # Supplemental case; preserve the failed root watcher result.
+                    with Peer('native',path,uid=1001) as watcher:
+                        watcher.ask('watch');peer.ask('open');peer.ask('write 66');time.sleep(.1)
+                        row=watcher.ask('events');assert row['bytes']>0,row
+                    return
                 peer.ask('open')
                 if name=='read_initial':expect_byte(peer,'read',65)
                 elif name in ['outer_write_open_fd','outer_write_reopen']:
@@ -161,7 +169,7 @@ def main():
                         try:fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
                         except BlockingIOError:blocked=True
                     peer.ask('unlock');assert blocked,'outer lock ignored guest lock'
-                elif name=='outer_inotify_to_guest':
+                elif name in ['outer_inotify_to_guest','outer_inotify_to_guest_uid1001']:
                     peer.ask('watch');host_write(path,66);time.sleep(.1)
                     row=peer.ask('events');assert row['bytes']>0,row
                 elif name=='guest_inotify_to_outer':

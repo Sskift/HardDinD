@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/xattr.h>
 #include <time.h>
 #include <unistd.h>
@@ -23,6 +24,42 @@ static double seconds(void) {
 
 static void result(const char *op, int rc, int error) {
     printf("{\"op\":\"%s\",\"rc\":%d,\"errno\":%d}\n", op, rc, error);
+}
+
+static int parallel_create(const char *path) {
+    pid_t children[8];
+    unsigned count = 0;
+    int failed = 0;
+    for (unsigned i = 0; i < 8; i++) {
+        pid_t pid = fork();
+        if (pid < 0) { failed = 1; break; }
+        if (!pid) {
+            const mode_t masks[] = {0000, 0007, 0027, 0077};
+            char name[4096];
+            for (unsigned j = 0; j < 64; j++) {
+                mode_t mask = masks[(i + j) % 4];
+                umask(mask);
+                int n = snprintf(name, sizeof(name), "%s-%u-%u", path, i, j);
+                if (n < 0 || (size_t)n >= sizeof(name)) _exit(4);
+                int fd = open(name, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0666);
+                if (fd < 0) _exit(5);
+                struct stat st;
+                int bad = fstat(fd, &st) || (st.st_mode & 0777) != (0666 & ~mask);
+                close(fd);
+                if (unlink(name) || bad) _exit(6);
+            }
+            _exit(0);
+        }
+        children[count++] = pid;
+    }
+    for (unsigned i = 0; i < count; i++) {
+        int status;
+        pid_t n;
+        do { n = waitpid(children[i], &status, 0); } while (n < 0 && errno == EINTR);
+        if (n < 0 || !WIFEXITED(status) || WEXITSTATUS(status)) failed = 1;
+    }
+    if (failed) errno = EIO;
+    return failed ? -1 : 0;
 }
 
 int main(int argc, char **argv) {
@@ -103,6 +140,8 @@ int main(int argc, char **argv) {
             if (n < 0 && errno != EAGAIN) result(op, -1, errno);
             else printf("{\"op\":\"events\",\"rc\":0,\"bytes\":%zd}\n", n < 0 ? 0 : n);
             continue;
+        } else if (!strcmp(op, "parallel-create")) {
+            rc = parallel_create(path);
         } else if (!strcmp(op, "bench-read") || !strcmp(op, "bench-write")) {
             const size_t chunk = 65536;
             unsigned char data[65536]; memset(data, 0x5a, sizeof(data));
