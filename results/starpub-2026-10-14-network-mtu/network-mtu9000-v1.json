@@ -1,0 +1,370 @@
+{
+  "kind": "runtime_network_subset",
+  "checks": {
+    "daemon_api": "pass",
+    "cold_image_pull": "pass",
+    "container_https": "pass",
+    "network_build": "pass",
+    "exec_stdin_tty": "pass",
+    "explicit_tcp_publish": "pass",
+    "explicit_udp_publish": "pass",
+    "forward_removal": "pass",
+    "tcp_echo_comparison": "pass",
+    "persistent_restart": "pass",
+    "clean_shutdown": "pass"
+  },
+  "full_acceptance": false,
+  "image": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+  "dns": "1.1.1.1",
+  "mtu": 9000,
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "timings": {
+    "cold_pull_seconds": 5.813330367207527
+  },
+  "sha256": {
+    "network-probe": "86ab83455fcb97eb850cb27cbbcbde1727b61d19e9f140eecbfb8f5d56260fa9",
+    "network-backend": "91bd308c8a130e573d78a4a2d80b157de989b5aa25dd58bf1b67aac273f33733"
+  },
+  "input_kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+  "sources": {
+    "scripts/run-runtime.py": "d1f4d48a303aa3364dc471e6691cc6a8385bb4276dc9e4592dde28c183de51d3",
+    "scripts/harddind.py": "833bd1921368d45b78845ab9921a3ce1544a94a445ee2d0a89d8cd68e3a83863",
+    "src/network_backend.c": "c75b3c7edf117f530fd7837597be2928bf5f5c29b7f63bbd54d35d80ed7b929a",
+    "src/network_probe.c": "b7974f3e5d45f76b42939adc62a57db372d997a8f952a434dac4c404a732fcac",
+    "sources.lock.json": "e8cbd60bbcf8418a193e31103b75f33486ba4b96d849a068758821c50c6b81a7"
+  },
+  "host_before": {
+    "cpu_stat": "usage_usec 14469832878010\nuser_usec 14008972353047\nsystem_usec 460860524962\nnr_periods 20496478\nnr_throttled 164545\nthrottled_usec 173631564591\n",
+    "cpu_pressure": "some avg10=15.02 avg60=25.15 avg300=17.10 total=14641887955\nfull avg10=3.97 avg60=10.52 avg300=6.87 total=4249757836\n",
+    "loadavg": "66.84 58.25 47.52 55/50859 327786\n"
+  },
+  "server": {
+    "Platform": {
+      "Name": ""
+    },
+    "Version": "29.8.2",
+    "ApiVersion": "1.56",
+    "MinAPIVersion": "1.40",
+    "Os": "linux",
+    "Arch": "amd64",
+    "Components": [
+      {
+        "Name": "Engine",
+        "Version": "29.8.2",
+        "Details": {
+          "ApiVersion": "1.56",
+          "Arch": "amd64",
+          "BuildTime": "Thu Oct  1 00:47:56 2026",
+          "Experimental": "false",
+          "GitCommit": "8af9fe3a36bab3e039862a2ab1cef1880c9b4d03",
+          "GoVersion": "go1.26.8",
+          "KernelVersion": "7.2.10",
+          "MinAPIVersion": "1.40",
+          "Module": "github.com/moby/moby/v2",
+          "ModuleVersion": "v2.0.0+unknown",
+          "Os": "linux"
+        }
+      },
+      {
+        "Name": "containerd",
+        "Version": "v2.3.6",
+        "Details": {
+          "GitCommit": "ee2735368117d2eb259779949d5e75cdafec9761"
+        }
+      },
+      {
+        "Name": "runc",
+        "Version": "1.4.3",
+        "Details": {
+          "GitCommit": "bb14dabeb7185bb72c8c86735d090dcb20f36587"
+        }
+      },
+      {
+        "Name": "docker-init",
+        "Version": "0.19.0",
+        "Details": {
+          "GitCommit": ""
+        }
+      }
+    ],
+    "GitCommit": "8af9fe3a36bab3e039862a2ab1cef1880c9b4d03",
+    "GoVersion": "go1.26.8",
+    "KernelVersion": "7.2.10",
+    "BuildTime": "2026-10-01T00:47:56.000000000+00:00"
+  },
+  "tcp_echo": {
+    "samples": {
+      "native": [
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.006115885451436043,
+          "payload_mbps_each_direction": 10972.877849476805
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.0061713531613349915,
+          "payload_mbps_each_direction": 10874.254356476167
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.0061376746743917465,
+          "payload_mbps_each_direction": 10933.923278794604
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.020553532987833023,
+          "payload_mbps_each_direction": 3265.0768137879804
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.012144748121500015,
+          "payload_mbps_each_direction": 5525.751817050554
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.006135482341051102,
+          "payload_mbps_each_direction": 10937.830193233549
+        }
+      ],
+      "nested_docker": [
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.18737575225532055,
+          "payload_mbps_each_direction": 358.1512719348906
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.16627139039337635,
+          "payload_mbps_each_direction": 403.61040971167205
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.12348989956080914,
+          "payload_mbps_each_direction": 543.4360562173275
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.10351091995835304,
+          "payload_mbps_each_direction": 648.3264183817594
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.05526910349726677,
+          "payload_mbps_each_direction": 1214.2202379548048
+        },
+        {
+          "payload_bytes_each_direction": 8388608,
+          "seconds": 0.15767939388751984,
+          "payload_mbps_each_direction": 425.60325953479963
+        }
+      ]
+    },
+    "order": [
+      "native",
+      "nested_docker",
+      "nested_docker",
+      "native"
+    ],
+    "median_payload_mbps_each_direction": {
+      "native": 10904.088817635386,
+      "nested_docker": 484.51965787606355
+    },
+    "full_performance_acceptance": false,
+    "cpu_exclusive": false
+  },
+  "network_stats": {
+    "rx_packets": 9537,
+    "tx_packets": 15519,
+    "rx_bytes": 51038363,
+    "tx_bytes": 64446204,
+    "dropped_packets": 0,
+    "queued_packets": 0,
+    "forwards": 1,
+    "mtu": 9000,
+    "batch_size": 1,
+    "rx_syscalls": 14311,
+    "tx_syscalls": 15519,
+    "poll_calls": 8257
+  },
+  "first_run": {
+    "phase": "stopped",
+    "run": "9c2afc3aa683",
+    "supervisor_pid": 327825,
+    "supervisor_start": "1384716511",
+    "config": {
+      "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+      "disk": "/root/harddind-rebuild/runtime-mtu.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "1.1.1.1",
+      "network_batch": 1,
+      "mtu": 9000,
+      "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+      "disk_sha256": "ee31ec3bab7ac78deb8b9afda8b33fcf769f558fd304eb0fbc3f19fcb3964b56",
+      "network_sha256": "91bd308c8a130e573d78a4a2d80b157de989b5aa25dd58bf1b67aac273f33733"
+    },
+    "runtime_sha256": "833bd1921368d45b78845ab9921a3ce1544a94a445ee2d0a89d8cd68e3a83863",
+    "guest_pid": 331866,
+    "network_pid": 331855,
+    "api_port": 48027,
+    "mconsole": "/root/harddind-rebuild/instances/network-mtu9000-v1/uml/9c2afc3aa683/mconsole",
+    "command": [
+      "/root/harddind-rebuild/ipi-kernel-idle",
+      "umid=9c2afc3aa683",
+      "uml_dir=/root/harddind-rebuild/instances/network-mtu9000-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/network-mtu9000-v1/root.cow,/root/harddind-rebuild/runtime-mtu.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=1.1.1.1",
+      "harddind_mtu=9000",
+      "vec0:transport=fd,fd=5,gro=0,mtu=9000,mac=02:00:00:00:02:15"
+    ],
+    "ready_at": 1791965101.0226758,
+    "guest_exit_code": 0,
+    "guest_cleanup": {
+      "process_group": 331866,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "forced_shutdown": false,
+    "network_exit_code": 0,
+    "network_cleanup": {
+      "process_group": 331855,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "stopped_at": 1791965180.5144205
+  },
+  "native_cleanup": {
+    "process_group": 359203,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "final_run": {
+    "phase": "stopped",
+    "run": "782313b4a05d",
+    "supervisor_pid": 370856,
+    "supervisor_start": "1384727015",
+    "config": {
+      "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+      "disk": "/root/harddind-rebuild/runtime-mtu.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "1.1.1.1",
+      "network_batch": 1,
+      "mtu": 9000,
+      "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+      "disk_sha256": "ee31ec3bab7ac78deb8b9afda8b33fcf769f558fd304eb0fbc3f19fcb3964b56",
+      "network_sha256": "91bd308c8a130e573d78a4a2d80b157de989b5aa25dd58bf1b67aac273f33733"
+    },
+    "runtime_sha256": "833bd1921368d45b78845ab9921a3ce1544a94a445ee2d0a89d8cd68e3a83863",
+    "guest_pid": 380309,
+    "network_pid": 380292,
+    "api_port": 43277,
+    "mconsole": "/root/harddind-rebuild/instances/network-mtu9000-v1/uml/782313b4a05d/mconsole",
+    "command": [
+      "/root/harddind-rebuild/ipi-kernel-idle",
+      "umid=782313b4a05d",
+      "uml_dir=/root/harddind-rebuild/instances/network-mtu9000-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/network-mtu9000-v1/root.cow,/root/harddind-rebuild/runtime-mtu.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=1.1.1.1",
+      "harddind_mtu=9000",
+      "vec0:transport=fd,fd=5,gro=0,mtu=9000,mac=02:00:00:00:02:15"
+    ],
+    "ready_at": 1791965205.082308,
+    "guest_exit_code": 0,
+    "guest_cleanup": {
+      "process_group": 380309,
+      "forced_cleanup": false,
+      "initial_live_pids": [
+        380786
+      ],
+      "initial_zombie_pids": [],
+      "initial_processes": [
+        {
+          "pid": 380786,
+          "state": "R",
+          "ppid": 1,
+          "process_group": 380309,
+          "start_time_ticks": "1384728583",
+          "comm": "uml-userspace",
+          "wchan": "0",
+          "exe_errno": 2
+        }
+      ],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "forced_shutdown": false,
+    "network_exit_code": 0,
+    "network_cleanup": {
+      "process_group": 380292,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "stopped_at": 1791965218.6384542
+  },
+  "host_after": {
+    "cpu_stat": "usage_usec 14474360044583\nuser_usec 14013299363010\nsystem_usec 461060681573\nnr_periods 20497909\nnr_throttled 165250\nthrottled_usec 174095991140\n",
+    "cpu_pressure": "some avg10=11.23 avg60=17.94 avg300=17.26 total=14667544171\nfull avg10=2.10 avg60=5.81 avg300=6.31 total=4258018157\n",
+    "loadavg": "65.53 61.58 50.35 30/51106 392017\n"
+  },
+  "subset_passed": true
+}

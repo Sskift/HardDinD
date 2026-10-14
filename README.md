@@ -57,6 +57,8 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 进一步的 [网络收发定位](results/starpub-2026-10-14-network-batch/) 增加调用计数、CPU 记录和连续传输对照。`--network-batch 64` 将 link 收发调用减少约 92%，但修正后的对照吞吐反而回退约 6%–12%，因此默认仍为单包模式。实验只降低了部分 CPU 成本，没有解决整体网络速度差距。
 
+新的 [MTU 对照](results/starpub-2026-10-14-network-mtu/) 允许 `--mtu 9000` 同步配置虚拟链路和 Docker bridge。在本轮六组交错对照中，相对 1500，请求／响应吞吐提高约 20%，连续传输提高约 147%；11 项联网与持久化回归全部通过。65520 出现请求／响应回退，默认 MTU 仍为 1500。使用该选项需要包含新初始化脚本的基础磁盘；报告也保留了一次 1500 基线关机后的残留进程失败。
+
 ```sh
 make network WORK=/root/harddind-rebuild
 make runtime-root WORK=/root/harddind-rebuild

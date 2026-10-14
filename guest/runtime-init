@@ -3,8 +3,12 @@ set -eu
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin
 mount -t proc proc /proc
 dns=10.0.2.3
+export HARDDIND_MTU=1500
 for arg in $(cat /proc/cmdline); do
-    case "$arg" in harddind_dns=*) dns=${arg#harddind_dns=} ;; esac
+    case "$arg" in
+        harddind_dns=*) dns=${arg#harddind_dns=} ;;
+        harddind_mtu=*) HARDDIND_MTU=${arg#harddind_mtu=} ;;
+    esac
 done
 mount -t sysfs sysfs /sys
 mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev
@@ -17,8 +21,10 @@ echo '1 4 1 7' > /proc/sys/kernel/printk
 echo 0 > /proc/sys/kernel/ctrl-alt-del
 hostname harddind
 ip link set lo up
+ip link set vec0 mtu "$HARDDIND_MTU"
 ip link set vec0 up
 ip addr add 10.0.2.15/24 dev vec0
 ip route add default via 10.0.2.2
 echo "nameserver $dns" > /etc/resolv.conf
+echo "HARDDIND_RUNTIME_MTU=$HARDDIND_MTU"
 exec /sbin/tini -g -- /sbin/harddind-daemon

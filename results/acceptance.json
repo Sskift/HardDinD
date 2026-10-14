@@ -14,7 +14,10 @@
         "starpub-2026-10-14-network/network-v3.json",
         "starpub-2026-10-14-network/network-provenance.json",
         "starpub-2026-10-14-network/network-v1.json",
-        "starpub-2026-10-14-network/network-v2.json"
+        "starpub-2026-10-14-network/network-v2.json",
+        "starpub-2026-10-14-network-mtu/network-mtu9000-v1.json",
+        "starpub-2026-10-14-network-mtu/net-mtu-v1.json",
+        "starpub-2026-10-14-network-mtu/net-mtu-audit.json"
       ],
       "remaining": [
         "automatic published ports, forward persistence, IPv6 and broader network drivers",
@@ -25,7 +28,8 @@
         "intermittent host-child loss under parallel fork/exec observed in prior kernel",
         "intermittent forced host-process cleanup in pre-idle-fix build; identity was not recorded",
         "Swarm leave timeout observed once; not causally attributed or closed",
-        "Compose and broader upstream command scenarios"
+        "Compose and broader upstream command scenarios",
+        "intermittent forced cleanup also observed in ipi-idle MTU1500 baseline; initial process identity incomplete; cause unresolved"
       ]
     },
     "native_performance": {
@@ -39,7 +43,9 @@
         "starpub-2026-10-14-ipi/ipi-idle-trace-comparison.json",
         "starpub-2026-10-14-network/network-v3.json",
         "starpub-2026-10-14-network-batch/net-batch-v2.json",
-        "starpub-2026-10-14-network-batch/net-batch-v2-analysis.json"
+        "starpub-2026-10-14-network-batch/net-batch-v2-analysis.json",
+        "starpub-2026-10-14-network-mtu/net-mtu-v2.json",
+        "starpub-2026-10-14-network-mtu/net-mtu-v2-analysis.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
@@ -52,7 +58,8 @@
         "severe slow samples in first mprotect comparison; cause not established by later successful run",
         "four-thread syscall and parallel-exec regressions in mprotect recheck",
         "64 KiB TCP request/reply median 421.68 Mb/s nested vs 9171.04 Mb/s native loopback; 21.75x gap on this workload",
-        "link batching reduced calls but regressed request/reply and streaming throughput; default remains one-frame mode"
+        "link batching reduced calls but regressed request/reply and streaming throughput; default remains one-frame mode",
+        "MTU9000 improves this network comparison but streaming remains 13.6x below native loopback; MTU65520 request/reply regression unresolved"
       ]
     },
     "gpu_in_container": {

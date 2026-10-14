@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serial native/one-frame/batched link comparison using the same Docker fixture.
+"""Serial native/batching or MTU comparison using the same Docker fixture.
 
 Each guest uses its own persistent COW; results include link calls and scheduler
 CPU time. Successful measurements do not mean native performance acceptance.
@@ -98,17 +98,21 @@ def main():
     p.add_argument('work', type=pathlib.Path); p.add_argument('--kernel', type=pathlib.Path, required=True)
     p.add_argument('--disk', type=pathlib.Path, required=True); p.add_argument('--name', required=True)
     p.add_argument('--dns', default='1.1.1.1')
+    p.add_argument('--mtus', type=int, nargs='+', help='compare these MTUs in forward/reverse order; keeps batch size 1')
     a=p.parse_args()
+    if a.mtus and (len(a.mtus)>4 or len(set(a.mtus))!=len(a.mtus) or any(not 576<=m<=65520 for m in a.mtus)): p.error('provide 1..4 distinct MTUs between 576 and 65520')
+    dimension='mtu' if a.mtus else 'batch'
+    order=a.mtus+list(reversed(a.mtus)) if a.mtus else [1,64,64,1]
     if len(a.name)>24 or not a.name or not all(c.isalnum() or c in '-_' for c in a.name): p.error('invalid name')
     work=a.work.resolve(); repo=pathlib.Path(__file__).resolve().parents[1]; out=work/'results'
     out.mkdir(exist_ok=True); result=out/(a.name+'.json'); logfile=out/(a.name+'.log')
-    names=[f'{a.name}-{i}' for i in range(4)]
+    names=[f'{a.name}-{i}' for i in range(len(order))]
     if result.exists() or logfile.exists() or any((work/'instances'/n).exists() for n in names): p.error('evidence already exists')
     os.sched_setaffinity(0, [0,1,2,3]); os.environ.pop('HARDDIND_NET_TRACE_DNS', None)
-    report={'kind':'network_batch_comparison','full_acceptance':False,'comparison_complete':False,'order':[1,64,64,1],
+    report={'kind':f'network_{dimension}_comparison','comparison_dimension':dimension,'full_acceptance':False,'comparison_complete':False,'order':order,
             'host_cpu_affinity':sorted(os.sched_getaffinity(0)), 'cpu_exclusive':False, 'runs':[], 'native':[],
             'sha256':{str(f):harddind.sha(f) for f in [a.kernel,a.disk,work/'network-backend',work/'network-probe',
-                        repo/'src/network_backend.c',repo/'scripts/harddind.py',pathlib.Path(__file__)]}}
+                        repo/'src/network_backend.c',repo/'src/network_probe.c',repo/'guest/runtime-init',repo/'guest/runtime-daemon',repo/'scripts/harddind.py',pathlib.Path(__file__)]}}
     # A static executable needs no base image. Import identical deterministic
     # bytes for each guest so registry availability cannot gate the comparison.
     archive=out/(a.name+'-rootfs.tar')
@@ -132,16 +136,25 @@ def main():
         report['host_before']=host_state()
         port=free_port(); native=subprocess.Popen([str(work/'network-probe'),'tcp',str(port)], stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
         wait_tcp(port)
-        for index,batch in enumerate(report['order']):
-            print(f'starting run {index} batch={batch}',flush=True)
+        for index,value in enumerate(report['order']):
+            batch,mtu=(1,value) if dimension=='mtu' else (value,1500)
+            print(f'starting run {index} batch={batch} mtu={mtu}',flush=True)
             instance=work/'instances'/names[index]
             base=[sys.executable,str(repo/'scripts/harddind.py'),str(work),names[index]]; active=base
-            row={'batch':batch,'instance':str(instance),'checks':{},'samples':[]};report['runs'].append(row)
+            row={'batch':batch,'mtu':mtu,'instance':str(instance),'checks':{},'samples':[]};report['runs'].append(row)
             report['native'].append({'before_run':index,'samples':{kind:[echo(port,kind=='stream') for _ in range(3)] for kind in ['request_reply','stream']}})
-            run(base+['start','--kernel',str(a.kernel.resolve()),'--disk',str(a.disk.resolve()),'--dns',a.dns,'--network-batch',str(batch)])
+            run(base+['start','--kernel',str(a.kernel.resolve()),'--disk',str(a.disk.resolve()),'--dns',a.dns,'--network-batch',str(batch),'--mtu',str(mtu)])
             state=harddind.read_state(instance); row['start']=state
             def cli(*args):return run(base+['docker',*args])
             row['image_id']=cli('import',str(archive),image).strip()
+            row['mtus'] = {'uplink':int(cli('run','--rm','--network','host',image,'/netprobe','mtu','vec0')),
+                           'bridge':int(cli('run','--rm',image,'/netprobe','mtu','eth0'))}
+            cli('network','create','mtu-default')
+            row['mtus']['user_bridge']=int(cli('run','--rm','--network','mtu-default',image,'/netprobe','mtu','eth0'))
+            cli('network','create','--opt','com.docker.network.driver.mtu=1500','mtu-override')
+            row['mtus']['override']=int(cli('run','--rm','--network','mtu-override',image,'/netprobe','mtu','eth0'))
+            assert row['mtus']=={'uplink':mtu,'bridge':mtu,'user_bridge':mtu,'override':1500}, row['mtus']
+            row['checks']['actual_mtu_and_override']='pass'
             tcp,udp=free_port(),free_port(True)
             for protocol,outer in [('tcp',tcp),('udp',udp)]:
                 cli('create','--name',protocol,'-p',f'{outer}:7777/{protocol}',image,'/netprobe',protocol,'7777','0.0.0.0')
@@ -178,7 +191,7 @@ def main():
         report['medians']={}
         for kind in ['request_reply','stream']:
             modes={'native':[s for r in report['native'] for s in r['samples'][kind]]}
-            for batch in (1,64):modes[f'batch_{batch}']=[s for r in report['runs'] if r['batch']==batch for s in r['samples'] if s['kind']==kind]
+            for value in sorted(set(order)):modes[f'{dimension}_{value}']=[s for r in report['runs'] if r[dimension]==value for s in r['samples'] if s['kind']==kind]
             report['medians'][kind]={mode:statistics.median(s['mbps_each_direction'] for s in samples) for mode,samples in modes.items()}
         report['comparison_complete']=True
     except BaseException as error:

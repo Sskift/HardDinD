@@ -12,7 +12,7 @@
 | 存储 | 容器间共享命名卷、guest bind mount、tmpfs、只读文件系统、docker cp、按标签清理；镜像、容器与命名卷跨 guest 正常重启保留 | 外层路径的正确映射、异常恢复、I/O 性能 |
 | 应用内存语义 | 容器内执行权限读写检查、MADV_DONTNEED、同地址文件替换、COW、fork、文件截断触发 SIGBUS | 更广应用、多线程并发撤销映射、长期压力与内部隔离 |
 | 资源与权限 | memory OOM、pids 限制、动态写入 CPU/memory/pids 配置、guest seccomp、特权挂载、NET_ADMIN、user namespace | CPU 配额的实测限制效果、更多 device/cgroup 控制、内部隔离审计 |
-| 单机网络 | bridge/DNS、网络连接断开、IPv6 地址、guest 内 published port/port inspect；IPv4 HTTPS、显式外层 TCP/UDP 转发与删除 | 自动同步 docker -p、转发跨重启恢复、IPv6 流量、多种网络驱动；请求／响应性能仍差约 21.75 倍 |
+| 单机网络 | bridge/DNS、网络连接断开、IPv6 地址、guest 内 published port/port inspect；IPv4 HTTPS、显式外层 TCP/UDP 转发与删除；MTU 配置及用户覆盖 | 自动同步 docker -p、转发跨重启恢复、IPv6 流量、多种网络驱动；已测负载仍明显慢于原生 |
 | 管理 | events、context、system df、container/volume prune；外层原版 CLI 连接持久 daemon，stdin/TTY 和 buildx 入口 | 完整 system/builder 管理、多客户端与生命周期压力 |
 | Swarm | 单管理节点、service 副本、secret/config、scale/cleanup、overlay 上实际 VIP HTTP 请求 | 多节点、ingress 路由网格、stack、滚动更新和故障恢复 |
 | GPU | 保留真实 CUDA 计算失败检查 | NVIDIA ABI 后端、内部计算/传输校验、多 GPU、内存生命周期与性能 |
@@ -23,6 +23,8 @@
 最新内存权限实验的 56 个检查返回 53 pass、1 GPU fail、2 not_tested，guest 正常退出。新增项目是容器内真实内存映射语义；没有增加 GPU、出站网络或完整兼容性覆盖。证据见 `results/starpub-2026-10-14-protect/docker-protect-v3.json`。
 
 独立网络与持久运行测试使用含 IPI 空闲修正的内核，未启用存在多线程回退的 mprotect 实验。11 项检查全部通过，包含真实联网构建、显式 TCP/UDP 转发和正常重启后的数据校验。默认外层 DNS 的失败与后续显式解析器配置均保留。证据见 `results/starpub-2026-10-14-network/network-v3.json`；这不是对上述所有命令的一次完整重测，也不是性能或 GPU 验收通过。
+
+MTU 9000 的新运行也通过这 11 项检查，并验证默认 bridge、新建用户 bridge 的实际接口 MTU，以及用户显式覆盖为 1500。32 MiB 连续传输对照有所改善，整体效率仍未达标。一次较早的 MTU 1500 基线关机出现残留进程强制回收，原因未关闭；见 `results/starpub-2026-10-14-network-mtu/`。
 
 `run-docker.py --checks REGEX` 可以在定位问题时只运行特定项目，例如 `^(image_import|swarm_)`。未选择的项目保留为 `not_tested`，这种运行始终不能通过完整验收。运行器同时核对 guest 内测试脚本 SHA256，避免拿旧磁盘的结果解释新的测试代码。
 

@@ -1,0 +1,271 @@
+NETWORK_PROBE_READY
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 start --kernel /root/harddind-rebuild/ipi-kernel-idle --disk /root/harddind-rebuild/runtime-mtu.ext4 --dns 1.1.1.1 --network-batch 1 --mtu 1500
+{
+  "phase": "ready",
+  "run": "91cd7f9b9335",
+  "supervisor_pid": 94383,
+  "supervisor_start": "1384626595",
+  "config": {
+    "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+    "disk": "/root/harddind-rebuild/runtime-mtu.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+    "disk_sha256": "ee31ec3bab7ac78deb8b9afda8b33fcf769f558fd304eb0fbc3f19fcb3964b56",
+    "network_sha256": "91bd308c8a130e573d78a4a2d80b157de989b5aa25dd58bf1b67aac273f33733"
+  },
+  "runtime_sha256": "833bd1921368d45b78845ab9921a3ce1544a94a445ee2d0a89d8cd68e3a83863",
+  "guest_pid": 94770,
+  "network_pid": 94769,
+  "api_port": 44505,
+  "mconsole": "/root/harddind-rebuild/instances/net-mtu-v1-0/uml/91cd7f9b9335/mconsole",
+  "command": [
+    "/root/harddind-rebuild/ipi-kernel-idle",
+    "umid=91cd7f9b9335",
+    "uml_dir=/root/harddind-rebuild/instances/net-mtu-v1-0/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/net-mtu-v1-0/root.cow,/root/harddind-rebuild/runtime-mtu.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15"
+  ],
+  "ready_at": 1791964193.0468426
+}
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker import /root/harddind-rebuild/results/net-mtu-v1-rootfs.tar harddind-network-probe:local
+sha256:677f1c115aa1efdf0bcd22fb277461a803f665a7c543a3b74ab8f21d5b569dbb
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker run --rm --network host harddind-network-probe:local /netprobe mtu vec0
+1500
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker run --rm harddind-network-probe:local /netprobe mtu eth0
+1500
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker network create mtu-default
+1a278583e4a570293dccef162a6a79c311621276c8f53663208450d2f1b44d3f
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker run --rm --network mtu-default harddind-network-probe:local /netprobe mtu eth0
+1500
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker network create --opt com.docker.network.driver.mtu=1500 mtu-override
+77e4d00ad3696229a793abca23c0c146fe8ff92205ada9bba10fdebcd912322a
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker run --rm --network mtu-override harddind-network-probe:local /netprobe mtu eth0
+1500
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker create --name tcp -p 35853:7777/tcp harddind-network-probe:local /netprobe tcp 7777 0.0.0.0
+db23b0d0047b6001b9ffbbea94bf7f22f593bcbc542c6a2fa0f1b2a4dfa74783
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker start tcp
+tcp
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker create --name udp -p 54600:7777/udp harddind-network-probe:local /netprobe udp 7777 0.0.0.0
+652f46fc2dc76374be3dd77525eb8b6f3983044e846a60b9a7aa37aa591a99b7
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 docker start udp
+udp
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 stop
+{
+  "phase": "failed",
+  "run": "91cd7f9b9335",
+  "supervisor_pid": 94383,
+  "supervisor_start": "1384626595",
+  "config": {
+    "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+    "disk": "/root/harddind-rebuild/runtime-mtu.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+    "disk_sha256": "ee31ec3bab7ac78deb8b9afda8b33fcf769f558fd304eb0fbc3f19fcb3964b56",
+    "network_sha256": "91bd308c8a130e573d78a4a2d80b157de989b5aa25dd58bf1b67aac273f33733"
+  },
+  "runtime_sha256": "833bd1921368d45b78845ab9921a3ce1544a94a445ee2d0a89d8cd68e3a83863",
+  "guest_pid": 94770,
+  "network_pid": 94769,
+  "api_port": 44505,
+  "mconsole": "/root/harddind-rebuild/instances/net-mtu-v1-0/uml/91cd7f9b9335/mconsole",
+  "command": [
+    "/root/harddind-rebuild/ipi-kernel-idle",
+    "umid=91cd7f9b9335",
+    "uml_dir=/root/harddind-rebuild/instances/net-mtu-v1-0/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/net-mtu-v1-0/root.cow,/root/harddind-rebuild/runtime-mtu.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15"
+  ],
+  "ready_at": 1791964193.0468426,
+  "guest_exit_code": 0,
+  "guest_cleanup": {
+    "process_group": 94770,
+    "forced_cleanup": true,
+    "initial_live_pids": [
+      94939
+    ],
+    "initial_zombie_pids": [],
+    "initial_processes": [
+      {
+        "pid": 94939,
+        "exited_during_inspection": true
+      }
+    ],
+    "forced_processes": [
+      {
+        "pid": 94939,
+        "exited_during_inspection": true
+      }
+    ],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": false
+  },
+  "forced_shutdown": false,
+  "network_exit_code": 0,
+  "network_cleanup": {
+    "process_group": 94769,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "stopped_at": 1791964222.063168
+}
+
+[exit=1]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild net-mtu-v1-0 stop
+{
+  "phase": "failed",
+  "run": "91cd7f9b9335",
+  "supervisor_pid": 94383,
+  "supervisor_start": "1384626595",
+  "config": {
+    "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+    "disk": "/root/harddind-rebuild/runtime-mtu.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+    "disk_sha256": "ee31ec3bab7ac78deb8b9afda8b33fcf769f558fd304eb0fbc3f19fcb3964b56",
+    "network_sha256": "91bd308c8a130e573d78a4a2d80b157de989b5aa25dd58bf1b67aac273f33733"
+  },
+  "runtime_sha256": "833bd1921368d45b78845ab9921a3ce1544a94a445ee2d0a89d8cd68e3a83863",
+  "guest_pid": 94770,
+  "network_pid": 94769,
+  "api_port": 44505,
+  "mconsole": "/root/harddind-rebuild/instances/net-mtu-v1-0/uml/91cd7f9b9335/mconsole",
+  "command": [
+    "/root/harddind-rebuild/ipi-kernel-idle",
+    "umid=91cd7f9b9335",
+    "uml_dir=/root/harddind-rebuild/instances/net-mtu-v1-0/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/net-mtu-v1-0/root.cow,/root/harddind-rebuild/runtime-mtu.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15"
+  ],
+  "ready_at": 1791964193.0468426,
+  "guest_exit_code": 0,
+  "guest_cleanup": {
+    "process_group": 94770,
+    "forced_cleanup": true,
+    "initial_live_pids": [
+      94939
+    ],
+    "initial_zombie_pids": [],
+    "initial_processes": [
+      {
+        "pid": 94939,
+        "exited_during_inspection": true
+      }
+    ],
+    "forced_processes": [
+      {
+        "pid": 94939,
+        "exited_during_inspection": true
+      }
+    ],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": false
+  },
+  "forced_shutdown": false,
+  "network_exit_code": 0,
+  "network_cleanup": {
+    "process_group": 94769,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "stopped_at": 1791964222.063168
+}
+
+[exit=1]

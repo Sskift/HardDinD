@@ -10,7 +10,10 @@ shutdown() {
 }
 # The outer helper forwards this API only onto a loopback port. Internal bridge,
 # firewall and cgroup behavior remain the stock daemon's defaults.
-dockerd --host=unix:///run/docker.sock --host=tcp://10.0.2.15:2375 --tls=false > /run/dockerd.log 2>&1 &
+dockerd --host=unix:///run/docker.sock --host=tcp://10.0.2.15:2375 --tls=false \
+    --mtu="${HARDDIND_MTU:-1500}" \
+    --default-network-opt "bridge=com.docker.network.driver.mtu=${HARDDIND_MTU:-1500}" \
+    > /run/dockerd.log 2>&1 &
 daemon=$!
 trap shutdown INT TERM
 ready=0

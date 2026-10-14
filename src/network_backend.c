@@ -29,6 +29,7 @@
 #define MAX_BATCH 64
 static int link_fd, ctl_fd, nfds;
 static unsigned batch_size = 1;
+static int mtu = 1500;
 static struct pollfd pfds[MAX_FDS];
 static volatile sig_atomic_t stopping;
 static uint64_t rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets;
@@ -176,10 +177,10 @@ static int stats(char *buf, size_t len) {
     return snprintf(buf, len, "{\"rx_packets\":%" PRIu64 ",\"tx_packets\":%" PRIu64
         ",\"rx_bytes\":%" PRIu64 ",\"tx_bytes\":%" PRIu64
         ",\"dropped_packets\":%" PRIu64 ",\"queued_packets\":%u,\"forwards\":%u"
-        ",\"batch_size\":%u,\"rx_syscalls\":%" PRIu64 ",\"tx_syscalls\":%" PRIu64
+        ",\"mtu\":%d,\"batch_size\":%u,\"rx_syscalls\":%" PRIu64 ",\"tx_syscalls\":%" PRIu64
         ",\"poll_calls\":%" PRIu64 "}",
         rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
-        batch_size, rx_syscalls, tx_syscalls, poll_calls);
+        mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls);
 }
 static void control(Slirp *slirp) {
     char input[512], output[32768], *fields[7], *save;
@@ -237,14 +238,17 @@ reply:
 }
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--version")) { puts(slirp_version_string()); return 0; }
-    if ((argc != 3 && argc != 4) || (link_fd = number(argv[1], 0, INT_MAX)) < 0 || strlen(argv[2]) >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
-        fprintf(stderr, "usage: network-backend LINK_FD CONTROL_SOCKET [BATCH_SIZE]\n"); return 2;
+    if ((argc < 3 || argc > 5) || (link_fd = number(argv[1], 0, INT_MAX)) < 0 || strlen(argv[2]) >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
+        fprintf(stderr, "usage: network-backend LINK_FD CONTROL_SOCKET [BATCH_SIZE [MTU]]\n"); return 2;
     }
     if (strcmp(slirp_version_string(), "4.6.1")) { fprintf(stderr, "expected libslirp 4.6.1\n"); return 1; }
-    if (argc == 4) {
+    if (argc >= 4) {
         int value = number(argv[3], 1, MAX_BATCH);
         if (value < 0) { fprintf(stderr, "invalid batch size\n"); return 2; }
         batch_size = (unsigned)value;
+    }
+    if (argc == 5 && (mtu = number(argv[4], 576, 65520)) < 0) {
+        fprintf(stderr, "invalid MTU\n"); return 2;
     }
     trace_dns = getenv("HARDDIND_NET_TRACE_DNS") != NULL;
     signal(SIGTERM, stop); signal(SIGINT, stop); signal(SIGPIPE, SIG_IGN);
@@ -259,7 +263,7 @@ int main(int argc, char **argv) {
     umask(0077);
     /* Refuse an existing path; never unlink another instance's socket. */
     if (bind(ctl_fd, (struct sockaddr *)&addr, sizeof(addr))) die("control bind");
-    SlirpConfig cfg = {.version = 3, .in_enabled = true, .if_mtu = 1500, .if_mru = 1500};
+    SlirpConfig cfg = {.version = 3, .in_enabled = true, .if_mtu = (size_t)mtu, .if_mru = (size_t)mtu};
     inet_pton(AF_INET, "10.0.2.0", &cfg.vnetwork);
     inet_pton(AF_INET, "255.255.255.0", &cfg.vnetmask);
     inet_pton(AF_INET, "10.0.2.2", &cfg.vhost);

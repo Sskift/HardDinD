@@ -13,10 +13,11 @@ if not d.get('comparison_complete') or len(d['runs']) != len(d['order']):
     raise SystemExit('comparison is incomplete')
 summary = {'source': a.report.name, 'full_acceptance': False, 'workloads': {},
            'cpu_note': 'Scheduler CPU includes snapshot intervals; guest CPU covers only tasks present at both snapshots. Changed task identities are counted, not silently imputed.'}
+dimension = d.get('comparison_dimension', 'batch')
 for kind in ['request_reply', 'stream']:
     modes = {'native': [s for r in d['native'] for s in r['samples'][kind]]}
-    for batch in sorted(set(d['order'])):
-        modes[f'batch_{batch}'] = [s for r in d['runs'] if r['batch'] == batch for s in r['samples'] if s['kind'] == kind]
+    for value in sorted(set(d['order'])):
+        modes[f'{dimension}_{value}'] = [s for r in d['runs'] if r[dimension] == value for s in r['samples'] if s['kind'] == kind]
     result = {}
     for mode, rows in modes.items():
         if not rows: raise SystemExit('missing samples')

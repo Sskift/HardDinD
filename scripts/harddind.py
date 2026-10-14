@@ -108,13 +108,14 @@ def serve(a, work, instance):
     fcntl.flock(build, fcntl.LOCK_SH)
     kernel = a.kernel.resolve()
     disk = a.disk.resolve()
-    config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch,
+    config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu,
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend')}
     config_file = instance / 'config.json'
     if config_file.exists():
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
         previous.setdefault('network_batch', 1)
+        previous.setdefault('mtu', 1500)
         if previous != config:
             raise RuntimeError('instance input changed; use a new instance name')
     config_file.write_text(json.dumps(config, indent=2) + '\n')
@@ -144,7 +145,7 @@ def serve(a, work, instance):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024 * 1024)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
         with (instance / f'network-{run}.log').open('x') as log:
-            helper = subprocess.Popen([str(work / 'network-backend'), str(helper_end.fileno()), str(ctl), str(a.network_batch)],
+            helper = subprocess.Popen([str(work / 'network-backend'), str(helper_end.fileno()), str(ctl), str(a.network_batch), str(a.mtu)],
                                       pass_fds=(helper_end.fileno(),), stdout=log, stderr=subprocess.STDOUT,
                                       start_new_session=True, preexec_fn=parent_death)
         helper_end.close()
@@ -170,8 +171,8 @@ def serve(a, work, instance):
                'seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
                f'ubd0={instance / "root.cow"},{disk}', 'root=/dev/ubda', 'rw',
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
-               f'harddind_dns={a.dns}',
-               f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mac=02:00:00:00:02:15']
+               f'harddind_dns={a.dns}', f'harddind_mtu={a.mtu}',
+               f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={a.mtu},mac=02:00:00:00:02:15']
         with (instance / f'guest-{run}.log').open('x') as log:
             guest = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                      pass_fds=(guest_end.fileno(),), env={**os.environ, 'TMPDIR': str(tmp)},
@@ -187,12 +188,18 @@ def serve(a, work, instance):
             if state['phase'] == 'starting':
                 try:
                     if api(port, '/_ping') == b'OK':
+                        if a.mtu != 1500:
+                            console = (instance / f'guest-{run}.log').read_text(errors='replace')
+                            if f'HARDDIND_RUNTIME_MTU={a.mtu}' not in console:
+                                state['fixture_error'] = 'guest fixture does not confirm requested MTU'
+                                break
                         state['phase'] = 'ready'; state['ready_at'] = time.time(); write_state(instance, state)
                 except (OSError, http.client.HTTPException, RuntimeError):
                     pass
                 if state['phase'] != 'ready' and time.monotonic() > deadline:
                     raise RuntimeError('Docker API readiness timed out')
             time.sleep(0.1)
+        if state.get('fixture_error'): raise RuntimeError(state['fixture_error'])
     except BaseException as error:
         state['error'] = f'{type(error).__name__}: {error}'
     finally:
@@ -245,6 +252,7 @@ def main():
         s.add_argument('--memory', default='4G')
         s.add_argument('--dns', default='10.0.2.3', help='IPv4 DNS resolver; default forwards the outer resolver')
         s.add_argument('--network-batch', type=int, choices=range(1, 65), default=1, metavar='1..64', help='experimental link batch size (default 1)')
+        s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
     for name in ('status', 'stop'):
         subs.add_parser(name)
     subs.add_parser('docker').add_argument('args', nargs=argparse.REMAINDER)
@@ -260,19 +268,20 @@ def main():
     if a.action in ('start', 'serve'):
         if not 1 <= a.cpus <= 64 or not a.memory[:-1].isdigit() or a.memory[-1:] not in ('M', 'G'):
             p.error('invalid resources')
+        if not 576 <= a.mtu <= 65520: p.error('mtu must be between 576 and 65520')
         try: a.dns = str(ipaddress.IPv4Address(a.dns))
         except ipaddress.AddressValueError: p.error('dns must be an IPv4 resolver address')
         a.disk = a.disk or work / 'runtime.ext4'
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch}
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1}.get(key)) != value for key, value in requested.items()):
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu}
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
                '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
-               '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch)]
+               '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch), '--mtu', str(a.mtu)]
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         until = time.monotonic() + 150

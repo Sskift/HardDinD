@@ -26,14 +26,21 @@ def cleanup_group(pgid):
         result = []
         for pid in pids:
             base = pathlib.Path("/proc") / str(pid)
+            row = {"pid": pid}
             try:
                 fields = (base / "stat").read_text().rsplit(") ", 1)[1].split()
-                result.append({"pid": pid, "state": fields[0], "ppid": int(fields[1]),
-                               "comm": (base / "comm").read_text().strip(),
-                               "wchan": (base / "wchan").read_text().strip(),
-                               "exe": os.readlink(base / "exe")})
+                row.update({"state": fields[0], "ppid": int(fields[1]),
+                            "process_group": int(fields[2]), "start_time_ticks": fields[19]})
             except (OSError, ProcessLookupError):
-                result.append({"pid": pid, "exited_during_inspection": True})
+                row["stat_unavailable"] = True
+            # exe can disappear before stat during exit. Keep the identity and
+            # state already read instead of throwing all evidence away.
+            for key in ("comm", "wchan", "exe"):
+                try:
+                    row[key] = os.readlink(base / key) if key == "exe" else (base / key).read_text().strip()
+                except OSError as error:
+                    row[key + "_errno"] = error.errno
+            result.append(row)
         return result
     initial_processes = describe(live + zombies)
     # Parent-death signals and the host init's reaping can lag wait() briefly.

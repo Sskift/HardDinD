@@ -2,15 +2,25 @@
 #define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <errno.h>
+#include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 static void die(const char *s) { perror(s); exit(1); }
 int main(int argc, char **argv) {
+    if (argc == 3 && !strcmp(argv[1], "mtu")) {
+        struct ifreq request = {0};
+        if (strlen(argv[2]) >= sizeof(request.ifr_name)) return 2;
+        strcpy(request.ifr_name, argv[2]);
+        int fd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (fd < 0 || ioctl(fd, SIOCGIFMTU, &request)) die("SIOCGIFMTU");
+        printf("%d\n", request.ifr_mtu); close(fd); return 0;
+    }
     if ((argc != 3 && argc != 4) || (strcmp(argv[1], "tcp") && strcmp(argv[1], "udp"))) return 2;
     char *end;
     long port = strtol(argv[2], &end, 10);
