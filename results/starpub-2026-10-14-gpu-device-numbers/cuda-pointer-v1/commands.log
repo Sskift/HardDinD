@@ -1,0 +1,16 @@
+$ gcc -O2 -Wall -Wextra -Werror /root/harddind-rebuild/src/cuda_probe.c -ldl -o /root/harddind-rebuild/results/cuda-pointer-v1/cuda-probe
+[build-probe exit=0 timeout=False]
+$ gcc -O2 -Wall -Wextra -Werror -shared -fPIC /root/harddind-rebuild/src/cuda_ioctl_trace.c -o /root/harddind-rebuild/results/cuda-pointer-v1/cuda-ioctl-trace.so
+[build-logger exit=0 timeout=False]
+$ /root/harddind-rebuild/results/cuda-pointer-v1/cuda-probe
+[native-before exit=0 timeout=False]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild cuda-pointer-v1 start --kernel /root/harddind-rebuild/gpu-pointer-kernel-v1 --disk /root/harddind-rebuild/runtime-shares-v1.ext4 --gpu-control-experiment --memfd-ram --memfd-stub
+[start exit=0 timeout=False]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild cuda-pointer-v1 docker import - harddind-cuda:local
+[import exit=0 timeout=False]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild cuda-pointer-v1 docker run --rm --device=/dev/harddind-nvidia-uvm:/dev/nvidia-uvm harddind-cuda:local /bin/true
+[uvm-node exit=127 timeout=False]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild cuda-pointer-v1 docker rm -f cuda-compute
+[cleanup-container exit=0 timeout=False]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild cuda-pointer-v1 stop
+[final-stop exit=0 timeout=False]

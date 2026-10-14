@@ -130,7 +130,16 @@
         "starpub-2026-10-14-gpu-pointer-errors/gpu-root-pointer-v2/report.json",
         "starpub-2026-10-14-gpu-pointer-errors/gpu-root-pointer-docker-v2/report.json",
         "starpub-2026-10-14-gpu-pointer-errors/gpu-pointer-cleanup-audit.json",
-        "starpub-2026-10-14-gpu-pointer-errors/evidence-validation.json"
+        "starpub-2026-10-14-gpu-pointer-errors/evidence-validation.json",
+        "starpub-2026-10-14-gpu-device-numbers/cuda-pointer-v1/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/cuda-pointer-v2/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/cuda-pointer-v3/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/cuda-pointer-v4/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/cuda-device-numbers-v1/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/gpu-device-numbers-fd-v1/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/gpu-device-numbers-docker-v1/report.json",
+        "starpub-2026-10-14-gpu-device-numbers/gpu-device-numbers-cleanup-audit.json",
+        "starpub-2026-10-14-gpu-device-numbers/evidence-validation.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",
@@ -140,7 +149,8 @@
         "GPU performance comparison",
         "RM root-client allocation/free: native 29/29, guest and five nested Docker lifecycle runs 28/29; unsupported allocation class error semantics differ; device objects, UVM/mmap and CUDA remain absent",
         "Four RM root queries passed native/guest/real Docker parity (17 checks per probe), but arbitrary controls, device objects, concurrent remap, schedulable/cancellable waits, mmap/UVM and CUDA remain incomplete",
-        "Root control pointer faults extended to 23-check native/guest/Docker parity; generic ABI, device mappings and actual CUDA remain incomplete"
+        "Root control pointer faults extended to 23-check native/guest/Docker parity; generic ABI, device mappings and actual CUDA remain incomplete",
+        "Real CUDA now opens NVIDIA-compatible guest device numbers and reaches RM_CONTROL 0x101 (build version with nested string pointers), which still returns EOPNOTSUPP; cuInit remains failed and no internal computation has run"
       ]
     }
   }

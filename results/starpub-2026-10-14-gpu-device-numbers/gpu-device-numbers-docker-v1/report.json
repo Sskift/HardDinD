@@ -1,0 +1,1084 @@
+{
+  "kind": "docker_gpu_fd_registration",
+  "full_acceptance": false,
+  "internal_cuda_verified": false,
+  "diagnostic_complete": true,
+  "probe_results": {
+    "device_control": {
+      "exit_code": 0,
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "passed": true,
+      "expected_checks": [
+        "all_gpu_devices_registration",
+        "close_registered_target",
+        "control_self_reference",
+        "control_target_registration",
+        "copyin_fault",
+        "copyin_fault_does_not_register",
+        "copyout_fault",
+        "copyout_fault_keeps_registration",
+        "duplicate_registration",
+        "four_threads_shared_control",
+        "gpu_source_rejected",
+        "high_fd_registration",
+        "high_guest_fd",
+        "independent_process_lifecycle",
+        "invalid_source_fd",
+        "linked_control_as_source_rejected",
+        "non_device_source_fd",
+        "open_control_and_gpu",
+        "pipe_read_from_protnone",
+        "pipe_recovery_preserves_data",
+        "pipe_write_to_readonly",
+        "reopen_lifecycle",
+        "source_close",
+        "target_retains_registration"
+      ]
+    },
+    "container_restart": {
+      "exit_code": 0,
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "passed": true,
+      "expected_checks": [
+        "all_gpu_devices_registration",
+        "close_registered_target",
+        "control_self_reference",
+        "control_target_registration",
+        "copyin_fault",
+        "copyin_fault_does_not_register",
+        "copyout_fault",
+        "copyout_fault_keeps_registration",
+        "duplicate_registration",
+        "four_threads_shared_control",
+        "gpu_source_rejected",
+        "high_fd_registration",
+        "high_guest_fd",
+        "independent_process_lifecycle",
+        "invalid_source_fd",
+        "linked_control_as_source_rejected",
+        "non_device_source_fd",
+        "open_control_and_gpu",
+        "pipe_read_from_protnone",
+        "pipe_recovery_preserves_data",
+        "pipe_write_to_readonly",
+        "reopen_lifecycle",
+        "source_close",
+        "target_retains_registration"
+      ]
+    },
+    "concurrent_client_a": {
+      "exit_code": 0,
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "passed": true,
+      "expected_checks": [
+        "all_gpu_devices_registration",
+        "close_registered_target",
+        "control_self_reference",
+        "control_target_registration",
+        "copyin_fault",
+        "copyin_fault_does_not_register",
+        "copyout_fault",
+        "copyout_fault_keeps_registration",
+        "duplicate_registration",
+        "four_threads_shared_control",
+        "gpu_source_rejected",
+        "high_fd_registration",
+        "high_guest_fd",
+        "independent_process_lifecycle",
+        "invalid_source_fd",
+        "linked_control_as_source_rejected",
+        "non_device_source_fd",
+        "open_control_and_gpu",
+        "pipe_read_from_protnone",
+        "pipe_recovery_preserves_data",
+        "pipe_write_to_readonly",
+        "reopen_lifecycle",
+        "source_close",
+        "target_retains_registration"
+      ]
+    },
+    "concurrent_client_b": {
+      "exit_code": 0,
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "passed": true,
+      "expected_checks": [
+        "all_gpu_devices_registration",
+        "close_registered_target",
+        "control_self_reference",
+        "control_target_registration",
+        "copyin_fault",
+        "copyin_fault_does_not_register",
+        "copyout_fault",
+        "copyout_fault_keeps_registration",
+        "duplicate_registration",
+        "four_threads_shared_control",
+        "gpu_source_rejected",
+        "high_fd_registration",
+        "high_guest_fd",
+        "independent_process_lifecycle",
+        "invalid_source_fd",
+        "linked_control_as_source_rejected",
+        "non_device_source_fd",
+        "open_control_and_gpu",
+        "pipe_read_from_protnone",
+        "pipe_recovery_preserves_data",
+        "pipe_write_to_readonly",
+        "reopen_lifecycle",
+        "source_close",
+        "target_retains_registration"
+      ]
+    },
+    "instance_restart": {
+      "exit_code": 0,
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "passed": true,
+      "expected_checks": [
+        "all_gpu_devices_registration",
+        "close_registered_target",
+        "control_self_reference",
+        "control_target_registration",
+        "copyin_fault",
+        "copyin_fault_does_not_register",
+        "copyout_fault",
+        "copyout_fault_keeps_registration",
+        "duplicate_registration",
+        "four_threads_shared_control",
+        "gpu_source_rejected",
+        "high_fd_registration",
+        "high_guest_fd",
+        "independent_process_lifecycle",
+        "invalid_source_fd",
+        "linked_control_as_source_rejected",
+        "non_device_source_fd",
+        "open_control_and_gpu",
+        "pipe_read_from_protnone",
+        "pipe_recovery_preserves_data",
+        "pipe_write_to_readonly",
+        "reopen_lifecycle",
+        "source_close",
+        "target_retains_registration"
+      ]
+    }
+  },
+  "started_at": "2026-10-14T15:07:56.954593+00:00",
+  "sha256": {
+    "/root/harddind-rebuild/gpu-device-numbers-kernel-v1": "2db3aff73e9809f46684e8a928d6ffb892e86d393aac3292d2f7525c79cac3df",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/results/gpu-device-numbers-fd-v1/gpu-guest-probe": "5f62ebcae58a902bf783564c9462924834b0a24dbdccff8e3583240f9b475931",
+    "/root/harddind-rebuild/scripts/harddind.py": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+    "/root/harddind-rebuild/scripts/run-gpu-control-docker.py": "c6069d25844f345489793b7d97b4e83dd62986b1e57b5bf5522cd2aa98ba6eca",
+    "/root/harddind-rebuild/scripts/gpu_probe_checks.py": "5d2faaabf34ca615474db826e2c863e380d18ec370ebc227ea9c0ca77f096d9b",
+    "/root/harddind-rebuild/scripts/result_checks.py": "97b14437839b98ff361b31dc3b9d97268c887fb764e7589de756b8f028b0c046"
+  },
+  "checks": {
+    "no_device": "pass",
+    "device_control": "pass",
+    "nonroot_denied": "pass",
+    "device_readonly_denied": "pass",
+    "container_restart": "pass",
+    "configuration_mismatch_rejected": "pass",
+    "concurrent_client_a": "pass",
+    "concurrent_client_b": "pass",
+    "instance_restart": "pass",
+    "inputs_unchanged": "pass",
+    "normal_shutdown": "pass",
+    "memory_backing": "pass"
+  },
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "ready_state": {
+    "phase": "ready",
+    "run": "89733e7beb96",
+    "supervisor_pid": 790160,
+    "supervisor_start": "1387258495",
+    "config": {
+      "kernel": "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "10.0.2.3",
+      "network_batch": 1,
+      "mtu": 1500,
+      "kernel_sha256": "2db3aff73e9809f46684e8a928d6ffb892e86d393aac3292d2f7525c79cac3df",
+      "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+      "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+      "publish_ports": false,
+      "gpu_control_experiment": true,
+      "memfd_ram": true,
+      "memfd_stub": true,
+      "shares": []
+    },
+    "runtime_sha256": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+    "filesystems": [],
+    "guest_pid": 802025,
+    "network_pid": 801980,
+    "api_port": 52825,
+    "mconsole": "/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/89733e7beb96/mconsole",
+    "command": [
+      "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "umid=89733e7beb96",
+      "uml_dir=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=10.0.2.3",
+      "harddind_mtu=1500",
+      "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+      "gpu_bridge=1",
+      "memfd_ram=1",
+      "memfd_stub=1"
+    ],
+    "memory_backing": {
+      "verified": true,
+      "ram_requested": true,
+      "stub_requested": true,
+      "ram_allocations": [
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        },
+        {
+          "backend": "memfd",
+          "bytes": 5151993856
+        },
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        }
+      ],
+      "stub_backend": "memfd"
+    },
+    "ready_at": 1791990522.0674295
+  },
+  "memory_backing": {
+    "verified": true,
+    "ram_requested": true,
+    "stub_requested": true,
+    "ram_allocations": [
+      {
+        "backend": "memfd",
+        "bytes": 4096
+      },
+      {
+        "backend": "memfd",
+        "bytes": 5151993856
+      },
+      {
+        "backend": "memfd",
+        "bytes": 4096
+      }
+    ],
+    "stub_backend": "memfd"
+  },
+  "image_id": "sha256:e00fa9477abdade88632c261391b6fc7f8716f8ae6a648a7fa6169c196194fe0",
+  "restart_shutdown": {
+    "phase": "stopped",
+    "run": "89733e7beb96",
+    "supervisor_pid": 790160,
+    "supervisor_start": "1387258495",
+    "config": {
+      "kernel": "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "10.0.2.3",
+      "network_batch": 1,
+      "mtu": 1500,
+      "kernel_sha256": "2db3aff73e9809f46684e8a928d6ffb892e86d393aac3292d2f7525c79cac3df",
+      "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+      "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+      "publish_ports": false,
+      "gpu_control_experiment": true,
+      "memfd_ram": true,
+      "memfd_stub": true,
+      "shares": []
+    },
+    "runtime_sha256": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+    "filesystems": [],
+    "guest_pid": 802025,
+    "network_pid": 801980,
+    "api_port": 52825,
+    "mconsole": "/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/89733e7beb96/mconsole",
+    "command": [
+      "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "umid=89733e7beb96",
+      "uml_dir=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=10.0.2.3",
+      "harddind_mtu=1500",
+      "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+      "gpu_bridge=1",
+      "memfd_ram=1",
+      "memfd_stub=1"
+    ],
+    "memory_backing": {
+      "verified": true,
+      "ram_requested": true,
+      "stub_requested": true,
+      "ram_allocations": [
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        },
+        {
+          "backend": "memfd",
+          "bytes": 5151993856
+        },
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        }
+      ],
+      "stub_backend": "memfd"
+    },
+    "ready_at": 1791990522.0674295,
+    "guest_exit_code": 0,
+    "guest_cleanup": {
+      "process_group": 802025,
+      "forced_cleanup": false,
+      "initial_live_pids": [
+        816292
+      ],
+      "initial_zombie_pids": [],
+      "initial_processes": [
+        {
+          "pid": 816292,
+          "state": "R",
+          "ppid": 1,
+          "process_group": 802025,
+          "start_time_ticks": "1387264387",
+          "comm": "uml-userspace",
+          "wchan": "0",
+          "exe_errno": 2
+        }
+      ],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "forced_shutdown": false,
+    "network_exit_code": 0,
+    "network_cleanup": {
+      "process_group": 801980,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "filesystem_cleanup": [],
+    "stopped_at": 1791990559.6825156
+  },
+  "restarted_state": {
+    "phase": "ready",
+    "run": "62734c78bbaf",
+    "supervisor_pid": 818124,
+    "supervisor_start": "1387264936",
+    "config": {
+      "kernel": "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "10.0.2.3",
+      "network_batch": 1,
+      "mtu": 1500,
+      "kernel_sha256": "2db3aff73e9809f46684e8a928d6ffb892e86d393aac3292d2f7525c79cac3df",
+      "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+      "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+      "publish_ports": false,
+      "gpu_control_experiment": true,
+      "memfd_ram": true,
+      "memfd_stub": true,
+      "shares": []
+    },
+    "runtime_sha256": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+    "filesystems": [],
+    "guest_pid": 823457,
+    "network_pid": 823454,
+    "api_port": 43541,
+    "mconsole": "/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/62734c78bbaf/mconsole",
+    "command": [
+      "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "umid=62734c78bbaf",
+      "uml_dir=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=10.0.2.3",
+      "harddind_mtu=1500",
+      "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+      "gpu_bridge=1",
+      "memfd_ram=1",
+      "memfd_stub=1"
+    ],
+    "memory_backing": {
+      "verified": true,
+      "ram_requested": true,
+      "stub_requested": true,
+      "ram_allocations": [
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        },
+        {
+          "backend": "memfd",
+          "bytes": 4812668928
+        },
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        }
+      ],
+      "stub_backend": "memfd"
+    },
+    "ready_at": 1791990593.1667242
+  },
+  "final_state": {
+    "phase": "stopped",
+    "run": "62734c78bbaf",
+    "supervisor_pid": 818124,
+    "supervisor_start": "1387264936",
+    "config": {
+      "kernel": "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "10.0.2.3",
+      "network_batch": 1,
+      "mtu": 1500,
+      "kernel_sha256": "2db3aff73e9809f46684e8a928d6ffb892e86d393aac3292d2f7525c79cac3df",
+      "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+      "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+      "publish_ports": false,
+      "gpu_control_experiment": true,
+      "memfd_ram": true,
+      "memfd_stub": true,
+      "shares": []
+    },
+    "runtime_sha256": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+    "filesystems": [],
+    "guest_pid": 823457,
+    "network_pid": 823454,
+    "api_port": 43541,
+    "mconsole": "/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/62734c78bbaf/mconsole",
+    "command": [
+      "/root/harddind-rebuild/gpu-device-numbers-kernel-v1",
+      "umid=62734c78bbaf",
+      "uml_dir=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/gpu-device-numbers-docker-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=10.0.2.3",
+      "harddind_mtu=1500",
+      "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+      "gpu_bridge=1",
+      "memfd_ram=1",
+      "memfd_stub=1"
+    ],
+    "memory_backing": {
+      "verified": true,
+      "ram_requested": true,
+      "stub_requested": true,
+      "ram_allocations": [
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        },
+        {
+          "backend": "memfd",
+          "bytes": 4812668928
+        },
+        {
+          "backend": "memfd",
+          "bytes": 4096
+        }
+      ],
+      "stub_backend": "memfd"
+    },
+    "ready_at": 1791990593.1667242,
+    "guest_exit_code": 0,
+    "guest_cleanup": {
+      "process_group": 823457,
+      "forced_cleanup": false,
+      "initial_live_pids": [
+        825848
+      ],
+      "initial_zombie_pids": [],
+      "initial_processes": [
+        {
+          "pid": 825848,
+          "state": "R",
+          "ppid": 1,
+          "process_group": 823457,
+          "start_time_ticks": "1387267720",
+          "comm": "uml-userspace",
+          "wchan": "0",
+          "exe_errno": 2
+        }
+      ],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "forced_shutdown": false,
+    "network_exit_code": 0,
+    "network_cleanup": {
+      "process_group": 823454,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "filesystem_cleanup": [],
+    "stopped_at": 1791990621.8588452
+  }
+}
