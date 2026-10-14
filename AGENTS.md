@@ -11,4 +11,5 @@
 - 每个第三方源码版本固定，改动保留为可复现补丁。禁止依赖未固定的 latest/master。
 - 不影响 Starpub 已安装的 `/root/udock`。实验使用 `/root/harddind-rebuild`，独立磁盘、端口和实例名。
 - 按用户明确要求，直接在 `main` 开发并及时 commit/push；不要积攒到整个目标完成才推送，不强推或覆盖远端改动。
+- 用户授权使用多个 arkclaude 并行开发；代理在 Starpub 的 `/root/harddind-rebuild` 独立目录运行，减少本机内存占用。主代理负责集成与 main 推送，统一安排运行实验，性能测量不得与其他实验并行争抢资源。
 - 旧实现可在 Git 标签 `archive/uml-6.6.158-20261014` 找到。不要再把它当成已达标的后端。

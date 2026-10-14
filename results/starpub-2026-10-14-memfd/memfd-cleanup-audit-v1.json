@@ -1,0 +1,217 @@
+{
+  "checked_at": "2026-10-14T13:07:20.488001+00:00",
+  "groups": {
+    "1749750": {
+      "live": [],
+      "zombies": []
+    },
+    "1780444": {
+      "live": [],
+      "zombies": []
+    },
+    "1785728": {
+      "live": [],
+      "zombies": []
+    },
+    "1793890": {
+      "live": [],
+      "zombies": []
+    },
+    "1801870": {
+      "live": [],
+      "zombies": []
+    },
+    "1810850": {
+      "live": [],
+      "zombies": []
+    },
+    "1814363": {
+      "live": [],
+      "zombies": []
+    },
+    "1821057": {
+      "live": [],
+      "zombies": []
+    },
+    "1831099": {
+      "live": [],
+      "zombies": []
+    },
+    "1917182": {
+      "live": [],
+      "zombies": []
+    },
+    "1928737": {
+      "live": [],
+      "zombies": []
+    },
+    "1946886": {
+      "live": [],
+      "zombies": []
+    },
+    "1963830": {
+      "live": [],
+      "zombies": []
+    },
+    "2033473": {
+      "live": [],
+      "zombies": []
+    },
+    "2034250": {
+      "live": [],
+      "zombies": []
+    },
+    "2037282": {
+      "live": [],
+      "zombies": []
+    },
+    "2040717": {
+      "live": [],
+      "zombies": []
+    },
+    "2055247": {
+      "live": [],
+      "zombies": []
+    },
+    "2055267": {
+      "live": [],
+      "zombies": []
+    },
+    "2085124": {
+      "live": [],
+      "zombies": []
+    },
+    "2085191": {
+      "live": [],
+      "zombies": []
+    },
+    "2166375": {
+      "live": [],
+      "zombies": []
+    },
+    "2384065": {
+      "live": [],
+      "zombies": []
+    },
+    "2386876": {
+      "live": [],
+      "zombies": []
+    },
+    "2398573": {
+      "live": [],
+      "zombies": []
+    },
+    "2408121": {
+      "live": [],
+      "zombies": []
+    }
+  },
+  "recorded_gpu_worker_pids": [
+    2037882,
+    2037991,
+    2038033,
+    2038110,
+    2038169,
+    2402771,
+    2403976,
+    2404154,
+    2404512,
+    2404903
+  ],
+  "other_recorded_pids": [
+    2046036,
+    2055247,
+    2055267,
+    2072371,
+    2085124,
+    2085191
+  ],
+  "remaining_recorded_pids": [],
+  "no_residual_processes": true,
+  "kernel_source_matches_manifest": {
+    "arch/um/include/asm/mmu.h": true,
+    "arch/um/include/asm/pgtable.h": true,
+    "arch/um/include/asm/tlbflush.h": true,
+    "arch/um/include/shared/as-layout.h": true,
+    "arch/um/include/shared/ipi-defer.h": true,
+    "arch/um/include/shared/os.h": true,
+    "arch/um/include/shared/skas/mm_id.h": true,
+    "arch/um/include/shared/skas/skas.h": true,
+    "arch/um/include/shared/skas/stub-data.h": true,
+    "arch/um/include/shared/skas/stub-futex.h": true,
+    "arch/um/kernel/Makefile": true,
+    "arch/um/kernel/gpu.c": true,
+    "arch/um/kernel/reboot.c": true,
+    "arch/um/kernel/skas/Makefile": true,
+    "arch/um/kernel/skas/mmu.c": true,
+    "arch/um/kernel/skas/process.c": true,
+    "arch/um/kernel/skas/stub.c": true,
+    "arch/um/kernel/skas/stub_exe.c": true,
+    "arch/um/kernel/skas/uaccess.c": true,
+    "arch/um/kernel/smp.c": true,
+    "arch/um/kernel/time.c": true,
+    "arch/um/kernel/tlb.c": true,
+    "arch/um/os-Linux/mem.c": true,
+    "arch/um/os-Linux/process.c": true,
+    "arch/um/os-Linux/skas/mem.c": true,
+    "arch/um/os-Linux/skas/process.c": true,
+    "arch/um/os-Linux/smp.c": true,
+    "arch/um/os-Linux/start_up.c": true,
+    "arch/um/os-Linux/time.c": true,
+    "fs/fuse/dev.c": true,
+    "fs/fuse/dev.h": true,
+    "fs/fuse/fuse_dev_i.h": true,
+    "fs/fuse/virtio_fs.c": true
+  },
+  "kernel_patch_hashes": {
+    "0001-um-bounded-seccomp-polling.patch": "b06fb9363b303f71a3d7d34d71c3c6b58143f555cd01ade51690ba6439b728cd",
+    "0011-fuse-virtio-interrupts.patch": "fa49b9905f4a188a48c0c8507c7a96ca4f5724f1e488732a2f0b243c236df7b8",
+    "0014-um-check-usercopy-read-permission.patch": "f7a0f04e782b0a7db12912f358bc1e6ab111e649a3069ffeda40eb11c79ffa9a",
+    "0015-um-opt-in-memfd-backing.patch": "a47998019908f3121e3eba2bc55c836a1607f07961efa85bc7b2f4cb440b3c05",
+    "0003-um-shared-vm-runners.patch": "1c73e686efb62f5aeef55a2026c6731e0019ee4564a1639ab9332537be703aeb",
+    "0004-um-parallel-waiter-handoff.patch": "244a3769e655dd7d4e104aecb393122b8a9f5ba80efbabba76fd11b51fada1bb",
+    "0005-um-cache-clean-mapping-brokers.patch": "1426e52745a1a2258428a627c73adebc2d5eebd3aa53050ff940efbfa0398eb2",
+    "0006-um-skip-idle-mapping-sync.patch": "e87cd17ebe104fa72f73631976568b203bf30a6e6ad63b840a9890c380760559",
+    "0007-um-retain-broker-memory-fd.patch": "7957e719582f65ddcaa8228f4aa38554e4bf339f50a1346672bdaafbc84c5fc5",
+    "0008-um-defer-ipi-masking.patch": "fd1ba25a9394cbd669e64574d4cf3e9ccca0b83d2ea835b9bc70b518b85a9571",
+    "0009-um-synchronize-deferred-ipi-idle.patch": "9ae385de377830d65a607ad2c1269c17937c2659feae68e3f8a5d99db2d80363",
+    "0012-um-gpu-control-transport.patch": "d8bfd9c38f05b56547cb8c5900fc96090fc16c7fcb6ec34aba58311a8e7a6af5",
+    "0013-um-gpu-register-fd.patch": "9231d3588150a5fbd69b5a6ad3b07919a6a5db4fb03e0ed50b9bd33cd8372c19"
+  },
+  "udock_readonly_health": {
+    "exit_code": 0,
+    "output": "server=29.8.2 running=0 images=6"
+  },
+  "reports": [
+    "memfd-gpu-fd-v1/report.json",
+    "memfd-gpu-docker-v1/report.json",
+    "memfd-gpu-control-v1/report.json",
+    "memfd-smoke-v1.json",
+    "memfd-docker-suite-v1.json",
+    "memfd-factor-v1-0-native.json",
+    "memfd-factor-v1-1-file.json",
+    "memfd-factor-v1-2-ram.json",
+    "memfd-factor-v1-3-stub.json",
+    "memfd-factor-v1-4-both.json",
+    "memfd-factor-v1-5-both.json",
+    "memfd-factor-v1-6-stub.json",
+    "memfd-factor-v1-7-ram.json",
+    "memfd-factor-v1-8-file.json",
+    "memfd-factor-v1-9-native.json",
+    "memfd-bracket-v1-0-native.json",
+    "memfd-bracket-v1-1-file.json",
+    "memfd-bracket-v1-2-native.json",
+    "memfd-bracket-v1-3-both.json",
+    "memfd-bracket-v1-4-native.json",
+    "memfd-bracket-v1-5-both.json",
+    "memfd-bracket-v1-6-native.json",
+    "memfd-bracket-v1-7-file.json",
+    "memfd-bracket-v1-8-native.json",
+    "memfd-gpu-docker-v1/instance/state.json"
+  ],
+  "immutable_inputs": {
+    "kernel": true,
+    "docker_disk": true,
+    "docker_base_disk": true
+  }
+}
