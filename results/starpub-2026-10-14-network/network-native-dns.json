@@ -1,0 +1,103 @@
+{
+  "servers": [
+    "127.0.0.11"
+  ],
+  "queries": [
+    {
+      "server": "127.0.0.11",
+      "name": "public.ecr.aws",
+      "type": 1,
+      "seconds": 0.0009729117155075073,
+      "rcode": 0,
+      "answers": 3
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "public.ecr.aws",
+      "type": 28,
+      "seconds": 4.0016326773911715,
+      "rcode": 2,
+      "answers": 0
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "dl-cdn.alpinelinux.org",
+      "type": 1,
+      "seconds": 0.0009267590939998627,
+      "rcode": 0,
+      "answers": 2
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "dl-cdn.alpinelinux.org",
+      "type": 28,
+      "seconds": 0.0009160023182630539,
+      "rcode": 0,
+      "answers": 2
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "public.ecr.aws",
+      "type": 1,
+      "seconds": 0.0006788000464439392,
+      "rcode": 0,
+      "answers": 3
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "public.ecr.aws",
+      "type": 28,
+      "seconds": 4.000904127955437,
+      "rcode": 2,
+      "answers": 0
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "dl-cdn.alpinelinux.org",
+      "type": 1,
+      "seconds": 0.0007261279970407486,
+      "rcode": 0,
+      "answers": 2
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "dl-cdn.alpinelinux.org",
+      "type": 28,
+      "seconds": 0.000719897449016571,
+      "rcode": 0,
+      "answers": 2
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "public.ecr.aws",
+      "type": 1,
+      "seconds": 0.0007032658904790878,
+      "rcode": 0,
+      "answers": 3
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "public.ecr.aws",
+      "type": 28,
+      "seconds": 4.001419994980097,
+      "rcode": 2,
+      "answers": 0
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "dl-cdn.alpinelinux.org",
+      "type": 1,
+      "seconds": 0.0005370937287807465,
+      "rcode": 0,
+      "answers": 2
+    },
+    {
+      "server": "127.0.0.11",
+      "name": "dl-cdn.alpinelinux.org",
+      "type": 28,
+      "seconds": 0.0005166288465261459,
+      "rcode": 0,
+      "answers": 2
+    }
+  ]
+}

@@ -2,6 +2,10 @@
 set -eu
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin
 mount -t proc proc /proc
+dns=10.0.2.3
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in harddind_dns=*) dns=${arg#harddind_dns=} ;; esac
+done
 mount -t sysfs sysfs /sys
 mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev
 mkdir -p /dev/pts /dev/shm /run /sys/fs/cgroup
@@ -16,5 +20,5 @@ ip link set lo up
 ip link set vec0 up
 ip addr add 10.0.2.15/24 dev vec0
 ip route add default via 10.0.2.2
-echo 'nameserver 10.0.2.3' > /etc/resolv.conf
+echo "nameserver $dns" > /etc/resolv.conf
 exec /sbin/tini -g -- /sbin/harddind-daemon

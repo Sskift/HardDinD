@@ -3,8 +3,10 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(realpath "${1:?work directory required}")
 base=$(realpath "${2:-$work/protect-docker-root}")
-root=$work/runtime-root
-disk=$work/runtime.ext4
+name=${3:-runtime}
+[[ "$name" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || { echo 'invalid fixture name' >&2; exit 1; }
+root=$work/$name-root
+disk=$work/$name.ext4
 exec 9>"$work/kernel-build.lock"
 flock -x 9
 [ ! -e "$root" ] && [ ! -e "$disk" ] || { echo 'runtime fixture already exists' >&2; exit 1; }

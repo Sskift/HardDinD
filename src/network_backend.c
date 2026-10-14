@@ -30,6 +30,7 @@ static int link_fd, ctl_fd, nfds;
 static struct pollfd pfds[MAX_FDS];
 static volatile sig_atomic_t stopping;
 static uint64_t rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets;
+static bool trace_dns;
 static struct in_addr guest_addr;
 struct timer { bool used; int64_t expires; SlirpTimerCb cb; void *opaque; };
 static struct timer timers[64];
@@ -48,8 +49,19 @@ static int64_t clock_ns(void *opaque) {
     if (clock_gettime(CLOCK_MONOTONIC, &ts)) die("clock_gettime");
     return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
+static void dns_trace(const void *buf, size_t len, const char *direction) {
+    if (!trace_dns || len < 42) return;
+    const unsigned char *p = buf;
+    if (p[12] != 8 || p[13] || (p[14] >> 4) != 4 || p[23] != 17) return;
+    size_t udp = 14 + (p[14] & 15) * 4;
+    if (udp + 8 > len || !((p[udp] == 0 && p[udp+1] == 53) || (p[udp+2] == 0 && p[udp+3] == 53))) return;
+    printf("HARDDIND_DNS %" PRId64 " %s ", clock_ns(NULL), direction);
+    for (size_t i = 0; i < len; i++) printf("%02x", p[i]);
+    putchar('\n'); fflush(stdout);
+}
 static ssize_t send_frame(const void *buf, size_t len, void *opaque) {
     (void)opaque;
+    dns_trace(buf, len, "to_guest");
     if (!head) {
         ssize_t n = send(link_fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL);
         if (n == (ssize_t)len) { tx_packets++; tx_bytes += len; return n; }
@@ -196,6 +208,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "usage: network-backend LINK_FD CONTROL_SOCKET\n"); return 2;
     }
     if (strcmp(slirp_version_string(), "4.6.1")) { fprintf(stderr, "expected libslirp 4.6.1\n"); return 1; }
+    trace_dns = getenv("HARDDIND_NET_TRACE_DNS") != NULL;
     signal(SIGTERM, stop); signal(SIGINT, stop); signal(SIGPIPE, SIG_IGN);
     pid_t parent = getppid();
     if (prctl(PR_SET_PDEATHSIG, SIGTERM) || getppid() != parent) return 1;
@@ -234,6 +247,7 @@ int main(int argc, char **argv) {
                 if (len < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
                 if (len > MAX_FRAME || len < 14) { dropped_packets++; continue; }
                 rx_packets++; rx_bytes += len;
+                dns_trace(frame, (size_t)len, "from_guest");
                 slirp_input(slirp, frame, (int)len);
             }
         }

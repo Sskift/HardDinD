@@ -1,0 +1,173 @@
+{
+  "kind": "runtime_network_subset",
+  "checks": {
+    "daemon_api": "pass",
+    "cold_image_pull": "pass",
+    "container_https": "fail",
+    "network_build": "not_tested",
+    "exec_stdin_tty": "not_tested",
+    "explicit_tcp_publish": "not_tested",
+    "explicit_udp_publish": "not_tested",
+    "forward_removal": "not_tested",
+    "tcp_echo_comparison": "not_tested",
+    "persistent_restart": "not_tested",
+    "clean_shutdown": "pass"
+  },
+  "full_acceptance": false,
+  "image": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "timings": {
+    "cold_pull_seconds": 13.89266742579639
+  },
+  "sha256": {
+    "network-probe": "a47e9b05121419e5707669707fa96e78202663ff6690cc6ef409d1f0d74e0abc",
+    "network-backend": "c95286457f50eb0dd37b934fa7c9bfbf2cc50fb04edc7c7372a8ce484ddffdf9"
+  },
+  "input_kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+  "sources": {
+    "scripts/run-runtime.py": "f1b2227c6298691fc5c8f17eda8f59d31c87279c76b194b9f1fe5ae5bbcd87f3",
+    "scripts/harddind.py": "894b1a359a55f9a91cdd6bd0a47362e11785392b7f88a9a1663dafc180c76ccd",
+    "src/network_backend.c": "74c25ad397882667f525f6938f91bea7117f64c01ce30f7a175d8da46042ae81",
+    "src/network_probe.c": "da48af55202c5122d868ffc29a610c4676755041ad4be6e0b31e03fc5fd2a013",
+    "sources.lock.json": "e8cbd60bbcf8418a193e31103b75f33486ba4b96d849a068758821c50c6b81a7"
+  },
+  "host_before": {
+    "cpu_stat": "usage_usec 14349237094352\nuser_usec 13899229346840\nsystem_usec 450007747512\nnr_periods 20435451\nnr_throttled 155490\nthrottled_usec 164598410484\n",
+    "cpu_pressure": "some avg10=0.19 avg60=1.56 avg300=3.38 total=14291878582\nfull avg10=0.00 avg60=0.78 avg300=1.78 total=4084007093\n",
+    "loadavg": "68.80 62.08 61.51 38/53346 3415817\n"
+  },
+  "server": {
+    "Platform": {
+      "Name": ""
+    },
+    "Version": "29.8.2",
+    "ApiVersion": "1.56",
+    "MinAPIVersion": "1.40",
+    "Os": "linux",
+    "Arch": "amd64",
+    "Components": [
+      {
+        "Name": "Engine",
+        "Version": "29.8.2",
+        "Details": {
+          "ApiVersion": "1.56",
+          "Arch": "amd64",
+          "BuildTime": "Thu Oct  1 00:47:56 2026",
+          "Experimental": "false",
+          "GitCommit": "8af9fe3a36bab3e039862a2ab1cef1880c9b4d03",
+          "GoVersion": "go1.26.8",
+          "KernelVersion": "7.2.10",
+          "MinAPIVersion": "1.40",
+          "Module": "github.com/moby/moby/v2",
+          "ModuleVersion": "v2.0.0+unknown",
+          "Os": "linux"
+        }
+      },
+      {
+        "Name": "containerd",
+        "Version": "v2.3.6",
+        "Details": {
+          "GitCommit": "ee2735368117d2eb259779949d5e75cdafec9761"
+        }
+      },
+      {
+        "Name": "runc",
+        "Version": "1.4.3",
+        "Details": {
+          "GitCommit": "bb14dabeb7185bb72c8c86735d090dcb20f36587"
+        }
+      },
+      {
+        "Name": "docker-init",
+        "Version": "0.19.0",
+        "Details": {
+          "GitCommit": ""
+        }
+      }
+    ],
+    "GitCommit": "8af9fe3a36bab3e039862a2ab1cef1880c9b4d03",
+    "GoVersion": "go1.26.8",
+    "KernelVersion": "7.2.10",
+    "BuildTime": "2026-10-01T00:47:56.000000000+00:00"
+  },
+  "error": "RuntimeError: command exited 1: /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild network-v1 docker run --rm public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395 sh -ec 'wget -q -T 30 -O /tmp/alpine.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-minirootfs-3.24.2-x86_64.tar.gz && echo '\"'\"'c5ca053cfe1d85c5b96dff8b9bc57045f7f184a30ffb6b65776409ca90388677  /tmp/alpine.tar.gz'\"'\"' | sha256sum -c -'",
+  "final_run": {
+    "phase": "stopped",
+    "run": "95058adcaa4c",
+    "supervisor_pid": 3415819,
+    "supervisor_start": "1384106240",
+    "config": {
+      "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+      "disk": "/root/harddind-rebuild/runtime.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+      "disk_sha256": "2240aec238295519be37e2796aa969c28b03a55933c3a799f2700829239098ad",
+      "network_sha256": "c95286457f50eb0dd37b934fa7c9bfbf2cc50fb04edc7c7372a8ce484ddffdf9"
+    },
+    "runtime_sha256": "894b1a359a55f9a91cdd6bd0a47362e11785392b7f88a9a1663dafc180c76ccd",
+    "guest_pid": 3416809,
+    "network_pid": 3416805,
+    "api_port": 49497,
+    "mconsole": "/root/harddind-rebuild/instances/network-v1/uml/95058adcaa4c/mconsole",
+    "command": [
+      "/root/harddind-rebuild/ipi-kernel-idle",
+      "umid=95058adcaa4c",
+      "uml_dir=/root/harddind-rebuild/instances/network-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/network-v1/root.cow,/root/harddind-rebuild/runtime.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+    ],
+    "ready_at": 1791958996.2995615,
+    "guest_exit_code": 0,
+    "guest_cleanup": {
+      "process_group": 3416809,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "forced_shutdown": false,
+    "network_exit_code": 0,
+    "network_cleanup": {
+      "process_group": 3416805,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "stopped_at": 1791959022.9681716
+  },
+  "host_after": {
+    "cpu_stat": "usage_usec 14350388132838\nuser_usec 13900305996322\nsystem_usec 450082136516\nnr_periods 20435952\nnr_throttled 155497\nthrottled_usec 164600897460\n",
+    "cpu_pressure": "some avg10=0.70 avg60=0.93 avg300=2.90 total=14292327038\nfull avg10=0.14 avg60=0.36 avg300=1.50 total=4084172162\n",
+    "loadavg": "67.92 62.90 61.82 31/53390 3420120\n"
+  },
+  "subset_passed": false
+}

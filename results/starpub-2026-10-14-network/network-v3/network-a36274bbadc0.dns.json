@@ -1,0 +1,445 @@
+{
+  "kind": "dns_link_packet_diagnostic",
+  "packets": [
+    {
+      "time_ns": 13841864836268081,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 37687,
+      "destination_port": 53,
+      "id": 60648,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841864836407854,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 59700,
+      "destination_port": 53,
+      "id": 25769,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841864843888733,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 37687,
+      "id": 60648,
+      "response": true,
+      "rcode": 0,
+      "answers": 3,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841864843972722,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 59700,
+      "id": 25769,
+      "response": true,
+      "rcode": 0,
+      "answers": 1,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841867528408774,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 36477,
+      "destination_port": 53,
+      "id": 55929,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "d2glxqk2uabbnd.cloudfront.net",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841867528747012,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 36235,
+      "destination_port": 53,
+      "id": 15942,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "d2glxqk2uabbnd.cloudfront.net",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841867632990509,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 36477,
+      "id": 55929,
+      "response": true,
+      "rcode": 0,
+      "answers": 8,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "d2glxqk2uabbnd.cloudfront.net",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841867669835517,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 36235,
+      "id": 15942,
+      "response": true,
+      "rcode": 0,
+      "answers": 4,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "d2glxqk2uabbnd.cloudfront.net",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841877809773079,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 46469,
+      "destination_port": 53,
+      "id": 53411,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841877809894343,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 46469,
+      "destination_port": 53,
+      "id": 57507,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841877815297104,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 46469,
+      "id": 53411,
+      "response": true,
+      "rcode": 0,
+      "answers": 2,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841877815353608,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 46469,
+      "id": 57507,
+      "response": true,
+      "rcode": 0,
+      "answers": 2,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841895218485331,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 40710,
+      "destination_port": 53,
+      "id": 30710,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841895224364121,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 40710,
+      "id": 30710,
+      "response": true,
+      "rcode": 0,
+      "answers": 3,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841895225270616,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 36814,
+      "destination_port": 53,
+      "id": 37522,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841895228712610,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 36814,
+      "id": 37522,
+      "response": true,
+      "rcode": 0,
+      "answers": 1,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "public.ecr.aws",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841907270899870,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 53483,
+      "destination_port": 53,
+      "id": 29982,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841907276911499,
+      "direction": "from_guest",
+      "source": "10.0.2.15",
+      "destination": "1.1.1.1",
+      "source_port": 53483,
+      "destination_port": 53,
+      "id": 34846,
+      "response": false,
+      "rcode": 0,
+      "answers": 0,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841907282251881,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 53483,
+      "id": 29982,
+      "response": true,
+      "rcode": 0,
+      "answers": 2,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 1,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    },
+    {
+      "time_ns": 13841907282325600,
+      "direction": "to_guest",
+      "source": "1.1.1.1",
+      "destination": "10.0.2.15",
+      "source_port": 53,
+      "destination_port": 53483,
+      "id": 34846,
+      "response": true,
+      "rcode": 0,
+      "answers": 2,
+      "truncated": false,
+      "queries": [
+        {
+          "name": "dl-cdn.alpinelinux.org",
+          "type": 28,
+          "class": 1
+        }
+      ],
+      "ip_checksum_valid": true,
+      "udp_checksum_valid": true
+    }
+  ]
+}

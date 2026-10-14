@@ -26,7 +26,7 @@
 1. 系统调用和 fork/exec 的速度还未达到原生。
 2. 默认路径仍串行执行同一地址空间的线程。并行实验已通过线程正确性和 Docker 内的初步回归，但尚缺长期压力、异常退出与内部隔离验证。旧路径还复现了并发 fork/COW 缺陷；扩大测试后，上一版并行内核也曾在并发 fork/exec 中丢失宿主进程并崩溃。
 3. GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。Star­pub 外层的 4 张 A100 已完成真实计算；不能据此声称内部支持 GPU。
-4. 对外网络、外层目录共享语义和长期运行管理尚未重建；当前 Docker 测试只在隔离的实验 guest 内执行。
+4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证；自动同步 `docker -p`、IPv6 流量、外层目录共享语义、异常恢复与长期运行管理尚未完成。网络请求／响应性能仍明显低于原生。
 5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
 
 具体机器证据位于 [results/starpub-2026-10-14](results/starpub-2026-10-14/)，总状态为 [results/acceptance.json](results/acceptance.json)。性能数据是微基准，不代表完整 Docker 或 GPU 性能。
@@ -45,18 +45,20 @@
 
 包含空闲修正的内核完成了八组串行交错对照：同一内核开关比较中，映射从 0.440 秒降到 0.221 秒，100 次 fork/exec 从 0.428 秒降到 0.188 秒，10 万次 getpid 基本不变。四线程系统调用本轮慢约 15%，仍需定位；映射、fork/exec、普通系统调用相对原生仍分别约 11.34、6.09、8.64 倍，不能认为整体性能已接近原生。
 
-Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交与导出、事件流、网络连接切换、清理和单机 Swarm。Swarm 同时验证服务 VIP 的实际 HTTP 请求；所需 IPVS 与连接跟踪接口已加入内核配置。命令测试依然不等于完整产品验收，出站网络、外层端口与目录集成、GPU 和持续运行管理仍须继续完成。
+Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交与导出、事件流、网络连接切换、清理和单机 Swarm。Swarm 同时验证服务 VIP 的实际 HTTP 请求；所需 IPVS 与连接跟踪接口已加入内核配置。命令测试依然不等于完整产品验收，网络与目录集成、GPU 和持续运行管理仍须继续完成。
 
 新的 [内存权限同步实验](results/starpub-2026-10-14-protect/) 区分已存在映射的权限变化与物理页替换，前者用宿主 `mprotect`，后者保留 `mmap`。构建使用 `make kernel-protect-experiment`，运行器使用 `--mprotect-sync`，默认关闭。真实读写保护、丢弃页、固定地址替换、COW、fork 与文件截断回归通过；Docker 测试为 53 pass、1 GPU fail、2 not_tested。专项权限切换中位耗时下降约 24%，但第一次综合对照有严重慢样本，追加对照中的四线程系统调用仍有回退；完整性能没有达标，全部结果与失败版本均保留。
 
 ## 开发与复现
+
+[网络与持久运行实测](results/starpub-2026-10-14-network/) 的 11 项检查全部通过：固定摘要镜像冷拉取、容器 HTTPS、真实联网 BuildKit 构建、外层原版 CLI 的 stdin/TTY、显式 TCP/UDP 转发及删除、镜像与容器及命名卷跨重启保留。前两轮 DNS 失败也完整保留；外层默认解析器的 AAAA 查询实测约 4 秒后返回 SERVFAIL，本轮通过 `--dns 1.1.1.1` 明确选择经探测可用的解析器，没有修改外层 DNS 或过滤 AAAA。相同静态程序的 64 KiB 请求／响应测试中，原生回环与内部 Docker 中位数分别约 9171、422 Mb/s；这是特定负载的约 21.75 倍差距，不能称为网络性能达标。
 
 新的持久运行实验使用 `scripts/harddind.py`。它保存独立 COW 磁盘，启动网络后端和真实 dockerd，外层使用同版本的原版 Docker CLI；`stop` 通过 UML 管理通道请求 guest 正常关机。网络后端固定 libslirp 4.6.1，目前支持 IPv4 TCP/UDP 和显式外层端口转发。这个入口仍属实验，GPU、自动同步 `docker -p`、外层 bind 路径和完整网络性能尚未完成。
 
 ```sh
 make network WORK=/root/harddind-rebuild
 make runtime-root WORK=/root/harddind-rebuild
-python3 scripts/harddind.py /root/harddind-rebuild dev start --kernel /path/to/immutable/ipi-idle-kernel
+python3 scripts/harddind.py /root/harddind-rebuild dev start --kernel /path/to/immutable/ipi-idle-kernel --dns 1.1.1.1
 python3 scripts/harddind.py /root/harddind-rebuild dev docker version
 python3 scripts/harddind.py /root/harddind-rebuild dev docker buildx version
 # 若容器已在 guest 的 8080 端口发布服务，再显式映射到外层回环接口：
@@ -64,7 +66,7 @@ python3 scripts/harddind.py /root/harddind-rebuild dev forward add tcp 127.0.0.1
 python3 scripts/harddind.py /root/harddind-rebuild dev stop
 ```
 
-`runtime-root` 默认从干净的 `protect-docker-root` 复制，可直接调用其脚本传入其他已固定包版本的 Docker rootfs。实例镜像、容器和卷保存在 `WORK/instances/NAME/root.cow`；同名实例输入变化会拒绝启动。API 仅转发到外层回环地址的动态端口，CLI 使用独立配置目录；未实现额外认证。`scripts/run-runtime.py` 从新实例测试镜像冷拉取、容器 HTTPS、联网构建、交互、TCP/UDP 显式转发、同程序网络对照和跨重启持久化，不把该测试子集计为完整验收。
+`runtime-root` 默认从干净的 `protect-docker-root` 复制，可直接调用其脚本传入其他已固定包版本的 Docker rootfs；第三个参数指定新的 fixture 名称，已有磁盘不会覆盖。实例镜像、容器和卷保存在 `WORK/instances/NAME/root.cow`；同名实例输入变化会拒绝启动。`--dns` 默认为经虚拟地址 `10.0.2.3` 使用外层解析器，上例显式选择其他解析器。API 仅转发到外层回环地址的动态端口，CLI 使用独立配置目录；未实现额外认证。`scripts/run-runtime.py` 从新实例测试镜像冷拉取、容器 HTTPS、联网构建、交互、TCP/UDP 显式转发、同程序网络对照和跨重启持久化，不把该测试子集计为完整验收。
 
 内核构建和运行要求 Linux x86_64；需要 Python 3.9+、GCC、make、flex、bison、bc、libelf 开发文件、e2fsprogs、util-linux（flock）、patch 和 tar。准备 Docker rootfs 需要容器内 root，以设置文件所有权和执行 chroot，不要求外层特权容器。GPU 测试镜像使用外层已安装的 NVIDIA `libcuda`、PTX JIT 库及其 glibc 依赖，另行记录哈希；这些库不纳入 Git，也不能代替 GPU 设备后端。
 

@@ -10,13 +10,17 @@
         "starpub-2026-10-14-ipi/docker-ipi-idle.json",
         "starpub-2026-10-14-ipi/docker-ipi-final.json",
         "starpub-2026-10-14-ipi/docker-ipi-cleanup-audit.json",
-        "starpub-2026-10-14-ipi/ipi-idle-final-checks.json"
+        "starpub-2026-10-14-ipi/ipi-idle-final-checks.json",
+        "starpub-2026-10-14-network/network-v3.json",
+        "starpub-2026-10-14-network/network-provenance.json",
+        "starpub-2026-10-14-network/network-v1.json",
+        "starpub-2026-10-14-network/network-v2.json"
       ],
       "remaining": [
-        "external networking",
+        "automatic published ports, forward persistence, IPv6 and broader network drivers",
         "outer bind-mount semantics",
         "complete upstream compatibility coverage",
-        "production lifecycle",
+        "crash recovery and production lifecycle stress; orderly restart subset passed",
         "shared-mm runner failure paths and internal isolation",
         "intermittent host-child loss under parallel fork/exec observed in prior kernel",
         "intermittent forced host-process cleanup in pre-idle-fix build; identity was not recorded",
@@ -32,7 +36,8 @@
         "starpub-2026-10-14-protect/protect-profile-comparison.json",
         "starpub-2026-10-14-protect/protect-v3-trace-comparison.json",
         "starpub-2026-10-14-ipi/ipi-idle-comparison.json",
-        "starpub-2026-10-14-ipi/ipi-idle-trace-comparison.json"
+        "starpub-2026-10-14-ipi/ipi-idle-trace-comparison.json",
+        "starpub-2026-10-14-network/network-v3.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
@@ -43,7 +48,8 @@
         "performance parity with controlled host load",
         "four-thread syscall regression in latest on/off microbenchmark comparison",
         "severe slow samples in first mprotect comparison; cause not established by later successful run",
-        "four-thread syscall and parallel-exec regressions in mprotect recheck"
+        "four-thread syscall and parallel-exec regressions in mprotect recheck",
+        "64 KiB TCP request/reply median 421.68 Mb/s nested vs 9171.04 Mb/s native loopback; 21.75x gap on this workload"
       ]
     },
     "gpu_in_container": {

@@ -1,0 +1,160 @@
+{
+  "kind": "network_runtime_provenance",
+  "checked_at_unix": 1791960088.9304893,
+  "files": {
+    "ipi-kernel-idle": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+    "runtime.ext4": "2240aec238295519be37e2796aa969c28b03a55933c3a799f2700829239098ad",
+    "runtime-dns.ext4": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+    "network-backend": "2e6f0826d11682e40235866c87f735b401bddc523bd132dc992040e652f0206c",
+    "network-probe": "a47e9b05121419e5707669707fa96e78202663ff6690cc6ef409d1f0d74e0abc",
+    "client/docker": "60c81ddca5ac1b3cb64cfcbe9444a263db642ed74cd0e28e512edbf012dd312f",
+    "client/buildx": "b28f6bb642ef516030b0633c66c18a0f5f8b9976e74c99b45e81014a2d271067",
+    "client/ld-musl-x86_64.so.1": "38d022ce7425ff105ccfb53598f606e6e5f5f0a34bfbc793d65e6f34c9d72806",
+    "client/cli-plugins/docker-buildx": "e0d6f567dfbd3c216380652bd2ba02bf03a9c718ee58e09c919eddd3dc5d910f",
+    "guest/runtime-init": "63141158ba2e4618973bcc816b03685bd27efb1c76076517d715a45ec34f2288",
+    "guest/runtime-daemon": "fd1e40cb8865cd8fec8941f218da4877cfeb1cf2e8875359d7ed789372132004",
+    "scripts/harddind.py": "a95c17befaf96dc2c4ab1c4222f6488bd0246611d2e6e6e5f0a0fdd089049668",
+    "scripts/run-runtime.py": "a9617af1c2ed85509ee69d6f9b71b3a4f4f985247115e8c2a7879cfd2b3028f7",
+    "scripts/build-network.sh": "0eb2a44bb6fcaae0fa3ea7d7f87ade43c0ce155f219aea434b2ec02afc7f9170",
+    "scripts/make-runtime-root.sh": "79eaf63efbd37671522c853f5eb1a2b53d18f7177d6612dfe63e1a820f2af969",
+    "scripts/analyze-dns.py": "d9c35803a8140ed10c667ca13dc32fed538f1656f63d874a0adf68570aa3667a",
+    "src/network_backend.c": "403c5332eaef014f493cf95239a140cb3435758b747681292a16f83324c3eddd",
+    "src/network_probe.c": "da48af55202c5122d868ffc29a610c4676755041ad4be6e0b31e03fc5fd2a013",
+    "sources.lock.json": "e8cbd60bbcf8418a193e31103b75f33486ba4b96d849a068758821c50c6b81a7"
+  },
+  "libraries": {
+    "/lib/x86_64-linux-gnu/libslirp.so.0": "7c6181972a895bcbd36607bfb5e7e25b6f0f94cb464c09feba5aed99b01d6138",
+    "/lib/x86_64-linux-gnu/libc.so.6": "2e15e345ccba1e1e8bf3bc58938d13eb7ccc17044942f0376cd5bc771f429b79",
+    "/lib/x86_64-linux-gnu/libglib-2.0.so.0": "fae2d5395db479eadd6d939a1f288b50a5edfbfe93bd3498078dd232d00bc7ce",
+    "/lib64/ld-linux-x86-64.so.2": "e833bd99168bea158d2f2e5d32462479cacfb624003304a9ea74a1607a144f1f",
+    "/lib/x86_64-linux-gnu/libpcre.so.3": "baae995e98223eee1afe6c640f21bdbba91b9c170584ce766418b59810d98a93",
+    "/lib/x86_64-linux-gnu/libm.so.6": "ec93672ba45de8a12ff774c9bcd993fa5c00155f0a64dfe1c4e984282eaf236e"
+  },
+  "packages": {
+    "libglib2.0-0:amd64": "2.72.4-0ubuntu2.9",
+    "libslirp-dev:amd64": "4.6.1-1ubuntu0.2",
+    "libslirp0:amd64": "4.6.1-1ubuntu0.2"
+  },
+  "outer_kernel": "5.15.0-177-generic",
+  "groups": [
+    {
+      "instance": "net-v1",
+      "report": "result-1b070d016f1d.json",
+      "kind": "guest_cleanup",
+      "pgid": 3306191,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "net-v1",
+      "report": "result-1b070d016f1d.json",
+      "kind": "network_cleanup",
+      "pgid": 3306189,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v1",
+      "report": "result-95058adcaa4c.json",
+      "kind": "guest_cleanup",
+      "pgid": 3416809,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v1",
+      "report": "result-95058adcaa4c.json",
+      "kind": "network_cleanup",
+      "pgid": 3416805,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v1",
+      "report": "result-b6df9339b55e.json",
+      "kind": "guest_cleanup",
+      "pgid": 3440747,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v1",
+      "report": "result-b6df9339b55e.json",
+      "kind": "network_cleanup",
+      "pgid": 3440683,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v2",
+      "report": "result-3b13c9403218.json",
+      "kind": "guest_cleanup",
+      "pgid": 3501049,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v2",
+      "report": "result-3b13c9403218.json",
+      "kind": "network_cleanup",
+      "pgid": 3501047,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v3",
+      "report": "result-57ddc9263d2a.json",
+      "kind": "guest_cleanup",
+      "pgid": 3581036,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v3",
+      "report": "result-57ddc9263d2a.json",
+      "kind": "network_cleanup",
+      "pgid": 3581035,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v3",
+      "report": "result-a36274bbadc0.json",
+      "kind": "guest_cleanup",
+      "pgid": 3575659,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "network-v3",
+      "report": "result-a36274bbadc0.json",
+      "kind": "network_cleanup",
+      "pgid": 3575658,
+      "historical_clean_shutdown": true,
+      "live": [],
+      "zombies": []
+    },
+    {
+      "instance": "native-echo",
+      "pgid": 3579737,
+      "live": [],
+      "zombies": []
+    }
+  ],
+  "all_groups_empty": true,
+  "old_service_health_exit_code": 0,
+  "old_service_health": "server=29.8.2 running=0 images=6",
+  "persistent_cows_retained": true,
+  "full_acceptance": false
+}

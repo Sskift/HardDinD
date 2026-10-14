@@ -20,6 +20,8 @@ import harddind
 p = argparse.ArgumentParser()
 p.add_argument('work', type=pathlib.Path)
 p.add_argument('--kernel', type=pathlib.Path, required=True)
+p.add_argument('--disk', type=pathlib.Path)
+p.add_argument('--dns', default='10.0.2.3')
 p.add_argument('--name', required=True)
 a = p.parse_args()
 if not a.name or len(a.name) > 32 or not all(c.isalnum() or c in '-_' for c in a.name): p.error('invalid name')
@@ -29,14 +31,16 @@ report_path = out / (a.name + '.json'); log_path = out / (a.name + '.log')
 instance = work / 'instances' / a.name
 if instance.exists() or report_path.exists() or log_path.exists(): p.error('refusing existing instance or evidence')
 os.sched_setaffinity(0, [0, 1, 2, 3])
+os.environ['HARDDIND_NET_TRACE_DNS'] = '1'
 lock = json.loads((repo / 'sources.lock.json').read_text())
 image = lock['network_test_image']['reference']
 base = [sys.executable, str(repo / 'scripts/harddind.py'), str(work), a.name]
+start = base + ['start', '--kernel', str(a.kernel.resolve()), '--disk', str((a.disk or work/'runtime.ext4').resolve()), '--dns', a.dns]
 checks = {name: 'not_tested' for name in ['daemon_api', 'cold_image_pull', 'container_https', 'network_build',
     'exec_stdin_tty', 'explicit_tcp_publish', 'explicit_udp_publish', 'forward_removal',
     'tcp_echo_comparison', 'persistent_restart', 'clean_shutdown']}
 report = {'kind': 'runtime_network_subset', 'checks': checks, 'full_acceptance': False,
-          'image': image, 'host_cpu_affinity': sorted(os.sched_getaffinity(0)), 'timings': {},
+          'image': image, 'dns': a.dns, 'host_cpu_affinity': sorted(os.sched_getaffinity(0)), 'timings': {},
           'sha256': {str(p.relative_to(work)): harddind.sha(p) for p in [work / 'network-probe', work / 'network-backend']},
           'input_kernel_sha256': harddind.sha(a.kernel),
           'sources': {str(path.relative_to(repo)): harddind.sha(path) for path in [repo / 'scripts/run-runtime.py',
@@ -90,7 +94,7 @@ def echo(p, size=8*1024*1024):
     return {'payload_bytes_each_direction': size, 'seconds': seconds, 'payload_mbps_each_direction': size*8/seconds/1000000}
 try:
     begin('daemon_api')
-    run(base + ['start', '--kernel', str(a.kernel.resolve())], timeout=180)
+    run(start, timeout=180)
     version = json.loads(cli('version', '--format', '{{json .Server}}'))
     report['server'] = version
     assert version['Version'] == '29.8.2'
@@ -103,6 +107,7 @@ try:
     assert cli('run', '--rm', image, 'cat', '/etc/alpine-release').strip() == '3.24.2'
     passed()
     begin('container_https')
+    assert 'nameserver ' + a.dns in cli('run', '--rm', image, 'cat', '/etc/resolv.conf')
     download = 'wget -q -T 30 -O /tmp/alpine.tar.gz ' + shlex.quote(lock['alpine']['url']) + ' && echo ' + shlex.quote(lock['alpine']['sha256']+'  /tmp/alpine.tar.gz') + ' | sha256sum -c -'
     cli('run', '--rm', image, 'sh', '-ec', download)
     passed()
@@ -162,7 +167,7 @@ try:
     first = harddind.read_state(instance)
     assert first['phase'] == 'stopped' and first['guest_cleanup']['clean_shutdown'] and not first['forced_shutdown']
     report['first_run'] = first
-    run(base + ['start', '--kernel', str(a.kernel.resolve())], timeout=180)
+    run(start, timeout=180)
     assert json.loads(cli('inspect', '--format', '{{json .Id}}', image)) == before
     until = time.monotonic() + 30
     while cli('inspect', '--format', '{{.State.Running}}', 'persist').strip() != 'true':
