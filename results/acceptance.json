@@ -125,7 +125,12 @@
         "starpub-2026-10-14-gpu-root-control/gpu-root-control-fd-v1/report.json",
         "starpub-2026-10-14-gpu-root-control/gpu-root-control-rm-v1/report.json",
         "starpub-2026-10-14-gpu-root-control/gpu-root-control-cleanup-audit.json",
-        "starpub-2026-10-14-gpu-root-control/evidence-validation.json"
+        "starpub-2026-10-14-gpu-root-control/evidence-validation.json",
+        "starpub-2026-10-14-gpu-pointer-errors/gpu-root-pointer-v1/report.json",
+        "starpub-2026-10-14-gpu-pointer-errors/gpu-root-pointer-v2/report.json",
+        "starpub-2026-10-14-gpu-pointer-errors/gpu-root-pointer-docker-v2/report.json",
+        "starpub-2026-10-14-gpu-pointer-errors/gpu-pointer-cleanup-audit.json",
+        "starpub-2026-10-14-gpu-pointer-errors/evidence-validation.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",
@@ -134,7 +139,8 @@
         "multi-GPU and process lifecycle",
         "GPU performance comparison",
         "RM root-client allocation/free: native 29/29, guest and five nested Docker lifecycle runs 28/29; unsupported allocation class error semantics differ; device objects, UVM/mmap and CUDA remain absent",
-        "Four RM root queries passed native/guest/real Docker parity (17 checks per probe), but arbitrary controls, device objects, extreme pointers, concurrent remap, schedulable/cancellable waits, mmap/UVM and CUDA remain incomplete"
+        "Four RM root queries passed native/guest/real Docker parity (17 checks per probe), but arbitrary controls, device objects, concurrent remap, schedulable/cancellable waits, mmap/UVM and CUDA remain incomplete",
+        "Root control pointer faults extended to 23-check native/guest/Docker parity; generic ABI, device mappings and actual CUDA remain incomplete"
       ]
     }
   }

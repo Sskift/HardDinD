@@ -133,6 +133,20 @@ int main(int argc,char **argv) {
     munmap(mem,2*page);
     r=query(fd,client,0x201,&unused,sizeof(unused));record("recovery",r);
     check("recovery_after_faults",okay(r)&&!memcmp(&unused,&ids,sizeof(ids)));
+    /* Boundary faults must preserve the driver's status/errno contract too. */
+    struct { const char *name; void *pointer; } edges[] = {
+        {"nested_null", NULL}, {"nested_low_unmapped", (void *)(uintptr_t)1},
+        {"nested_wrap", (void *)UINTPTR_MAX},
+        {"nested_noncanonical", (void *)(uintptr_t)(1ULL << 63)},
+        {"nested_unmapped", mem},
+    };
+    for (unsigned i=0;i<sizeof(edges)/sizeof(edges[0]);i++) {
+        r=query(fd,client,0x201,edges[i].pointer,sizeof(struct ids));record(edges[i].name,r);
+        check(edges[i].name,r.rc!=0||r.status!=0);
+    }
+    r=query(fd,0,0x201,(void *)(uintptr_t)(1ULL << 63),sizeof(struct ids));
+    record("nested_noncanonical_invalid_client",r);
+    check("nested_noncanonical_invalid_client",r.rc!=0||r.status!=0);
     pthread_t th[4];struct thread t[4];
     for(int i=0;i<4;i++) {
         t[i]=(struct thread){fd,client,ids,0};

@@ -89,6 +89,7 @@ def main():
                 shutil.copy2(repo / 'kernel/experiments/0016-um-gpu-rm-client.patch', sources / '0016-um-gpu-rm-client.patch')
             if ctrl_mode:
                 shutil.copy2(repo / 'kernel/experiments/0019-um-gpu-root-control.patch', sources / '0019-um-gpu-root-control.patch')
+                shutil.copy2(repo / 'kernel/experiments/0020-um-gpu-control-pointer-errors.patch', sources / '0020-um-gpu-control-pointer-errors.patch')
             program = output / 'gpu-guest-probe'
             with (output / 'build.log').open('x') as log:
                 subprocess.run(['gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread',
@@ -193,9 +194,9 @@ poweroff -f
                              and len(row['worker_pids']) == 5
                              and len(set(row['worker_pids'])) == 5
                              and set(row['device_ioctl_pids']) == set(row['worker_pids'])
-                             and row['device_ioctl_count'] == (86 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153))
+                             and row['device_ioctl_count'] == (92 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153))
                 else:
-                    valid = valid and row['device_ioctl_count'] == (86 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154)
+                    valid = valid and row['device_ioctl_count'] == (92 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154)
                 if name in ('guest', 'disabled'):
                     row['memory_backing'] = memfd_backing_evidence(content, args.memfd_ram, args.memfd_stub)
                     if args.memfd_ram or args.memfd_stub:
@@ -203,7 +204,7 @@ poweroff -f
                 if ctrl_mode and name != 'disabled':
                     row['control_results'] = [json.loads(x) for x in re.findall(r'^GPU_CTRL_RESULT (.+)$', content, re.M)]
                     row['device_results'] = [json.loads(x) for x in re.findall(r'^GPU_CTRL_DEVICE (.+)$', content, re.M)]
-                    valid = valid and len(row['control_results']) == 8 and len(row['device_results']) == args.gpu_count
+                    valid = valid and len(row['control_results']) == 14 and len(row['device_results']) == args.gpu_count
                     if name != 'native-before':
                         baseline = report['phases']['native-before']
                         row['native_contract_matches'] = (

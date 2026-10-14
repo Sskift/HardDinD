@@ -187,3 +187,5 @@ GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、
 [RM 客户端实验](results/starpub-2026-10-14-gpu-rm/) 增加固定 NVIDIA ABI 的根客户端分配与释放。原生前后对照为 29/29，guest 与内部 Docker 生命周期探针为 28/29；未开放类别的错误返回与原生不同，因此总验收仍失败。尚未实现设备 mmap、UVM、内部 CUDA 或显存生命周期，不计为 GPU 目标完成。
 
 [RM_CONTROL 根查询实测](results/starpub-2026-10-14-gpu-root-control/) 接入四种带嵌套指针的固定查询。原生前后、guest 和五次内部 Docker 生命周期探针均为 17/17，四张 GPU 的设备信息与错误返回一致；Docker 外层 12 项检查通过。旧客户端的类别错误仍有一项不一致，设备映射、UVM、计算和传输尚未实现，完整 GPU 与性能验收状态不变。
+
+[根查询指针边界回归](results/starpub-2026-10-14-gpu-pointer-errors/) 随后发现并修复两类越界指针的错误返回差异，旧失败保留。扩展探针在原生、guest 和五次内部 Docker 运行中均为 23/23，包含空地址、未映射地址、越界地址和无效客户端组合，仍不计作 CUDA 验收。

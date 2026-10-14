@@ -96,7 +96,7 @@ def main():
                 and baseline_report.get('driver_version') == version_text
                 and baseline_report.get('sha256', {}).get(recorded_probe) == harddind.sha(a.probe)
                 and baseline.get('status') == after.get('status') == 'pass'
-                and len(baseline.get('control_results', [])) == 8
+                and len(baseline.get('control_results', [])) == 14
                 and len(baseline.get('device_results', [])) == a.gpu_count
                 and baseline['control_results'] == after.get('control_results')
                 and baseline['device_results'] == after.get('device_results')):

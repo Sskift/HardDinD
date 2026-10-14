@@ -39,3 +39,6 @@ CTRL_CHECKS = {
     'nested_readonly_rejected', 'header_readonly_rejected', 'recovery_after_faults',
     'four_threads_same_client', 'independent_process_queries', 'release_client',
 }
+
+CTRL_CHECKS |= {'nested_null', 'nested_low_unmapped', 'nested_wrap',
+                'nested_noncanonical', 'nested_unmapped', 'nested_noncanonical_invalid_client'}
