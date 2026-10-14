@@ -57,7 +57,7 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 共享目录实验默认 `--share-cache never`，以避免普通读写静默使用陈旧数据。需要 `MAP_SHARED` 的应用在当前导出目录上仍不能正常工作，后续必须补齐；`--share-cache auto` 仅保留为显式对照选项。未启用 `--share` 的实例不受这个选项影响。
 
-`virtiofs/patches/0002` 增加外层共享 `flock`：锁绑定到对应的宿主打开文件描述，阻塞请求由独立等待队列重试，处理 FUSE interrupt，避免等待者占满普通文件工作线程。运行入口传入 `--shared-flock`，服务拒绝与零线程池组合；锁状态迁移尚未实现，因此显式返回不支持。POSIX 字节范围锁尚未接入，未声明支持。`scripts/run-shared-locks.py` 使用同一程序在原生与真实 Docker 中检查所有权、dup/fork、关闭、强杀、信号取消和超过工作线程数量的等待者，完整机器结果正在生成；构建和队列检查记录在 `results/starpub-2026-10-14-shared-locks`。
+`virtiofs/patches/0002` 增加外层共享 `flock`：锁绑定到对应的宿主打开文件描述，阻塞请求由独立等待队列重试，处理 FUSE interrupt，避免等待者占满普通文件工作线程。运行入口传入 `--shared-flock`，服务拒绝与零线程池组合；锁状态迁移尚未实现，因此显式返回不支持。POSIX 字节范围锁尚未接入，未声明支持。[共享锁实测](results/starpub-2026-10-14-shared-locks/README.md) 为原生 21 项通过、Docker 17 项通过及 4 项失败：两项取消等待和两项 POSIX 锁。取消失败定位到内核 virtiofs 的 interrupt 空实现；新增内核补丁 `0011` 已编译，因 SSH 连接中断尚未运行验证，不能宣称修复完成。1000 次加锁/解锁微基准的 Docker 耗时约为原生 163 倍，性能仍未达标。
 
 `make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。第二个补丁修复实测发现的失败回滚问题：端口冲突后的网络配置被删除，导致再次启动没有端口映射。
 

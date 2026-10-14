@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/root/harddind-rebuild/scripts/apply-kernel-patches.py", line 107, in <module>
+    apply_series(src, pathlib.Path(sys.argv[2]), patches)
+  File "/root/harddind-rebuild/scripts/apply-kernel-patches.py", line 31, in apply_series
+    raise ValueError(f"unexpected patch path: {name}")
+ValueError: unexpected patch path: fs/fuse/dev.c
