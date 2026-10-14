@@ -23,7 +23,7 @@
 
 ## 映射边界
 
-第二个映射仅执行 mmap/munmap，没有额外读写 MMIO：
+第二个映射是在同一个共享 mm 中选择另一个虚拟地址，仅执行 mmap/munmap，没有额外读写 MMIO。**尚未验证映射到 UML 内核所在的另一个宿主 mm**：
 
 - nvidiactl：116 次第二映射成功。
 - nvidia0–3：合计 8 次第二映射成功。
@@ -58,7 +58,7 @@ UML 目前的每 CPU 执行进程有不同 TGID，因此不能直接把一个 CU
 - UML 内核字符设备、ioctl 分发、设备 VMA 与文件描述符转换。
 - 原型使用 CLONE_FILES，实际 UML 执行进程的文件表独立，不能据此省略 FD 转换。
 - 不同处理 PID 交错执行已失败；同 TGID 的串行交错子集通过，真正并发、fork/exec 和异常退出生命周期仍未验证。
-- UVM、锁页内存、托管内存、guest 内核 copy_to/from_user 与 cgroup 计费。
+- 普通设备的跨 mm 别名、UVM、锁页内存、托管内存、guest 内核 copy_to/from_user 与 cgroup 计费。
 - 内部 `docker run --gpus all` 的实际工作负载和同机 GPU 性能对照。
 
 复现：
