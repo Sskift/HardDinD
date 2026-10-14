@@ -18,6 +18,7 @@ from guest_cleanup import cleanup_group
 from gpu_probe_checks import FD_CHECKS, RM_CHECKS, CTRL_CHECKS, BUILD_CHECKS
 from result_checks import memfd_backing_evidence
 import gpu_policy_checks
+import gpu_alloc_checks
 
 
 def sha(path):
@@ -41,6 +42,7 @@ def main():
     mode.add_argument('--rm-control', action='store_true')
     mode.add_argument('--build-version', action='store_true')
     mode.add_argument('--share-policy', action='store_true')
+    mode.add_argument('--alloc-object', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
     p.add_argument('--async-wait', action='store_true')
     p.add_argument('--async-debug', type=int, choices=range(8), default=0)
@@ -50,19 +52,23 @@ def main():
     if not 1 <= args.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
     fd_mode, rm_mode, ctrl_mode, bv_mode = args.fd_registration, args.rm_client, args.rm_control, args.build_version
-    policy_mode = args.share_policy
+    alloc_mode = args.alloc_object
+    contract_mode = args.share_policy or alloc_mode
+    contract_checks = gpu_alloc_checks if alloc_mode else gpu_policy_checks
+    contract_key = 'alloc_observations' if alloc_mode else 'policy_observations'
+    contract_kind = 'gpu_fixed_alloc' if alloc_mode else 'gpu_share_policy'
     if ctrl_mode and args.gpu_count > 32: p.error('RM control supports at most 32 GPU IDs')
-    marker = 'GPU_SHARE' if policy_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    marker = 'GPU_ALLOC' if alloc_mode else 'GPU_SHARE' if contract_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
     expected_checks = BUILD_CHECKS if bv_mode else (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(args.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
-    probe_source = 'gpu_share_policy_probe.c' if policy_mode else 'gpu_build_version_probe.c' if bv_mode else 'gpu_rm_control_probe.c' if ctrl_mode else 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
-    argument_suffix = '' if fd_mode or rm_mode or ctrl_mode or bv_mode or policy_mode else 'ctl'
+    probe_source = 'gpu_alloc_probe.c' if alloc_mode else 'gpu_share_policy_probe.c' if contract_mode else 'gpu_build_version_probe.c' if bv_mode else 'gpu_rm_control_probe.c' if ctrl_mode else 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
+    argument_suffix = '' if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else 'ctl'
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,40}', args.name):
         p.error('invalid evidence name')
     work, kernel = args.work.resolve(), args.kernel.resolve()
     repo = pathlib.Path(__file__).resolve().parents[1]
     output = work / 'results' / args.name
     output.mkdir(parents=True, exist_ok=False)
-    report = {'kind': 'uml_gpu_share_policy' if policy_mode else 'uml_gpu_build_version' if bv_mode else 'uml_gpu_rm_control' if ctrl_mode else 'uml_gpu_rm_client' if rm_mode else 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
+    report = {'kind': ('uml_' + contract_kind) if contract_mode else 'uml_gpu_build_version' if bv_mode else 'uml_gpu_rm_control' if ctrl_mode else 'uml_gpu_rm_client' if rm_mode else 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
               'async_wait': args.async_wait, 'async_debug': args.async_debug,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -86,7 +92,7 @@ def main():
             sources = output / 'sources'; sources.mkdir()
             for path in [repo / 'src' / probe_source, pathlib.Path(__file__).resolve(),
                          repo / 'scripts/gpu_probe_checks.py',
-                         repo / 'scripts/gpu_policy_checks.py',
+                         repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/gpu_alloc_checks.py',
                          repo / 'sources.lock.json',
                          repo / 'kernel/experiments/0012-um-gpu-control-transport.patch',
                          repo / 'kernel/experiments/0013-um-gpu-register-fd.patch',
@@ -95,19 +101,21 @@ def main():
                          repo / 'scripts/result_checks.py']:
                 shutil.copy2(path, sources / path.name)
             shutil.copy2(work / 'linux-7.2.10/.harddind-patches.json', output / 'kernel-patches.json')
-            if rm_mode or ctrl_mode or bv_mode or policy_mode:
+            if rm_mode or ctrl_mode or bv_mode or contract_mode:
                 shutil.copy2(repo / 'kernel/experiments/0016-um-gpu-rm-client.patch', sources / '0016-um-gpu-rm-client.patch')
-            if ctrl_mode or bv_mode or policy_mode:
+            if ctrl_mode or bv_mode or contract_mode:
                 shutil.copy2(repo / 'kernel/experiments/0019-um-gpu-root-control.patch', sources / '0019-um-gpu-root-control.patch')
                 shutil.copy2(repo / 'kernel/experiments/0020-um-gpu-control-pointer-errors.patch', sources / '0020-um-gpu-control-pointer-errors.patch')
-            if bv_mode or policy_mode:
+            if bv_mode or contract_mode:
                 for filename in ['0021-um-gpu-device-numbers.patch', '0022-um-gpu-build-version.patch']:
                     shutil.copy2(repo / 'kernel/experiments' / filename, sources / filename)
-            if policy_mode:
+            if contract_mode:
                 shutil.copy2(repo / 'kernel/experiments/0023-um-gpu-client-policy.patch', sources / '0023-um-gpu-client-policy.patch')
             stamp = json.loads((output / 'kernel-patches.json').read_text())
             if '0025-um-gpu-policy-driver-validation.patch' in stamp['patches']:
                 shutil.copy2(repo / 'kernel/experiments/0025-um-gpu-policy-driver-validation.patch', sources / '0025-um-gpu-policy-driver-validation.patch')
+            if '0026-um-gpu-fixed-alloc.patch' in stamp['patches']:
+                shutil.copy2(repo / 'kernel/experiments/0026-um-gpu-fixed-alloc.patch', sources / '0026-um-gpu-fixed-alloc.patch')
             if '0017-um-gpu-async-wait.patch' in stamp['patches']:
                 shutil.copy2(repo / 'kernel/experiments/0017-um-gpu-async-wait.patch', sources / '0017-um-gpu-async-wait.patch')
             program = output / 'gpu-guest-probe'
@@ -128,9 +136,9 @@ def main():
                 (root / directory).mkdir(exist_ok=True)
             shutil.copy2(program, root / 'gpu-guest-probe')
             init = root / 'sbin/harddind-gpu-control-init'
-            argument = '50' if policy_mode else str(args.gpu_count) if fd_mode or rm_mode or ctrl_mode or bv_mode or policy_mode else version
-            report['policy_iterations'] = 50 if policy_mode else None
-            report['gpu_count'] = args.gpu_count if fd_mode or rm_mode or ctrl_mode or bv_mode or policy_mode else None
+            argument = '50' if contract_mode else str(args.gpu_count) if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else version
+            report['policy_iterations'] = 50 if contract_mode else None
+            report['gpu_count'] = args.gpu_count if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else None
             init.write_text('''#!/bin/sh
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 mount -t proc proc /proc
@@ -209,9 +217,9 @@ poweroff -f
                 row['inputs_unchanged'] = all(sha(path) == report['sha256'][str(path)] for path in inputs)
                 valid = (len(checks) == len(expected_checks) and {n for n, status in checks if status == 'pass'} == expected_checks
                          and marker + '_END status=0 internal_cuda_verified=0' in content)
-                if policy_mode and name != 'disabled':
-                    row['policy_observations'] = gpu_policy_checks.parse(content)
-                    valid = row['policy_observations']['probe_checks_pass']
+                if contract_mode and name != 'disabled':
+                    row[contract_key] = contract_checks.parse(content)
+                    valid = row[contract_key]['probe_checks_pass']
                 if name == 'disabled':
                     valid = ('GPU_CONTROL_DISABLED status=0' in content
                              and 'HARDDIND_GPU_CONTROL_END status=0' in content
@@ -221,9 +229,9 @@ poweroff -f
                              and len(row['worker_pids']) == 5
                              and len(set(row['worker_pids'])) == 5
                              and set(row['device_ioctl_pids']) == set(row['worker_pids'])
-                             and (policy_mode or row['device_ioctl_count'] == (70 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153)))
+                             and (contract_mode or row['device_ioctl_count'] == (70 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153)))
                 else:
-                    valid = valid and (policy_mode or row['device_ioctl_count'] == (71 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154))
+                    valid = valid and (contract_mode or row['device_ioctl_count'] == (71 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154))
                 if name == 'guest':
                     row['async_wait_verified'] = (set(row['async_worker_pids']) == set(row['worker_pids'])
                         and len(row['async_worker_pids']) == 5) if args.async_wait else not row['async_worker_pids']
@@ -242,9 +250,9 @@ poweroff -f
                             row['control_results'] == baseline.get('control_results')
                             and row['device_results'] == baseline.get('device_results'))
                         valid = valid and row['native_contract_matches']
-                if policy_mode and name in ('guest', 'native-after'):
-                    row['native_comparison'] = gpu_policy_checks.compare(
-                        report['phases']['native-before']['policy_observations'], row['policy_observations'])
+                if contract_mode and name in ('guest', 'native-after'):
+                    row['native_comparison'] = contract_checks.compare(
+                        report['phases']['native-before'][contract_key], row[contract_key])
                     valid = valid and row['native_comparison']['matches']
                 row['status'] = 'pass' if (valid and row['exit_code'] == 0 and not row['timed_out']
                                           and row['inputs_unchanged'] and row['cleanup']['clean_shutdown']) else 'fail'
@@ -253,7 +261,7 @@ poweroff -f
                 trace.unlink()
                 print(name + ': ' + row['status'], flush=True)
                 (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-                if row['status'] != 'pass' and not rm_mode and not ctrl_mode and not bv_mode and not policy_mode:
+                if row['status'] != 'pass' and not rm_mode and not ctrl_mode and not bv_mode and not contract_mode:
                     break
             report['diagnostic_finished'] = all(row['status'] in ('pass', 'fail') for row in report['phases'].values())
             report['diagnostic_complete'] = all(row['status'] == 'pass' for row in report['phases'].values())

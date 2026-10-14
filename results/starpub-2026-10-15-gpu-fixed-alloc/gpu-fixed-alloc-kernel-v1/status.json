@@ -1,0 +1,10 @@
+{
+  "status": "finished",
+  "pid": 3549218,
+  "started_at": "2026-10-14T17:31:03.069687+00:00",
+  "build_pid": 3549227,
+  "exit_code": 0,
+  "kernel": "/root/harddind-rebuild/gpu-fixed-alloc-kernel-v1",
+  "kernel_sha256": "435d4d8dbe7ccc249722984fa7434f1f55085cc96c82988c0f8d0659e3511694",
+  "finished_at": "2026-10-14T17:32:44.891133+00:00"
+}

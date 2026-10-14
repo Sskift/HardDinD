@@ -1,0 +1,18 @@
+--- a/arch/um/kernel/gpu.c
++++ b/arch/um/kernel/gpu.c
+@@ -592,7 +592,14 @@
+ 	case 0xd04: expected = sizeof(struct gpu_rs_share_policy); break;
+ 	default: return -EOPNOTSUPP;
+ 	}
+-	if (params.flags || params.size != expected)
++	/* 550.120 _rmapiRmControl validates this fixed command's flagged modes and
++	 * declared size before copying its child. Fault in only the canonical
++	 * twelve-byte guest range; let RM preserve its own validation
++	 * order and status, including accepted nonzero flags. The method's
++	 * deserialized structure has no embedded addresses or descriptors.
++	 * Other commands retain their existing restrictions. */
++	if (params.command != 0xd04 &&
++	    (params.flags || params.size != expected))
+ 		return -EOPNOTSUPP;
+ 	original_pointer = params.params;
+ 	nested = (void __user *)(unsigned long)original_pointer;

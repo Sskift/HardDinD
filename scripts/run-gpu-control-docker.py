@@ -14,6 +14,7 @@ import sys
 import tarfile
 import harddind
 import gpu_policy_checks
+import gpu_alloc_checks
 from gpu_probe_checks import FD_CHECKS, RM_CHECKS, CTRL_CHECKS, BUILD_CHECKS
 from result_checks import memfd_backing_evidence
 
@@ -37,6 +38,7 @@ def main():
     mode.add_argument('--rm-control', action='store_true')
     mode.add_argument('--build-version', action='store_true')
     mode.add_argument('--share-policy', action='store_true')
+    mode.add_argument('--alloc-object', action='store_true')
     p.add_argument('--native-baseline', type=pathlib.Path)
     p.add_argument('--gpu-count', type=int, default=4)
     p.add_argument('--async-wait', action='store_true')
@@ -46,13 +48,17 @@ def main():
     if not 1 <= a.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
     fd_mode, rm_mode, ctrl_mode, bv_mode = a.fd_registration, a.rm_client, a.rm_control, a.build_version
-    policy_mode = a.share_policy
-    if (ctrl_mode and a.gpu_count > 32) or ((ctrl_mode or bv_mode or policy_mode) and not a.native_baseline):
-        p.error('rm-control/build-version/share-policy require --native-baseline; rm-control requires gpu-count <= 32')
-    if a.native_baseline and not (ctrl_mode or bv_mode or policy_mode):
-        p.error('--native-baseline requires --rm-control, --build-version or --share-policy')
-    marker = 'GPU_SHARE' if policy_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
-    expected_checks = gpu_policy_checks.EXPECTED_CHECKS if policy_mode else BUILD_CHECKS if bv_mode else (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(a.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
+    alloc_mode = a.alloc_object
+    contract_mode = a.share_policy or alloc_mode
+    contract_checks = gpu_alloc_checks if alloc_mode else gpu_policy_checks
+    contract_key = 'alloc_observations' if alloc_mode else 'policy_observations'
+    contract_kind = 'gpu_fixed_alloc' if alloc_mode else 'gpu_share_policy'
+    if (ctrl_mode and a.gpu_count > 32) or ((ctrl_mode or bv_mode or contract_mode) and not a.native_baseline):
+        p.error('rm-control/build-version/share-policy/alloc-object require --native-baseline; rm-control requires gpu-count <= 32')
+    if a.native_baseline and not (ctrl_mode or bv_mode or contract_mode):
+        p.error('--native-baseline requires --rm-control, --build-version or --share-policy/--alloc-object')
+    marker = 'GPU_ALLOC' if alloc_mode else 'GPU_SHARE' if contract_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    expected_checks = contract_checks.EXPECTED_CHECKS if contract_mode else BUILD_CHECKS if bv_mode else (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(a.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
     devices = ['--device=/dev/harddind-nvidiactl']
     if fd_mode or rm_mode:
         devices += [f'--device=/dev/harddind-nvidia{i}' for i in range(a.gpu_count)]
@@ -67,10 +73,10 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     inputs = [a.kernel.resolve(), a.disk.resolve(), a.probe.resolve(),
               repo / 'scripts/harddind.py', pathlib.Path(__file__).resolve(),
-              repo / 'scripts/gpu_probe_checks.py', repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/result_checks.py']
-    if ctrl_mode or bv_mode or policy_mode:
+              repo / 'scripts/gpu_probe_checks.py', repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/gpu_alloc_checks.py', repo / 'scripts/result_checks.py']
+    if ctrl_mode or bv_mode or contract_mode:
         inputs.append(a.native_baseline.resolve())
-    report = {'kind': 'docker_gpu_share_policy' if policy_mode else 'docker_gpu_build_version' if bv_mode else 'docker_gpu_rm_control' if ctrl_mode else 'docker_gpu_rm_client' if rm_mode else 'docker_gpu_fd_registration' if fd_mode else 'docker_gpu_control_transport', 'full_acceptance': False,
+    report = {'kind': ('docker_' + contract_kind) if contract_mode else 'docker_gpu_build_version' if bv_mode else 'docker_gpu_rm_control' if ctrl_mode else 'docker_gpu_rm_client' if rm_mode else 'docker_gpu_fd_registration' if fd_mode else 'docker_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False, 'probe_results': {},
               'async_wait': a.async_wait,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -109,19 +115,19 @@ def main():
                 and baseline['device_results'] == after.get('device_results')):
             p.error('native baseline does not match this probe, driver or completed experiment')
         report['native_baseline'] = str(a.native_baseline.resolve())
-    if policy_mode:
+    if contract_mode:
         baseline_report = json.loads(a.native_baseline.read_text())
         baseline = baseline_report.get('phases', {}).get('native-before', {})
         after = baseline_report.get('phases', {}).get('native-after', {})
         recorded_probe = str(a.native_baseline.resolve().parent / 'gpu-guest-probe')
-        if not (baseline_report.get('kind') == 'uml_gpu_share_policy'
+        if not (baseline_report.get('kind') == ('uml_' + contract_kind)
                 and baseline_report.get('diagnostic_finished')
                 and baseline_report.get('policy_iterations') == 50
                 and baseline_report.get('driver_version') == version_text
                 and baseline_report.get('sha256', {}).get(recorded_probe) == harddind.sha(a.probe)
                 and baseline.get('status') == after.get('status') == 'pass'
-                and gpu_policy_checks.compare(baseline.get('policy_observations', {}),
-                                              after.get('policy_observations', {}))['matches']):
+                and contract_checks.compare(baseline.get(contract_key, {}),
+                                              after.get(contract_key, {}))['matches']):
             p.error('policy baseline must contain matching passing native phases for this exact probe and driver')
         report['native_baseline'] = str(a.native_baseline.resolve())
     os.sched_setaffinity(0, [0, 1, 2, 3])
@@ -142,7 +148,7 @@ def main():
             rows = re.findall(r'^' + marker + r'_CHECK (\w+) (pass|fail)$', text, re.M)
             passed = (rc == 0 and len(rows) == len(expected_checks)
                       and {n for n, status in rows if status == 'pass'} == expected_checks
-                      and (fd_mode or rm_mode or ctrl_mode or bv_mode or policy_mode or f'GPU_CONTROL_VERSION {version}' in text)
+                      and (fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode or f'GPU_CONTROL_VERSION {version}' in text)
                       and marker + '_END status=0 internal_cuda_verified=0' in text)
             contract = {}
             if ctrl_mode or bv_mode:
@@ -152,17 +158,17 @@ def main():
                     contract['control_results'] == baseline['control_results']
                     and contract['device_results'] == baseline['device_results'])
                 passed = passed and contract['native_contract_matches']
-            if policy_mode:
-                observations = gpu_policy_checks.parse(text)
-                comparison = gpu_policy_checks.compare(baseline['policy_observations'], observations)
-                contract = {'policy_observations': observations, 'native_comparison': comparison}
+            if contract_mode:
+                observations = contract_checks.parse(text)
+                comparison = contract_checks.compare(baseline[contract_key], observations)
+                contract = {contract_key: observations, 'native_comparison': comparison}
                 passed = rc == 0 and observations['probe_checks_pass'] and comparison['matches']
             report['checks'][name] = 'pass' if passed else 'fail'
             report['probe_results'][name] = {'exit_code': rc, 'checks': rows,
                                              'passed': passed, 'expected_checks': sorted(expected_checks), **contract}
             # RM parity failures remain failures; finish the lifecycle observations
             # so unsupported commands do not hide restart/concurrency evidence.
-            if not passed and not (rm_mode or ctrl_mode or bv_mode or policy_mode): raise RuntimeError(name + ' failed')
+            if not passed and not (rm_mode or ctrl_mode or bv_mode or contract_mode): raise RuntimeError(name + ' failed')
         def control_check(name, command):
             validate_control(name, *run(command))
         def capture_kernel_log(name):
@@ -195,8 +201,8 @@ def main():
                 archive.add(a.probe.resolve(), arcname='gpu-guest-probe', recursive=False)
             report['image_id'] = require(base + ['docker', 'import', '-', image], bundle.getvalue()).strip()
             probe_args = [image, '/gpu-guest-probe',
-                          '/dev/harddind-nvidia' if fd_mode or rm_mode or ctrl_mode or bv_mode or policy_mode else '/dev/harddind-nvidiactl',
-                          '50' if policy_mode else str(a.gpu_count) if fd_mode or rm_mode or ctrl_mode or bv_mode or policy_mode else version]
+                          '/dev/harddind-nvidia' if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else '/dev/harddind-nvidiactl',
+                          '50' if contract_mode else str(a.gpu_count) if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else version]
             rc, text = run(base + ['docker', 'run', '--rm', *probe_args])
             report['checks']['no_device'] = 'pass' if rc == 1 and 'No such file or directory' in text else 'fail'
             control_check('device_control', base + ['docker', 'run', '--name', container,
@@ -267,11 +273,11 @@ def main():
                 report['async_workers'] = async_workers
                 report['gpu_workers'] = workers
                 report['checks']['async_wait_active'] = 'pass' if len(workers) == 25 and len(async_workers) == 25 and set(workers) == set(async_workers) else 'fail'
-            if policy_mode:
+            if contract_mode:
                 report['diagnostic_finished'] = (
                     not report.get('error') and not report.get('shutdown_error')
                     and len(report['probe_results']) == 5
-                    and all(v['policy_observations']['observation_complete']
+                    and all(v[contract_key]['observation_complete']
                             for v in report['probe_results'].values())
                     and all(v != 'not_tested' for v in report['checks'].values()))
             report['diagnostic_complete'] = (not report.get('error') and not report.get('shutdown_error')

@@ -120,5 +120,6 @@ if __name__ == "__main__":
     if async_mode:
         patches += [repo / "kernel/experiments/0017-um-gpu-async-wait.patch"]
     if options == ["--gpu-experiment"]:
-        patches += [repo / "kernel/experiments/0025-um-gpu-policy-driver-validation.patch"]
+        patches += [repo / "kernel/experiments/0025-um-gpu-policy-driver-validation.patch",
+                    repo / "kernel/experiments/0026-um-gpu-fixed-alloc.patch"]
     apply_series(src, pathlib.Path(sys.argv[2]), patches)
