@@ -1,0 +1,1230 @@
+Subject: [PATCH] Export host-coordinated POSIX byte-range locks per guest owner
+
+Negotiate FUSE_POSIX_LOCKS with the opt-in --shared-posix-locks flag.
+FUSE lock_owner values name a guest files_struct; keep one host fd per
+(inode, owner) and issue nonblocking F_OFD_GETLK/F_OFD_SETLK on it so
+independent guest processes and host processes conflict bidirectionally,
+while one owner's opens, dup/fork/exec identity and split/merge semantics
+match POSIX. FLUSH (every guest close) drops the owner fd, reproducing
+"any close releases the owner's locks"; F_SETLKW rides the existing
+cancellable retry queue with EINTR/grant race handling. Fails hard at
+INIT instead of silently falling back to guest-local locks. Migration of
+lock state stays unsupported.
+
+---
+diff --git a/src/filesystem.rs b/src/filesystem.rs
+index b2cc2b2..ab8e11a 100644
+--- a/src/filesystem.rs
++++ b/src/filesystem.rs
+@@ -216,6 +216,33 @@ pub trait DirectoryIterator {
+ 
+ /// The main trait that connects a file system with a transport.
+ #[allow(unused_variables)]
++/// Normalized POSIX byte-range lock request.
++///
++/// Both offsets are absolute (`SEEK_SET`); the FUSE client resolves `SEEK_CUR`
++/// and `SEEK_END` (including signed deltas) before sending the request, and
++/// rejects negative results itself.  `len == 0` means "through end of file".
++#[derive(Debug, Copy, Clone, PartialEq, Eq)]
++pub struct PosixLock {
++    /// One of `libc::F_RDLCK`, `libc::F_WRLCK`, `libc::F_UNLCK`.
++    pub lk_type: u32,
++    pub start: u64,
++    pub len: u64,
++}
++
++impl PosixLock {
++    /// Inclusive end used by the FUSE wire format for an unbounded range.
++    pub const EOF: u64 = (1u64 << 62) - 1;
++
++    /// Inclusive end used by the FUSE wire format for this range.
++    pub fn end_of(lk: PosixLock) -> u64 {
++        if lk.len == 0 {
++            PosixLock::EOF
++        } else {
++            lk.start + lk.len - 1
++        }
++    }
++}
++
+ pub trait FileSystem {
+     /// Represents a location in the filesystem tree and can be used to perform operations that act
+     /// on the metadata of a file/directory (e.g., `getattr` and `setattr`). Can also be used as the
+@@ -979,17 +1006,34 @@ pub trait FileSystem {
+     fn flock_inline(&self, _ctx: Context, _inode: Self::Inode, _handle: Self::Handle,
+                     _operation: i32) -> Option<io::Result<()>> { None }
+ 
+-    fn getlk(&self) -> io::Result<()> {
+-        Err(io::Error::from_raw_os_error(libc::ENOSYS))
+-    }
+-
+-    /// TODO: support this
+-    fn setlk(&self) -> io::Result<()> {
++    /// Query a POSIX byte-range lock.
++    ///
++    /// `owner` is the FUSE lock owner of the querying guest process and `lk` describes the range
++    /// and lock type (`F_RDLCK`/`F_WRLCK`) to test.  Returns the conflicting lock (its pid as
++    /// visible on the host) or an `F_UNLCK` result when nothing conflicts.
++    fn getlk(
++        &self,
++        _ctx: Context,
++        _inode: Self::Inode,
++        _handle: Self::Handle,
++        _owner: u64,
++        _lk: PosixLock,
++    ) -> io::Result<fuse::FileLock> {
+         Err(io::Error::from_raw_os_error(libc::ENOSYS))
+     }
+ 
+-    /// TODO: support this
+-    fn setlkw(&self) -> io::Result<()> {
++    /// Apply (or remove) a POSIX byte-range lock without blocking.
++    ///
++    /// Blocking `F_SETLKW` requests are driven by the server's asynchronous retry queue, which
++    /// repeatedly calls this method and maps `EAGAIN` to "keep waiting".
++    fn setlk(
++        &self,
++        _ctx: Context,
++        _inode: Self::Inode,
++        _handle: Self::Handle,
++        _owner: u64,
++        _lk: PosixLock,
++    ) -> io::Result<()> {
+         Err(io::Error::from_raw_os_error(libc::ENOSYS))
+     }
+ 
+diff --git a/src/main.rs b/src/main.rs
+index c8d49b9..0fddbee 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -160,6 +160,11 @@ struct Opt {
+     #[arg(long)]
+     shared_flock: bool,
+ 
++    /// Coordinate POSIX byte-range locks with host processes and other guests
++    /// (requires --thread-pool-size > 0).
++    #[arg(long)]
++    shared_posix_locks: bool,
++
+     /// Aggregate request timings for diagnostics; adds measurement overhead.
+     #[arg(long)]
+     profile_requests: bool,
+@@ -850,6 +855,7 @@ fn main() {
+         security_label: opt.security_label,
+         posix_acl: opt.posix_acl,
+         shared_flock: opt.shared_flock,
++        shared_posix_locks: opt.shared_posix_locks,
+         clean_noatime: !opt.preserve_noatime,
+         allow_mmap: opt.allow_mmap,
+         migration_on_error: opt.migration_on_error,
+diff --git a/src/passthrough/device_state/mod.rs b/src/passthrough/device_state/mod.rs
+index df697df..4a4435c 100644
+--- a/src/passthrough/device_state/mod.rs
++++ b/src/passthrough/device_state/mod.rs
+@@ -71,7 +71,9 @@ impl SerializableFileSystem for PassthroughFs {
+ 
+     fn serialize(&self, mut state_pipe: File) -> io::Result<()> {
+         // Lock state is tied to host open descriptions and cannot be migrated yet.
+-        if self.cfg.shared_flock { return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)); }
++        if self.cfg.shared_flock || self.cfg.shared_posix_locks {
++            return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP));
++        }
+         self.track_migration_info.store(false, Ordering::Relaxed);
+ 
+         if self.cfg.migration_confirm_paths {
+@@ -90,7 +92,9 @@ impl SerializableFileSystem for PassthroughFs {
+     }
+ 
+     fn deserialize_and_apply(&self, mut state_pipe: File) -> io::Result<()> {
+-        if self.cfg.shared_flock { return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)); }
++        if self.cfg.shared_flock || self.cfg.shared_posix_locks {
++            return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP));
++        }
+         let mut serialized: Vec<u8> = Vec::new();
+         state_pipe.read_to_end(&mut serialized)?;
+         match serialized::PassthroughFs::try_from(serialized)? {
+diff --git a/src/passthrough/mod.rs b/src/passthrough/mod.rs
+index a300912..ec9fc79 100644
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -8,6 +8,7 @@ pub mod file_handle;
+ mod guest_fd_limit;
+ pub mod inode_store;
+ pub mod mount_fd;
++mod posix_locks;
+ pub mod read_only;
+ pub mod stat;
+ pub mod util;
+@@ -15,7 +16,7 @@ pub mod xattrmap;
+ 
+ use crate::filesystem::{
+     Context, Entry, Extensions, FileSystem, FsOptions, GetxattrReply, ListxattrReply, OpenOptions,
+-    SecContext, SetattrValid, SetxattrFlags, ZeroCopyReader, ZeroCopyWriter,
++    PosixLock, SecContext, SetattrValid, SetxattrFlags, ZeroCopyReader, ZeroCopyWriter,
+ };
+ use crate::passthrough::credentials::{drop_effective_cap, UnixCredentials, UnixCredentialsGuard};
+ use crate::passthrough::device_state::preserialization::{
+@@ -342,6 +343,10 @@ pub struct Config {
+     /// Export host flock semantics; requires a nonzero backend worker pool.
+     pub shared_flock: bool,
+ 
++    /// Export host-coordinated POSIX byte-range locks with real per-guest-owner
++    /// semantics; requires a nonzero backend worker pool.
++    pub shared_posix_locks: bool,
++
+     /// If `security_label` is true, then server will indicate to client
+     /// to send any security context associated with file during file
+     /// creation and set that security context on newly created file.
+@@ -426,6 +431,7 @@ impl Default for Config {
+             killpriv_v2: false,
+             posix_acl: false,
+             shared_flock: false,
++            shared_posix_locks: false,
+             security_label: false,
+             clean_noatime: true,
+             allow_mmap: false,
+@@ -458,6 +464,9 @@ pub struct PassthroughFs {
+     handles: RwLock<BTreeMap<Handle, Arc<HandleData>>>,
+     next_handle: AtomicU64,
+ 
++    // One host fd per (inode, guest lock owner) carrying that owner's OFD byte-range locks.
++    posix_locks: posix_locks::PosixLockTable,
++
+     // Represents a limit for the number of file descriptors we allow allocating for the guest.
+     // Having such a limit that is below the actual maximum number of file descriptors virtiofsd is
+     // allowed to use ensures that virtiofsd can always create file descriptors for internal use.
+@@ -559,6 +568,7 @@ impl PassthroughFs {
+             next_inode: AtomicU64::new(fuse::ROOT_ID + 1),
+             handles: RwLock::new(BTreeMap::new()),
+             next_handle: AtomicU64::new(0),
++            posix_locks: posix_locks::PosixLockTable::new(),
+             guest_fds: Arc::new(GuestFdSemaphore::new(cfg.guest_fd_limit)),
+             mount_fds,
+             proc_self_fd,
+@@ -653,6 +663,37 @@ impl PassthroughFs {
+             .into_file()
+     }
+ 
++    /// Open the host fd that carries one guest owner's OFD record locks.
++    /// A read-only fallback keeps read locks working on read-only exports; a
++    /// write lock attempted on the resulting fd fails with EBADF as it would
++    /// for a process that only opened the file for reading.
++    fn open_posix_lock_fd(&self, inode: Inode) -> io::Result<File> {
++        match self.open_inode(inode, libc::O_RDWR) {
++            Err(error)
++                if error.raw_os_error() == Some(libc::EACCES)
++                    || error.raw_os_error() == Some(libc::EROFS) =>
++            {
++                self.open_inode(inode, libc::O_RDONLY)
++            }
++            result => result,
++        }
++    }
++
++    /// Run `op` against the host fd carrying `owner`'s byte-range locks.
++    fn with_posix_lock_file<R>(
++        &self,
++        inode: Inode,
++        owner: u64,
++        op: impl FnOnce(&File) -> io::Result<R>,
++    ) -> io::Result<R> {
++        self.posix_locks.with_owner_file(
++            inode,
++            owner,
++            || self.open_posix_lock_fd(inode),
++            op,
++        )
++    }
++
+     /// Generate a file handle for `fd` using `FileHandle::from_fd()`.  `st` is `fd`'s stat
+     /// information (we may need the mount ID for errors/warnings).
+     ///
+@@ -1577,6 +1618,16 @@ impl FileSystem for PassthroughFs {
+         if self.cfg.shared_flock && capable.contains(FsOptions::FLOCK_LOCKS) {
+             opts |= FsOptions::FLOCK_LOCKS;
+         }
++        if self.cfg.shared_posix_locks {
++            // Refuse to start half-enabled: without the negotiation the guest
++            // marks locks local (fc->no_lock), which must never happen here.
++            if capable.contains(FsOptions::POSIX_LOCKS) {
++                opts |= FsOptions::POSIX_LOCKS;
++            } else {
++                error!("Cannot enable shared POSIX locks, client does not support it");
++                return Err(io::Error::from_raw_os_error(libc::EPROTO));
++            }
++        }
+ 
+         if self.cfg.allow_mmap {
+             opts |= FsOptions::DIRECT_IO_ALLOW_MMAP;
+@@ -1590,6 +1641,7 @@ impl FileSystem for PassthroughFs {
+     }
+ 
+     fn destroy(&self) {
++        self.posix_locks.clear();
+         self.handles.write().unwrap().clear();
+         self.inodes.clear();
+         self.writeback.store(false, Ordering::Relaxed);
+@@ -1618,11 +1670,21 @@ impl FileSystem for PassthroughFs {
+     }
+ 
+     fn forget(&self, _ctx: Context, inode: Inode, count: u64) {
+-        self.inodes.forget_one(inode, count)
++        self.inodes.forget_one(inode, count);
++        // Only drop owner fds once no lookup reference to the inode remains.
++        if self.inodes.get(inode).is_none() {
++            self.posix_locks.forget_inode(inode);
++        }
+     }
+ 
+     fn batch_forget(&self, _ctx: Context, requests: Vec<(Inode, u64)>) {
+-        self.inodes.forget_many(requests)
++        let inodes = requests.iter().map(|(inode, _)| *inode).collect::<Vec<_>>();
++        self.inodes.forget_many(requests);
++        for inode in inodes {
++            if self.inodes.get(inode).is_none() {
++                self.posix_locks.forget_inode(inode);
++            }
++        }
+     }
+ 
+     fn opendir(
+@@ -1725,7 +1787,9 @@ impl FileSystem for PassthroughFs {
+         self.do_open(inode, kill_priv, flags)
+     }
+ 
+-    fn requires_async_locks(&self) -> bool { self.cfg.shared_flock }
++    fn requires_async_locks(&self) -> bool {
++        self.cfg.shared_flock || self.cfg.shared_posix_locks
++    }
+ 
+     fn flock_inline(&self, _ctx: Context, inode: Inode, handle: Handle,
+                     operation: i32) -> Option<io::Result<()>> {
+@@ -1769,6 +1833,96 @@ impl FileSystem for PassthroughFs {
+         unlock.and(release)
+     }
+ 
++    fn getlk(
++        &self,
++        _ctx: Context,
++        inode: Inode,
++        handle: Handle,
++        owner: u64,
++        lk: PosixLock,
++    ) -> io::Result<fuse::FileLock> {
++        if !self.cfg.shared_posix_locks {
++            return Err(io::Error::from_raw_os_error(libc::ENOSYS));
++        }
++        let _ = self.find_handle(handle, inode)?;
++        if lk.lk_type != libc::F_RDLCK as u32 && lk.lk_type != libc::F_WRLCK as u32 {
++            return Err(io::Error::from_raw_os_error(libc::EINVAL));
++        }
++        self.with_posix_lock_file(inode, owner, |held| {
++            let mut flock = libc::flock {
++                l_type: lk.lk_type as i16,
++                l_whence: libc::SEEK_SET as i16,
++                l_start: lk.start as i64,
++                l_len: lk.len as i64,
++                l_pid: 0,
++            };
++            // Safe because fcntl(F_OFD_GETLK) only reads/writes the flock struct.
++            let ret = unsafe { libc::fcntl(held.as_raw_fd(), libc::F_OFD_GETLK, &mut flock) };
++            if ret < 0 {
++                return Err(io::Error::last_os_error());
++            }
++            if flock.l_type == libc::F_UNLCK as i16 {
++                // No conflicting lock; reflect the queried range back to the guest.
++                return Ok(fuse::FileLock {
++                    start: lk.start,
++                    end: PosixLock::end_of(lk),
++                    type_: libc::F_UNLCK as u32,
++                    pid: 0,
++                });
++            }
++            // Host OFD holders (i.e. other guests) report l_pid == -1; host
++            // process locks report the holder's host pid.  The guest can only
++            // translate host pids into its own pid namespace by coincidence.
++            Ok(fuse::FileLock {
++                start: flock.l_start as u64,
++                end: if flock.l_len == 0 {
++                    PosixLock::EOF
++                } else {
++                    (flock.l_start as u64) + (flock.l_len as u64) - 1
++                },
++                type_: flock.l_type as u32,
++                pid: flock.l_pid as u32,
++            })
++        })
++    }
++
++    fn setlk(
++        &self,
++        _ctx: Context,
++        inode: Inode,
++        handle: Handle,
++        owner: u64,
++        lk: PosixLock,
++    ) -> io::Result<()> {
++        if !self.cfg.shared_posix_locks {
++            return Err(io::Error::from_raw_os_error(libc::ENOSYS));
++        }
++        let _ = self.find_handle(handle, inode)?;
++        if lk.lk_type != libc::F_RDLCK as u32
++            && lk.lk_type != libc::F_WRLCK as u32
++            && lk.lk_type != libc::F_UNLCK as u32
++        {
++            return Err(io::Error::from_raw_os_error(libc::EINVAL));
++        }
++        self.with_posix_lock_file(inode, owner, |held| {
++            let mut flock = libc::flock {
++                l_type: lk.lk_type as i16,
++                l_whence: libc::SEEK_SET as i16,
++                l_start: lk.start as i64,
++                l_len: lk.len as i64,
++                l_pid: 0,
++            };
++            // Always nonblocking: F_SETLKW is driven through the retry queue so
++            // waits stay cancellable without consuming filesystem workers.
++            let ret = unsafe { libc::fcntl(held.as_raw_fd(), libc::F_OFD_SETLK, &mut flock) };
++            if ret < 0 {
++                Err(io::Error::last_os_error())
++            } else {
++                Ok(())
++            }
++        })
++    }
++
+     fn create(
+         &self,
+         ctx: Context,
+@@ -2277,8 +2431,13 @@ impl FileSystem for PassthroughFs {
+         _ctx: Context,
+         inode: Inode,
+         handle: Handle,
+-        _lock_owner: u64,
++        lock_owner: u64,
+     ) -> io::Result<()> {
++        if self.cfg.shared_posix_locks {
++            // The guest sends FLUSH for every close(2), and POSIX semantics release
++            // all of the owner's record locks on this inode on any close.
++            self.posix_locks.flush_owner(inode, lock_owner);
++        }
+         let data = self.find_handle(handle, inode)?;
+ 
+         // Since this method is called whenever an fd is closed in the client, we can emulate that
+@@ -2811,3 +2970,308 @@ mod harddind_tests {
+         std::fs::remove_dir_all(base).unwrap();
+     }
+ }
++
++    // Build a passthrough fs rooted at a unique temp dir with shared POSIX locks.
++    fn harddind_posix_fs(base: &std::path::Path) -> PassthroughFs {
++        let fs = PassthroughFs::new(Config {
++            root_dir: base.to_str().unwrap().into(),
++            shared_flock: true,
++            shared_posix_locks: true,
++            inode_file_handles: InodeFileHandlesMode::Never,
++            ..Default::default()
++        })
++        .unwrap();
++        fs.init(FsOptions::FLOCK_LOCKS | FsOptions::POSIX_LOCKS)
++            .unwrap();
++        fs
++    }
++
++    fn harddind_plock(lk_type: i32, start: u64, len: u64) -> PosixLock {
++        PosixLock {
++            lk_type: lk_type as u32,
++            start,
++            len,
++        }
++    }
++
++    // Traditional host-process fcntl against the exported path.
++    fn harddind_host_fcntl(path: &std::path::Path, cmd: i32, type_: i16, start: i64, len: i64)
++        -> (i32, Option<i32>) {
++        let file = std::fs::OpenOptions::new().read(true).write(true).open(path).unwrap();
++        let mut lock = libc::flock {
++            l_type: type_,
++            l_whence: libc::SEEK_SET as i16,
++            l_start: start,
++            l_len: len,
++            l_pid: 0,
++        };
++        let rc = unsafe { libc::fcntl(file.as_raw_fd(), cmd, &mut lock) };
++        if cmd == libc::F_GETLK {
++            (
++                rc,
++                Some(lock.l_pid),
++            )
++        } else if rc < 0 {
++            (rc, io::Error::last_os_error().raw_os_error())
++        } else {
++            (rc, Some(0))
++        }
++    }
++
++    #[test]
++    fn harddind_posix_locks_owner_ranges_host_conflicts_and_flush() {
++        let base = std::env::temp_dir().join(format!("virtiofs-posix-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let path = base.join("lock");
++        std::fs::write(&path, vec![0u8; 4096]).unwrap();
++        let fs = harddind_posix_fs(&base);
++        let name = CString::new("lock").unwrap();
++        let inode = fs.do_lookup(1, &name).unwrap().inode;
++        let handle = fs.do_open(inode, false, libc::O_RDWR as u32).unwrap().0.unwrap();
++        let ctx = Context {
++            uid: 0.into(),
++            gid: 0.into(),
++            pid: std::process::id() as i32,
++        };
++        let (a, b) = (0x1001u64, 0x1002u64);
++
++        // Owner A owns bytes [0,64) for writing.
++        fs.setlk(ctx, inode, handle, a, harddind_plock(libc::F_WRLCK, 0, 64))
++            .unwrap();
++        // Distinct guest owners must conflict for read and write on overlap...
++        assert_eq!(
++            fs.setlk(ctx, inode, handle, b, harddind_plock(libc::F_WRLCK, 0, 64))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EAGAIN)
++        );
++        assert_eq!(
++            fs.setlk(ctx, inode, handle, b, harddind_plock(libc::F_RDLCK, 0, 64))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EAGAIN)
++        );
++        // ...but disjoint ranges are independent, including adjacent boundaries.
++        fs.setlk(ctx, inode, handle, b, harddind_plock(libc::F_WRLCK, 64, 64))
++            .unwrap();
++        fs.setlk(ctx, inode, handle, b, harddind_plock(libc::F_RDLCK, 128, 64))
++            .unwrap();
++        assert_eq!(
++            fs.setlk(ctx, inode, handle, b, harddind_plock(libc::F_WRLCK, 63, 2))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EAGAIN)
++        );
++        // Same owner downgrading its own range never blocks itself.
++        fs.setlk(ctx, inode, handle, a, harddind_plock(libc::F_RDLCK, 0, 64))
++            .unwrap();
++
++        // F_GETLK: another owner sees A's lock with OFD pid (-1); A sees nothing.
++        let found = fs
++            .getlk(ctx, inode, handle, b, harddind_plock(libc::F_WRLCK, 0, 4096))
++            .unwrap();
++        assert_eq!((found.type_ as i32, found.start, found.end, found.pid),
++                   (libc::F_RDLCK, 0, 63, u32::MAX));
++        // Within A's own range, A cannot see its own lock...
++        let clean = fs
++            .getlk(ctx, inode, handle, a, harddind_plock(libc::F_WRLCK, 0, 64))
++            .unwrap();
++        assert_eq!(clean.type_ as i32, libc::F_UNLCK);
++        // ...but over the full file A does see B's lock starting at byte 64.
++        let b_from_a = fs
++            .getlk(ctx, inode, handle, a, harddind_plock(libc::F_WRLCK, 0, 4096))
++            .unwrap();
++        assert_eq!((b_from_a.type_ as i32, b_from_a.start, b_from_a.end),
++                   (libc::F_WRLCK, 64, 127));
++
++        // Host-native POSIX locks conflict with guest owners in both directions.
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 0, 64),
++            (-1, Some(libc::EAGAIN))
++        );
++        let (_, pid) = harddind_host_fcntl(&path, libc::F_GETLK, libc::F_WRLCK as i16, 0, 64);
++        assert_eq!(pid, Some(-1));
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_RDLCK as i16, 128, 64),
++            (0, Some(0)) // shared with B's read lock
++        );
++
++        // A host writer reports a host pid back through the guest query.
++        let host = std::fs::OpenOptions::new().read(true).write(true).open(&path).unwrap();
++        assert_eq!(
++            unsafe {
++                libc::fcntl(
++                    host.as_raw_fd(),
++                    libc::F_SETLK,
++                    &mut libc::flock {
++                        l_type: libc::F_WRLCK as i16,
++                        l_whence: libc::SEEK_SET as i16,
++                        l_start: 256,
++                        l_len: 64,
++                        l_pid: 0,
++                    },
++                )
++            },
++            0
++        );
++        let holder = fs
++            .getlk(ctx, inode, handle, a, harddind_plock(libc::F_WRLCK, 256, 64))
++            .unwrap();
++        assert_eq!(holder.type_ as i32, libc::F_WRLCK);
++        assert_eq!(holder.start, 256);
++        assert_eq!(holder.end, 319);
++        assert_eq!(holder.pid, std::process::id() as u32);
++        drop(host);
++
++        // Explicit unlock releases only the requested owner range.
++        fs.setlk(ctx, inode, handle, a, harddind_plock(libc::F_UNLCK, 0, 64))
++            .unwrap();
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 0, 64),
++            (0, Some(0))
++        );
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 64, 64),
++            (-1, Some(libc::EAGAIN))
++        );
++
++        // Any close (FLUSH) releases all of that owner's locks on the inode,
++        // including its read lock and locks it held on ranges taken elsewhere.
++        fs.flush(ctx, inode, handle, b).unwrap();
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 64, 128),
++            (0, Some(0))
++        );
++
++        // To-EOF lock (len 0) blocks a writer far past EOF and round-trips via GETLK.
++        fs.setlk(ctx, inode, handle, a, harddind_plock(libc::F_WRLCK, 1000, 0))
++            .unwrap();
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 5000, 1),
++            (-1, Some(libc::EAGAIN))
++        );
++        let (_, far_pid) =
++            harddind_host_fcntl(&path, libc::F_GETLK, libc::F_WRLCK as i16, 5000, 1);
++        assert_eq!(far_pid, Some(-1));
++        fs.setlk(ctx, inode, handle, a, harddind_plock(libc::F_UNLCK, 1000, 0))
++            .unwrap();
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 5000, 1),
++            (0, Some(0))
++        );
++        std::fs::remove_dir_all(base).unwrap();
++    }
++
++    #[test]
++    fn harddind_posix_locks_multi_open_rename_unlink_and_retry_grant() {
++        let base = std::env::temp_dir().join(format!("virtiofs-posix-life-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let path = base.join("life");
++        std::fs::write(&path, vec![0u8; 4096]).unwrap();
++        let fs = harddind_posix_fs(&base);
++        let ctx = Context {
++            uid: 0.into(),
++            gid: 0.into(),
++            pid: std::process::id() as i32,
++        };
++        let inode = fs.do_lookup(1, &CString::new("life").unwrap()).unwrap().inode;
++        let handle1 = fs.do_open(inode, false, libc::O_RDWR as u32).unwrap().0.unwrap();
++        let handle2 = fs.do_open(inode, false, libc::O_RDWR as u32).unwrap().0.unwrap();
++
++        // Two guest opens by one owner share the owner fd: the second lock does
++        // not conflict, and FLUSH on either open releases the owner's locks.
++        let owner = 0x2001u64;
++        fs.setlk(ctx, inode, handle1, owner, harddind_plock(libc::F_WRLCK, 10, 10))
++            .unwrap();
++        fs.setlk(ctx, inode, handle2, owner, harddind_plock(libc::F_WRLCK, 10, 10))
++            .unwrap();
++        fs.flush(ctx, inode, handle1, owner).unwrap();
++        assert_eq!(
++            harddind_host_fcntl(&path, libc::F_SETLK, libc::F_WRLCK as i16, 10, 10),
++            (0, Some(0))
++        );
++
++        // The retry worker's nonblocking poll sees EAGAIN then grants after unlock.
++        let other = 0x2002u64;
++        fs.setlk(ctx, inode, handle1, owner, harddind_plock(libc::F_WRLCK, 0, 64))
++            .unwrap();
++        assert_eq!(
++            fs.setlk(ctx, inode, handle2, other, harddind_plock(libc::F_WRLCK, 0, 64))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EAGAIN)
++        );
++        fs.setlk(ctx, inode, handle1, owner, harddind_plock(libc::F_UNLCK, 0, 64))
++            .unwrap();
++        fs.setlk(ctx, inode, handle2, other, harddind_plock(libc::F_WRLCK, 0, 64))
++            .unwrap();
++        fs.flush(ctx, inode, handle2, other).unwrap();
++
++        // Inode identity follows rename and unlink; locks keep working on the
++        // same nodeid and are releasable after the name disappears.
++        fs.setlk(ctx, inode, handle1, owner, harddind_plock(libc::F_WRLCK, 0, 64))
++            .unwrap();
++        std::fs::rename(&path, base.join("life-moved")).unwrap();
++        fs.setlk(ctx, inode, handle1, owner, harddind_plock(libc::F_WRLCK, 64, 64))
++            .unwrap();
++        let found = fs
++            .getlk(ctx, inode, handle2, other, harddind_plock(libc::F_WRLCK, 0, 4096))
++            .unwrap();
++        assert_eq!(found.type_ as i32, libc::F_WRLCK);
++        std::fs::remove_file(base.join("life-moved")).unwrap();
++        fs.setlk(ctx, inode, handle1, owner, harddind_plock(libc::F_WRLCK, 128, 64))
++            .unwrap();
++        // `other`'s owner fd was flushed earlier, so GETLK lazily reopens the
++        // inode through /proc/self/fd even though the last name is gone.
++        let unlinked = fs
++            .getlk(ctx, inode, handle2, other, harddind_plock(libc::F_WRLCK, 0, 4096))
++            .unwrap();
++        assert_eq!(unlinked.type_ as i32, libc::F_WRLCK);
++        fs.flush(ctx, inode, handle1, owner).unwrap();
++        fs.flush(ctx, inode, handle2, other).unwrap();
++        std::fs::remove_dir_all(base).unwrap();
++    }
++
++    #[test]
++    fn harddind_posix_locks_require_negotiation_and_refuse_when_disabled() {
++        let base = std::env::temp_dir().join(format!("virtiofs-posix-off-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        std::fs::write(base.join("f"), b"x").unwrap();
++        // Enabled in configuration but the client lacks POSIX_LOCKS: hard error
++        // instead of a silent fallback to local locking.
++        let fs = PassthroughFs::new(Config {
++            root_dir: base.to_str().unwrap().into(),
++            shared_posix_locks: true,
++            inode_file_handles: InodeFileHandlesMode::Never,
++            ..Default::default()
++        })
++        .unwrap();
++        assert_eq!(
++            fs.init(FsOptions::FLOCK_LOCKS)
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EPROTO)
++        );
++        // Feature off: ENOSYS from the fs methods even with a capable client.
++        let fs = PassthroughFs::new(Config {
++            root_dir: base.to_str().unwrap().into(),
++            inode_file_handles: InodeFileHandlesMode::Never,
++            ..Default::default()
++        })
++        .unwrap();
++        fs.init(FsOptions::POSIX_LOCKS).unwrap();
++        let inode = fs.do_lookup(1, &CString::new("f").unwrap()).unwrap().inode;
++        let handle = fs.do_open(inode, false, libc::O_RDWR as u32).unwrap().0.unwrap();
++        let ctx = Context {
++            uid: 0.into(),
++            gid: 0.into(),
++            pid: std::process::id() as i32,
++        };
++        assert_eq!(
++            fs.setlk(ctx, inode, handle, 1, harddind_plock(libc::F_WRLCK, 0, 64))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::ENOSYS)
++        );
++        std::fs::remove_dir_all(base).unwrap();
++    }
+diff --git a/src/passthrough/posix_locks.rs b/src/passthrough/posix_locks.rs
+new file mode 100644
+index 0000000..6832521
+--- /dev/null
++++ b/src/passthrough/posix_locks.rs
+@@ -0,0 +1,220 @@
++// SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
++
++//! Per-guest-owner host file descriptors for POSIX byte-range locks.
++//!
++//! Linux POSIX record locks (`fcntl(2)` `F_SETLK`) are owned by the process's
++//! `struct files_struct`.  The FUSE protocol identifies that owner with the
++//! per-mount scrambled 64-bit value carried in `fuse_lk_in::owner` and
++//! `fuse_flush_in::lock_owner`; threads and `dup(2)` share it, `fork(2)`
++//! without `CLONE_FILES` produces a new one.
++//!
++//! Traditional host locks cannot distinguish between guest owners because all
++//! requests run in one virtiofsd process.  Per-open `F_OFD_SETLK` is not
++//! sufficient either: two opens by the same guest process would then conflict
++//! with each other, while locks taken through one fd would survive the close
++//! of another fd (both contradict POSIX semantics).  Instead this table keeps
++//! exactly one host open file description per `(inode, owner)` and issues all
++//! of that owner's lock operations with `F_OFD_SETLK`/`F_OFD_GETLK` on it:
++//!
++//! * different owners use different fds, so their locks conflict on the host
++//!   exactly like locks of independent host processes, in both directions
++//!   with host-native POSIX locks;
++//! * repeated operations on the owner's fd reproduce one owner's split/merge
++//!   behavior and never conflict with the owner itself;
++//! * `FLUSH` is sent by the guest for every `close(2)`, and POSIX semantics
++//!   release all of that owner's record locks on the inode on any close, so
++//!   `flush_owner` simply removes and closes the fd.
++//!
++//! All fcntl operations issued through this module are nonblocking.  Blocking
++//! `F_SETLKW` requests are retried by the asynchronous lock wait queue.
++
++use std::collections::BTreeMap;
++use std::fs::File;
++use std::io;
++use std::sync::{Arc, Mutex, MutexGuard};
++
++use super::inode_store::Inode;
++
++pub(super) struct InodeLockSet {
++    /// Held across the nonblocking fcntl and owner-table updates, never across
++    /// a blocking wait.  Orders lock attempts against `FLUSH`/forget teardown
++    /// for this inode so a granted lock cannot outlive the fd close that was
++    /// supposed to release it.
++    serialize: Arc<Mutex<()>>,
++
++    owners: Mutex<BTreeMap<u64, Arc<File>>>,
++}
++
++impl InodeLockSet {
++    fn new() -> Self {
++        InodeLockSet {
++            serialize: Arc::new(Mutex::new(())),
++            owners: Mutex::new(BTreeMap::new()),
++        }
++    }
++}
++
++#[derive(Default)]
++pub(super) struct PosixLockTable {
++    inodes: Mutex<BTreeMap<Inode, Arc<InodeLockSet>>>,
++}
++
++impl PosixLockTable {
++    pub(super) fn new() -> Self {
++        PosixLockTable::default()
++    }
++
++    /// Run `op` against the shared host fd carrying `owner`'s locks on
++    /// `inode`, creating that fd lazily with `open`.  The inode's teardown
++    /// lock is held for the duration of `op`, so FLUSH/forget cannot close the
++    /// fd while the nonblocking fcntl is in flight.
++    pub(super) fn with_owner_file<OpenFn, R>(
++        &self,
++        inode: Inode,
++        owner: u64,
++        open: OpenFn,
++        op: impl FnOnce(&File) -> io::Result<R>,
++    ) -> io::Result<R>
++    where
++        OpenFn: FnOnce() -> io::Result<File>,
++    {
++        let set = {
++            let mut inodes = self.inodes.lock().unwrap();
++            Arc::clone(
++                inodes
++                    .entry(inode)
++                    .or_insert_with(|| Arc::new(InodeLockSet::new())),
++            )
++        };
++        // Acquired before touching `owners`, so no lock can be granted on an fd
++        // while a concurrent FLUSH is closing it.
++        let _guard: MutexGuard<'_, ()> = set.serialize.lock().unwrap();
++        let file = {
++            let mut owners = set.owners.lock().unwrap();
++            if let Some(file) = owners.get(&owner) {
++                Arc::clone(file)
++            } else {
++                // The open goes through /proc/self/fd and must not hold table
++                // locks; insert on return. FLUSH cannot run while `_guard` is
++                // held, so the slot cannot have been removed in between.
++                drop(owners);
++                let opened = Arc::new(open()?);
++                let mut owners = set.owners.lock().unwrap();
++                Arc::clone(owners.entry(owner).or_insert(opened))
++            }
++        };
++        op(&file)
++    }
++
++    /// Close the fd carrying all host representation of `owner`'s locks on
++    /// `inode`; called from FUSE FLUSH.  A no-op when the owner never locked.
++    pub(super) fn flush_owner(&self, inode: Inode, owner: u64) {
++        let set = match self.inodes.lock().unwrap().get(&inode) {
++            Some(set) => Arc::clone(set),
++            None => return,
++        };
++        let _guard = set.serialize.lock().unwrap();
++        // Dropping the last Arc closes the fd and releases every OFD lock held
++        // through it.  Outstanding borrows delay only the close.
++        set.owners.lock().unwrap().remove(&owner);
++    }
++
++    /// Drop all owner fds for an inode when the guest forgets it.  Operations
++    /// already in flight keep the `InodeLockSet` alive until they complete.
++    pub(super) fn forget_inode(&self, inode: Inode) {
++        self.inodes.lock().unwrap().remove(&inode);
++    }
++
++    /// Release every lock tracked by the table (DESTROY / re-init).
++    pub(super) fn clear(&self) {
++        self.inodes.lock().unwrap().clear();
++    }
++}
++
++#[cfg(test)]
++mod harddind_tests {
++    use super::*;
++    use std::os::unix::io::AsRawFd;
++
++    fn ofd(file: &File, cmd: i32, type_: i32, start: i64, len: i64) -> (i32, Option<i32>) {
++        let mut lock = libc::flock {
++            l_type: type_ as i16,
++            l_whence: libc::SEEK_SET as i16,
++            l_start: start,
++            l_len: len,
++            l_pid: 0,
++        };
++        let rc = unsafe { libc::fcntl(file.as_raw_fd(), cmd, &mut lock) };
++        let error = if rc < 0 {
++            io::Error::last_os_error().raw_os_error()
++        } else {
++            None
++        };
++        (rc, error)
++    }
++
++    fn posix(file: &File, cmd: i32, type_: i32, start: i64, len: i64) -> (i32, Option<i32>) {
++        let mut lock = libc::flock {
++            l_type: type_ as i16,
++            l_whence: libc::SEEK_SET as i16,
++            l_start: start,
++            l_len: len,
++            l_pid: 0,
++        };
++        let rc = unsafe { libc::fcntl(file.as_raw_fd(), cmd, &mut lock) };
++        let error = if rc < 0 {
++            io::Error::last_os_error().raw_os_error()
++        } else {
++            None
++        };
++        (rc, error)
++    }
++
++    #[test]
++    fn harddind_posix_table_owner_isolation_flush_and_forget() {
++        let base = std::env::temp_dir().join(format!("virtiofs-posix-table-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let path = base.join("locks");
++        std::fs::write(&path, b"data").unwrap();
++
++        let table = PosixLockTable::new();
++        let opener = || File::options().read(true).write(true).open(&path);
++
++        // Owner A takes a write lock; distinct owner B must be refused.
++        table
++            .with_owner_file(7, 0x1111, opener, |f| {
++                assert_eq!(ofd(f, libc::F_OFD_SETLK, libc::F_WRLCK, 0, 64).0, 0);
++                io::Result::Ok(())
++            })
++            .unwrap();
++        table
++            .with_owner_file(7, 0x2222, opener, |f| {
++                assert_eq!(ofd(f, libc::F_OFD_SETLK, libc::F_WRLCK, 0, 64),
++                           (-1, Some(libc::EAGAIN)));
++                // B may lock a disjoint range on its own fd.
++                assert_eq!(ofd(f, libc::F_OFD_SETLK, libc::F_WRLCK, 64, 64).0, 0);
++                io::Result::Ok(())
++            })
++            .unwrap();
++
++        // FLUSH for A closes A's fd, releasing A's range; B's survives.
++        table.flush_owner(7, 0x1111);
++        let host = File::options().read(true).write(true).open(&path).unwrap();
++        assert_eq!(posix(&host, libc::F_SETLK, libc::F_WRLCK, 0, 64), (0, None));
++        assert_eq!(posix(&host, libc::F_SETLK, libc::F_WRLCK, 64, 64), (-1, Some(libc::EAGAIN)));
++        assert_eq!(posix(&host, libc::F_SETLK, libc::F_UNLCK, 0, 64), (0, None));
++        // Recreated A fd behaves as a fresh owner after FLUSH.
++        table
++            .with_owner_file(7, 0x1111, opener, |f| {
++                assert_eq!(ofd(f, libc::F_OFD_SETLK, libc::F_WRLCK, 0, 64).0, 0);
++                io::Result::Ok(())
++            })
++            .unwrap();
++
++        // Forget closes the inode's remaining fds (A re-acquired and B's).
++        table.forget_inode(7);
++        assert_eq!(posix(&host, libc::F_SETLK, libc::F_WRLCK, 0, 64), (0, None));
++        assert_eq!(posix(&host, libc::F_SETLK, libc::F_WRLCK, 64, 64), (0, None));
++        std::fs::remove_dir_all(base).unwrap();
++    }
++}
+diff --git a/src/passthrough/read_only.rs b/src/passthrough/read_only.rs
+index 087fc93..166007e 100644
+--- a/src/passthrough/read_only.rs
++++ b/src/passthrough/read_only.rs
+@@ -13,7 +13,7 @@ use super::util::{einval, erofs};
+ use super::PassthroughFs;
+ use crate::filesystem::{
+     Context, Entry, Extensions, FileSystem, FsOptions, GetxattrReply, ListxattrReply, OpenOptions,
+-    SerializableFileSystem, SetattrValid, SetxattrFlags, ZeroCopyReader, ZeroCopyWriter,
++    PosixLock, SerializableFileSystem, SetattrValid, SetxattrFlags, ZeroCopyReader, ZeroCopyWriter,
+ };
+ use crate::fuse;
+ use std::convert::TryInto;
+@@ -179,6 +179,22 @@ impl FileSystem for PassthroughFsRo {
+         fn requires_async_locks(&self) -> bool;
+         fn flock(&self, ctx: Context, inode: Self::Inode, handle: Self::Handle, operation: i32) -> io::Result<()>;
+         fn flock_inline(&self, ctx: Context, inode: Self::Inode, handle: Self::Handle, operation: i32) -> Option<io::Result<()>>;
++        fn getlk(
++            &self,
++            ctx: Context,
++            inode: Self::Inode,
++            handle: Self::Handle,
++            lock_owner: u64,
++            lk: PosixLock,
++        ) -> io::Result<fuse::FileLock>;
++        fn setlk(
++            &self,
++            ctx: Context,
++            inode: Self::Inode,
++            handle: Self::Handle,
++            lock_owner: u64,
++            lk: PosixLock,
++        ) -> io::Result<()>;
+         fn destroy(&self);
+         fn lookup(&self, ctx: Context, parent: Self::Inode, name: &CStr) -> io::Result<Entry>;
+         fn forget(&self, ctx: Context, inode: Self::Inode, count: u64);
+diff --git a/src/server.rs b/src/server.rs
+index ecf2f55..b136715 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -5,7 +5,7 @@
+ use crate::descriptor_utils::{Reader, Writer};
+ use crate::filesystem::{
+     Context, DirEntry, DirectoryIterator, Entry, Extensions, FileSystem, GetxattrReply,
+-    ListxattrReply, SecContext, SerializableFileSystem, ZeroCopyReader, ZeroCopyWriter,
++    ListxattrReply, PosixLock, SecContext, SerializableFileSystem, ZeroCopyReader, ZeroCopyWriter,
+ };
+ use crate::fuse::*;
+ use crate::passthrough::util::einval;
+@@ -85,6 +85,49 @@ pub struct Server<F: FileSystem + Sync> {
+     options: AtomicU64,
+ }
+ 
++/// Decode a POSIX (non-flock) FUSE lock request into an absolute range.
++///
++/// FUSE clients resolve `SEEK_CUR`/`SEEK_END` (and signed starts) into absolute
++/// offsets before sending; a length of zero reaches the wire as end-of-file.
++/// Linux sends `OFFSET_MAX` as that end; legacy implementations send zero.
++fn harddind_parse_posix_lock(
++    header: InHeader,
++    request: &LkIn,
++) -> io::Result<(u64, u64, PosixLock)> {
++    if header.len as usize != size_of::<InHeader>() + size_of::<LkIn>() {
++        return Err(io::Error::from_raw_os_error(libc::EINVAL));
++    }
++    if request.lk_flags & LK_FLOCK != 0 {
++        return Err(io::Error::from_raw_os_error(libc::EINVAL));
++    }
++    let lk_type = match request.lk.type_ as i32 {
++        libc::F_RDLCK | libc::F_WRLCK | libc::F_UNLCK => request.lk.type_,
++        _ => return Err(io::Error::from_raw_os_error(libc::EINVAL)),
++    };
++    if request.lk.start > PosixLock::EOF {
++        return Err(io::Error::from_raw_os_error(libc::EINVAL));
++    }
++    let len = match request.lk.end {
++        0 | PosixLock::EOF => 0,
++        end if end < request.lk.start => {
++            return Err(io::Error::from_raw_os_error(libc::EINVAL));
++        }
++        end if end > PosixLock::EOF => {
++            return Err(io::Error::from_raw_os_error(libc::EINVAL));
++        }
++        end => end - request.lk.start + 1,
++    };
++    Ok((
++        request.fh,
++        request.owner,
++        PosixLock {
++            lk_type,
++            start: request.lk.start,
++            len,
++        },
++    ))
++}
++
+ impl<F: FileSystem + Sync> Server<F> {
+     pub fn new(fs: F) -> Server<F> {
+         Server {
+@@ -1197,11 +1240,19 @@ impl<F: FileSystem + Sync> Server<F> {
+         }
+     }
+ 
+-    fn getlk(&self, in_header: InHeader, mut _r: Reader, w: Writer) -> Result<usize> {
+-        if let Err(e) = self.fs.getlk() {
+-            reply_error(e, in_header.unique, w)
+-        } else {
+-            Ok(0)
++    fn getlk(&self, in_header: InHeader, mut r: Reader, w: Writer) -> Result<usize> {
++        let request: LkIn = r.read_obj().map_err(Error::DecodeMessage)?;
++        let result = harddind_parse_posix_lock(in_header, &request).and_then(|(fh, owner, lk)| {
++            if lk.lk_type as i32 == libc::F_UNLCK {
++                return Err(io::Error::from_raw_os_error(libc::EINVAL));
++            }
++            self.fs
++                .getlk(Context::from(in_header), in_header.nodeid.into(), fh.into(), owner, lk)
++                .map(|lk| LkOut { lk })
++        });
++        match result {
++            Ok(out) => reply_ok(Some(out), None, in_header.unique, w),
++            Err(e) => reply_error(e, in_header.unique, w),
+         }
+     }
+ 
+@@ -1243,17 +1294,31 @@ impl<F: FileSystem + Sync> Server<F> {
+         }
+     }
+ 
++    /// Nonblocking POSIX byte-range lock attempt, used by the retry queue.
++    pub fn try_posix_setlk(&self, header: InHeader, request: LkIn) -> io::Result<()> {
++        let (fh, owner, lk) = harddind_parse_posix_lock(header, &request)?;
++        self.fs
++            .setlk(Context::from(header), header.nodeid.into(), fh.into(), owner, lk)
++    }
++
+     fn setlk(&self, header: InHeader, mut r: Reader, w: Writer) -> Result<usize> {
+         let request: LkIn = r.read_obj().map_err(Error::DecodeMessage)?;
+-        self.reply_flock(header, w, self.try_flock(header, request))
++        let result = if request.lk_flags & LK_FLOCK != 0 {
++            self.try_flock(header, request)
++        } else {
++            self.try_posix_setlk(header, request)
++        };
++        self.reply_flock(header, w, result)
+     }
+ 
+-    fn setlkw(&self, in_header: InHeader, mut _r: Reader, w: Writer) -> Result<usize> {
+-        if let Err(e) = self.fs.setlkw() {
+-            reply_error(e, in_header.unique, w)
+-        } else {
+-            Ok(0)
+-        }
++    fn setlkw(&self, in_header: InHeader, _r: Reader, w: Writer) -> Result<usize> {
++        // Blocking lock requests are intercepted in the vhost-user loop and retried
++        // off the worker pool; reaching this handler is a dispatch error.
++        reply_error(
++            io::Error::from_raw_os_error(libc::ENOSYS),
++            in_header.unique,
++            w,
++        )
+     }
+ 
+     fn access(&self, in_header: InHeader, mut r: Reader, w: Writer) -> Result<usize> {
+@@ -1799,3 +1864,77 @@ fn get_extensions(options: FsOptions, skip: usize, request_bytes: &[u8]) -> Resu
+ 
+     Ok(extensions)
+ }
++
++#[cfg(test)]
++mod harddind_tests {
++    use super::*;
++
++    fn header_with(len: u32) -> InHeader {
++        InHeader {
++            len,
++            ..Default::default()
++        }
++    }
++
++    fn lk(type_: u32, start: u64, end: u64, flags: u32) -> LkIn {
++        LkIn {
++            fh: 9,
++            owner: 0x1234_5678_9abc_def0,
++            lk: FileLock {
++                start,
++                end,
++                type_,
++                pid: 42,
++            },
++            lk_flags: flags,
++            padding: 0,
++        }
++    }
++
++    #[test]
++    fn harddind_parse_posix_lock_ranges_and_rejects_bad_input() {
++        let len = (size_of::<InHeader>() + size_of::<LkIn>()) as u32;
++        let (fh, owner, parsed) =
++            harddind_parse_posix_lock(header_with(len), &lk(libc::F_WRLCK as u32, 10, 73, 0)).unwrap();
++        assert_eq!(fh, 9);
++        assert_eq!(owner, 0x1234_5678_9abc_def0);
++        assert_eq!(parsed.lk_type, libc::F_WRLCK as u32);
++        assert_eq!((parsed.start, parsed.len), (10, 64));
++        assert_eq!(PosixLock::end_of(parsed), 73);
++
++        for end in [0, PosixLock::EOF] {
++            let (_, _, to_eof) =
++                harddind_parse_posix_lock(header_with(len), &lk(libc::F_RDLCK as u32, 5, end, 0)).unwrap();
++            assert_eq!((to_eof.start, to_eof.len), (5, 0));
++            assert_eq!(PosixLock::end_of(to_eof), PosixLock::EOF);
++        }
++        // Inverted, oversized, flock-flagged, unknown type and truncated messages fail.
++        assert_eq!(
++            harddind_parse_posix_lock(header_with(len), &lk(libc::F_WRLCK as u32, 64, 63, 0))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EINVAL)
++        );
++        assert_eq!(
++            harddind_parse_posix_lock(header_with(len), &lk(libc::F_WRLCK as u32, 0, u64::MAX, 0))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EINVAL)
++        );
++        assert_eq!(
++            harddind_parse_posix_lock(header_with(len), &lk(libc::F_WRLCK as u32, 0, 0, LK_FLOCK))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EINVAL)
++        );
++        assert_eq!(
++            harddind_parse_posix_lock(header_with(len), &lk(99, 0, 0, 0))
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EINVAL)
++        );
++        assert!(harddind_parse_posix_lock(header_with(len - 1), &lk(libc::F_WRLCK as u32, 0, 0, 0)).is_err());
++        // Unlock is valid for FUSE_SETLK even though GETLK must not use it.
++        assert!(harddind_parse_posix_lock(header_with(len), &lk(libc::F_UNLCK as u32, 0, 0, 0)).is_ok());
++    }
++}
+diff --git a/src/vhost_user.rs b/src/vhost_user.rs
+index ead5af2..4c290da 100644
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -31,7 +31,7 @@ use vmm_sys_util::eventfd::EventFd;
+ use crate::descriptor_utils::{Error as VufDescriptorError, Reader, Writer};
+ use crate::filesystem::{FileSystem, SerializableFileSystem};
+ use crate::server::Server;
+-use crate::fuse::{InHeader, InterruptIn, LkIn, Opcode};
++use crate::fuse::{InHeader, InterruptIn, LkIn, LK_FLOCK, Opcode};
+ use crate::retry_queue::RetryQueue;
+ use crate::request_profile::RequestProfile;
+ use std::time::{Duration, Instant};
+@@ -237,6 +237,9 @@ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFs
+             let lock_type = lock_request.map(|request| request.lk.type_).unwrap_or(u32::MAX);
+             let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, lock_type));
+             if let (Some(stats), Some(request)) = (&self.inline, lock_request) {
++                // The inline fast path is flock-only; POSIX locks go through the
++                // pool (nonblocking) or the retry queue (F_SETLKW).
++                if request.lk_flags & LK_FLOCK != 0 {
+                 let started = sample.as_mut().map(|s| s.start());
+                 let result = server.try_inline_flock(header, request);
+                 if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
+@@ -255,13 +258,16 @@ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFs
+                 } else {
+                     stats.busy_fallback.fetch_add(1, Ordering::Relaxed);
+                 }
++                }
+             }
+             if header.opcode == Opcode::Setlkw as u32 {
+                 let request = lock_request.unwrap();
++                let is_flock = request.lk_flags & LK_FLOCK != 0;
+                 self.retries.handle().submit(header.unique, Box::new(move |cancelled| {
+                     let started = sample.as_mut().map(|s| s.start());
+                     let result = if cancelled { Err(io::Error::from_raw_os_error(libc::EINTR)) }
+-                                 else { server.try_flock(header, request) };
++                                 else if is_flock { server.try_flock(header, request) }
++                                 else { server.try_posix_setlk(header, request) };
+                     if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
+                     if matches!(result.as_ref().err().and_then(io::Error::raw_os_error),
+                                 Some(libc::EAGAIN)) { return false; }

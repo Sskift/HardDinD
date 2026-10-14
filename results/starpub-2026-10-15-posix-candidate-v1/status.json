@@ -1,0 +1,24 @@
+{
+  "status": "finished",
+  "supervisor_pid": 431679,
+  "started_at": "2026-10-14T18:25:57.977332+00:00",
+  "command": [
+    "python3",
+    "/root/harddind-rebuild/posix-owner-v1/repo/scripts/run-shared-locks.py",
+    "/root/harddind-rebuild/posix-owner-v1/run",
+    "--kernel",
+    "/root/harddind-rebuild/gpu-system-features-kernel-v2",
+    "--disk",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "--virtiofsd",
+    "/root/harddind-rebuild/posix-owner-v1/run/virtiofsd",
+    "--name",
+    "posix-baseline-v1",
+    "--posix-locks",
+    "--inline-flock",
+    "--functional-only"
+  ],
+  "pid": 431680,
+  "exit_code": 1,
+  "finished_at": "2026-10-14T18:31:06.990399+00:00"
+}

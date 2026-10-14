@@ -1,0 +1,4 @@
+952c0c7c9b9182a3ea66cd2140e8d6d8860d17612cbada0501ac2a184d8abd25  /root/harddind-rebuild/arkclaude/round4/shared-posix-locks/work/finalbuild/cache/virtiofsd-720245d0857e9837484488ff69c2f8c577466851.tar.gz
+55cdb1e4d4cc1dbfcda85e40facb08faad7a5e7de18bcebe6399bf26726a89f8  /root/harddind-rebuild/arkclaude/round4/shared-posix-locks/work/finalbuild/virtiofsd-source-tPhifz/Cargo.lock
+6f02969fac669a63420585cc66d4e8daebee48f813a3409915131a0053f2fdd9  /root/harddind-rebuild/arkclaude/round4/shared-posix-locks/work/finalbuild/virtiofsd
+patch_series_sha256=55a8a6d914ceae0690fe2e85f25e191327927b4b2345e3e419aaa8a0137f763d

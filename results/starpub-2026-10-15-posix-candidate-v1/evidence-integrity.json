@@ -1,0 +1,90 @@
+{
+  "all_pass": true,
+  "scope": "Evidence integrity only; candidate functional test failed",
+  "checks": [
+    {
+      "check": "candidate-failed",
+      "pass": true
+    },
+    {
+      "check": "functional-no-performance",
+      "pass": true
+    },
+    {
+      "check": "inputs-unchanged",
+      "pass": true
+    },
+    {
+      "check": "all-74-observations",
+      "pass": true
+    },
+    {
+      "check": "native37",
+      "pass": true
+    },
+    {
+      "check": "two-confirmed-failures",
+      "pass": true
+    },
+    {
+      "check": "runtime-clean",
+      "pass": true
+    },
+    {
+      "check": "96-peer-clean",
+      "pass": true
+    },
+    {
+      "check": "inline-functional-only",
+      "pass": true
+    },
+    {
+      "check": "manifest/repo/scripts/run-shared-locks.py",
+      "pass": true
+    },
+    {
+      "check": "manifest/repo/scripts/harddind.py",
+      "pass": true
+    },
+    {
+      "check": "manifest/repo/src/share_probe.c",
+      "pass": true
+    },
+    {
+      "check": "manifest/repo/virtiofs/patches/0005-shared-posix-locks.patch",
+      "pass": true
+    },
+    {
+      "check": "report-input/run/virtiofsd",
+      "pass": true
+    },
+    {
+      "check": "report-input/run/share-probe",
+      "pass": true
+    },
+    {
+      "check": "report-input/repo/scripts/harddind.py",
+      "pass": true
+    },
+    {
+      "check": "report-input/repo/src/share_probe.c",
+      "pass": true
+    },
+    {
+      "check": "report-input/repo/scripts/run-shared-locks.py",
+      "pass": true
+    },
+    {
+      "check": "kernel-identity",
+      "pass": true
+    },
+    {
+      "check": "binary-build-proof",
+      "pass": true
+    },
+    {
+      "check": "series-build-proof",
+      "pass": true
+    }
+  ]
+}
