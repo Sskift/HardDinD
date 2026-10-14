@@ -1,0 +1,255 @@
+{
+  "status": "finished",
+  "commands": [
+    {
+      "name": "build",
+      "argv": [
+        "gcc",
+        "-O2",
+        "-static",
+        "-std=gnu11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/src/gpu_os_event_probe.c",
+        "-o",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/build/gpu-os-event-probe"
+      ],
+      "timeout": 60,
+      "started": 1792020893.9847705,
+      "pid": 1391921,
+      "pgid": 1391921,
+      "exit_code": 0,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.31202220916748047
+    },
+    {
+      "name": "layout",
+      "argv": [
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/build/gpu-os-event-probe",
+        "--layout-selfcheck"
+      ],
+      "timeout": 60,
+      "started": 1792020894.3008149,
+      "pid": 1392027,
+      "pgid": 1392027,
+      "exit_code": 0,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.027283430099487305
+    },
+    {
+      "name": "layout-check",
+      "argv": [
+        "python3",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/scripts/gpu_os_event_checks.py",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/layout.stdout",
+        "--layout"
+      ],
+      "timeout": 60,
+      "started": 1792020894.3285334,
+      "pid": 1392031,
+      "pgid": 1392031,
+      "exit_code": 0,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.12537336349487305
+    },
+    {
+      "name": "inventory-before",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=index,uuid,driver_version",
+        "--format=csv,noheader"
+      ],
+      "timeout": 60,
+      "started": 1792020894.454383,
+      "pid": 1392073,
+      "pgid": 1392073,
+      "exit_code": 0,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.1461319923400879
+    },
+    {
+      "name": "native-0",
+      "argv": [
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/build/gpu-os-event-probe",
+        "--device",
+        "/dev/nvidia0",
+        "--poll-ms",
+        "30"
+      ],
+      "timeout": 30,
+      "started": 1792020894.600957,
+      "pid": 1392102,
+      "pgid": 1392102,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.0914311408996582
+    },
+    {
+      "name": "native-0-check",
+      "argv": [
+        "python3",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/scripts/gpu_os_event_checks.py",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/native-0.stdout"
+      ],
+      "timeout": 30,
+      "started": 1792020894.6946192,
+      "pid": 1392134,
+      "pgid": 1392134,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.14657092094421387
+    },
+    {
+      "name": "native-1",
+      "argv": [
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/build/gpu-os-event-probe",
+        "--device",
+        "/dev/nvidia1",
+        "--poll-ms",
+        "30"
+      ],
+      "timeout": 30,
+      "started": 1792020894.8422117,
+      "pid": 1392151,
+      "pgid": 1392151,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.0801851749420166
+    },
+    {
+      "name": "native-1-check",
+      "argv": [
+        "python3",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/scripts/gpu_os_event_checks.py",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/native-1.stdout"
+      ],
+      "timeout": 30,
+      "started": 1792020894.922886,
+      "pid": 1392185,
+      "pgid": 1392185,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.0872964859008789
+    },
+    {
+      "name": "native-2",
+      "argv": [
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/build/gpu-os-event-probe",
+        "--device",
+        "/dev/nvidia2",
+        "--poll-ms",
+        "30"
+      ],
+      "timeout": 30,
+      "started": 1792020895.0110428,
+      "pid": 1392202,
+      "pgid": 1392202,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.05399298667907715
+    },
+    {
+      "name": "native-2-check",
+      "argv": [
+        "python3",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/scripts/gpu_os_event_checks.py",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/native-2.stdout"
+      ],
+      "timeout": 30,
+      "started": 1792020895.0655677,
+      "pid": 1392227,
+      "pgid": 1392227,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.0702362060546875
+    },
+    {
+      "name": "native-3",
+      "argv": [
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/build/gpu-os-event-probe",
+        "--device",
+        "/dev/nvidia3",
+        "--poll-ms",
+        "30"
+      ],
+      "timeout": 30,
+      "started": 1792020895.1369216,
+      "pid": 1392236,
+      "pgid": 1392236,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.07213664054870605
+    },
+    {
+      "name": "native-3-check",
+      "argv": [
+        "python3",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/scripts/gpu_os_event_checks.py",
+        "/root/harddind-rebuild/gpu-os-event-owner-v1/native-3.stdout"
+      ],
+      "timeout": 30,
+      "started": 1792020895.2097044,
+      "pid": 1392261,
+      "pgid": 1392261,
+      "exit_code": 1,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.08602786064147949
+    },
+    {
+      "name": "inventory-after",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=index,uuid,driver_version",
+        "--format=csv,noheader"
+      ],
+      "timeout": 60,
+      "started": 1792020895.2967644,
+      "pid": 1392270,
+      "pgid": 1392270,
+      "exit_code": 0,
+      "remaining_before_cleanup": [],
+      "remaining_after_cleanup": [],
+      "elapsed": 0.08954644203186035
+    }
+  ],
+  "groups": [],
+  "native": {
+    "0": {
+      "probe_exit_code": 1,
+      "checker_exit_code": 1
+    },
+    "1": {
+      "probe_exit_code": 1,
+      "checker_exit_code": 1
+    },
+    "2": {
+      "probe_exit_code": 1,
+      "checker_exit_code": 1
+    },
+    "3": {
+      "probe_exit_code": 1,
+      "checker_exit_code": 1
+    }
+  },
+  "limitations": [
+    "Only native OS-event ABI; no internal CUDA or notification trigger.",
+    "Frozen v1 probe may have instrumentation defects; raw outputs retained."
+  ],
+  "binary_sha256": "0bbce9bf8dbe9803a90471c71605fa8d3160a053987ccc3de72abbd8c985ae3a",
+  "sources_unchanged": true,
+  "cleanup_ok": true,
+  "finished": 1792020895.3874385
+}
