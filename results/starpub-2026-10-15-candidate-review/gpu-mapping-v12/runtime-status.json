@@ -1,0 +1,58 @@
+{
+  "status": "finished",
+  "pid": 1469389,
+  "started_at": "2026-10-14T23:40:32.958317+00:00",
+  "runs": {
+    "mapping-features-v12": {
+      "pid": 1469430,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/repo/scripts/run-gpu-control.py",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/run",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/kernel",
+        "--name",
+        "mapping-features-v12",
+        "--system-features",
+        "--async-wait"
+      ],
+      "exit_code": 0
+    },
+    "mapping-alloc-v12": {
+      "pid": 1473985,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/repo/scripts/run-gpu-control.py",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/run",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/kernel",
+        "--name",
+        "mapping-alloc-v12",
+        "--alloc-object",
+        "--async-wait"
+      ],
+      "exit_code": 0
+    },
+    "mapping-cuda-v12": {
+      "pid": 1478558,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/repo/scripts/run-gpu-cuda.py",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/run",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-mapping-owner-v12/kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "mapping-cuda-v12",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    }
+  },
+  "full_acceptance": false,
+  "groups_empty": true,
+  "inputs_unchanged": true,
+  "exit_code": 1,
+  "finished_at": "2026-10-14T23:42:21.638944+00:00"
+}

@@ -1,0 +1,16 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+mount -t proc proc /proc || exit 1
+mount -t sysfs sysfs /sys || exit 1
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev || exit 1
+mkdir -p /dev/pts /dev/shm /run /tmp
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /run
+echo HARDDIND_FP_BEGIN
+echo "HARDDIND_FP_PROBE_SHA256=$(sha256sum /fp-probe | cut -d' ' -f1)"
+/fp-probe
+status=$?
+echo "HARDDIND_FP_PROBE_RC=$status"
+echo "HARDDIND_FP_END status=$status"
+sync
+poweroff -f
