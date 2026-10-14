@@ -1,0 +1,22 @@
+{
+  "kind": "native_gpu_client_policy_probe",
+  "full_acceptance": false,
+  "candidate_snapshot": true,
+  "source_sha256": "a66684f7856e656c72f4f846c6c8899337248a99214cc91c8c1cf85d34558160",
+  "started_at": "2026-10-14T16:40:52.520738+00:00",
+  "build_exit_code": 0,
+  "timed_out": false,
+  "exit_code": 0,
+  "cleanup": {
+    "process_group": 2560440,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "source_unchanged": true
+}

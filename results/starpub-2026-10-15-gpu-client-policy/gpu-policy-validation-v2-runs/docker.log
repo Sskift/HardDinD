@@ -1,0 +1,19 @@
+{
+  "report": "/root/harddind-rebuild/results/gpu-policy-docker-v2/report.json",
+  "checks": {
+    "no_device": "pass",
+    "device_control": "fail",
+    "nonroot_denied": "pass",
+    "device_readonly_denied": "pass",
+    "container_restart": "fail",
+    "configuration_mismatch_rejected": "pass",
+    "concurrent_client_a": "fail",
+    "concurrent_client_b": "fail",
+    "instance_restart": "fail",
+    "inputs_unchanged": "pass",
+    "normal_shutdown": "pass",
+    "async_wait_active": "pass"
+  },
+  "error": null,
+  "diagnostic_complete": false
+}

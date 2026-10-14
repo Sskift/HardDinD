@@ -2,8 +2,8 @@
   "kind": "gpu_client_policy_observation_summary",
   "full_acceptance": false,
   "internal_cuda_verified": false,
-  "evidence_origin": "Owner-observed Starpub command output and remote report fields; original files remain remote pending SSH recovery.",
-  "raw_artifacts_exported": false,
+  "evidence_origin": "Original Starpub reports, source snapshots, stdout/stderr and traces have been exported beside this summary; v1 observations are preserved.",
+  "raw_artifacts_exported": true,
   "patch_sha256": "98762aefead3c35bb05473d0559d925fa1963ed435da1015cda6499a6db80372",
   "kernel": {
     "path": "/root/harddind-rebuild/gpu-client-policy-kernel-v1",
@@ -104,7 +104,18 @@
   "limits": [
     "Policy setter return parity does not verify effective object-sharing permissions.",
     "Inherited FDs, CUDA IPC and per-guest-UID host credentials remain incomplete.",
-    "This is traced functional evidence, not a performance comparison.",
-    "Full boundary probe and raw comparison helper are saved remotely but not included in this commit."
-  ]
+    "This is traced functional evidence, not a performance comparison."
+  ],
+  "followup": {
+    "patch": "0025-um-gpu-policy-driver-validation.patch",
+    "kernel_sha256": "8672016307a41f75ab9ce6c05daff50a7f1cefd17585dc1632470c855d74d4cc",
+    "guest_matched": 105,
+    "guest_total": 107,
+    "docker_runs": 5,
+    "remaining_mismatches": [
+      "unknown_command_d0e",
+      "inherited_fd_cross_client"
+    ],
+    "internal_compute_verified": false
+  }
 }

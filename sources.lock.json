@@ -109,7 +109,19 @@
     "version": "550.120",
     "commit": "5e52edb2034de7db4d8ae368dbc7c26b416bfa16",
     "repository": "https://github.com/NVIDIA/open-gpu-kernel-modules.git",
-    "purpose": "ABI source reference only; does not replace the installed host driver"
+    "purpose": "ABI source reference only; does not replace the installed host driver",
+    "share_policy_abi_headers": {
+      "src/common/sdk/nvidia/inc/rs_access.h": "75de8cb7d5c6e7d4010135e8257b36dccbb1172adeb1d76fdcdcecc2d252616f",
+      "src/common/sdk/nvidia/inc/nvtypes.h": "95a36b9039caa7a130ff3ca97a98b03d64078dbabd44c6408ecb0d671eff117c",
+      "src/common/sdk/nvidia/inc/cpuopsys.h": "92114293c250b87a0c78d1bbfe52c3c132eba1c03ceef110a0e8b0ba6a80aca1",
+      "src/common/sdk/nvidia/inc/nvmisc.h": "6702bbacbd69ada53879731039f8a1e961ac09e2602ec33a27ac307daa604d4a",
+      "src/common/sdk/nvidia/inc/ctrl/ctrl0000/ctrl0000client.h": "3df9e7a953a2e766423119514a032e1069a1c9ee766c43a048b2b98c95b311e4",
+      "src/common/sdk/nvidia/inc/ctrl/ctrl0000/ctrl0000base.h": "971aeb17a78a9eda00a20555063e7e37355e1a4acf917ad377aea07385c287a0",
+      "src/common/sdk/nvidia/inc/ctrl/ctrlxxxx.h": "fe9619ea45150e3681f85880bcd9568b340b3e4406a1f7f3a05e74c9a25d2f8e",
+      "src/common/sdk/nvidia/inc/class/cl0000.h": "c21921d9a50625d3d15bbe407b6ea1444d9f83b7b47e8f8b0b07209ba80e227e",
+      "src/common/sdk/nvidia/inc/nvlimits.h": "0a98d760b3b12172d93e4adfa4518dbadcbf1aaa2231eefcfe7bb40f079d7da9",
+      "src/common/sdk/nvidia/inc/class/cl0000_notification.h": "63e5193f7a2183d4651debff5c933daf16f94a39847b3a7fd06a9e52d3526be5"
+    }
   },
   "docker_compose": {
     "version": "5.6.0",

@@ -1,0 +1,7 @@
+{
+  "candidate_sha256": "98762aefead3c35bb05473d0559d925fa1963ed435da1015cda6499a6db80372",
+  "source": "/root/harddind-rebuild/arkclaude/round3/gpu-client-policy/kernel/experiments/0023-um-gpu-client-policy.patch",
+  "captured_at": "2026-10-14T16:31:27.259028+00:00",
+  "status": "in-progress agent snapshot; owner building/testing independently",
+  "owner_base": "3fd07e4"
+}

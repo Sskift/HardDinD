@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "reference_commit": "5e52edb2034de7db4d8ae368dbc7c26b416bfa16",
+  "pinned_headers_verified": 10,
+  "script_sha256": "1b04fbcf1cac2a5700766d9ddfa94ebdb5fce252d56cd39ad5ff80989307f1f3",
+  "source_sha256": "25c3a71a9d2ac7ad55e5f30a9537c76352fb839afbdd442607050425342d73ff",
+  "lock_sha256": "6ab95d2f0f6957f7f675bdae59556a4cd70f4b951931b2c1762f85d3b574b4c6"
+}

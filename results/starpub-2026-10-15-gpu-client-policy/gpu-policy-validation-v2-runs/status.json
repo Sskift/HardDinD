@@ -1,0 +1,53 @@
+{
+  "status": "finished",
+  "pid": 3053934,
+  "started_at": "2026-10-14T17:07:38.073200+00:00",
+  "runs": {
+    "docker": {
+      "pid": 3053964,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-control-docker.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-policy-validation-kernel-v2",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--probe",
+        "/root/harddind-rebuild/results/gpu-policy-boundary-v2/gpu-guest-probe",
+        "--native-baseline",
+        "/root/harddind-rebuild/results/gpu-policy-boundary-v2/report.json",
+        "--name",
+        "gpu-policy-docker-v2",
+        "--share-policy",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    },
+    "cuda": {
+      "pid": 3095197,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-cuda.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-policy-validation-kernel-v2",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "cuda-policy-validation-v2",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    },
+    "check": {
+      "pid": 3112866,
+      "command": [
+        "make",
+        "check"
+      ],
+      "exit_code": 0
+    }
+  },
+  "finished_at": "2026-10-14T17:11:10.203393+00:00"
+}
