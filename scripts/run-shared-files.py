@@ -24,7 +24,7 @@ def main():
     p.add_argument('--kernel', type=pathlib.Path, required=True)
     p.add_argument('--disk', type=pathlib.Path, required=True)
     p.add_argument('--name', required=True)
-    p.add_argument('--cache', choices=('auto', 'never'), default='auto')
+    p.add_argument('--cache', choices=('auto', 'never'), default='never')
     a = p.parse_args()
     if not a.name or len(a.name)>28 or not all(c.isalnum() or c in '-_' for c in a.name): p.error('invalid name')
     work=a.work.resolve(); repo=pathlib.Path(__file__).resolve().parents[1]; out=work/'results'; out.mkdir(exist_ok=True)

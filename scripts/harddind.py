@@ -348,7 +348,7 @@ def main():
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
-        s.add_argument('--share-cache', choices=('auto', 'never'), default='auto', help='virtiofs cache policy; never currently disallows MAP_SHARED')
+        s.add_argument('--share-cache', choices=('auto', 'never'), default='never', help='default: never; MAP_SHARED unsupported; auto can return stale external changes')
     for name in ('status', 'stop'):
         subs.add_parser(name)
     subs.add_parser('docker').add_argument('args', nargs=argparse.REMAINDER)
