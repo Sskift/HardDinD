@@ -1,12 +1,23 @@
-# POSIX 范围修复候选：启动失败记录
+# POSIX 范围修复候选：失败与独立复测
 
-范围修复候选完成了 **38/38 原生检查**，但这次独立实例在 Docker API 就绪前超时，**Docker 的 38 项全部为 `not_tested`**。随后 guest 正常关机也超时，运行器使用 SIGKILL 结束实例。因此这次运行失败，候选没有合入正式补丁目录，不能用原生结果替代内部验收。
+范围修复候选在第二次独立运行中完成了 **原生 38/38、内部 Docker 38/38 的现有功能检查**，正常关机，103 个记录的进程组最终均为空。首次运行的启动与关机失败完整保留。候选仍没有合入正式补丁目录，现有矩阵也不代表完整 POSIX 语义验收。
 
-相对 [上一版失败](../starpub-2026-10-15-posix-candidate-v1/README.md)，候选修正了 FUSE 包含式端点 `(0,0)` 和有符号 64 位最大偏移。除了原有单字节、EOF 用例，本轮确实执行了高于 `2^62` 的范围、`INT64_MAX` 单字节和高偏移 EOF 的检查。它们在原生通过；本次没有取得 Docker 侧结果。
+| 实例 | 原生 | 内部 Docker | 生命周期 |
+| --- | --- | --- | --- |
+| `posix-range-v2` | 38/38 通过 | 38 项缺测 | API 就绪前超时，正常关机超时，最终 SIGKILL |
+| `posix-range-v2b` | 38/38 通过 | 38/38 通过 | 正常关机，guest、网络、文件系统和探针进程组无残留 |
+
+第二次使用相同的内核、磁盘、virtiofsd、探针及测试脚本哈希，换用新实例名，提前等待全局构建锁，再启动功能测试。`status-retry.json` 分别记录了排队、取得锁、启动测试和结束时点；不能把包括排队的总时间当性能数据，也不能仅凭重试成功认定首次启动超时的原因已解决。
+
+相对 [上一版失败](../starpub-2026-10-15-posix-candidate-v1/README.md)，候选修正了 FUSE 包含式端点 `(0,0)` 和有符号 64 位最大偏移。除了原有单字节、EOF 用例，本轮确实执行了高于 `2^62` 的范围、`INT64_MAX` 单字节和高偏移 EOF 的检查。第二次运行中，这些检查在原生及内部 Docker 均通过。
 
 候选作者的脚本遗漏了大偏移用例的执行列表，而且在保存 JSON 后才设置 `functional_complete`。主代理在冻结的测试副本中修正后运行；原脚本保存在 `candidate-build/run-shared-locks-agent.py`，修正记录在 `owner-harness-fixes.json`，实际脚本在 `repo/scripts/run-shared-locks.py`。PID 归属、死锁检测、exec 与权限生命周期仍有未完成项，见作者的 `candidate-build/REPORT-v2.md`；该报告中的作者验证不等同于主代理验收。
 
+特别说明两个现有用例的边界：`posix_getlk_reports` 在 Docker 侧只检查 PID 非负，尚不能证明持有者 PID 正确；`posix_whence_cur_end` 的 end 分支先做 `lseek(SEEK_END)`，实际加锁仍使用 `SEEK_CUR`，不能声称已经直接验证 `fcntl` 的 `SEEK_END`。这两项已反馈给后续修复，保留原始测试和名称，不事后扩大通过范围。
+
 ## 实际故障与证据
+
+以下故障记录对应第一次运行；第二次原始结果位于 `run/results/posix-range-v2b.json`，完整 76 条原生及 Docker 检查状态位于 `runtime-retry.log.gz`。`evidence-integrity-v2b.json` 的 26 项核对通过，`cleanup-audit-v2b.json` 保存 103 个进程组的独立扫描；它们不替换首次故障记录。
 
 - guest 日志确认共享目录已挂载；端口驱动没有收到 daemon 的连接，Docker API 没有就绪。
 - 原始命令日志记录 `startup timed out` 与 `supervisor did not finish shutdown`。这还不能判定为锁补丁本身造成的启动故障。
