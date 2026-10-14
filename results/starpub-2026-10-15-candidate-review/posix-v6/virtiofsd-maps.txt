@@ -1,0 +1,82 @@
+55f9b0a16000-55f9b0a90000 r--p 00000000 08:00 589848662                  /root/harddind-rebuild/posix-owner-v6/run/virtiofsd
+55f9b0a90000-55f9b0c92000 r-xp 00079000 08:00 589848662                  /root/harddind-rebuild/posix-owner-v6/run/virtiofsd
+55f9b0c92000-55f9b0c9f000 r--p 0027a000 08:00 589848662                  /root/harddind-rebuild/posix-owner-v6/run/virtiofsd
+55f9b0c9f000-55f9b0ca1000 rw-p 00286000 08:00 589848662                  /root/harddind-rebuild/posix-owner-v6/run/virtiofsd
+55f9b6d74000-55f9b6d95000 rw-p 00000000 00:00 0                          [heap]
+7fddb8aa4000-7fdeb8000000 rw-s 13e32000 08:00 589848750                  /root/harddind-rebuild/posix-owner-v6/run/instances/posix-v6/tmp/#589848750 (deleted)
+7fdeb8000000-7fdeb8021000 rw-p 00000000 00:00 0 
+7fdeb8021000-7fdebc000000 ---p 00000000 00:00 0 
+7fdebc000000-7fdebc021000 rw-p 00000000 00:00 0 
+7fdebc021000-7fdec0000000 ---p 00000000 00:00 0 
+7fdec0000000-7fdec0021000 rw-p 00000000 00:00 0 
+7fdec0021000-7fdec4000000 ---p 00000000 00:00 0 
+7fdec4000000-7fdec4021000 rw-p 00000000 00:00 0 
+7fdec4021000-7fdec8000000 ---p 00000000 00:00 0 
+7fdec8000000-7fdec8021000 rw-p 00000000 00:00 0 
+7fdec8021000-7fdecc000000 ---p 00000000 00:00 0 
+7fdecc000000-7fdecc021000 rw-p 00000000 00:00 0 
+7fdecc021000-7fded0000000 ---p 00000000 00:00 0 
+7fded0000000-7fded0021000 rw-p 00000000 00:00 0 
+7fded0021000-7fded4000000 ---p 00000000 00:00 0 
+7fded576a000-7fded576b000 ---p 00000000 00:00 0 
+7fded576b000-7fded576d000 rw-p 00000000 00:00 0 
+7fded576d000-7fded576e000 ---p 00000000 00:00 0 
+7fded576e000-7fded596e000 rw-p 00000000 00:00 0 
+7fded596e000-7fded596f000 ---p 00000000 00:00 0 
+7fded596f000-7fded5971000 rw-p 00000000 00:00 0 
+7fded5971000-7fded5972000 ---p 00000000 00:00 0 
+7fded5972000-7fded5974000 rw-p 00000000 00:00 0 
+7fded5974000-7fded5975000 ---p 00000000 00:00 0 
+7fded5975000-7fded5977000 rw-p 00000000 00:00 0 
+7fded5977000-7fded5978000 ---p 00000000 00:00 0 
+7fded5978000-7fded597a000 rw-p 00000000 00:00 0 
+7fded597a000-7fded597b000 ---p 00000000 00:00 0 
+7fded597b000-7fded597d000 rw-p 00000000 00:00 0 
+7fded597d000-7fded597e000 ---p 00000000 00:00 0 
+7fded597e000-7fded5b7e000 rw-p 00000000 00:00 0 
+7fded5b7e000-7fded5b7f000 ---p 00000000 00:00 0 
+7fded5b7f000-7fded5d7f000 rw-p 00000000 00:00 0 
+7fded5d7f000-7fded5d80000 ---p 00000000 00:00 0 
+7fded5d80000-7fded5f80000 rw-p 00000000 00:00 0 
+7fded5f80000-7fded5f81000 ---p 00000000 00:00 0 
+7fded5f81000-7fded6181000 rw-p 00000000 00:00 0 
+7fded6181000-7fded6182000 ---p 00000000 00:00 0 
+7fded6182000-7fded6382000 rw-p 00000000 00:00 0 
+7fded6382000-7fded6383000 ---p 00000000 00:00 0 
+7fded6383000-7fded6588000 rw-p 00000000 00:00 0 
+7fded6588000-7fded65b0000 r--p 00000000 00:84 950815351                  /usr/lib/x86_64-linux-gnu/libc.so.6
+7fded65b0000-7fded6745000 r-xp 00028000 00:84 950815351                  /usr/lib/x86_64-linux-gnu/libc.so.6
+7fded6745000-7fded679d000 r--p 001bd000 00:84 950815351                  /usr/lib/x86_64-linux-gnu/libc.so.6
+7fded679d000-7fded67a1000 r--p 00214000 00:84 950815351                  /usr/lib/x86_64-linux-gnu/libc.so.6
+7fded67a1000-7fded67a3000 rw-p 00218000 00:84 950815351                  /usr/lib/x86_64-linux-gnu/libc.so.6
+7fded67a3000-7fded67b0000 rw-p 00000000 00:00 0 
+7fded67b0000-7fded67b3000 r--p 00000000 00:84 950815366                  /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7fded67b3000-7fded67ca000 r-xp 00003000 00:84 950815366                  /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7fded67ca000-7fded67ce000 r--p 0001a000 00:84 950815366                  /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7fded67ce000-7fded67cf000 r--p 0001d000 00:84 950815366                  /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7fded67cf000-7fded67d0000 rw-p 0001e000 00:84 950815366                  /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7fded67d0000-7fded67d1000 ---p 00000000 00:00 0 
+7fded67d1000-7fded67d3000 rw-p 00000000 00:00 0 
+7fded67d3000-7fded67d4000 ---p 00000000 00:00 0 
+7fded67d4000-7fded67d6000 rw-p 00000000 00:00 0 
+7fded67d6000-7fded67d8000 r--p 00000000 08:00 589848653                  /root/harddind-rebuild/posix-owner-v6/libs/libcap-ng.so.0
+7fded67d8000-7fded67db000 r-xp 00002000 08:00 589848653                  /root/harddind-rebuild/posix-owner-v6/libs/libcap-ng.so.0
+7fded67db000-7fded67dc000 r--p 00005000 08:00 589848653                  /root/harddind-rebuild/posix-owner-v6/libs/libcap-ng.so.0
+7fded67dc000-7fded67dd000 r--p 00005000 08:00 589848653                  /root/harddind-rebuild/posix-owner-v6/libs/libcap-ng.so.0
+7fded67dd000-7fded67de000 rw-p 00006000 08:00 589848653                  /root/harddind-rebuild/posix-owner-v6/libs/libcap-ng.so.0
+7fded67de000-7fded67e0000 r--p 00000000 08:00 589848652                  /root/harddind-rebuild/posix-owner-v6/libs/libseccomp.so.2
+7fded67e0000-7fded67ee000 r-xp 00002000 08:00 589848652                  /root/harddind-rebuild/posix-owner-v6/libs/libseccomp.so.2
+7fded67ee000-7fded67fb000 r--p 00010000 08:00 589848652                  /root/harddind-rebuild/posix-owner-v6/libs/libseccomp.so.2
+7fded67fb000-7fded67fc000 ---p 0001d000 08:00 589848652                  /root/harddind-rebuild/posix-owner-v6/libs/libseccomp.so.2
+7fded67fc000-7fded67fd000 r--p 0001d000 08:00 589848652                  /root/harddind-rebuild/posix-owner-v6/libs/libseccomp.so.2
+7fded67fd000-7fded67fe000 rw-p 0001e000 08:00 589848652                  /root/harddind-rebuild/posix-owner-v6/libs/libseccomp.so.2
+7fded67fe000-7fded6800000 rw-p 00000000 00:00 0 
+7fded6800000-7fded6802000 r--p 00000000 00:84 950815341                  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7fded6802000-7fded682c000 r-xp 00002000 00:84 950815341                  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7fded682c000-7fded6837000 r--p 0002c000 00:84 950815341                  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7fded6838000-7fded683a000 r--p 00037000 00:84 950815341                  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7fded683a000-7fded683c000 rw-p 00039000 00:84 950815341                  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7ffd6194e000-7ffd6196f000 rw-p 00000000 00:00 0                          [stack]
+7ffd619ea000-7ffd619ee000 r--p 00000000 00:00 0                          [vvar]
+7ffd619ee000-7ffd619f0000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]

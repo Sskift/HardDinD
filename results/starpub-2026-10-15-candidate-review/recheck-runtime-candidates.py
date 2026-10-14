@@ -137,6 +137,24 @@ for mode, cases in report['checks'].items():
 check(report['runtime']['phase'] == 'stopped' and
       not report['runtime']['forced_shutdown'], 'POSIX shutdown differs')
 
+root = ROOT / 'posix-v6'
+owner = load(root, 'owner-status.json')
+report = load(root, 'runtime/posix-v6.json')
+verify_archive(root, owner)
+verify_cleanup(root, owner, report, 133)
+check(owner['exit_code'] == 0 and report['functional_complete'] and
+      report['all_checks_passed'] and not report['benchmark_complete'] and
+      not report['full_acceptance'] and report['runtime']['phase'] == 'stopped' and
+      not report['runtime']['forced_shutdown'], 'POSIX v6 boundary changed')
+raw = read(root, 'runtime.log').decode()
+for mode, cases in report['checks'].items():
+    check(Counter(cases.values()) == {'pass': 47}, 'POSIX v6 coverage differs')
+    for case, status in cases.items():
+        check('%s %s %s' % (mode, case, status) in raw,
+              'missing raw POSIX v6 case: ' + case)
+check(owner['binary_sha256'] == load(ROOT / 'posix-v5', 'owner-status.json')['binary_sha256'],
+      'POSIX backend changed between fixture comparison runs')
+
 root = ROOT / 'gpu-lifecycle-v4'
 owner = load(root, 'owner-report.json')
 verify_archive(root, owner)
@@ -173,11 +191,14 @@ check(verdict == owner['native_verdict'] == load(root, 'native-verdict.json') an
       owner['internal_gpu_acceptance'] == 'not_tested' and owner['exit_code'] == 0 and
       all(c['exit_code'] == 0 and not c['timed_out'] for c in owner['commands']),
       'v5 native result boundary changed')
+integration = load(root, 'integration/report.json')
+check(integration['status'] == 'passed' and
+      all(c['exit_code'] == 0 for c in integration['commands']), 'lifecycle integration failed')
 for name in ('src/cuda_lifecycle_probe.c', 'scripts/gpu_lifecycle_checks.py'):
-    check(sha(read(ROOT.parents[1], name)) == owner['source_sha256'][name],
-          'integrated lifecycle implementation differs from the native-tested source')
+    check(integration['source_sha256'][name] == owner['source_sha256'][name],
+          'integrated lifecycle implementation differs from native-tested source')
 check('Ran 66 tests' in read(root, 'checker-tests.stderr').decode() and
       'skipped=' not in read(root, 'checker-tests.stderr').decode(), 'v5 tests incomplete')
 print('Archive/source hashes, raw failures, CUDA reparse and all recorded cleanup groups verified.')
-print('CPU v3 fail; CPU v4 indeterminate; POSIX v5 fail; native CUDA v4 fail, v5 pass.')
+print('CPU v3 fail; CPU v4 indeterminate; POSIX v5 fail, v6 pass; native CUDA v4 fail, v5 pass.')
 print('Internal GPU and full/performance acceptance remain unverified.')

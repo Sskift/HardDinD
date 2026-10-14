@@ -30,12 +30,14 @@ for key in virtiofs_libcapng virtiofs_libcapng_dev virtiofs_libseccomp virtiofs_
     dpkg-deb -x "$deb" "$native"
 done
 export CARGO_HOME="$work/cache/cargo-virtiofs" CARGO_TARGET_DIR="$work/virtiofsd-build"
-export CARGO_BUILD_JOBS=8 CARGO_NET_RETRY=2
+# HardDinD build hosts share capacity with parallel agents; cap at four jobs.
+export CARGO_BUILD_JOBS=4 CARGO_NET_RETRY=2
 export PKG_CONFIG_SYSROOT_DIR="$native" PKG_CONFIG_LIBDIR="$native/usr/lib/x86_64-linux-gnu/pkgconfig"
 export RUSTFLAGS="-Lnative=$native/usr/lib/x86_64-linux-gnu -Lnative=$native/lib/x86_64-linux-gnu -C link-arg=-Wl,-rpath,$native/usr/lib/x86_64-linux-gnu -C link-arg=-Wl,-rpath,$native/lib/x86_64-linux-gnu"
 # Cargo.lock includes exact registry versions and source checksums. Never update it.
-(cd "$src" && "$toolchain/bin/cargo" test --release --locked harddind_ -- --test-threads=1)
-(cd "$src" && "$toolchain/bin/cargo" build --release --locked)
+# Bounded: a hung lock test must not hold the global build lock. Kill-after 30s.
+(cd "$src" && timeout --kill-after=30s 180s "$toolchain/bin/cargo" test --release --locked harddind_ -- --test-threads=1)
+(cd "$src" && timeout --kill-after=30s 600s "$toolchain/bin/cargo" build --release --locked)
 install -m 755 "$CARGO_TARGET_DIR/release/virtiofsd" "$work/virtiofsd.new"
 "$work/virtiofsd.new" --version
 mv "$work/virtiofsd.new" "$work/virtiofsd"

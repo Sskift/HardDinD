@@ -20,11 +20,11 @@
 
 每个结果文件记录各项 pass/fail/not_tested；是否实际通过，应以对应内核和 fixture 的原始报告为准。这个表描述测试范围，不把未运行的场景声明为可用。
 
-最新独立候选运行中，[CPU shares v4](../results/starpub-2026-10-15-candidate-review/cpu-shares-v4/README.md) 的首阶段实际分配符合 100/59 权重；反转阶段存在采样空档，等权阶段有效窗口不足，整轮仍无法判定。[共享 POSIX 锁 v5](../results/starpub-2026-10-15-candidate-review/posix-v5/README.md) 原生 46/46、内部 Docker 45/46，exec 测试依赖了镜像中不存在的程序，需修复后重测。[GPU 生命周期原生 v4](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v4/README.md) 暴露探针的 context 释放顺序、子进程参数及 SIGPIPE 错误；修复后的 [v5](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v5/README.md) 已在四卡原生实际通过 136 次计算/传输/校验循环及多线程、多进程生命周期检查，可用作后续内部对照，但内部生命周期仍未通过。这些失败和无法判定项均保留，不计入完成。
+最新独立候选运行中，[CPU shares v4](../results/starpub-2026-10-15-candidate-review/cpu-shares-v4/README.md) 的首阶段实际分配符合 100/59 权重；反转阶段存在采样空档，等权阶段有效窗口不足，整轮仍无法判定。[共享 POSIX 锁 v5](../results/starpub-2026-10-15-candidate-review/posix-v5/README.md) 原生 46/46、内部 Docker 45/46，exec 测试依赖了镜像中不存在的程序；修复后 [v6](../results/starpub-2026-10-15-candidate-review/posix-v6/README.md) 实际达到原生和内部 Docker 各 47/47，正常关机且 133 个记录的进程组为空，源码已纳入主线。[GPU 生命周期原生 v4](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v4/README.md) 暴露探针的 context 释放顺序、子进程参数及 SIGPIPE 错误；修复后的 [v5](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v5/README.md) 已在四卡原生实际通过 136 次计算/传输/校验循环及多线程、多进程生命周期检查，可用作后续内部对照，但内部生命周期仍未通过。这些失败和无法判定项均保留，不计入完成。
 
 [GPU 映射候选 v10](../results/starpub-2026-10-15-candidate-review/gpu-mapping-v10/README.md) 已通过实际四卡 NUMA 查询和原有 31/31、74/74 控制接口回归。内部 CUDA 仍在初始化失败：未知 `0x20810108` 控制布局和把字符设备事件标识误当成 eventfd 的实现正在修复。原生前后四卡计算通过仅用于对照；该候选没有内部计算或性能通过结论。
 
-后续独立证据还包括 [Compose 多服务](../results/starpub-2026-10-14-compose/README.md)、[GPU 系统能力与分配边界](../results/starpub-2026-10-15-gpu-system-features/README.md) 和 [POSIX 范围修复候选](../results/starpub-2026-10-15-posix-candidate-v2/README.md)。GPU 控制接口通过不代表内部计算可用；锁候选第二次运行完成原生和内部 Docker 各 38 项现有检查，但完整 PID、死锁、exec 等语义仍未完成，首次启动超时的失败也保留，候选尚未合入正式补丁目录。这些运行使用各自记录的内核和输入，不能合并成当前版本的一次完整验收。
+后续独立证据还包括 [Compose 多服务](../results/starpub-2026-10-14-compose/README.md)、[GPU 系统能力与分配边界](../results/starpub-2026-10-15-gpu-system-features/README.md) 和 [POSIX 范围修复候选](../results/starpub-2026-10-15-posix-candidate-v2/README.md)。GPU 控制接口通过不代表内部计算可用；锁候选第二次运行完成原生和内部 Docker 各 38 项现有检查，但完整 PID、死锁、exec 等语义仍未完成，首次启动超时的失败也保留；后续 v6 补齐本轮 PID、guest 死锁和真实 exec 检查后才合入，混合外层/guest 死锁与跨 PID namespace 映射仍未完成。这些运行使用各自记录的内核和输入，不能合并成当前版本的一次完整验收。
 
 最新内存权限实验的 56 个检查返回 53 pass、1 GPU fail、2 not_tested，guest 正常退出。新增项目是容器内真实内存映射语义；没有增加 GPU、出站网络或完整兼容性覆盖。证据见 `results/starpub-2026-10-14-protect/docker-protect-v3.json`。
 

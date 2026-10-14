@@ -163,6 +163,7 @@ def serve(a, work, instance):
         config['virtiofsd'] = str(a.virtiofsd)
         config['virtiofsd_sha256'] = sha(a.virtiofsd)
         config['share_inline_flock'] = a.share_inline_flock
+        config['share_posix_locks'] = a.share_posix_locks
         config['share_cache'] = a.share_cache
         config['share_profile'] = a.share_profile
     if a.publish_ports:
@@ -178,6 +179,7 @@ def serve(a, work, instance):
         if previous.get('shares'):
             previous.setdefault('share_profile', False)
             previous.setdefault('share_inline_flock', False)
+            previous.setdefault('share_posix_locks', False)
             previous.setdefault('virtiofsd', str((work / 'virtiofsd').resolve()))
         previous.setdefault('network_batch', 1)
         previous.setdefault('mtu', 1500)
@@ -218,6 +220,7 @@ def serve(a, work, instance):
                    '--thread-pool-size', '4']
             if a.share_profile: cmd.append('--profile-requests')
             if a.share_inline_flock: cmd.append('--inline-flock')
+            if a.share_posix_locks: cmd.append('--shared-posix-locks')
             with (instance/f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                       start_new_session=True, preexec_fn=parent_death)
@@ -411,6 +414,7 @@ def main():
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
         s.add_argument('--virtiofsd', type=pathlib.Path, help='immutable filesystem backend binary for controlled comparisons')
         s.add_argument('--share-inline-flock', action='store_true', help='experimental inline nonblocking flock; requires a compatible backend')
+        s.add_argument('--share-posix-locks', action='store_true', help='experimental cross-layer POSIX byte-range locks; requires a compatible backend')
         s.add_argument('--share-profile', action='store_true', help='diagnostic virtiofs timings; adds measurement overhead')
         s.add_argument('--share-cache', choices=('auto', 'never'), default='never', help='default: never; MAP_SHARED unsupported; auto can return stale external changes')
     for name in ('status', 'stop'):
@@ -436,7 +440,7 @@ def main():
         a.disk = a.disk or work / 'runtime.ext4'
         try: shares = share_specs(a.share)
         except (OSError, ValueError) as error: p.error(str(error))
-        if (a.share_profile or a.share_inline_flock or a.virtiofsd) and not shares:
+        if (a.share_profile or a.share_inline_flock or a.share_posix_locks or a.virtiofsd) and not shares:
             p.error('filesystem backend options require --share')
         if shares: a.virtiofsd = (a.virtiofsd or work / 'virtiofsd').resolve()
         if a.action == 'serve': return serve(a, work, instance)
@@ -445,8 +449,10 @@ def main():
             requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment, 'gpu_async_wait': a.gpu_async_wait,
               'memfd_ram': a.memfd_ram, 'memfd_stub': a.memfd_stub, 'shares': shares}
             if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile,
-                                        share_inline_flock=a.share_inline_flock, virtiofsd=str(a.virtiofsd))
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'gpu_async_wait': False, 'memfd_ram': False, 'memfd_stub': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
+                                        share_inline_flock=a.share_inline_flock,
+                                        share_posix_locks=a.share_posix_locks,
+                                        virtiofsd=str(a.virtiofsd))
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'gpu_async_wait': False, 'memfd_ram': False, 'memfd_stub': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'share_posix_locks': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
@@ -461,6 +467,7 @@ def main():
         cmd += ['--share-cache', a.share_cache]
         if a.share_profile: cmd.append('--share-profile')
         if a.share_inline_flock: cmd.append('--share-inline-flock')
+        if a.share_posix_locks: cmd.append('--share-posix-locks')
         if shares: cmd += ['--virtiofsd', str(a.virtiofsd)]
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)

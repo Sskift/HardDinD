@@ -1,0 +1,329 @@
+Subject: [PATCH] Avoid queue handoff for immediately completed flock requests
+
+Experimental opt-in path. Never wait on passthrough data locks in the
+event loop; retain asynchronous retries and interrupt delivery.
+
+--- a/src/filesystem.rs
++++ b/src/filesystem.rs
+@@ -975,6 +975,10 @@
+     }
+ 
+     /// TODO: support this
++    /// Return None when an internal lock would block; never wait in the event loop.
++    fn flock_inline(&self, _ctx: Context, _inode: Self::Inode, _handle: Self::Handle,
++                    _operation: i32) -> Option<io::Result<()>> { None }
++
+     fn getlk(&self) -> io::Result<()> {
+         Err(io::Error::from_raw_os_error(libc::ENOSYS))
+     }
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -163,6 +163,10 @@
+     /// Aggregate request timings for diagnostics; adds measurement overhead.
+     #[arg(long)]
+     profile_requests: bool,
++
++    /// Experimental inline nonblocking flock dispatch.
++    #[arg(long, requires = "shared_flock")]
++    inline_flock: bool,
+ 
+     /// Enable support for extended attributes
+     #[arg(long)]
+@@ -876,13 +880,13 @@
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock);
+     } else {
+         let fs = PassthroughFs::new(fs_cfg).unwrap_or_else(|e| {
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock);
+     }
+ }
+ 
+@@ -893,11 +897,13 @@
+     thread_pool_size: usize,
+     tag: Option<String>,
+     profile_requests: bool,
++    inline_flock: bool,
+ ) {
+     let fs_backend = Arc::new(
+         VhostUserFsBackendBuilder::default()
+             .set_thread_pool_size(thread_pool_size)
+             .set_profile_requests(profile_requests)
++            .set_inline_flock(inline_flock)
+             .set_tag(tag)
+             .build(fs)
+             .unwrap_or_else(|error| {
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -1727,6 +1727,21 @@
+ 
+     fn requires_async_locks(&self) -> bool { self.cfg.shared_flock }
+ 
++    fn flock_inline(&self, _ctx: Context, inode: Inode, handle: Handle,
++                    operation: i32) -> Option<io::Result<()>> {
++        if !self.cfg.shared_flock { return Some(Err(io::Error::from_raw_os_error(libc::ENOSYS))); }
++        let handles = self.handles.try_read().ok()?;
++        let data = match handles.get(&handle).filter(|hd| hd.inode == inode).cloned() {
++            Some(data) => data,
++            None => return Some(Err(ebadf())),
++        };
++        drop(handles);
++        let file_lock = match data.file.get() { Ok(file) => file, Err(error) => return Some(Err(error)) };
++        let file = file_lock.try_read().ok()?;
++        let ret = unsafe { libc::flock(file.as_raw_fd(), operation | libc::LOCK_NB) };
++        Some(if ret < 0 { Err(io::Error::last_os_error()) } else { Ok(()) })
++    }
++
+     fn flock(&self, _ctx: Context, inode: Inode, handle: Handle, operation: i32) -> io::Result<()> {
+         if !self.cfg.shared_flock { return Err(io::Error::from_raw_os_error(libc::ENOSYS)); }
+         let data = self.find_handle(handle, inode)?;
+@@ -2728,6 +2743,46 @@
+ mod harddind_tests {
+     use super::*;
+     use std::sync::Barrier;
++
++    #[test]
++    fn harddind_inline_flock_defers_internal_locks_and_preserves_host_conflicts() {
++        let base = std::env::temp_dir().join(format!("virtiofs-inline-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let path = base.join("lock");
++        std::fs::write(&path, b"test").unwrap();
++        let fs = PassthroughFs::new(Config {
++            root_dir: base.to_str().unwrap().into(), shared_flock: true,
++            inode_file_handles: InodeFileHandlesMode::Never, ..Default::default()
++        }).unwrap();
++        fs.init(FsOptions::FLOCK_LOCKS).unwrap();
++        let name = CString::new("lock").unwrap();
++        let inode = fs.do_lookup(1, &name).unwrap().inode;
++        let handle = fs.do_open(inode, false, libc::O_RDWR as u32).unwrap().0.unwrap();
++        let ctx = Context { uid: 0.into(), gid: 0.into(), pid: std::process::id() as i32 };
++        {
++            let _held = fs.handles.write().unwrap();
++            assert!(fs.flock_inline(ctx, inode, handle, libc::LOCK_EX).is_none());
++        }
++        let data = fs.find_handle(handle, inode).unwrap();
++        {
++            let _held = data.file.get().unwrap().write().unwrap();
++            assert!(fs.flock_inline(ctx, inode, handle, libc::LOCK_EX).is_none());
++        }
++        assert_eq!(fs.flock_inline(ctx, inode + 1, handle, libc::LOCK_EX)
++            .unwrap().unwrap_err().raw_os_error(), Some(libc::EBADF));
++        let outer = File::open(&path).unwrap();
++        assert_eq!(unsafe { libc::flock(outer.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) }, 0);
++        assert_eq!(fs.flock_inline(ctx, inode, handle, libc::LOCK_EX)
++            .unwrap().unwrap_err().raw_os_error(), Some(libc::EAGAIN));
++        assert_eq!(unsafe { libc::flock(outer.as_raw_fd(), libc::LOCK_UN) }, 0);
++        fs.flock_inline(ctx, inode, handle, libc::LOCK_EX).unwrap().unwrap();
++        assert_eq!(unsafe { libc::flock(outer.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) }, -1);
++        assert_eq!(io::Error::last_os_error().raw_os_error(), Some(libc::EAGAIN));
++        fs.flock_inline(ctx, inode, handle, libc::LOCK_UN).unwrap().unwrap();
++        assert_eq!(unsafe { libc::flock(outer.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) }, 0);
++        drop(outer); drop(data); drop(fs);
++        std::fs::remove_dir_all(base).unwrap();
++    }
+ 
+     #[test]
+     fn harddind_concurrent_working_directories() {
+--- a/src/passthrough/read_only.rs
++++ b/src/passthrough/read_only.rs
+@@ -178,6 +178,7 @@
+         fn init(&self, capable: FsOptions) -> io::Result<FsOptions>;
+         fn requires_async_locks(&self) -> bool;
+         fn flock(&self, ctx: Context, inode: Self::Inode, handle: Self::Handle, operation: i32) -> io::Result<()>;
++        fn flock_inline(&self, ctx: Context, inode: Self::Inode, handle: Self::Handle, operation: i32) -> Option<io::Result<()>>;
+         fn destroy(&self);
+         fn lookup(&self, ctx: Context, parent: Self::Inode, name: &CStr) -> io::Result<Entry>;
+         fn forget(&self, ctx: Context, inode: Self::Inode, count: u64);
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -1205,7 +1205,7 @@
+         }
+     }
+ 
+-    pub fn try_flock(&self, header: InHeader, request: LkIn) -> io::Result<()> {
++    fn flock_operation(header: InHeader, request: LkIn) -> io::Result<i32> {
+         if header.len as usize != size_of::<InHeader>() + size_of::<LkIn>() {
+             return Err(io::Error::from_raw_os_error(libc::EINVAL));
+         }
+@@ -1221,7 +1221,19 @@
+             libc::F_UNLCK => libc::LOCK_UN,
+             _ => return Err(io::Error::from_raw_os_error(libc::EINVAL)),
+         };
++        Ok(operation)
++    }
++
++    pub fn try_flock(&self, header: InHeader, request: LkIn) -> io::Result<()> {
++        let operation = Self::flock_operation(header, request)?;
+         self.fs.flock(Context::from(header), header.nodeid.into(), request.fh.into(), operation)
++    }
++
++    pub fn try_inline_flock(&self, header: InHeader, request: LkIn) -> Option<io::Result<()>> {
++        match Self::flock_operation(header, request) {
++            Err(error) => Some(Err(error)),
++            Ok(operation) => self.fs.flock_inline(Context::from(header), header.nodeid.into(), request.fh.into(), operation),
++        }
+     }
+ 
+     pub fn reply_flock(&self, header: InHeader, w: Writer, result: io::Result<()>) -> Result<usize> {
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -4,7 +4,7 @@
+ 
+ use std::convert::TryInto;
+ use std::fs::File;
+-use std::sync::atomic::{AtomicBool, Ordering};
++use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+ use std::sync::{Arc, Mutex, RwLock};
+ use std::thread::{self, JoinHandle};
+ use std::{convert, error, fmt, io};
+@@ -85,6 +85,7 @@
+     /// Shared locks require asynchronous dispatch.
+     LocksNeedPool,
+     ProfileNeedsPool,
++    InlineNeedsSharedLocks,
+     /// Failed to create the lock retry queue.
+     CreateRetryQueue(io::Error),
+     ReadRequest(io::Error),
+@@ -109,6 +110,16 @@
+ impl convert::From<Error> for io::Error {
+     fn from(e: Error) -> Self {
+         other_io_error(e)
++    }
++}
++
++#[derive(Default)]
++struct InlineStats { completed: AtomicU64, queued: AtomicU64, busy_fallback: AtomicU64 }
++impl Drop for InlineStats {
++    fn drop(&mut self) {
++        info!("HARDDIND_INLINE_FLOCK completed={} queued={} busy_fallback={}",
++              self.completed.load(Ordering::Relaxed), self.queued.load(Ordering::Relaxed),
++              self.busy_fallback.load(Ordering::Relaxed));
+     }
+ }
+ 
+@@ -123,10 +134,12 @@
+     // Drop this before the server: queued jobs may hold a server Arc.
+     retries: RetryQueue,
+     profile: Option<Arc<RequestProfile>>,
++    inline: Option<InlineStats>,
+ }
+ 
+ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFsThread<F> {
+-    fn new(fs: F, thread_pool_size: usize, profile_requests: bool) -> Result<Self> {
++    fn new(fs: F, thread_pool_size: usize, profile_requests: bool, inline_flock: bool) -> Result<Self> {
++        if inline_flock && !fs.requires_async_locks() { return Err(Error::InlineNeedsSharedLocks); }
+         if profile_requests && thread_pool_size == 0 { return Err(Error::ProfileNeedsPool); }
+         if fs.requires_async_locks() && thread_pool_size == 0 { return Err(Error::LocksNeedPool); }
+         let pool = if thread_pool_size > 0 {
+@@ -152,6 +165,7 @@
+             pool,
+             retries: RetryQueue::new().map_err(Error::CreateRetryQueue)?,
+             profile: profile_requests.then(|| Arc::new(RequestProfile::default())),
++            inline: inline_flock.then(InlineStats::default),
+         })
+     }
+ 
+@@ -194,13 +208,16 @@
+             None => return Err(Error::NoMemoryConfigured),
+         };
+ 
+-        while let Some(avail_desc) = vring
+-            .get_mut()
+-            .get_queue_mut()
+-            .iter(atomic_mem.memory())
+-            .map_err(|_| Error::IterateQueue)?
+-            .next()
+-        {
++        loop {
++            // Release the ring lock before dispatch or inline completion. A
++            // while-let temporary would retain it for the whole loop body.
++            let avail_desc = {
++                let mut state = vring.get_mut();
++                let mut iter = state.get_queue_mut().iter(atomic_mem.memory())
++                    .map_err(|_| Error::IterateQueue)?;
++                iter.next()
++            };
++            let Some(avail_desc) = avail_desc else { break };
+             used_any = true;
+ 
+             // Prepare a set of objects that can be moved to the worker thread.
+@@ -214,9 +231,33 @@
+             let mem = atomic_mem.memory();
+             let mut peek = Reader::new(&mem, worker_desc.clone()).map_err(Error::QueueReader)?;
+             let header: InHeader = peek.read_obj().map_err(Error::ReadRequest)?;
++            let lock_request = if header.opcode == Opcode::Setlk as u32 || header.opcode == Opcode::Setlkw as u32 {
++                Some(peek.read_obj::<LkIn>().map_err(Error::ReadRequest)?)
++            } else { None };
++            let lock_type = lock_request.map(|request| request.lk.type_).unwrap_or(u32::MAX);
++            let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, lock_type));
++            if let (Some(stats), Some(request)) = (&self.inline, lock_request) {
++                let started = sample.as_mut().map(|s| s.start());
++                let result = server.try_inline_flock(header, request);
++                if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
++                if let Some(result) = result {
++                    let contended = result.as_ref().err().and_then(io::Error::raw_os_error) == Some(libc::EAGAIN);
++                    if header.opcode != Opcode::Setlkw as u32 || !contended {
++                        let reply_start = sample.as_ref().map(|_| Instant::now());
++                        let writer = Writer::new(&mem, worker_desc.clone()).map_err(Error::QueueWriter)?;
++                        let len = server.reply_flock(header, writer, result).map_err(Error::ProcessQueue)?;
++                        Self::return_descriptor(&mut worker_vring.get_mut(), worker_desc.head_index(), event_idx, len);
++                        if let (Some(s), Some(start)) = (sample.take(), reply_start) { s.finish(start); }
++                        stats.completed.fetch_add(1, Ordering::Relaxed);
++                        continue;
++                    }
++                    stats.queued.fetch_add(1, Ordering::Relaxed);
++                } else {
++                    stats.busy_fallback.fetch_add(1, Ordering::Relaxed);
++                }
++            }
+             if header.opcode == Opcode::Setlkw as u32 {
+-                let request: LkIn = peek.read_obj().map_err(Error::ReadRequest)?;
+-                let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, request.lk.type_));
++                let request = lock_request.unwrap();
+                 self.retries.handle().submit(header.unique, Box::new(move |cancelled| {
+                     let started = sample.as_mut().map(|s| s.start());
+                     let result = if cancelled { Err(io::Error::from_raw_os_error(libc::EINTR)) }
+@@ -251,10 +292,6 @@
+                 })).map_err(Error::CreateRetryQueue)?;
+                 continue;
+             }
+-            let lock_type = if self.profile.is_some() && header.opcode == Opcode::Setlk as u32 {
+-                peek.read_obj::<LkIn>().map_err(Error::ReadRequest)?.lk.type_
+-            } else { u32::MAX };
+-            let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, lock_type));
+             drop(peek);
+             drop(mem);
+ 
+@@ -437,10 +474,17 @@
+ pub struct VhostUserFsBackendBuilder {
+     thread_pool_size: usize,
+     profile_requests: bool,
++    inline_flock: bool,
+     tag: Option<String>,
+ }
+ 
+ impl VhostUserFsBackendBuilder {
++    /// Experiment: issue nonblocking host locks without a worker handoff.
++    pub fn set_inline_flock(mut self, enabled: bool) -> Self {
++        self.inline_flock = enabled;
++        self
++    }
++
+     /// Enable diagnostics for pooled and retried requests (excluding interrupts).
+     pub fn set_profile_requests(mut self, enabled: bool) -> Self {
+         self.profile_requests = enabled;
+@@ -468,7 +512,7 @@
+     where
+         F: FileSystem + SerializableFileSystem + Send + Sync + 'static,
+     {
+-        let thread = RwLock::new(VhostUserFsThread::new(fs, self.thread_pool_size, self.profile_requests)?);
++        let thread = RwLock::new(VhostUserFsThread::new(fs, self.thread_pool_size, self.profile_requests, self.inline_flock)?);
+         Ok(VhostUserFsBackend {
+             thread,
+             premigration_thread: None.into(),

@@ -1,0 +1,21 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+mount -t proc proc /proc || exit 1
+mount -t sysfs sysfs /sys || exit 1
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev || exit 1
+mkdir -p /dev/pts /dev/shm /run /sys/fs/cgroup
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /run
+mount -t cgroup2 cgroup2 /sys/fs/cgroup || exit 1
+echo HARDDIND_PROBE_BEGIN
+uname -a
+cat /sys/devices/system/cpu/online
+failed=0
+for test in 'syscall 1' 'exec 1' 'threads 1' 'threads 4' 'processes 1' 'processes 4'; do
+    for rep in 1 2 3; do
+        /corebench $test || failed=1
+    done
+done
+echo "HARDDIND_PROBE_END status=$failed"
+sync
+poweroff -f
