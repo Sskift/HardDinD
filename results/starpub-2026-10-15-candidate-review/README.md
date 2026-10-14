@@ -39,4 +39,6 @@ timeout 20 python3 cpu-shares/reproduce.py
 
 ## 证据边界
 
+后续 [GPU 过滤器 v3 独立验证](gpu-filter-v3/README.md) 已完成四种配置的 8 次模型执行，并独立确认全部进程组退出。该记录同时保留完整候选内核的构建失败，未把模型通过算成内部 GPU 验收；上述原始挂起证据继续保留。
+
 `source-integrity.json` 固定归档的 16 个文件。`cleanup-audit.json` 是终止后的独立检查：两个测试进程组均无存活或僵尸成员，三个目标 PID 均已不存在。归档只涉及候选和模型；主线内核、现有实例以及 `/root/udock` 未因这些审查被替换。
