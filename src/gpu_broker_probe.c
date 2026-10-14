@@ -1,0 +1,217 @@
+/* Native feasibility probe for UML's shared-mm GPU broker, not a GPU backend.
+ * Only preload into the private CUDA probe. The helper shares the application's
+ * mm and fd table but has a distinct PID. It must never call libc: clone does
+ * not give it independent libc TLS. All helper operations use raw syscalls. */
+#define _GNU_SOURCE
+#include <errno.h>
+#include <linux/futex.h>
+#include <pthread.h>
+#include <sched.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdatomic.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+
+#if !defined(__x86_64__)
+#error This prototype is specific to the measured x86_64 Starpub host.
+#endif
+
+static long raw6(long nr, long a, long b, long c, long d, long e, long f) {
+    register long r10 __asm__("r10") = d;
+    register long r8 __asm__("r8") = e;
+    register long r9 __asm__("r9") = f;
+    long result;
+    __asm__ volatile("syscall" : "=a"(result)
+        : "a"(nr), "D"(a), "S"(b), "d"(c), "r"(r10), "r"(r8), "r"(r9)
+        : "rcx", "r11", "memory");
+    return result;
+}
+
+struct request {
+    atomic_int state; /* 0 idle, 1 request, 2 response, 3 exit */
+    long nr, args[6], result;
+};
+static struct request request;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pid_t owner, broker = -1;
+static void *stack;
+static const size_t stack_size = 1024 * 1024;
+static int enabled, forward_mmap, alias_maps, failed;
+static struct { dev_t device; int kind; } devices[40];
+static unsigned device_count;
+static unsigned long calls[3], maps[3], alias_ok[3], alias_failed[3];
+static unsigned long alias_errno[3][256];
+
+static int worker(void *unused) {
+    (void)unused;
+    raw6(SYS_prctl, PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0, 0);
+    if (raw6(SYS_getppid, 0, 0, 0, 0, 0, 0) != owner)
+        raw6(SYS_exit, 122, 0, 0, 0, 0, 0);
+    for (;;) {
+        int state = atomic_load_explicit(&request.state, memory_order_acquire);
+        if (state == 3) raw6(SYS_exit, 0, 0, 0, 0, 0, 0);
+        if (state != 1) {
+            raw6(SYS_futex, (long)&request.state, FUTEX_WAIT, state, 0, 0, 0);
+            continue;
+        }
+        request.result = raw6(request.nr, request.args[0], request.args[1],
+                              request.args[2], request.args[3], request.args[4], request.args[5]);
+        atomic_store_explicit(&request.state, 2, memory_order_release);
+        raw6(SYS_futex, (long)&request.state, FUTEX_WAKE, 1, 0, 0, 0);
+    }
+    return 0;
+}
+
+static double now(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec + t.tv_nsec / 1e9;
+}
+
+/* Caller holds mutex. A dead or stuck helper makes the experiment fail. */
+static long invoke(long nr, long a, long b, long c, long d, long e, long f) {
+    if (failed || broker < 2 || getpid() != owner) return -EIO;
+    request.nr = nr;
+    request.args[0] = a; request.args[1] = b; request.args[2] = c;
+    request.args[3] = d; request.args[4] = e; request.args[5] = f;
+    atomic_store_explicit(&request.state, 1, memory_order_release);
+    raw6(SYS_futex, (long)&request.state, FUTEX_WAKE, 1, 0, 0, 0);
+    double deadline = now() + 30;
+    while (atomic_load_explicit(&request.state, memory_order_acquire) != 2) {
+        struct timespec pause = { .tv_nsec = 100000000 };
+        raw6(SYS_futex, (long)&request.state, FUTEX_WAIT, 1, (long)&pause, 0, 0);
+        int status;
+        pid_t reaped = waitpid(broker, &status, WNOHANG);
+        if (reaped == broker || (reaped < 0 && errno == ECHILD)) {
+            broker = -1; failed = 1; return -EIO;
+        }
+        if (now() > deadline) {
+            failed = 1; kill(broker, SIGKILL);
+            while (waitpid(broker, NULL, 0) < 0 && errno == EINTR) {}
+            broker = -1; return -ETIMEDOUT;
+        }
+    }
+    long result = request.result;
+    atomic_store_explicit(&request.state, 0, memory_order_release);
+    return result;
+}
+
+static int device_kind(int fd) {
+    struct stat st;
+    int saved = errno, kind = -1;
+    if (!fstat(fd, &st) && S_ISCHR(st.st_mode))
+        for (unsigned i = 0; i < device_count; i++)
+            if (devices[i].device == st.st_rdev) { kind = devices[i].kind; break; }
+    errno = saved;
+    return kind;
+}
+
+static void add_device(const char *path, int kind) {
+    struct stat st;
+    if (!stat(path, &st) && S_ISCHR(st.st_mode) && device_count < 40) {
+        devices[device_count].device = st.st_rdev;
+        devices[device_count++].kind = kind;
+    }
+}
+
+__attribute__((constructor)) static void initialize(void) {
+    const char *mode = getenv("HARDDIND_GPU_BROKER_MODE");
+    if (!mode) return;
+    if (strcmp(mode, "ioctl") && strcmp(mode, "mmap") && strcmp(mode, "alias")) {
+        fprintf(stderr, "invalid GPU broker mode\n"); _exit(120);
+    }
+    owner = getpid();
+    forward_mmap = strcmp(mode, "ioctl") != 0;
+    alias_maps = !strcmp(mode, "alias");
+    add_device("/dev/nvidiactl", 0); add_device("/dev/nvidia-uvm", 2);
+    for (unsigned i = 0; i < 32; i++) {
+        char path[64]; snprintf(path, sizeof(path), "/dev/nvidia%u", i);
+        add_device(path, 1);
+    }
+    stack = (void *)raw6(SYS_mmap, 0, stack_size, PROT_READ | PROT_WRITE,
+                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if ((long)stack < 0 && (long)stack >= -4095) { failed = 1; return; }
+    broker = clone(worker, (char *)stack + stack_size, CLONE_VM | CLONE_FILES | SIGCHLD, NULL);
+    if (broker < 0) { failed = 1; return; }
+    enabled = 1;
+    fprintf(stderr, "HARDDIND_GPU_BROKER_START owner=%d broker=%d mode=%s\n", owner, broker, mode);
+}
+
+int ioctl(int fd, unsigned long command, ...) {
+    va_list args; va_start(args, command); void *argument = va_arg(args, void *); va_end(args);
+    int kind = enabled ? device_kind(fd) : -1;
+    if (kind < 0) return syscall(SYS_ioctl, fd, command, argument);
+    if (getpid() != owner) { errno = EOPNOTSUPP; return -1; }
+    pthread_mutex_lock(&mutex);
+    calls[kind]++;
+    long result = invoke(SYS_ioctl, fd, command, (long)argument, 0, 0, 0);
+    pthread_mutex_unlock(&mutex);
+    if (result < 0 && result >= -4095) { errno = -result; return -1; }
+    return result;
+}
+
+static void *map_device(void *address, size_t length, int prot, int flags, int fd, off64_t offset) {
+    int kind = enabled && forward_mmap ? device_kind(fd) : -1;
+    if (kind < 0) return (void *)syscall(SYS_mmap, address, length, prot, flags, fd, offset);
+    if (getpid() != owner) { errno = EOPNOTSUPP; return MAP_FAILED; }
+    pthread_mutex_lock(&mutex);
+    maps[kind]++;
+    long result = invoke(SYS_mmap, (long)address, length, prot, flags, fd, offset);
+    if (alias_maps && result >= 0) {
+        /* Do not read or write MMIO. Test whether the same owned device mapping
+         * can be mapped twice; UML kernel access would need a second alias. */
+        long alias = invoke(SYS_mmap, 0, length, prot,
+                            flags & ~(MAP_FIXED | MAP_FIXED_NOREPLACE), fd, offset);
+        if (alias < 0 && alias >= -4095) {
+            alias_failed[kind]++;
+            if (-alias < 256) alias_errno[kind][-alias]++;
+        } else {
+            alias_ok[kind]++;
+            if (invoke(SYS_munmap, alias, length, 0, 0, 0, 0)) failed = 1;
+        }
+    }
+    pthread_mutex_unlock(&mutex);
+    if (result < 0 && result >= -4095) { errno = -result; return MAP_FAILED; }
+    return (void *)result;
+}
+
+void *mmap(void *address, size_t length, int prot, int flags, int fd, off_t offset) {
+    return map_device(address, length, prot, flags, fd, offset);
+}
+void *mmap64(void *address, size_t length, int prot, int flags, int fd, off64_t offset) {
+    return map_device(address, length, prot, flags, fd, offset);
+}
+
+__attribute__((destructor)) static void finish(void) {
+    if (!enabled || getpid() != owner) return;
+    pthread_mutex_lock(&mutex);
+    if (broker > 1) {
+        atomic_store_explicit(&request.state, 3, memory_order_release);
+        raw6(SYS_futex, (long)&request.state, FUTEX_WAKE, 1, 0, 0, 0);
+        int status = 0; pid_t result;
+        do { result = waitpid(broker, &status, 0); } while (result < 0 && errno == EINTR);
+        if (result != broker || !WIFEXITED(status) || WEXITSTATUS(status)) failed = 1;
+    }
+    if (stack && !((long)stack < 0 && (long)stack >= -4095))
+        raw6(SYS_munmap, (long)stack, stack_size, 0, 0, 0, 0);
+    for (int k = 0; k < 3; k++) {
+        fprintf(stderr, "HARDDIND_GPU_BROKER kind=%d ioctls=%lu mmaps=%lu alias_ok=%lu alias_failed=%lu\n",
+                k, calls[k], maps[k], alias_ok[k], alias_failed[k]);
+        for (int e = 1; e < 256; e++) if (alias_errno[k][e])
+            fprintf(stderr, "HARDDIND_GPU_ALIAS_ERROR kind=%d errno=%d count=%lu\n", k, e, alias_errno[k][e]);
+    }
+    fprintf(stderr, "HARDDIND_GPU_BROKER_END failed=%d\n", failed);
+    pthread_mutex_unlock(&mutex);
+}

@@ -1,0 +1,7 @@
+["gcc", "-O2", "-Wall", "-Wextra", "-Werror", "/root/harddind-rebuild/src/cuda_probe.c", "-ldl", "-o", "/root/harddind-rebuild/results/gpu-broker-v1/cuda-probe"]
+["gcc", "-O2", "-Wall", "-Wextra", "-Werror", "-fPIC", "-shared", "-fno-stack-protector", "-fno-builtin", "/root/harddind-rebuild/src/gpu_broker_probe.c", "-pthread", "-o", "/root/harddind-rebuild/results/gpu-broker-v1/gpu-broker.so"]
+/root/harddind-rebuild/src/gpu_broker_probe.c: In function ‘worker’:
+/root/harddind-rebuild/src/gpu_broker_probe.c:74:1: error: no return statement in function returning non-void [-Werror=return-type]
+   74 | }
+      | ^
+cc1: all warnings being treated as errors
