@@ -137,12 +137,14 @@ def serve(a, work, instance):
     if config['shares']:
         config['virtiofsd_sha256'] = sha(work / 'virtiofsd')
         config['share_cache'] = a.share_cache
+        config['share_profile'] = a.share_profile
     if a.publish_ports:
         config['port_driver_sha256'] = sha(pathlib.Path(__file__).with_name('port_driver.py'))
     config_file = instance / 'config.json'
     if config_file.exists():
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
+        if previous.get('shares'): previous.setdefault('share_profile', False)
         previous.setdefault('network_batch', 1)
         previous.setdefault('mtu', 1500)
         previous.setdefault('publish_ports', False)
@@ -180,6 +182,7 @@ def serve(a, work, instance):
                    '--tag', share['tag'], '--sandbox', 'chroot', '--cache', a.share_cache,
                    '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts', '--shared-flock',
                    '--thread-pool-size', '4']
+            if a.share_profile: cmd.append('--profile-requests')
             with (instance/f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                       start_new_session=True, preexec_fn=parent_death)
@@ -348,6 +351,7 @@ def main():
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
+        s.add_argument('--share-profile', action='store_true', help='diagnostic virtiofs timings; adds measurement overhead')
         s.add_argument('--share-cache', choices=('auto', 'never'), default='never', help='default: never; MAP_SHARED unsupported; auto can return stale external changes')
     for name in ('status', 'stop'):
         subs.add_parser(name)
@@ -370,12 +374,13 @@ def main():
         a.disk = a.disk or work / 'runtime.ext4'
         try: shares = share_specs(a.share)
         except (OSError, ValueError) as error: p.error(str(error))
+        if a.share_profile and not shares: p.error('--share-profile requires --share')
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
             requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'shares': shares}
-            if shares: requested['share_cache'] = a.share_cache
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'shares': []}.get(key)) != value for key, value in requested.items()):
+            if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile)
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'shares': [], 'share_profile': False}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
@@ -384,6 +389,7 @@ def main():
         if a.publish_ports: cmd.append('--publish-ports')
         for share in shares: cmd += ['--share', share['target']]
         cmd += ['--share-cache', a.share_cache]
+        if a.share_profile: cmd.append('--share-profile')
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         until = time.monotonic() + 150

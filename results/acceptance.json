@@ -22,11 +22,12 @@
         "starpub-2026-10-14-published-ports/results/docker-moby-ports-v2.json",
         "starpub-2026-10-14-published-ports/results/docker-moby-context-v1.json",
         "starpub-2026-10-14-shares/shared-never-v1.json",
-        "starpub-2026-10-14-shared-locks/shared-flock-v1.json"
+        "starpub-2026-10-14-shared-locks/shared-flock-v1.json",
+        "starpub-2026-10-14-shared-locks/shared-flock-v2.json"
       ],
       "remaining": [
         "published ports: IPv6, multiple outer addresses sharing a port, Swarm ingress and abnormal recovery; IPv4 subset passed",
-        "outer bind mounts: mmap, incoming notifications, POSIX range locks and cancellation; flock subset passed but new kernel interrupt patch is runtime-unverified",
+        "outer bind mounts: mmap, incoming notifications, POSIX range locks and cancellation race stress; flock and SIGUSR1/SIGKILL cancellation subset passed with new kernel",
         "complete upstream compatibility coverage",
         "crash recovery and production lifecycle stress; orderly restart subset passed",
         "shared-mm runner failure paths and internal isolation",
@@ -52,7 +53,8 @@
         "starpub-2026-10-14-network-mtu/net-mtu-v2.json",
         "starpub-2026-10-14-network-mtu/net-mtu-v2-analysis.json",
         "starpub-2026-10-14-shares/shared-never-v1.json",
-        "starpub-2026-10-14-shared-locks/shared-flock-v1.json"
+        "starpub-2026-10-14-shared-locks/shared-flock-v1.json",
+        "starpub-2026-10-14-shared-locks/shared-flock-v2.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
@@ -68,7 +70,7 @@
         "link batching reduced calls but regressed request/reply and streaming throughput; default remains one-frame mode",
         "MTU9000 improves this network comparison but streaming remains 13.6x below native loopback; MTU65520 request/reply regression unresolved",
         "shared directory uncached read/write throughput approximately 28.0%/36.3% of native in recorded microbenchmark",
-        "1000 uncontended shared flock/unlock pairs: 0.253156992 s Docker vs 0.001550038 s native; approximately 163x on this workload"
+        "1000 shared flock/unlock pairs: approximately 163x then 290x native; no interleaved kernel A/B or controlled host load, so regression attribution remains unresolved"
       ]
     },
     "gpu_in_container": {

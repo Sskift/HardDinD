@@ -1,6 +1,6 @@
 # 共享文件锁：真实 Docker 对照与内核取消通路
 
-当前未完成。`shared-flock-v1` 原生 21 项通过，内部 Docker 17 项通过、4 项失败；程序退出码为 1。不能用这组文件锁检查代替完整 Docker、GPU 或性能验收。
+当前未完成。旧内核的 `shared-flock-v1` 为原生 21 项通过、内部 Docker 17 项通过及 4 项失败；新内核的 `shared-flock-v2` 为原生 21 项通过、Docker 19 项通过及 2 项 POSIX 范围锁失败。两轮程序均退出 1。不能用这组文件锁检查代替完整 Docker、GPU 或性能验收。
 
 ## 实测结果
 
@@ -36,7 +36,11 @@
 
 该补丁在 Starpub 上以 `IPI_EXPERIMENT=1` 构建成功，链接及 stub relocation 检查通过，构建进程退出码 0。首次构建被补丁路径白名单拒绝；白名单现在仅增加 `fs/fuse/`，新增路径和符号链接逃逸回归通过。两次构建日志都保留。
 
-**新内核尚未运行验证。** 构建完成后，三次 SSH 连接均在跳板连接处关闭，未能开始 `shared-flock-v2`，也未能读取新内核二进制哈希。不能将编译成功记为两项取消失败已修复。设备重置、异常恢复、取消竞态压力、POSIX 锁、共享 mmap、通知和 GPU 仍待验证或实现。
+构建完成后，SSH 跳板一度不可用。随后通过本机已有 SOCKS 通道恢复原 SSH 端口连接，并保留主机密钥校验；没有修改宿主权限或网络配置。新内核复制到独立不可变路径，SHA256 为 `c53fc2a0b949143109281151d3073c2ac9a18aff976f7345d43dfe0cfeba8403`。
+
+`shared-flock-v2` 的 SIGUSR1 与 SIGKILL 取消等待两项均通过，Docker 共 19 项通过，两个 POSIX 范围锁检查仍失败。服务日志记录 `completed=6026 interrupted=2 peak=7 remaining=0`。guest、网络和文件服务均正常退出，62 个探针进程组都没有强制清理或残留；新内核的这次正常关闭没有挂起。设备重置、异常恢复、取消竞态压力、POSIX 锁、共享 mmap、通知和 GPU 仍待验证或实现。
+
+本轮 1000 次加锁/解锁中位耗时为原生 0.001825501 秒、Docker 0.529507968 秒（约 290 倍）。这比第一轮的比值更差，两轮未做交错内核 A/B，也未控制共享宿主负载，不能将差值直接归因于内核补丁。功能修复没有证明性能改善，后续需要分段计时。
 
 ## 复现
 
@@ -50,3 +54,11 @@ python3 scripts/run-shared-locks.py /root/harddind-rebuild \
 ```
 
 旧内核 SHA256 为 `bedfe12f0d12960de45aa6e2718679dcb919841e4cfb9d9bc697bf84c8d5fb4b`；服务 SHA256 为 `c3352876265043b297cd3f4f6be95866ffbb146c49a11b4a17d946e661e54665`。完整脚本、磁盘、探针哈希与原始性能样本见 `shared-flock-v1.json`。原生只读基线使用 O_RDONLY，Docker 侧使用实际只读 bind mount，两者不完全相同。
+
+## 分段诊断工具
+
+`virtiofs/patches/0003-request-profile.patch` 增加默认关闭的 `--profile-requests`。运行器通过 `--share-profile` 启用；测试脚本通过 `--profile` 传入，并在结果标记 `instrumented=true`。实例输入记录这一选项，不能悄悄切换已运行实例的测量模式。固定工具链构建及 4 项补丁检查通过，日志为 `profile-build-v1.log`。
+
+每类请求按 FUSE opcode 和锁类型汇总：第一次执行前的队列等待、服务函数耗时、回复/通知耗时、请求总耗时及重试次数。服务函数包含协议处理和本地锁，不等于纯宿主系统调用耗时。时间从 descriptor 解码后开始，未包含 guest 和此前的传输；取消控制消息不计时。诊断聚合本身增加开销，不能拿这一模式作无插桩性能验收。
+
+服务退出时输出 `HARDDIND_REQUEST_PROFILE_END`。`scripts/analyze-shared-profile.py LOG...` 拒绝缺少结束标记、重复行和不一致计数，再输出平均微秒及原始累计值。默认关闭时不读取时钟或更新诊断计数。真实测量结果另行保留，不由构建成功推断性能改善。

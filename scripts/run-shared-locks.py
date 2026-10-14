@@ -26,6 +26,7 @@ def main():
     p.add_argument('--kernel',type=pathlib.Path,required=True)
     p.add_argument('--disk',type=pathlib.Path,required=True)
     p.add_argument('--name',required=True)
+    p.add_argument('--profile',action='store_true',help='diagnostic virtiofs timing; not an uninstrumented performance run')
     a=p.parse_args()
     if not a.name or len(a.name)>28 or not all(c.isalnum() or c in '-_' for c in a.name):p.error('invalid name')
     work=a.work.resolve();repo=pathlib.Path(__file__).resolve().parents[1];out=work/'results';out.mkdir(exist_ok=True)
@@ -37,7 +38,7 @@ def main():
            'close_dup_keeps_lock','fork_last_close','close_releases','kill_releases','blocking_inner','blocking_outer',
            'signal_cancels_wait','kill_cancels_wait','six_waiters_no_starvation','rename_keeps_lock','unlink_keeps_lock',
            'downgrade','upgrade_failure_drops_shared','readonly_bind_flock','posix_outer_excludes_inner','posix_inner_excludes_outer']
-    report={'kind':'shared_flock_lifecycle','full_acceptance':False,
+    report={'kind':'shared_flock_lifecycle','full_acceptance':False,'instrumented':a.profile,
             'checks':{mode:dict.fromkeys(names,'not_tested') for mode in ('native','docker')},'errors':{},'samples':[],
             'peers':[],'cpu_affinity':sorted(os.sched_getaffinity(0)),'cpu_exclusive':False,
             'sha256':{str(f):harddind.sha(f) for f in [a.kernel,a.disk,work/'virtiofsd',work/'share-probe',
@@ -208,7 +209,7 @@ def main():
     try:
         suite('native');bench('native','before')
         run(base+['start','--kernel',str(a.kernel.resolve()),'--disk',str(a.disk.resolve()),'--dns','1.1.1.1',
-                  '--publish-ports','--share',str(share),'--share-cache','never'],timeout=180)
+                  '--publish-ports','--share',str(share),'--share-cache','never']+(['--share-profile'] if a.profile else []),timeout=180)
         archive=out/(a.name+'-rootfs.tar');binary=(work/'share-probe').read_bytes()
         with tarfile.open(archive,'w') as tar:
             info=tarfile.TarInfo('share-probe');info.mode=0o755;info.size=len(binary);tar.addfile(info,io.BytesIO(binary))
