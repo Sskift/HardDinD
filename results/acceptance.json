@@ -4,8 +4,10 @@
     "docker_functionality": {
       "status": "incomplete",
       "evidence": [
-        "starpub-2026-10-14-performance/docker-memfd.json",
-        "starpub-2026-10-14-performance/evidence-validation.json"
+        "starpub-2026-10-14-ipi/docker-ipi-idle.json",
+        "starpub-2026-10-14-ipi/docker-ipi-final.json",
+        "starpub-2026-10-14-ipi/docker-ipi-cleanup-audit.json",
+        "starpub-2026-10-14-ipi/ipi-idle-final-checks.json"
       ],
       "remaining": [
         "external networking",
@@ -13,15 +15,17 @@
         "complete upstream compatibility coverage",
         "production lifecycle",
         "shared-mm runner failure paths and internal isolation",
-        "intermittent host-child loss under parallel fork/exec observed in prior kernel"
+        "intermittent host-child loss under parallel fork/exec observed in prior kernel",
+        "intermittent forced host-process cleanup in pre-idle-fix build; identity was not recorded",
+        "Swarm leave timeout observed once; not causally attributed or closed",
+        "Compose and broader upstream command scenarios"
       ]
     },
     "native_performance": {
       "status": "fail",
       "evidence": [
-        "starpub-2026-10-14-performance/memfd-comparison.json",
-        "starpub-2026-10-14-performance/memfd-3-after.json",
-        "starpub-2026-10-14-performance/memfd-4-after.json"
+        "starpub-2026-10-14-ipi/ipi-idle-comparison.json",
+        "starpub-2026-10-14-ipi/ipi-idle-trace-comparison.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
@@ -29,13 +33,14 @@
         "fork/exec overhead",
         "memory mapping overhead",
         "storage and networking application comparison",
-        "performance parity with controlled host load"
+        "performance parity with controlled host load",
+        "four-thread syscall regression in latest on/off microbenchmark comparison"
       ]
     },
     "gpu_in_container": {
       "status": "fail",
       "evidence": [
-        "starpub-2026-10-14-performance/docker-memfd.json"
+        "starpub-2026-10-14-ipi/docker-ipi-idle.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",

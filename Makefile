@@ -26,6 +26,10 @@ kernel-cache-experiment:
 kernel-performance-experiment:
 	PERFORMANCE_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
 
+.PHONY: kernel-ipi-experiment
+kernel-ipi-experiment:
+	IPI_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
 dispatch-root:
 	bash scripts/make-dispatch-root.sh "$(WORK)"
 

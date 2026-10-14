@@ -1,0 +1,24 @@
+{
+  "source_sha256": "03dd579e020b783a2ee2447bf467aec9dc838dbc330649665e3fb864ea5b46b2",
+  "change": "start receiver unmasked, as in the original failed test; add counter diagnostics",
+  "runs": [
+    {
+      "repeat": 0,
+      "exit_code": 0,
+      "stdout": "{\"test\":\"deferred_ipi\",\"signals\":400000,\"queue_items\":400000,\"masked_windows\":73848,\"drain_batches\":322005,\"verified\":true}\n",
+      "stderr": ""
+    },
+    {
+      "repeat": 1,
+      "exit_code": 0,
+      "stdout": "{\"test\":\"deferred_ipi\",\"signals\":400000,\"queue_items\":400000,\"masked_windows\":56029,\"drain_batches\":346785,\"verified\":true}\n",
+      "stderr": ""
+    },
+    {
+      "repeat": 2,
+      "exit_code": 0,
+      "stdout": "{\"test\":\"deferred_ipi\",\"signals\":400000,\"queue_items\":400000,\"masked_windows\":34635,\"drain_batches\":301149,\"verified\":true}\n",
+      "stderr": ""
+    }
+  ]
+}

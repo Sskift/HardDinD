@@ -1,0 +1,236 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that seccomp filters can be installed...OK
+Adding 334385152 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #13 SMP Wed Oct 14 04:44:19 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000173ee4fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000113ee4fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000113ee4fff]
+On node 0, zone Normal: 283 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/docker-9a21b2e99bfe49f8adcd74647d37151d.cow,/root/harddind-rebuild/commands-v2.ext4 root=/dev/ubda rw init=/sbin/harddind-docker-init con=null con0=null,fd:1 ssl=null panic=1 console=tty0
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 15200(92%)
+Dentry cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+Inode-cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 1130213
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 6557.69 BogoMIPS (lpj=32788480)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Mountpoint-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 4103104K/4520852K available (5932K kernel code, 1357K rwdata, 1828K rodata, 210K init, 1261K bss, 414428K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 65536 (order: 7, 524288 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 2048 (order: 3, 32768 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 32768 (order: 6, 262144 bytes, linear)
+TCP bind hash table entries: 32768 (order: 8, 1048576 bytes, linear)
+TCP: Hash tables configured (established 32768 bind 32768)
+UDP hash table entries: 2048 (order: 5, 131072 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-ac372ad6fb1b/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=20 bucket_order=0 (anon: 0)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+IPVS: Registered protocols (TCP, UDP)
+IPVS: Connection hash table configured (size=4096, memory=32Kbytes)
+IPVS: ipvs loaded.
+IPVS: [rr] scheduler registered.
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/docker-9a21b2e99bfe49f8adcd74647d37151d.cow" as COW file for "/root/harddind-rebuild/commands-v2.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 15, Operation not permitted
+EXT4-fs (ubda): mounted filesystem 3920c3c2-c815-4d9c-956f-c193daf8833b r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-docker-init as init process
+HARDDIND_DOCKER_BEGIN
+server=29.8.2 kernel=7.2.10 cpus=4 storage=overlayfs
+HARDDIND_SUITE_SHA256=f2bfacf0d90a08e9fb3fc15e6197014decb9d219bb725a09ab95fb6b9995f4b0
+HARDDIND_RESULT {"name":"image_import","status":"pass"}
+HARDDIND_RESULT {"name":"run","status":"pass"}
+HARDDIND_RESULT {"name":"exit_code","status":"pass"}
+HARDDIND_RESULT {"name":"stdin","status":"pass"}
+HARDDIND_RESULT {"name":"tty","status":"pass"}
+HARDDIND_RESULT {"name":"lifecycle","status":"pass"}
+HARDDIND_RESULT {"name":"mount_tmpfs","status":"pass"}
+HARDDIND_RESULT {"name":"privileged_mount","status":"pass"}
+HARDDIND_RESULT {"name":"net_admin","status":"pass"}
+HARDDIND_RESULT {"name":"guest_user_namespace","status":"pass"}
+HARDDIND_RESULT {"name":"read_only","status":"pass"}
+HARDDIND_RESULT {"name":"bind_mount","status":"pass"}
+HARDDIND_RESULT {"name":"volume","status":"pass"}
+HARDDIND_RESULT {"name":"memory_oom","status":"pass"}
+HARDDIND_RESULT {"name":"pids_limit","status":"pass"}
+HARDDIND_RESULT {"name":"default_seccomp","status":"pass"}
+HARDDIND_RESULT {"name":"container_threads","status":"pass"}
+HARDDIND_THREAD_SHA256=17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3
+HARDDIND_RESULT {"name":"container_thread_semantics","status":"pass"}
+HARDDIND_DISPATCH_SHA256=de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758
+HARDDIND_RESULT {"name":"container_dispatch_semantics","status":"pass"}
+HARDDIND_RESULT {"name":"container_compute","status":"pass"}
+HARDDIND_RESULT {"name":"bridge_dns","status":"pass"}
+HARDDIND_RESULT {"name":"published_port_guest","status":"pass"}
+HARDDIND_RESULT {"name":"docker_cp","status":"pass"}
+HARDDIND_RESULT {"name":"save_load","status":"pass"}
+HARDDIND_RESULT {"name":"buildkit_multistage","status":"pass"}
+HARDDIND_RESULT {"name":"restart_policy","status":"pass"}
+HARDDIND_RESULT {"name":"healthcheck","status":"pass"}
+HARDDIND_RESULT {"name":"ipv6","status":"pass"}
+HARDDIND_RESULT {"name":"signals","status":"pass"}
+HARDDIND_RESULT {"name":"inspect_rename","status":"pass"}
+HARDDIND_RESULT {"name":"restart","status":"pass"}
+HARDDIND_RESULT {"name":"pause_unpause","status":"pass"}
+HARDDIND_RESULT {"name":"update_limits","status":"pass"}
+HARDDIND_RESULT {"name":"top_stats","status":"pass"}
+HARDDIND_RESULT {"name":"wait_exit","status":"pass"}
+HARDDIND_RESULT {"name":"attach","status":"pass"}
+HARDDIND_RESULT {"name":"commit_diff_history","status":"pass"}
+HARDDIND_RESULT {"name":"export_import","status":"pass"}
+HARDDIND_RESULT {"name":"image_tag_remove","status":"pass"}
+HARDDIND_RESULT {"name":"events","status":"pass"}
+HARDDIND_RESULT {"name":"network_connect_disconnect","status":"pass"}
+HARDDIND_RESULT {"name":"port_inspect","status":"pass"}
+HARDDIND_RESULT {"name":"context","status":"pass"}
+HARDDIND_RESULT {"name":"system_df","status":"pass"}
+HARDDIND_RESULT {"name":"prune_objects","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_init","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_service","status":"fail"}
+ei7d63uqvb53nlfzkfidvbtpe    \_ lab-service.1   harddind-base:test   harddind-lab   Shutdown        Failed 14 seconds ago            "task: non-zero exit (127)"   
+u3n2bkpv1l3d8rc0xs1i2b68x    \_ lab-service.1   harddind-base:test   harddind-lab   Shutdown        Failed 22 seconds ago            "task: non-zero exit (127)"   
+u8ngwa2nlcqw6hav056ezpeeg    \_ lab-service.1   harddind-base:test   harddind-lab   Shutdown        Failed 31 seconds ago            "task: non-zero exit (127)"   
+wgsed3jhy1btl1eie251qwczq   lab-service.2       harddind-base:test   harddind-lab   Running         Starting 2 seconds ago                                         
+mgbjebdm5zecmtpwu6ki2d66r    \_ lab-service.2   harddind-base:test   harddind-lab   Shutdown        Failed 7 seconds ago             "task: non-zero exit (127)"   
+qsb67zjgjlyf31te440rv6g1d    \_ lab-service.2   harddind-base:test   harddind-lab   Shutdown        Failed 15 seconds ago            "task: non-zero exit (127)"   
+xddcridzxqymb24nrhn57uq4g    \_ lab-service.2   harddind-base:test   harddind-lab   Shutdown        Failed 23 seconds ago            "task: non-zero exit (127)"   
+ief8vtb9nq131m98s106f85za    \_ lab-service.2   harddind-base:test   harddind-lab   Shutdown        Failed 31 seconds ago            "task: non-zero exit (127)"   
+HARDDIND_RESULT {"name":"swarm_secret_config","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_vip","status":"fail"}
+wget: bad address 'lab-service:8080'
+HARDDIND_RESULT {"name":"swarm_scale","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_cleanup","status":"pass"}
+HARDDIND_RESULT {"name":"gpu_fixture_import","status":"pass"}
+HARDDIND_RESULT {"name":"gpu_compute","status":"fail"}
+docker: Error response from daemon: failed to discover GPU vendor from CDI: no known GPU vendor found
+
+Run 'docker run --help' for more information
+HARDDIND_RESULT {"name":"external_network","status":"not_tested"}
+HARDDIND_RESULT {"name":"full_docker_compatibility","status":"not_tested"}
+time="2026-10-14T04:48:39.945029582Z" level=info msg="sbJoin: gwep4 ''->'770ca9a761e5', gwep6 ''->''" eid=bd4dfacdc0fb ep=lab-service.2.wgsed3jhy1btl1eie251qwczq net=lab-overlay nid=np23s6q7j72h
+time="2026-10-14T04:48:40.181456078Z" level=info msg="received task-delete event from containerd" container=e7f048fa251ab9fca33ee699b9b6ca88f6bfb340a7f5b6dd644b5a87e0bdfb6f module=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
+time="2026-10-14T04:48:40.183211982Z" level=info msg="shim disconnected" id=e7f048fa251ab9fca33ee699b9b6ca88f6bfb340a7f5b6dd644b5a87e0bdfb6f namespace=moby
+time="2026-10-14T04:48:40.183276750Z" level=info msg="cleaning up after shim disconnected" id=e7f048fa251ab9fca33ee699b9b6ca88f6bfb340a7f5b6dd644b5a87e0bdfb6f namespace=moby
+time="2026-10-14T04:48:40.183302350Z" level=info msg="cleaning up dead shim" id=e7f048fa251ab9fca33ee699b9b6ca88f6bfb340a7f5b6dd644b5a87e0bdfb6f namespace=moby
+time="2026-10-14T04:48:40.294018510Z" level=error msg="fatal task error" error="task: non-zero exit (127)" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=gxc8plpg3iryy29vako0puygt
+time="2026-10-14T04:48:40.691562190Z" level=info msg="fetch failed" error="failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:33602->127.0.0.11:53: read: connection refused" host=registry-1.docker.io method=HEAD url="https://registry-1.docker.io/v2/library/harddind-base/manifests/test"
+time="2026-10-14T04:48:40.695613134Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:33602->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=q9d0skglrp9pdubeacndk79iy
+time="2026-10-14T04:48:40.955614158Z" level=info msg="fetch failed" error="failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:39241->127.0.0.11:53: read: connection refused" host=registry-1.docker.io method=HEAD url="https://registry-1.docker.io/v2/library/harddind-base/manifests/test"
+time="2026-10-14T04:48:40.968058062Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:39241->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=fbjbw8upb94ef5eraebu3cicb task.id=ss8iux55udq8m9ly42223gyns
+time="2026-10-14T04:48:41.026640334Z" level=error msg="fatal task error" error="task: non-zero exit (127)" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=wgsed3jhy1btl1eie251qwczq
+time="2026-10-14T04:48:41.428376782Z" level=info msg="connecting to shim 2b2f35f36c34972c9f8a22a3dce8eaa4fc1d3111302d8087de96ef6a008a6b34" address="unix:///run/containerd/s/8621b333401cbbdd198af4e8ce4886f7bbc9621c6f6dfc36016aea199ccfd719" namespace=moby protocol=ttrpc version=3
+time="2026-10-14T04:48:41.475736270Z" level=info msg="fetch failed" error="failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:38483->127.0.0.11:53: read: connection refused" host=registry-1.docker.io method=HEAD url="https://registry-1.docker.io/v2/library/harddind-base/manifests/test"
+time="2026-10-14T04:48:41.478455502Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:38483->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=wvzl4l4qflsbbx05w7kgrzckp
+time="2026-10-14T04:48:42.362699982Z" level=info msg="sbJoin: gwep4 ''->'484db28d4910', gwep6 ''->''" eid=484db28d4910 ep=gateway_b2c8d3faa679 net=docker_gwbridge nid=cd6b71c2075e
+time="2026-10-14T04:48:42.369933774Z" level=info msg="sbJoin: gwep4 ''->'484db28d4910', gwep6 ''->''" eid=ab72c71d36de ep=lab-config-service.1.ss8iux55udq8m9ly42223gyns net=lab-overlay nid=np23s6q7j72h
+time="2026-10-14T04:48:44.928419790Z" level=info msg="connecting to shim 31a44742495a760faaa3812bdad0d51322662bf959aabc67e8248803e47d70ac" address="unix:///run/containerd/s/c09b074036b4f087a4e689fd41943e3182d5ea6fa25fa9075eab8929f9fcc660" namespace=moby protocol=ttrpc version=3
+time="2026-10-14T04:48:45.551324878Z" level=info msg="connecting to shim 9c100371e1e164cfaf6a49a85747f4e335db830cf6c35f5e860e4af9cee77c07" address="unix:///run/containerd/s/2e5955b8558db0ff5497844e5f8c45e66ace57ab5bdebb1fc11a6ec0963699ec" namespace=moby protocol=ttrpc version=3
+time="2026-10-14T04:48:46.154568654Z" level=info msg="sbJoin: gwep4 ''->'015ae836989d', gwep6 ''->''" eid=015ae836989d ep=gateway_f2ce975496f5 net=docker_gwbridge nid=cd6b71c2075e
+time="2026-10-14T04:48:46.162017998Z" level=info msg="sbJoin: gwep4 ''->'015ae836989d', gwep6 ''->''" eid=947cbc40532c ep=objective_solomon net=lab-overlay nid=np23s6q7j72h
+time="2026-10-14T04:48:46.537185230Z" level=info msg="connecting to shim 57e1133a56cf355d8bc617090fe214f015f696928f8674b982f2ad4665c238ed" address="unix:///run/containerd/s/c06443888564d1fef93c809a2b836d0e7274d258ca5f7fd5f41c95704c855998" namespace=moby protocol=ttrpc version=3
+time="2026-10-14T04:48:46.578325710Z" level=info msg="received task-delete event from containerd" container=31a44742495a760faaa3812bdad0d51322662bf959aabc67e8248803e47d70ac module=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
+time="2026-10-14T04:48:46.579619534Z" level=info msg="shim disconnected" id=31a44742495a760faaa3812bdad0d51322662bf959aabc67e8248803e47d70ac namespace=moby
+time="2026-10-14T04:48:46.579729870Z" level=info msg="cleaning up after shim disconnected" id=31a44742495a760faaa3812bdad0d51322662bf959aabc67e8248803e47d70ac namespace=moby
+time="2026-10-14T04:48:46.579816142Z" level=info msg="cleaning up dead shim" id=31a44742495a760faaa3812bdad0d51322662bf959aabc67e8248803e47d70ac namespace=moby
+time="2026-10-14T04:48:47.016239566Z" level=info msg="sbJoin: gwep4 ''->'4fdd8997969f', gwep6 ''->''" eid=4fdd8997969f ep=gateway_671d455e3d1a net=docker_gwbridge nid=cd6b71c2075e
+time="2026-10-14T04:48:47.023332558Z" level=info msg="sbJoin: gwep4 ''->'4fdd8997969f', gwep6 ''->''" eid=0a9df718598c ep=lab-service.1.q9d0skglrp9pdubeacndk79iy net=lab-overlay nid=np23s6q7j72h
+time="2026-10-14T04:48:47.291881678Z" level=info msg="received task-delete event from containerd" container=9c100371e1e164cfaf6a49a85747f4e335db830cf6c35f5e860e4af9cee77c07 module=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
+time="2026-10-14T04:48:47.300453070Z" level=info msg="shim disconnected" id=9c100371e1e164cfaf6a49a85747f4e335db830cf6c35f5e860e4af9cee77c07 namespace=moby
+time="2026-10-14T04:48:47.300719822Z" level=info msg="cleaning up after shim disconnected" id=9c100371e1e164cfaf6a49a85747f4e335db830cf6c35f5e860e4af9cee77c07 namespace=moby
+time="2026-10-14T04:48:47.300842958Z" level=info msg="cleaning up dead shim" id=9c100371e1e164cfaf6a49a85747f4e335db830cf6c35f5e860e4af9cee77c07 namespace=moby
+time="2026-10-14T04:48:48.020232654Z" level=info msg="sbJoin: gwep4 ''->'6a0cf59e4711', gwep6 ''->''" eid=6a0cf59e4711 ep=gateway_76aff8d03622 net=docker_gwbridge nid=cd6b71c2075e
+time="2026-10-14T04:48:48.027613902Z" level=info msg="sbJoin: gwep4 ''->'6a0cf59e4711', gwep6 ''->''" eid=1936784b4e94 ep=lab-service.2.wvzl4l4qflsbbx05w7kgrzckp net=lab-overlay nid=np23s6q7j72h
+time="2026-10-14T04:48:48.139475662Z" level=error msg="fatal task error" error="task: non-zero exit (127)" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=q9d0skglrp9pdubeacndk79iy
+time="2026-10-14T04:48:48.317240270Z" level=info msg="shim disconnected" id=57e1133a56cf355d8bc617090fe214f015f696928f8674b982f2ad4665c238ed namespace=moby
+time="2026-10-14T04:48:48.317543886Z" level=info msg="cleaning up after shim disconnected" id=57e1133a56cf355d8bc617090fe214f015f696928f8674b982f2ad4665c238ed namespace=moby
+time="2026-10-14T04:48:48.317643470Z" level=info msg="cleaning up dead shim" id=57e1133a56cf355d8bc617090fe214f015f696928f8674b982f2ad4665c238ed namespace=moby
+time="2026-10-14T04:48:48.318422222Z" level=info msg="received task-delete event from containerd" container=57e1133a56cf355d8bc617090fe214f015f696928f8674b982f2ad4665c238ed module=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
+time="2026-10-14T04:48:48.412679374Z" level=info msg="fetch failed" error="failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:48602->127.0.0.11:53: read: connection refused" host=registry-1.docker.io method=HEAD url="https://registry-1.docker.io/v2/library/harddind-base/manifests/test"
+time="2026-10-14T04:48:48.416791758Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:48602->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=7ph1c0xnbgyskf6i7nlx44qvr
+time="2026-10-14T04:48:48.602575822Z" level=warning msg="rmServiceBinding 1936784b4e94b44fac10d15e07094940b7edd80b268e926db67c05dce0737b39 possible transient state ok:false entries:0 set:false "
+time="2026-10-14T04:48:52.530457294Z" level=info msg="attempted to update status for a task that has been removed" module=node/agent/taskmanager node.id=b5d0wrdjhk8leqbamoo6tgad2 service.id=yz6wpbnrm6l8zomdjb77zjizk task.id=7ph1c0xnbgyskf6i7nlx44qvr
+time="2026-10-14T04:48:52.532665294Z" level=info msg="Stopping manager" module=node node.id=b5d0wrdjhk8leqbamoo6tgad2
+time="2026-10-14T04:48:52.533020878Z" level=info msg="dispatcher stopping" method="(*Dispatcher).Stop" module=dispatcher node.id=b5d0wrdjhk8leqbamoo6tgad2
+time="2026-10-14T04:48:52.533456846Z" level=info msg="dispatcher session dropped, marking node b5d0wrdjhk8leqbamoo6tgad2 down" method="(*Dispatcher).Session" node.id=b5d0wrdjhk8leqbamoo6tgad2 node.session=8wcqfzc2v2oebee67qe4vrq29
+time="2026-10-14T04:48:52.533531086Z" level=error msg="failed to remove node" error="rpc error: code = Aborted desc = dispatcher is stopped" method="(*Dispatcher).Session" node.id=b5d0wrdjhk8leqbamoo6tgad2 node.session=8wcqfzc2v2oebee67qe4vrq29
+time="2026-10-14T04:48:52.533935054Z" level=info msg="shutting down certificate renewal routine" module=node/tls node.id=b5d0wrdjhk8leqbamoo6tgad2 node.role=swarm-manager
+time="2026-10-14T04:48:52.544705742Z" level=info msg="Manager shut down" module=node node.id=b5d0wrdjhk8leqbamoo6tgad2
+time="2026-10-14T04:48:52.548579534Z" level=info msg="Node d5e5b68c63eb/10.42.0.1, left gossip cluster"
+time="2026-10-14T04:48:52.554077902Z" level=info msg="Node d5e5b68c63eb change state NodeActive --> NodeFailed"
+time="2026-10-14T04:48:52.555045838Z" level=info msg="Node d5e5b68c63eb/10.42.0.1, added to failed nodes list"
+time="2026-10-14T04:48:52.555891662Z" level=warning msg="rmServiceBinding ab72c71d36de1c28ea8e3fd324c840bba66c613e7db49687058f7e16700dde42 possible transient state ok:false entries:0 set:false "
+time="2026-10-14T04:48:52.978581454Z" level=info msg="received task-delete event from containerd" container=2b2f35f36c34972c9f8a22a3dce8eaa4fc1d3111302d8087de96ef6a008a6b34 module=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
+time="2026-10-14T04:48:52.980372686Z" level=info msg="shim disconnected" id=2b2f35f36c34972c9f8a22a3dce8eaa4fc1d3111302d8087de96ef6a008a6b34 namespace=moby
+time="2026-10-14T04:48:52.980479438Z" level=info msg="cleaning up after shim disconnected" id=2b2f35f36c34972c9f8a22a3dce8eaa4fc1d3111302d8087de96ef6a008a6b34 namespace=moby
+time="2026-10-14T04:48:52.980509134Z" level=info msg="cleaning up dead shim" id=2b2f35f36c34972c9f8a22a3dce8eaa4fc1d3111302d8087de96ef6a008a6b34 namespace=moby
+time="2026-10-14T04:48:53.526986958Z" level=warning msg="Failed to disconnect container lb-lab-overlay from swarm network lab-overlay on cluster leave: endpoint lb-lab-overlay not found"
+time="2026-10-14T04:48:54.130094030Z" level=warning msg="Failed to remove swarm network lab-overlay on cluster leave: error while removing network: unknown network lab-overlay id np23s6q7j72hp6jenh31e1o49"
+time="2026-10-14T04:49:06.531907278Z" level=info msg="image created" imageID="sha256:bd15fe3793e13341b9648c0bccf31096571f453756beadb403a389bb9f89fed9" tag="docker.io/library/harddind-gpu:test"
+time="2026-10-14T04:49:08.126699470Z" level=error msg="Handler for POST /containers/{name:.*}/start returned error" error-response="failed to discover GPU vendor from CDI: no known GPU vendor found" method=POST module=api request-url=/v1.56/containers/a7fbdb6b7e81f70d9e9584947c88cd4c5a851151eb8805b05d32e54974885c62/start status=500 vars="map[name:a7fbdb6b7e81f70d9e9584947c88cd4c5a851151eb8805b05d32e54974885c62 version:1.56]"
+HARDDIND_DOCKER_END status=1
+reboot: Power down
+HARDDIND_DEFER_IPI enabled=1 received=209316 deferred=163731 handled=209308
+HARDDIND_BROKER_CACHE hits=2878 stores=2880
+

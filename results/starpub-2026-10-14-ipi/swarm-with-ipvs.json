@@ -1,0 +1,268 @@
+{
+  "kind": "docker_subset_in_candidate",
+  "checks": [
+    {
+      "name": "image_import",
+      "status": "pass"
+    },
+    {
+      "name": "run",
+      "status": "not_tested"
+    },
+    {
+      "name": "exit_code",
+      "status": "not_tested"
+    },
+    {
+      "name": "stdin",
+      "status": "not_tested"
+    },
+    {
+      "name": "tty",
+      "status": "not_tested"
+    },
+    {
+      "name": "lifecycle",
+      "status": "not_tested"
+    },
+    {
+      "name": "mount_tmpfs",
+      "status": "not_tested"
+    },
+    {
+      "name": "privileged_mount",
+      "status": "not_tested"
+    },
+    {
+      "name": "net_admin",
+      "status": "not_tested"
+    },
+    {
+      "name": "guest_user_namespace",
+      "status": "not_tested"
+    },
+    {
+      "name": "read_only",
+      "status": "not_tested"
+    },
+    {
+      "name": "bind_mount",
+      "status": "not_tested"
+    },
+    {
+      "name": "volume",
+      "status": "not_tested"
+    },
+    {
+      "name": "memory_oom",
+      "status": "not_tested"
+    },
+    {
+      "name": "pids_limit",
+      "status": "not_tested"
+    },
+    {
+      "name": "default_seccomp",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_threads",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_thread_semantics",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_dispatch_semantics",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_compute",
+      "status": "not_tested"
+    },
+    {
+      "name": "bridge_dns",
+      "status": "not_tested"
+    },
+    {
+      "name": "published_port_guest",
+      "status": "not_tested"
+    },
+    {
+      "name": "docker_cp",
+      "status": "not_tested"
+    },
+    {
+      "name": "save_load",
+      "status": "not_tested"
+    },
+    {
+      "name": "buildkit_multistage",
+      "status": "not_tested"
+    },
+    {
+      "name": "restart_policy",
+      "status": "not_tested"
+    },
+    {
+      "name": "healthcheck",
+      "status": "not_tested"
+    },
+    {
+      "name": "ipv6",
+      "status": "not_tested"
+    },
+    {
+      "name": "signals",
+      "status": "not_tested"
+    },
+    {
+      "name": "inspect_rename",
+      "status": "not_tested"
+    },
+    {
+      "name": "restart",
+      "status": "not_tested"
+    },
+    {
+      "name": "pause_unpause",
+      "status": "not_tested"
+    },
+    {
+      "name": "update_limits",
+      "status": "not_tested"
+    },
+    {
+      "name": "top_stats",
+      "status": "not_tested"
+    },
+    {
+      "name": "wait_exit",
+      "status": "not_tested"
+    },
+    {
+      "name": "attach",
+      "status": "not_tested"
+    },
+    {
+      "name": "commit_diff_history",
+      "status": "not_tested"
+    },
+    {
+      "name": "export_import",
+      "status": "not_tested"
+    },
+    {
+      "name": "image_tag_remove",
+      "status": "not_tested"
+    },
+    {
+      "name": "events",
+      "status": "not_tested"
+    },
+    {
+      "name": "network_connect_disconnect",
+      "status": "not_tested"
+    },
+    {
+      "name": "port_inspect",
+      "status": "not_tested"
+    },
+    {
+      "name": "context",
+      "status": "not_tested"
+    },
+    {
+      "name": "system_df",
+      "status": "not_tested"
+    },
+    {
+      "name": "prune_objects",
+      "status": "not_tested"
+    },
+    {
+      "name": "swarm_init",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_service",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_secret_config",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_vip",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_scale",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_cleanup",
+      "status": "pass"
+    },
+    {
+      "name": "gpu_fixture_import",
+      "status": "not_tested"
+    },
+    {
+      "name": "gpu_compute",
+      "status": "not_tested"
+    },
+    {
+      "name": "external_network",
+      "status": "not_tested"
+    },
+    {
+      "name": "full_docker_compatibility",
+      "status": "not_tested"
+    }
+  ],
+  "finished": true,
+  "checks_complete": true,
+  "suite_status": 0,
+  "subset_passed": false,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 52.943979889154434,
+  "disk_mode": "isolated_cow",
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 748,
+    "stores": 751
+  },
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": true,
+    "received": 27155,
+    "deferred": 21515,
+    "handled": 27153
+  },
+  "suite_sha256": "eef488f1b03c4fc6042f375c407c313ba5da01c3c9644ed2ffb5150b9bd245e4",
+  "expected_suite_sha256": "eef488f1b03c4fc6042f375c407c313ba5da01c3c9644ed2ffb5150b9bd245e4",
+  "check_filter": "^(image_import|swarm_)",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "full_acceptance": false,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "kernel_sha256": "81c7be2e1bd53e867f52725689670afff326537457fe81ae1fd6aa3d3d85fbad",
+  "kernel_unchanged": true,
+  "cleanup": {
+    "process_group": 2527996,
+    "forced_cleanup": false,
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  }
+}

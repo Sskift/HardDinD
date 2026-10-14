@@ -1,6 +1,9 @@
 #!/bin/sh
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin
 mount -t proc proc /proc || exit 1
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in docker_checks=*) export HARDDIND_CHECK_FILTER=${arg#docker_checks=} ;; esac
+done
 mount -t sysfs sysfs /sys || exit 1
 mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev || exit 1
 mkdir -p /dev/pts /dev/shm /run /sys/fs/cgroup
@@ -26,8 +29,10 @@ echo HARDDIND_DOCKER_BEGIN
 failed=1
 if [ "$ready" = 1 ]; then
     docker info --format 'server={{.ServerVersion}} kernel={{.KernelVersion}} cpus={{.NCPU}} storage={{.Driver}}'
+    echo "HARDDIND_SUITE_SHA256=$(sha256sum /docker-suite.sh | cut -d' ' -f1)"
     sh /docker-suite.sh
     failed=$?
+    if [ "$failed" != 0 ]; then grep -E 'level=(error|warning)' /run/dockerd.log | tail -80; fi
 else
     echo 'HARDDIND_RESULT {"name":"daemon_start","status":"fail"}'
     tail -70 /run/dockerd.log

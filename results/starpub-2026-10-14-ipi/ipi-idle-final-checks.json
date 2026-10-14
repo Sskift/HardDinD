@@ -1,0 +1,11 @@
+{
+  "time_unix": 1791955442.6285405,
+  "private_groups_checked": 32,
+  "remaining_processes": [],
+  "original_service_read_only_health": {
+    "exit_code": 0,
+    "output": "server=29.8.2 running=0 images=6",
+    "stderr": ""
+  },
+  "no_runtime_installation_performed": true
+}

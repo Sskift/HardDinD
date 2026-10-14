@@ -1,6 +1,6 @@
 # HardDinD 的固定目标
 
-在现有无特权 Docker 容器内提供完整 Docker 功能、与同机原生执行一致的性能和可用 GPU。用户没有授权降低这三个目标。
+按用户最新目标，在 Starpub 现有无特权 Docker 容器内支持几乎所有 Docker 命令，效率与同机原生相差不大；此前要求的可用 GPU 仍在范围内。用实际命令效果和同机性能证据判断，不能把目标缩减为少量容易通过的案例。
 
 - 不以 Docker 兼容 API、hello-world、nvidia-smi 或单项 CPU 测试代替最终验收。
 - 不依赖新增宿主权限、关闭外层 seccomp/AppArmor、可写宿主 cgroup、KVM 或宿主 Docker socket。

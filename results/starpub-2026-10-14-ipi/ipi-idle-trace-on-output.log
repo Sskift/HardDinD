@@ -1,0 +1,1 @@
+{"mode": "trace", "passed": true, "exit_code": 0, "wall_seconds": 1.2876532766968012, "host_cpu_seconds": 1.277467, "cleanup": {"process_group": 2708566, "forced_cleanup": false, "initial_live_pids": [], "initial_zombie_pids": [], "initial_processes": [], "forced_processes": [], "remaining_live_pids": [], "remaining_zombie_pids": [], "clean_shutdown": true}}

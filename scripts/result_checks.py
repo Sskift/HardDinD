@@ -10,6 +10,10 @@ DOCKER_CHECKS = {
     "restart_policy", "healthcheck", "ipv6", "signals", "gpu_fixture_import", "gpu_compute",
     "external_network", "full_docker_compatibility", "container_threads", "container_thread_semantics",
     "container_dispatch_semantics",
+    "inspect_rename", "restart", "pause_unpause", "update_limits", "top_stats", "wait_exit", "attach",
+    "commit_diff_history", "export_import", "image_tag_remove", "events", "network_connect_disconnect",
+    "port_inspect", "context", "system_df", "prune_objects", "swarm_init", "swarm_service",
+    "swarm_secret_config", "swarm_vip", "swarm_scale", "swarm_cleanup",
 }
 
 
@@ -19,6 +23,15 @@ def broker_cache_evidence(log):
         return {"verified": False, "hits": None, "stores": None}
     hits, stores = map(int, rows[0])
     return {"verified": 0 < hits <= stores, "hits": hits, "stores": stores}
+
+
+def deferred_ipi_evidence(log):
+    rows = re.findall(r"^HARDDIND_DEFER_IPI enabled=1 received=(\d+) deferred=(\d+) handled=(\d+)$", log, flags=re.MULTILINE)
+    if len(rows) != 1:
+        return {"verified": False, "received": None, "deferred": None, "handled": None}
+    received, deferred, handled = map(int, rows[0])
+    return {"verified": 0 < deferred <= received and 0 < handled <= received,
+            "received": received, "deferred": deferred, "handled": handled}
 
 
 def docker_evidence(log, exit_code, timed_out):

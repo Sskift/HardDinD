@@ -6,6 +6,7 @@ mkdir -p "$work"
 exec 9>"$work/kernel-build.lock"
 flock -x 9
 src=$(python3 "$repo/scripts/fetch-kernel.py" "$work")
+if [ "${IPI_EXPERIMENT:-0}" = 1 ]; then PERFORMANCE_EXPERIMENT=1; fi
 if [ "${PERFORMANCE_EXPERIMENT:-0}" = 1 ]; then CACHE_EXPERIMENT=1; fi
 if [ "${CACHE_EXPERIMENT:-0}" = 1 ]; then DISPATCH_EXPERIMENT=1; fi
 if [ "${DISPATCH_EXPERIMENT:-0}" = 1 ]; then THREADS_EXPERIMENT=1; fi
@@ -19,7 +20,9 @@ mkdir -p "$out"
 out=$(realpath "$out")
 options=()
 if [ "${HANDOFF_EXPERIMENT:-0}" = 1 ]; then options+=(--handoff-experiment); fi
-if [ "${PERFORMANCE_EXPERIMENT:-0}" = 1 ]; then
+if [ "${IPI_EXPERIMENT:-0}" = 1 ]; then
+    options+=(--ipi-experiment)
+elif [ "${PERFORMANCE_EXPERIMENT:-0}" = 1 ]; then
     options+=(--performance-experiment)
 elif [ "${CACHE_EXPERIMENT:-0}" = 1 ]; then
     options+=(--cache-experiment)

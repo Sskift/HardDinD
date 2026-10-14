@@ -6,12 +6,13 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import signal
 import subprocess
 import sys
 import time
 import uuid
-from result_checks import docker_evidence, broker_cache_evidence
+from result_checks import docker_evidence, broker_cache_evidence, deferred_ipi_evidence
 from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
@@ -21,8 +22,17 @@ p.add_argument("--disk", type=pathlib.Path, help="Pristine Docker rootfs; it is 
 p.add_argument("--kernel", type=pathlib.Path)
 p.add_argument("--threads-experiment", action="store_true")
 p.add_argument("--broker-cache", action="store_true")
+p.add_argument("--defer-ipi", action="store_true")
+p.add_argument("--checks", help="Run only check names matching this regex; others stay not_tested")
 p.add_argument("--result-name", default="docker")
 a = p.parse_args()
+if a.checks:
+    if not re.fullmatch(r"[A-Za-z0-9_|^$().-]+", a.checks):
+        p.error("check filter must be a compact regex without whitespace")
+    try:
+        re.compile(a.checks)
+    except re.error as error:
+        p.error("invalid check filter: " + str(error))
 if a.broker_cache and not a.threads_experiment:
     p.error("broker cache requires parallel runners")
 if not a.result_name or not all(c.isalnum() or c in "-_" for c in a.result_name):
@@ -35,6 +45,8 @@ fcntl.flock(build_lock, fcntl.LOCK_SH)
 out = work / "results"
 out.mkdir(exist_ok=True)
 log = out / (a.result_name + ".log")
+if log.exists() or (out / (a.result_name + ".json")).exists():
+    p.error("refusing to overwrite evidence")
 kernel = a.kernel.resolve() if a.kernel else work / "kernel-build/linux"
 tmp = work / "tmp"
 tmp.mkdir(exist_ok=True)
@@ -48,6 +60,10 @@ if a.threads_experiment:
     cmd.append("seccomp_threads=1")
 if a.broker_cache:
     cmd.append("seccomp_broker_cache=1")
+if a.defer_ipi:
+    cmd.append("defer_ipi=1")
+if a.checks:
+    cmd.append("docker_checks=" + a.checks)
 timed_out = False
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 start = time.monotonic()
@@ -69,7 +85,17 @@ with log.open("w") as f:
 text = log.read_text(errors="replace")
 kernel_unchanged = hashlib.sha256(kernel.read_bytes()).hexdigest() == kernel_sha256
 evidence = docker_evidence(text, rc, timed_out)
+suite_sha = next((line.split("=", 1)[1] for line in text.splitlines()
+                  if line.startswith("HARDDIND_SUITE_SHA256=")), None)
+expected_suite_sha = hashlib.sha256((pathlib.Path(__file__).resolve().parents[1] / "tests/docker-suite.sh").read_bytes()).hexdigest()
+if suite_sha != expected_suite_sha:
+    evidence["subset_passed"] = False
+    evidence["finished"] = False
 cache_stats = broker_cache_evidence(text)
+ipi_stats = deferred_ipi_evidence(text)
+if a.defer_ipi and not ipi_stats["verified"]:
+    evidence["subset_passed"] = False
+    evidence["finished"] = False
 if a.broker_cache and not cache_stats["verified"]:
     evidence["subset_passed"] = False
     evidence["finished"] = False
@@ -81,6 +107,9 @@ report = {"kind": "docker_subset_in_candidate", **evidence, "exit_code": rc,
           "disk_mode": "isolated_cow", "threads_experiment": a.threads_experiment,
           "broker_cache": a.broker_cache,
           "broker_cache_stats": cache_stats,
+          "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
+          "suite_sha256": suite_sha, "expected_suite_sha256": expected_suite_sha,
+          "check_filter": a.checks,
           "host_cpu_affinity": sorted(os.sched_getaffinity(0)),
           "dispatch_benchmark_sha256": next((line.split("=", 1)[1] for line in text.splitlines()
                                               if line.startswith("HARDDIND_DISPATCH_SHA256=")), None),

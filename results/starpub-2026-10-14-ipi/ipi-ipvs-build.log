@@ -1,0 +1,2 @@
+Required kernel options unavailable:
+CONFIG_NF_CONNTRACK_NETLINK=y

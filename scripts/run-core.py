@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 import uuid
-from result_checks import broker_cache_evidence
+from result_checks import broker_cache_evidence, deferred_ipi_evidence
 from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
@@ -24,6 +24,7 @@ p.add_argument("--spin", type=int, default=0)
 p.add_argument("--kernel", type=pathlib.Path)
 p.add_argument("--threads-experiment", action="store_true")
 p.add_argument("--broker-cache", action="store_true")
+p.add_argument("--defer-ipi", action="store_true")
 p.add_argument("--thread-semantics", action="store_true")
 p.add_argument("--dispatch-bench", action="store_true")
 p.add_argument("--disk", type=pathlib.Path)
@@ -69,6 +70,8 @@ if a.spin:
     cmd.append(f"seccomp_spin={a.spin}")
 if a.broker_cache:
     cmd.append("seccomp_broker_cache=1")
+if a.defer_ipi:
+    cmd.append("defer_ipi=1")
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 started = time.monotonic()
 usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -119,6 +122,9 @@ if a.dispatch_bench:
     passed = passed and dispatch_hash == expected_hash and all(
         r.get("verified") is True for r in rows if (r["test"], r["workers"]) in dispatch_cases)
 cache_stats = broker_cache_evidence(text)
+ipi_stats = deferred_ipi_evidence(text)
+if a.defer_ipi:
+    passed = passed and ipi_stats["verified"]
 if a.broker_cache:
     # A kernel that ignores the boot option must not count as cache evidence.
     passed = passed and cache_stats["verified"]
@@ -126,6 +132,7 @@ report = {"kind": "kernel_microbench_only", "mode": a.mode, "cpus": a.cpus,
           "spin": a.spin, "threads_experiment": a.threads_experiment,
           "broker_cache": a.broker_cache,
           "broker_cache_stats": cache_stats,
+          "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
           "dispatch_benchmark_sha256": dispatch_hash,
           "thread_semantics": semantics_passed if a.thread_semantics or a.dispatch_bench else "not_tested",
           "thread_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()

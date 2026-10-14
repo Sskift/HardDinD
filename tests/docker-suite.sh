@@ -4,7 +4,11 @@ set -u
 fail=0
 check() {
     name=$1; shift
-    if "$@" > /run/check.out 2>&1; then
+    if [ -n "${HARDDIND_CHECK_FILTER:-}" ] && ! printf '%s\n' "$name" | grep -Eq "$HARDDIND_CHECK_FILTER"; then
+        printf 'HARDDIND_RESULT {"name":"%s","status":"not_tested"}\n' "$name"
+        return
+    fi
+    if timeout 90 "$@" > /run/check.out 2>&1; then
         printf 'HARDDIND_RESULT {"name":"%s","status":"pass"}\n' "$name"
     else
         printf 'HARDDIND_RESULT {"name":"%s","status":"fail"}\n' "$name"
@@ -79,6 +83,117 @@ check ipv6 sh -c '
  docker network create --ipv6 lab-v6 >/dev/null &&
  docker run --rm --network lab-v6 harddind-base:test /sbin/ip -6 addr | grep -q global'
 check signals docker run --rm -v /corebench:/corebench:ro harddind-base:test /corebench signals
+
+# Exercise command effects, rather than accepting help text or an HTTP 200.
+check inspect_rename sh -c '
+ id=$(docker create --name lab-original --label harddind=verified -e ANSWER=42 -w /tmp harddind-base:test /bin/true) &&
+ docker rename "$id" lab-renamed &&
+ [ "$(docker inspect -f "{{.Name}} {{index .Config.Labels \"harddind\"}} {{.Config.WorkingDir}}" "$id")" = "/lab-renamed verified /tmp" ] &&
+ docker rm "$id" >/dev/null'
+check restart sh -c '
+ id=$(docker run -d harddind-base:test /bin/sleep 300) &&
+ before=$(docker inspect -f "{{.State.StartedAt}}" "$id") &&
+ docker restart -t 1 "$id" >/dev/null &&
+ [ "$(docker inspect -f "{{.State.Running}}" "$id")" = true ] &&
+ [ "$(docker inspect -f "{{.State.StartedAt}}" "$id")" != "$before" ] && docker rm -f "$id" >/dev/null'
+check pause_unpause sh -c '
+ mkdir -p /run/freezer
+ id=$(docker run -d -v /run/freezer:/counter harddind-base:test /bin/sh -c '\''i=0; while :; do i=$((i+1)); echo "$i" >/counter/next; mv /counter/next /counter/value; sleep 0.05; done'\'') &&
+ for i in $(seq 20); do [ -s /run/freezer/value ] && break; sleep 0.1; done
+ docker pause "$id" >/dev/null &&
+ [ "$(docker inspect -f "{{.State.Paused}}" "$id")" = true ] &&
+ first=$(cat /run/freezer/value) && sleep 0.2 && [ "$(cat /run/freezer/value)" = "$first" ] &&
+ docker unpause "$id" >/dev/null && sleep 0.2 && [ "$(cat /run/freezer/value)" -gt "$first" ] &&
+ docker rm -f "$id" >/dev/null'
+check update_limits sh -c '
+ id=$(docker run -d --memory 64m --memory-swap 64m --pids-limit 64 harddind-base:test /bin/sleep 300) &&
+ docker update --memory 96m --memory-swap 96m --pids-limit 48 --cpus 0.5 "$id" >/dev/null &&
+ docker exec "$id" /bin/sh -c '\''[ "$(cat /sys/fs/cgroup/memory.max)" = 100663296 ] && [ "$(cat /sys/fs/cgroup/pids.max)" = 48 ] && [ "$(cat /sys/fs/cgroup/cpu.max)" = "50000 100000" ]'\'' &&
+ docker rm -f "$id" >/dev/null'
+check top_stats sh -c '
+ id=$(docker run -d harddind-base:test /bin/sleep 300) &&
+ docker top "$id" | grep -q sleep &&
+ docker stats --no-stream --format "{{.ID}} {{.PIDs}}" "$id" | grep -Eq "[0-9a-f]+ [1-9][0-9]*" &&
+ docker rm -f "$id" >/dev/null'
+check wait_exit sh -c '
+ id=$(docker run -d harddind-base:test /bin/sh -c "sleep 1; exit 23") &&
+ [ "$(docker wait "$id")" = 23 ] &&
+ [ "$(docker inspect -f "{{.State.ExitCode}}" "$id")" = 23 ] && docker rm "$id" >/dev/null'
+check attach sh -c '
+ id=$(docker create -i harddind-base:test /bin/cat) && docker start "$id" >/dev/null &&
+ printf "attach-roundtrip\n" | timeout 10 docker attach "$id" | grep -qx attach-roundtrip &&
+ docker rm -f "$id" >/dev/null'
+check commit_diff_history sh -c '
+ id=$(docker run -d harddind-base:test /bin/sleep 300) &&
+ docker exec "$id" /bin/sh -c "echo committed >/new-file" &&
+ docker diff "$id" | grep -q "A /new-file" &&
+ docker commit "$id" harddind-committed:test >/dev/null &&
+ docker history --format "{{.ID}}" harddind-committed:test | grep -q . &&
+ docker run --rm harddind-committed:test /bin/cat /new-file | grep -qx committed &&
+ docker rm -f "$id" >/dev/null'
+check export_import sh -c '
+ id=$(docker create harddind-committed:test /bin/true) &&
+ docker export "$id" -o /run/export.tar &&
+ docker import /run/export.tar harddind-exported:test >/dev/null &&
+ docker run --rm harddind-exported:test /bin/cat /new-file | grep -qx committed &&
+ docker rm "$id" >/dev/null'
+check image_tag_remove sh -c '
+ docker tag harddind-base:test harddind-tagged:test &&
+ [ "$(docker image inspect -f "{{.Id}}" harddind-base:test)" = "$(docker image inspect -f "{{.Id}}" harddind-tagged:test)" ] &&
+ docker rmi harddind-tagged:test >/dev/null && ! docker image inspect harddind-tagged:test'
+check events sh -c '
+ docker events --filter label=harddind-event=1 --format "{{.Action}}" >/run/events.out & listener=$!
+ sleep 1
+ id=$(docker create --label harddind-event=1 harddind-base:test /bin/true) &&
+ docker start "$id" >/dev/null && docker wait "$id" >/dev/null && docker rm "$id" >/dev/null || exit 1
+ sleep 1; kill "$listener"; wait "$listener" || true
+ grep -qx create /run/events.out && grep -qx start /run/events.out && grep -qx die /run/events.out && grep -qx destroy /run/events.out'
+check network_connect_disconnect sh -c '
+ docker network create lab-extra >/dev/null &&
+ id=$(docker run -d harddind-base:test /bin/sleep 300) &&
+ docker network connect --alias attached lab-extra "$id" &&
+ docker run --rm --network lab-extra harddind-base:test /bin/ping -c 1 -W 3 attached &&
+ docker network disconnect lab-extra "$id" &&
+ [ "$(docker inspect -f "{{if index .NetworkSettings.Networks \"lab-extra\"}}present{{else}}absent{{end}}" "$id")" = absent ] &&
+ docker rm -f "$id" >/dev/null && docker network rm lab-extra >/dev/null'
+check port_inspect sh -c 'docker port lab-http 80/tcp | grep -q ":18080$"'
+check context sh -c '
+ docker context create lab-context --docker host=unix:///run/docker.sock >/dev/null &&
+ docker --context lab-context info --format "{{.ServerVersion}}" | grep -qx 29.8.2 &&
+ docker context rm lab-context >/dev/null'
+check system_df sh -c 'docker system df --format "{{.Type}} {{.TotalCount}}" | grep -q Images'
+check prune_objects sh -c '
+ id=$(docker create --label harddind-prune=1 harddind-base:test /bin/true) &&
+ docker container prune -f --filter label=harddind-prune=1 >/dev/null && ! docker inspect "$id" &&
+ docker volume create --label harddind-prune=1 lab-prune >/dev/null &&
+ docker volume prune -a -f --filter label=harddind-prune=1 >/dev/null && ! docker volume inspect lab-prune'
+
+# A real single-manager Swarm exercises the embedded control plane and VIP
+# networking. Multiple-node behavior still needs separate acceptance.
+check swarm_init sh -c '
+ ip link add lab-swarm type dummy && ip addr add 10.42.0.1/24 dev lab-swarm && ip link set lab-swarm up &&
+ docker swarm init --advertise-addr 10.42.0.1 --listen-addr 10.42.0.1:2377 >/dev/null &&
+ [ "$(docker info -f "{{.Swarm.LocalNodeState}}")" = active ] && docker node ls --format "{{.Status}}" | grep -qx Ready &&
+ docker network create --driver overlay --attachable lab-overlay >/dev/null'
+check swarm_service sh -c '
+ docker service create --detach --name lab-service --network lab-overlay --no-resolve-image --replicas 2 harddind-base:test /bin/sh -c '\''while :; do printf "HTTP/1.0 200 OK\r\nContent-Length: 12\r\n\r\nservice-vip\n" | nc -l -p 8080; done'\'' >/dev/null &&
+ for i in $(seq 30); do [ "$(docker service ls --filter name=lab-service --format "{{.Replicas}}")" = 2/2 ] && exit 0; sleep 1; done
+ docker service ps --no-trunc lab-service; docker service logs lab-service; exit 1'
+check swarm_secret_config sh -c '
+ printf secret-content | docker secret create lab-secret - >/dev/null &&
+ printf config-content | docker config create lab-config - >/dev/null &&
+ docker service create --detach --name lab-config-service --network lab-overlay --no-resolve-image --secret lab-secret --config lab-config harddind-base:test /bin/sleep 300 >/dev/null &&
+ for i in $(seq 30); do id=$(docker ps -q --filter label=com.docker.swarm.service.name=lab-config-service)
+ if [ -n "$id" ]; then docker exec "$id" /bin/sh -c '\''[ "$(cat /run/secrets/lab-secret)" = secret-content ] && [ "$(cat /lab-config)" = config-content ]'\'' && exit 0; fi; sleep 1; done; exit 1'
+check swarm_vip sh -c '
+ docker run --rm --network lab-overlay harddind-base:test /bin/sh -c '\''wget -qO- -T 5 http://lab-service:8080/ | grep -qx service-vip'\'''
+check swarm_scale sh -c '
+ docker service scale --detach lab-service=1 >/dev/null &&
+ for i in $(seq 30); do [ "$(docker service ls --filter name=lab-service --format "{{.Replicas}}")" = 1/1 ] && exit 0; sleep 1; done; exit 1'
+check swarm_cleanup sh -c '
+ docker service rm lab-service lab-config-service >/dev/null &&
+ for i in $(seq 20); do docker secret rm lab-secret && docker config rm lab-config && break; sleep 1; done &&
+ docker swarm leave --force >/dev/null && [ "$(docker info -f "{{.Swarm.LocalNodeState}}")" = inactive ]'
 # Must remain failing until the candidate can execute CUDA inside a container.
 check gpu_fixture_import sh -c 'docker import /gpu-rootfs.tar harddind-gpu:test >/dev/null'
 check gpu_compute docker run --rm --gpus all harddind-gpu:test /cuda-probe

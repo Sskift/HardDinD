@@ -9,6 +9,14 @@ spec.loader.exec_module(checks)
 
 
 class DockerEvidenceTests(unittest.TestCase):
+    def test_deferred_ipi_option_requires_actual_delivery(self):
+        for log in ["", "HARDDIND_DEFER_IPI enabled=1 received=4 deferred=0 handled=4\n",
+                    "HARDDIND_DEFER_IPI enabled=1 received=4 deferred=5 handled=4\n",
+                    "HARDDIND_DEFER_IPI enabled=1 received=4 deferred=2 handled=5\n",
+                    "HARDDIND_DEFER_IPI enabled=1 received=4 deferred=2 handled=3\n" * 2]:
+            self.assertFalse(checks.deferred_ipi_evidence(log)["verified"])
+        self.assertTrue(checks.deferred_ipi_evidence("HARDDIND_DEFER_IPI enabled=1 received=4 deferred=2 handled=3\n")["verified"])
+
     def test_missing_unused_or_duplicate_cache_is_not_verified(self):
         for log in ["", "HARDDIND_BROKER_CACHE hits=0 stores=2\n",
                     "HARDDIND_BROKER_CACHE hits=3 stores=2\n",

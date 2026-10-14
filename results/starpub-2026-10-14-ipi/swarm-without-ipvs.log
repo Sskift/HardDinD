@@ -1,0 +1,203 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that seccomp filters can be installed...OK
+Adding 392462336 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #12 SMP Wed Oct 14 04:24:43 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000177647fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000117647fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000117647fff]
+On node 0, zone Normal: 440 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/docker-ffac67678f0e481cb3f08b7742c465e9.cow,/root/harddind-rebuild/commands-v3.ext4 root=/dev/ubda rw init=/sbin/harddind-docker-init con=null con0=null,fd:1 ssl=null panic=1 docker_checks=^(image_import|swarm_) console=tty0
+Unknown kernel command line parameters "docker_checks=^(image_import|swarm_)", will be passed to user space.
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 15040(91%)
+Dentry cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+Inode-cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 1144392
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 6122.70 BogoMIPS (lpj=30613504)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Mountpoint-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 4102368K/4577568K available (5816K kernel code, 1337K rwdata, 1800K rodata, 208K init, 1261K bss, 471880K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 65536 (order: 7, 524288 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 2048 (order: 3, 32768 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 32768 (order: 6, 262144 bytes, linear)
+TCP bind hash table entries: 32768 (order: 8, 1048576 bytes, linear)
+TCP: Hash tables configured (established 32768 bind 32768)
+UDP hash table entries: 2048 (order: 5, 131072 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-3dd505751943/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=20 bucket_order=0 (anon: 0)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/docker-ffac67678f0e481cb3f08b7742c465e9.cow" as COW file for "/root/harddind-rebuild/commands-v3.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 15, Operation not permitted
+EXT4-fs (ubda): mounted filesystem 0c87b946-c94a-4eb6-9e9d-94536360701d r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-docker-init as init process
+HARDDIND_DOCKER_BEGIN
+server=29.8.2 kernel=7.2.10 cpus=4 storage=overlayfs
+HARDDIND_SUITE_SHA256=eef488f1b03c4fc6042f375c407c313ba5da01c3c9644ed2ffb5150b9bd245e4
+HARDDIND_RESULT {"name":"image_import","status":"pass"}
+HARDDIND_RESULT {"name":"run","status":"not_tested"}
+HARDDIND_RESULT {"name":"exit_code","status":"not_tested"}
+HARDDIND_RESULT {"name":"stdin","status":"not_tested"}
+HARDDIND_RESULT {"name":"tty","status":"not_tested"}
+HARDDIND_RESULT {"name":"lifecycle","status":"not_tested"}
+HARDDIND_RESULT {"name":"mount_tmpfs","status":"not_tested"}
+HARDDIND_RESULT {"name":"privileged_mount","status":"not_tested"}
+HARDDIND_RESULT {"name":"net_admin","status":"not_tested"}
+HARDDIND_RESULT {"name":"guest_user_namespace","status":"not_tested"}
+HARDDIND_RESULT {"name":"read_only","status":"not_tested"}
+HARDDIND_RESULT {"name":"bind_mount","status":"not_tested"}
+HARDDIND_RESULT {"name":"volume","status":"not_tested"}
+HARDDIND_RESULT {"name":"memory_oom","status":"not_tested"}
+HARDDIND_RESULT {"name":"pids_limit","status":"not_tested"}
+HARDDIND_RESULT {"name":"default_seccomp","status":"not_tested"}
+HARDDIND_RESULT {"name":"container_threads","status":"not_tested"}
+HARDDIND_THREAD_SHA256=17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3
+HARDDIND_RESULT {"name":"container_thread_semantics","status":"not_tested"}
+HARDDIND_DISPATCH_SHA256=de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758
+HARDDIND_RESULT {"name":"container_dispatch_semantics","status":"not_tested"}
+HARDDIND_RESULT {"name":"container_compute","status":"not_tested"}
+HARDDIND_RESULT {"name":"bridge_dns","status":"not_tested"}
+HARDDIND_RESULT {"name":"published_port_guest","status":"not_tested"}
+HARDDIND_RESULT {"name":"docker_cp","status":"not_tested"}
+HARDDIND_RESULT {"name":"save_load","status":"not_tested"}
+HARDDIND_RESULT {"name":"buildkit_multistage","status":"not_tested"}
+HARDDIND_RESULT {"name":"restart_policy","status":"not_tested"}
+HARDDIND_RESULT {"name":"healthcheck","status":"not_tested"}
+HARDDIND_RESULT {"name":"ipv6","status":"not_tested"}
+HARDDIND_RESULT {"name":"signals","status":"not_tested"}
+HARDDIND_RESULT {"name":"inspect_rename","status":"not_tested"}
+HARDDIND_RESULT {"name":"restart","status":"not_tested"}
+HARDDIND_RESULT {"name":"pause_unpause","status":"not_tested"}
+HARDDIND_RESULT {"name":"update_limits","status":"not_tested"}
+HARDDIND_RESULT {"name":"top_stats","status":"not_tested"}
+HARDDIND_RESULT {"name":"wait_exit","status":"not_tested"}
+HARDDIND_RESULT {"name":"attach","status":"not_tested"}
+HARDDIND_RESULT {"name":"commit_diff_history","status":"not_tested"}
+HARDDIND_RESULT {"name":"export_import","status":"not_tested"}
+HARDDIND_RESULT {"name":"image_tag_remove","status":"not_tested"}
+HARDDIND_RESULT {"name":"events","status":"not_tested"}
+HARDDIND_RESULT {"name":"network_connect_disconnect","status":"not_tested"}
+HARDDIND_RESULT {"name":"port_inspect","status":"not_tested"}
+HARDDIND_RESULT {"name":"context","status":"not_tested"}
+HARDDIND_RESULT {"name":"system_df","status":"not_tested"}
+HARDDIND_RESULT {"name":"prune_objects","status":"not_tested"}
+HARDDIND_RESULT {"name":"swarm_init","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_service","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_secret_config","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_vip","status":"fail"}
+wget: can't connect to remote host (10.0.1.2): Host is unreachable
+HARDDIND_RESULT {"name":"swarm_scale","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_cleanup","status":"pass"}
+HARDDIND_RESULT {"name":"gpu_fixture_import","status":"not_tested"}
+HARDDIND_RESULT {"name":"gpu_compute","status":"not_tested"}
+HARDDIND_RESULT {"name":"external_network","status":"not_tested"}
+HARDDIND_RESULT {"name":"full_docker_compatibility","status":"not_tested"}
+time="2026-10-14T04:53:45Z" level=warning msg="Configuration migrated from version 2, use `containerd config migrate` to avoid migration" t="28.672µs"
+time="2026-10-14T04:53:45.420931036Z" level=warning msg="failed check for fsverity support" error="enable fsverity failed: operation not supported" path=/var/lib/docker/containerd/daemon/io.containerd.content.v1.content
+time="2026-10-14T04:53:45.976554716Z" level=warning msg="failed check for fsverity support" error="enable fsverity failed: operation not supported" path=/var/lib/docker/plugins/storage
+time="2026-10-14T04:53:46.098151388Z" level=warning msg="Failed to find nft tool" error="exec: \"nft\": executable file not found in $PATH"
+time="2026-10-14T04:53:47.188560860Z" level=warning msg="Could not load necessary modules for IPSEC rules: protocol not supported"
+time="2026-10-14T04:53:47.651736796Z" level=warning msg="WARNING: No swap limit support"
+time="2026-10-14T04:53:47.651800284Z" level=warning msg="WARNING: No cpuset support"
+time="2026-10-14T04:53:48.308525276Z" level=warning msg="git source cannot be enabled: failed to find git binary: exec: \"git\": executable file not found in $PATH"
+time="2026-10-14T04:53:52.184352220Z" level=warning msg="Failed to retrieve SP list for cleanup: protocol not supported"
+time="2026-10-14T04:53:52.198737884Z" level=warning msg="Failed to retrieve SA list for cleanup: protocol not supported"
+time="2026-10-14T04:53:52.202594524Z" level=warning msg="Failed to retrieve SP list for cleanup: protocol not supported"
+time="2026-10-14T04:53:52.235781852Z" level=warning msg="Failed to retrieve SA list for cleanup: protocol not supported"
+time="2026-10-14T04:53:52.592099292Z" level=error msg="set bridge default vlan failed" error="failed to enable default vlan on bridge br0: open /sys/class/net/br0/bridge/default_pvid: permission denied"
+time="2026-10-14T04:53:53.339695836Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.2
+time="2026-10-14T04:53:53.523329756Z" level=warning msg="MAC address changed" iface=br0 ifi=2 ip4=10.0.0.1/24 ip6="<nil>" mac="52:a3:7e:29:19:4e" mcastRouteOk=true n=1 newMAC="8a:ea:84:fc:85:fe"
+time="2026-10-14T04:53:54.811468252Z" level=error msg="set bridge default vlan failed" error="failed to enable default vlan on bridge br0: open /sys/class/net/br0/bridge/default_pvid: permission denied"
+time="2026-10-14T04:53:55.410004700Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:36356->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=y3nezuj588697t3e5kn9xed4d service.id=nc6ff3egswn7nig8ylou2g157 task.id=ccxvb1wciclctghgxx0yv4xe9
+time="2026-10-14T04:53:55.410679516Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:37795->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=y3nezuj588697t3e5kn9xed4d service.id=nc6ff3egswn7nig8ylou2g157 task.id=qlkdwdsnbb1tsqfu3ullkxhps
+time="2026-10-14T04:53:55.723549404Z" level=warning msg="MAC address changed" iface=br0 ifi=2 ip4=10.0.1.1/24 ip6="<nil>" mac="4e:53:b3:95:41:af" mcastRouteOk=true n=1 newMAC="02:2f:5c:d6:31:a6"
+time="2026-10-14T04:53:57.187628252Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.3
+time="2026-10-14T04:53:57.311841244Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.4
+time="2026-10-14T04:53:57.361602780Z" level=warning msg="Running modprobe ip_vs failed with message: `modprobe: can't change directory to '/lib/modules': No such file or directory`, error: exit status 1"
+time="2026-10-14T04:53:57.413915100Z" level=error msg="Could not get ipvs family information from the kernel. It is possible that ipvs is not enabled in your kernel. Native loadbalancing will not work until this is fixed."
+time="2026-10-14T04:53:58.809157084Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:55680->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=y3nezuj588697t3e5kn9xed4d service.id=lgwwzdy7luk5pbkc631acdwxy task.id=qr3nsrpewgj9r06guqqhs44ur
+time="2026-10-14T04:54:00.110583260Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.5
+time="2026-10-14T04:54:02.915119324Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.6
+time="2026-10-14T04:54:06.430684380Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.6
+time="2026-10-14T04:54:20.808777436Z" level=warning msg="rmServiceBinding 6ce02067f848c8999354a0097b8badcc2e47b1adc37241fb969b62a550a699f1 possible transient state ok:false entries:0 set:false "
+time="2026-10-14T04:54:20.853931740Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.4
+time="2026-10-14T04:54:23.215045596Z" level=error msg="failed to remove node" error="rpc error: code = Aborted desc = dispatcher is stopped" method="(*Dispatcher).Session" node.id=y3nezuj588697t3e5kn9xed4d node.session=panqpq8csch8pk52eau0akdew
+time="2026-10-14T04:54:23.222131932Z" level=warning msg="rmServiceBinding 990749c6e23e5fcda5db13d669fe123b0e4477bae0940b648ff399189bef7fb2 possible transient state ok:false entries:0 set:false "
+time="2026-10-14T04:54:23.238078172Z" level=error msg="Failed to delete firewall mark rule in sbox lb_3k2b (lb-lab-): set up rule failed, [-t mangle -D INPUT -d 10.0.1.2/32 -j MARK --set-mark 256]:  (iptables failed: iptables --wait -t mangle -D INPUT -d 10.0.1.2/32 -j MARK --set-mark 256: iptables: Bad rule (does a matching rule exist in that chain?).\n (exit status 1))"
+time="2026-10-14T04:54:23.238754012Z" level=error msg="Failed to remove IP alias 10.0.1.2 from network 3k2bit1v0ywwykvmrikb9arx7 LB endpoint interface eth0: cannot assign requested address"
+time="2026-10-14T04:54:23.238897116Z" level=warning msg="rmServiceBinding 967646cbc6a35027711d756cdf3bcc960118b29ac2f84a0f8ec5ab881197eadd possible transient state ok:false entries:0 set:false "
+time="2026-10-14T04:54:23.246083548Z" level=error msg="Failed to delete firewall mark rule in sbox lb_3k2b (lb-lab-): set up rule failed, [-t mangle -D INPUT -d 10.0.1.6/32 -j MARK --set-mark 257]:  (iptables failed: iptables --wait -t mangle -D INPUT -d 10.0.1.6/32 -j MARK --set-mark 257: iptables: Bad rule (does a matching rule exist in that chain?).\n (exit status 1))"
+time="2026-10-14T04:54:23.246789084Z" level=error msg="Failed to remove IP alias 10.0.1.6 from network 3k2bit1v0ywwykvmrikb9arx7 LB endpoint interface eth0: cannot assign requested address"
+time="2026-10-14T04:54:23.715153628Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.5
+time="2026-10-14T04:54:25.612370908Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.3
+time="2026-10-14T04:54:25.894131676Z" level=warning msg="Failed to disconnect container lb-lab-overlay from swarm network lab-overlay on cluster leave: endpoint lb-lab-overlay not found"
+time="2026-10-14T04:54:26.465026012Z" level=warning msg="Failed to remove swarm network lab-overlay on cluster leave: error while removing network: unknown network lab-overlay id 3k2bit1v0ywwykvmrikb9arx7"
+time="2026-10-14T04:54:27.040396252Z" level=warning msg="Failed to delete conntrack state for IPv4-address" error="invalid argument" ipAddress=172.18.0.2
+HARDDIND_DOCKER_END status=1
+reboot: Power down
+HARDDIND_DEFER_IPI enabled=1 received=25872 deferred=20613 handled=25871
+HARDDIND_BROKER_CACHE hits=750 stores=752
+

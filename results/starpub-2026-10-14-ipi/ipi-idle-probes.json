@@ -1,0 +1,24 @@
+{
+  "kind": "idle_wakeup_regression",
+  "complete": true,
+  "source_sha256": "a579321a346bf49f4492c969a6761c2553ce2c357f1c82a190bb81a06eb110b5",
+  "protocol_sha256": "1e33b4dfad8a5a186ade0baf4aeec54cfb86093b9ac0a1bf73a7e155c98c455f",
+  "runs": [
+    {
+      "corrected": false,
+      "kernel_source_sha256": "ce26df380a5fb3177f9f35c3029495b19d460ce777998dc6f10626a63383d48b",
+      "body_sha256": "0b4210e3796f2e3496826718ea6e8744a60f4cd1d40c6faa4746ac80c58c961b",
+      "exit_code": 0,
+      "stdout": "{\"corrected\":false,\"signals\":2,\"polls\":2,\"timeouts\":2,\"verified\":true}\n",
+      "stderr": ""
+    },
+    {
+      "corrected": true,
+      "kernel_source_sha256": "2659ab9cfcf91d262556b0ddea58ddd08650405d6fd907add6d5c9ca9110bf13",
+      "body_sha256": "8f4cf3c2dcf5414ad7447a10c0a4ca946f9e6dc9102f6ad5d97866d7c4c8e523",
+      "exit_code": 0,
+      "stdout": "{\"corrected\":true,\"signals\":2000,\"polls\":1000,\"timeouts\":0,\"verified\":true}\n",
+      "stderr": ""
+    }
+  ]
+}
