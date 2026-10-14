@@ -1,0 +1,14 @@
+{
+  "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+  "disk": "/root/harddind-rebuild/runtime-ports.ext4",
+  "cpus": 4,
+  "memory": "4G",
+  "dns": "1.1.1.1",
+  "network_batch": 1,
+  "mtu": 1500,
+  "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+  "disk_sha256": "162c35dcc3035993f19ac2d9ea639558a08da7459a3bd37a84020b30d4212cbd",
+  "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+  "publish_ports": true,
+  "port_driver_sha256": "88ac94023f2eef985cb9a799d1e6f8f64d774d46b11885d752a11c1db0ef77be"
+}

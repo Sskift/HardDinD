@@ -12,9 +12,12 @@ check:
 network:
 	bash scripts/build-network.sh "$(WORK)"
 
-.PHONY: moby
+.PHONY: moby port-agent
 moby:
 	bash scripts/build-moby.sh "$(WORK)"
+
+port-agent:
+	bash scripts/build-port-agent.sh "$(WORK)"
 
 runtime-root:
 	bash scripts/make-runtime-root.sh "$(WORK)"

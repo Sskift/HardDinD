@@ -26,7 +26,7 @@
 1. 系统调用和 fork/exec 的速度还未达到原生。
 2. 默认路径仍串行执行同一地址空间的线程。并行实验已通过线程正确性和 Docker 内的初步回归，但尚缺长期压力、异常退出与内部隔离验证。旧路径还复现了并发 fork/COW 缺陷；扩大测试后，上一版并行内核也曾在并发 fork/exec 中丢失宿主进程并崩溃。
 3. GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。Star­pub 外层的 4 张 A100 已完成真实计算；不能据此声称内部支持 GPU。
-4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证；自动同步 `docker -p`、IPv6 流量、外层目录共享语义、异常恢复与长期运行管理尚未完成。网络请求／响应性能仍明显低于原生。
+4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证；可选的 Moby 补丁已验证 IPv4 自动 `docker -p` 子集。IPv6 流量、多个外层地址复用同一端口、外层目录共享语义、异常恢复与长期运行管理尚未完成。网络请求／响应性能仍明显低于原生。
 5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
 
 具体机器证据位于 [results/starpub-2026-10-14](results/starpub-2026-10-14/)，总状态为 [results/acceptance.json](results/acceptance.json)。性能数据是微基准，不代表完整 Docker 或 GPU 性能。
@@ -51,11 +51,26 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 ## 开发与复现
 
-`make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。此阶段只确认自定义 daemon 可构建，自动 `docker -p` 的实例集成与功能验证仍在进行，现有 runtime 磁盘仍使用原版 daemon。
+`make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。第二个补丁修复实测发现的失败回滚问题：端口冲突后的网络配置被删除，导致再次启动没有端口映射。
+
+[自动端口发布实测](results/starpub-2026-10-14-published-ports/) 的 15 项检查通过，覆盖外层回环 TCP/UDP 数据校验、停止与删除后的释放、默认和自定义 bridge 冲突重试、多端口回滚、临时端口、范围、`-P`、四个并发发布与整个实例重启恢复。第一版冲突失败记录保留。控制请求经实例专用的串口通道传递，数据仍走原有 libslirp 路径；此次没有宣称性能提升。IPv6、不同外层地址复用同一端口、Swarm ingress 和异常恢复尚未通过验收。
+
+```sh
+make moby port-agent network WORK=/root/harddind-rebuild
+bash scripts/make-runtime-root.sh /root/harddind-rebuild \
+  /root/harddind-rebuild/protect-docker-root runtime-ports --with-ports
+python3 scripts/harddind.py /root/harddind-rebuild ports-dev start \
+  --kernel /path/to/immutable/ipi-idle-kernel \
+  --disk /root/harddind-rebuild/runtime-ports.ext4 --dns 1.1.1.1 --publish-ports
+# 使用该入口后，docker run -p 127.0.0.1:8080:80 会同步创建外层 IPv4 映射。
+python3 scripts/harddind.py /root/harddind-rebuild ports-dev stop
+```
+
+`--with-ports` 安装自定义 dockerd/docker-proxy 与端口 agent；未指定时仍使用基础磁盘中的 daemon。`--publish-ports` 必须配合该磁盘，运行器会验证 daemon 确实连接端口驱动。未启用时保留下面的显式 `forward` 用法。
 
 [网络与持久运行实测](results/starpub-2026-10-14-network/) 的 11 项检查全部通过：固定摘要镜像冷拉取、容器 HTTPS、真实联网 BuildKit 构建、外层原版 CLI 的 stdin/TTY、显式 TCP/UDP 转发及删除、镜像与容器及命名卷跨重启保留。前两轮 DNS 失败也完整保留；外层默认解析器的 AAAA 查询实测约 4 秒后返回 SERVFAIL，本轮通过 `--dns 1.1.1.1` 明确选择经探测可用的解析器，没有修改外层 DNS 或过滤 AAAA。相同静态程序的 64 KiB 请求／响应测试中，原生回环与内部 Docker 中位数分别约 9171、422 Mb/s；这是特定负载的约 21.75 倍差距，不能称为网络性能达标。
 
-新的持久运行实验使用 `scripts/harddind.py`。它保存独立 COW 磁盘，启动网络后端和真实 dockerd，外层使用同版本的原版 Docker CLI；`stop` 通过 UML 管理通道请求 guest 正常关机。网络后端固定 libslirp 4.6.1，目前支持 IPv4 TCP/UDP 和显式外层端口转发。这个入口仍属实验，GPU、自动同步 `docker -p`、外层 bind 路径和完整网络性能尚未完成。
+新的持久运行实验使用 `scripts/harddind.py`。它保存独立 COW 磁盘，启动网络后端和真实 dockerd，外层使用同版本的原版 Docker CLI；`stop` 通过 UML 管理通道请求 guest 正常关机。网络后端固定 libslirp 4.6.1，支持 IPv4 TCP/UDP、显式外层转发和上述可选自动发布。这个入口仍属实验，GPU、完整发布语义、外层 bind 路径和完整网络性能尚未完成。
 
 进一步的 [网络收发定位](results/starpub-2026-10-14-network-batch/) 增加调用计数、CPU 记录和连续传输对照。`--network-batch 64` 将 link 收发调用减少约 92%，但修正后的对照吞吐反而回退约 6%–12%，因此默认仍为单包模式。实验只降低了部分 CPU 成本，没有解决整体网络速度差距。
 

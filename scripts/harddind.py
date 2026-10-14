@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Experimental persistent stock Docker on UML; state lives under WORK/instances.
 
-The ordinary Docker CLI talks to the real daemon. Published ports currently need
-an explicit `forward` on the outer helper. Outer bind paths and GPU remain gaps.
+The ordinary Docker CLI talks to the real daemon. The optional published-port
+driver requires the patched Moby fixture. Outer bind paths and GPU remain gaps.
 """
 import argparse
 import ctypes
@@ -21,6 +21,7 @@ import sys
 import time
 import uuid
 from guest_cleanup import cleanup_group
+from port_driver import PortDriver
 
 
 def sha(path):
@@ -109,13 +110,17 @@ def serve(a, work, instance):
     kernel = a.kernel.resolve()
     disk = a.disk.resolve()
     config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu,
-              'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend')}
+              'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend'),
+              'publish_ports': a.publish_ports}
+    if a.publish_ports:
+        config['port_driver_sha256'] = sha(pathlib.Path(__file__).with_name('port_driver.py'))
     config_file = instance / 'config.json'
     if config_file.exists():
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
         previous.setdefault('network_batch', 1)
         previous.setdefault('mtu', 1500)
+        previous.setdefault('publish_ports', False)
         if previous != config:
             raise RuntimeError('instance input changed; use a new instance name')
     config_file.write_text(json.dumps(config, indent=2) + '\n')
@@ -132,6 +137,7 @@ def serve(a, work, instance):
     signal.signal(signal.SIGINT, stop)
     helper = guest = None
     guest_end = helper_end = None
+    port_parent = port_guest = relay = None
     libc = ctypes.CDLL(None, use_errno=True)
     parent = os.getpid()
     def parent_death():
@@ -173,11 +179,21 @@ def serve(a, work, instance):
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
                f'harddind_dns={a.dns}', f'harddind_mtu={a.mtu}',
                f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={a.mtu},mac=02:00:00:00:02:15']
+        inherited = [guest_end.fileno()]
+        if a.publish_ports:
+            port_parent, port_guest = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+            inherited.append(port_guest.fileno())
+            cmd += [f'ssl0=fd:{port_guest.fileno()}', 'harddind_ports=1']
         with (instance / f'guest-{run}.log').open('x') as log:
             guest = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                                     pass_fds=(guest_end.fileno(),), env={**os.environ, 'TMPDIR': str(tmp)},
+                                     pass_fds=tuple(inherited), env={**os.environ, 'TMPDIR': str(tmp)},
                                      start_new_session=True, preexec_fn=parent_death)
         guest_end.close()
+        if a.publish_ports:
+            port_guest.close()
+            relay = PortDriver(port_parent, lambda command: control(instance, command),
+                               (instance / f'ports-{run}.jsonl').open('x'), a.dns)
+            relay.start()
         state.update({'guest_pid': guest.pid, 'network_pid': helper.pid, 'api_port': port,
                       'mconsole': str(uml_dir / run / 'mconsole'), 'command': cmd})
         write_state(instance, state)
@@ -185,9 +201,14 @@ def serve(a, work, instance):
         while not stopping:
             if guest.poll() is not None or helper.poll() is not None:
                 raise RuntimeError('guest or network backend exited unexpectedly')
+            if relay is not None and relay.error:
+                raise RuntimeError('port driver failed: ' + relay.error)
             if state['phase'] == 'starting':
                 try:
                     if api(port, '/_ping') == b'OK':
+                        if relay is not None and not relay.info_seen:
+                            state['fixture_error'] = 'Docker did not connect to the requested port driver'
+                            break
                         if a.mtu != 1500:
                             console = (instance / f'guest-{run}.log').read_text(errors='replace')
                             if f'HARDDIND_RUNTIME_MTU={a.mtu}' not in console:
@@ -204,6 +225,7 @@ def serve(a, work, instance):
         state['error'] = f'{type(error).__name__}: {error}'
     finally:
         state['phase'] = 'stopping'; write_state(instance, state)
+        if relay is not None: relay.begin_shutdown()
         if guest is not None:
             forced = False
             if guest.poll() is None:
@@ -218,6 +240,10 @@ def serve(a, work, instance):
             state['guest_exit_code'] = guest.returncode
             state['guest_cleanup'] = cleanup_group(guest.pid)
             state['forced_shutdown'] = forced
+        if relay is not None:
+            state['port_driver'] = relay.stop()
+            if state['port_driver']['error']:
+                state.setdefault('error', 'port driver failed: ' + state['port_driver']['error'])
         if helper is not None:
             if helper.poll() is None:
                 helper.terminate()
@@ -226,7 +252,7 @@ def serve(a, work, instance):
                     os.killpg(helper.pid, signal.SIGKILL); helper.wait()
             state['network_exit_code'] = helper.returncode
             state['network_cleanup'] = cleanup_group(helper.pid)
-        for s in (guest_end, helper_end):
+        for s in (guest_end, helper_end, port_parent, port_guest):
             if s is not None: s.close()
         ctl.unlink(missing_ok=True)
         clean = (guest is not None and state.get('guest_exit_code') == 0 and
@@ -253,6 +279,7 @@ def main():
         s.add_argument('--dns', default='10.0.2.3', help='IPv4 DNS resolver; default forwards the outer resolver')
         s.add_argument('--network-batch', type=int, choices=range(1, 65), default=1, metavar='1..64', help='experimental link batch size (default 1)')
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
+        s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
     for name in ('status', 'stop'):
         subs.add_parser(name)
     subs.add_parser('docker').add_argument('args', nargs=argparse.REMAINDER)
@@ -275,13 +302,14 @@ def main():
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu}
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500}.get(key)) != value for key, value in requested.items()):
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports}
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
                '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
                '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch), '--mtu', str(a.mtu)]
+        if a.publish_ports: cmd.append('--publish-ports')
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         until = time.monotonic() + 150

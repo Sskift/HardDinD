@@ -5,11 +5,13 @@ work=$(realpath "${1:?work directory required}")
 exec 9>"$work/kernel-build.lock"
 flock -x 9
 python3 "$repo/scripts/fetch-moby.py" "$work" > "$work/moby-inputs.json"
-patch_sha=$(sha256sum "$repo/moby/patches/0001-rootful-port-driver.patch" | cut -d' ' -f1)
+patch_sha=$(cat "$repo"/moby/patches/[0-9]*.patch | sha256sum | cut -d' ' -f1)
 src="$work/moby-port-$patch_sha"
 if [ ! -d "$src" ]; then
     cp -a "$work/moby-port-pristine" "$src"
-    patch --batch -d "$src" -p1 < "$repo/moby/patches/0001-rootful-port-driver.patch"
+    for patch_file in "$repo"/moby/patches/[0-9]*.patch; do
+        patch --batch --fuzz=0 -d "$src" -p1 < "$patch_file"
+    done
 fi
 export PATH="$work/go-build-toolchain/bin:$PATH"
 export GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local GOFLAGS=-mod=vendor

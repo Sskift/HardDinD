@@ -210,7 +210,7 @@ static void control(Slirp *slirp) {
             }
             snprintf(output + used, sizeof(output) - used, "]"); goto reply;
         }
-        if (count == 5 && (!strcmp(fields[0], "add") || !strcmp(fields[0], "del"))) {
+        if (count == 5 && (!strcmp(fields[0], "add") || !strcmp(fields[0], "create") || !strcmp(fields[0], "del"))) {
             int udp = !strcmp(fields[1], "udp");
             struct in_addr addr;
             int hp = number(fields[3], 1, 65535), gp = number(fields[4], 1, 65535);
@@ -223,7 +223,7 @@ static void control(Slirp *slirp) {
                     else if (forwards[i].guest_port != gp) error = "different guest port";
                     else if (!slirp_remove_hostfwd(slirp, udp, addr, hp)) { forwards[i] = forwards[--nforwards]; error = NULL; }
                     else error = "forward removal failed";
-                } else if (i < nforwards) error = forwards[i].guest_port == gp ? NULL : "different guest port";
+                } else if (i < nforwards) error = !strcmp(fields[0], "create") ? "host port already allocated" : (forwards[i].guest_port == gp ? NULL : "different guest port");
                 else if (nforwards == MAX_FORWARDS) error = "forward limit";
                 else if (slirp_add_hostfwd(slirp, udp, addr, hp, guest_addr, gp)) error = "host port unavailable";
                 else { forwards[nforwards++] = (struct forward){udp, hp, gp, addr}; error = NULL; }

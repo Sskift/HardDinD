@@ -1,0 +1,2 @@
+{"time": 1791967014.342935, "request": {"id": 1, "method": "GET", "path": "/v1/info"}, "response": {"id": 1, "status": 200, "body": {"apiVersion": "1.1.2", "version": "harddind-port-v1", "stateDir": "/run/harddind-port", "childPID": 0, "networkDriver": {"driver": "harddind-uml", "childIP": "10.0.2.15", "dns": ["1.1.1.1"]}, "portDriver": {"driver": "harddind-slirp", "protos": ["tcp4", "udp4"], "disallowLoopbackChildIP": true}}}}
+{"time": 1791967098.7003567, "event": "relay_exit", "error": null, "remaining_ports": []}

@@ -4,10 +4,12 @@ export PATH=/sbin:/bin:/usr/sbin:/usr/bin
 mount -t proc proc /proc
 dns=10.0.2.3
 export HARDDIND_MTU=1500
+export HARDDIND_PORTS=0
 for arg in $(cat /proc/cmdline); do
     case "$arg" in
         harddind_dns=*) dns=${arg#harddind_dns=} ;;
         harddind_mtu=*) HARDDIND_MTU=${arg#harddind_mtu=} ;;
+        harddind_ports=1) HARDDIND_PORTS=1 ;;
     esac
 done
 mount -t sysfs sysfs /sys
