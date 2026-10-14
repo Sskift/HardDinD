@@ -281,7 +281,8 @@ def main():
                     stats.append(dict(zip(('completed','queued','busy_fallback'),map(int,match.groups()))))
             report['inline_stats']=stats
             if len(stats)!=1 or stats[0]['completed']==0 or (not a.functional_only and sum(stats[0].values())<12000):
-                report['error']='missing inline execution evidence'
+                report['inline_error']='missing inline execution evidence'
+                report.setdefault('error',report['inline_error'])
         clean=(report['runtime'].get('phase')=='stopped' and not report['runtime'].get('forced_shutdown',True)
                and report['runtime'].get('guest_cleanup',{}).get('clean_shutdown',False)
                and report['runtime'].get('network_cleanup',{}).get('clean_shutdown',False)

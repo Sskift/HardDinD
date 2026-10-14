@@ -61,6 +61,8 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 [POSIX 字节范围锁候选实测](results/starpub-2026-10-15-posix-candidate-v1/README.md) 为原生 37/37、内部 Docker 35/37。两个失败已定位为单字节范围被错误扩展到文件末尾，以及最大偏移常量少算一位；候选尚未合入正式补丁目录。原始失败与 99 个进程组的清理证据保留，修复及更完整的 PID、死锁、exec 语义验证仍在进行。
 
+[范围修复候选的下一轮运行](results/starpub-2026-10-15-posix-candidate-v2/README.md) 原生 38/38 通过，但内部 Docker 启动超时，38 项均缺测，随后 guest 被强制关闭。全部 53 个记录的进程组最终为空，仍不能算正常生命周期通过。主线报告现保留最早的错误，并单独记录内联锁证据缺失，避免后续检查覆盖真正的启动故障；候选仍待实际内部复测。
+
 `virtiofs/patches/0002` 增加外层共享 `flock`：锁绑定到对应的宿主打开文件描述，阻塞请求由独立等待队列重试，处理 FUSE interrupt，避免等待者占满普通文件工作线程。运行入口传入 `--shared-flock`，服务拒绝与零线程池组合；锁状态迁移尚未实现，因此显式返回不支持。POSIX 字节范围锁尚未接入，未声明支持。[共享锁实测](results/starpub-2026-10-14-shared-locks/README.md) 的旧内核为原生 21 项通过、Docker 17 项通过及 4 项失败。取消失败定位到内核 virtiofs 的 interrupt 空实现；新增内核补丁 `0011` 的实际回归通过 SIGUSR1/SIGKILL 取消，Docker 达到 19/21，两项 POSIX 锁仍失败，实例正常关闭且没有残留。1000 次加锁/解锁微基准的 Docker 耗时在两轮中分别约为原生 163 倍和 290 倍；缺少交错内核对照，不能因功能修复宣称提速，性能仍未达标。
 
 `make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。第二个补丁修复实测发现的失败回滚问题：端口冲突后的网络配置被删除，导致再次启动没有端口映射。
