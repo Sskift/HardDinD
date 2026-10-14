@@ -1,0 +1,239 @@
+{
+  "kind": "kernel_microbench_only",
+  "mode": "seccomp",
+  "cpus": 4,
+  "spin": 0,
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 714,
+    "stores": 717
+  },
+  "memfd_ram": false,
+  "memfd_stub": false,
+  "memory_backing": {
+    "verified": true,
+    "ram_requested": false,
+    "stub_requested": false,
+    "ram_allocations": [
+      {
+        "backend": "file",
+        "bytes": 4096
+      },
+      {
+        "backend": "file",
+        "bytes": 2734866432
+      },
+      {
+        "backend": "file",
+        "bytes": 4096
+      }
+    ],
+    "stub_backend": "file"
+  },
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": true,
+    "received": 7152,
+    "deferred": 7095,
+    "handled": 7152
+  },
+  "mprotect_sync": false,
+  "mprotect_stats": {
+    "verified": false,
+    "pages": null
+  },
+  "mapping_semantics": null,
+  "mapping_semantics_sha256": null,
+  "dispatch_benchmark_sha256": null,
+  "thread_semantics": true,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71
+  ],
+  "kernel_sha256": "00d0cb7630dbd2e2feb5eb477a9c9ed140d040ac854c7189cc10b061e0953f59",
+  "kernel_unchanged": true,
+  "cleanup": {
+    "process_group": 1313260,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 11.558386424556375,
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 1.434195712
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 1.395376128
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 1.397832704
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.33889536
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.33006464
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.312347648
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.353755136
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.363869184
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.428418304
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.442162176
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.451979776
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.408859904
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.350370816
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.357774848
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.450512128
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.441123328
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.356234752
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.35594496
+    }
+  ],
+  "host_cpu_seconds": 17.590148,
+  "docker_acceptance": "not_tested",
+  "gpu_acceptance": "not_tested"
+}

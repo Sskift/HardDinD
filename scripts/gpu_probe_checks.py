@@ -42,3 +42,16 @@ CTRL_CHECKS = {
 
 CTRL_CHECKS |= {'nested_null', 'nested_low_unmapped', 'nested_wrap',
                 'nested_noncanonical', 'nested_unmapped', 'nested_noncanonical_invalid_client'}
+
+# Legacy build-version child and leaf pointers, including native partial writes.
+BUILD_CHECKS = {
+    'open_control', 'allocate_client', 'size_query', 'full', 'too_small',
+    'partial_null', 'leaf_readonly', 'leaf_unreadable', 'leaf_low_unmapped',
+    'leaf_noncanonical', 'leaf_wrap', 'leaf_cross_page', 'leaf_cross_none',
+    'child_readonly', 'child_readonly_size_query', 'child_unreadable',
+    'child_low_unmapped', 'child_null', 'child_noncanonical',
+    'invalid_client_bad_child', 'child_cross_page', 'child_cross_readonly',
+    'header_readonly', 'header_unreadable', 'size_short', 'size_long',
+    'recovery_after_faults', 'four_threads_same_client',
+    'independent_process_queries', 'release_client',
+}

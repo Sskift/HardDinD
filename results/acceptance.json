@@ -139,7 +139,14 @@
         "starpub-2026-10-14-gpu-device-numbers/gpu-device-numbers-fd-v1/report.json",
         "starpub-2026-10-14-gpu-device-numbers/gpu-device-numbers-docker-v1/report.json",
         "starpub-2026-10-14-gpu-device-numbers/gpu-device-numbers-cleanup-audit.json",
-        "starpub-2026-10-14-gpu-device-numbers/evidence-validation.json"
+        "starpub-2026-10-14-gpu-device-numbers/evidence-validation.json",
+        "starpub-2026-10-14-gpu-build-version/gpu-build-version-v1/report.json",
+        "starpub-2026-10-14-gpu-build-version/gpu-build-docker-v1/report.json",
+        "starpub-2026-10-14-gpu-build-version/cuda-build-version-v1/report.json",
+        "starpub-2026-10-14-gpu-build-version/gpu-build-root-regression-v1/report.json",
+        "starpub-2026-10-14-gpu-build-version/gpu-build-core-v1.json",
+        "starpub-2026-10-14-gpu-build-version/gpu-build-cleanup-audit.json",
+        "starpub-2026-10-14-gpu-build-version/evidence-validation.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",
@@ -150,7 +157,8 @@
         "RM root-client allocation/free: native 29/29, guest and five nested Docker lifecycle runs 28/29; unsupported allocation class error semantics differ; device objects, UVM/mmap and CUDA remain absent",
         "Four RM root queries passed native/guest/real Docker parity (17 checks per probe), but arbitrary controls, device objects, concurrent remap, schedulable/cancellable waits, mmap/UVM and CUDA remain incomplete",
         "Root control pointer faults extended to 23-check native/guest/Docker parity; generic ABI, device mappings and actual CUDA remain incomplete",
-        "Real CUDA now opens NVIDIA-compatible guest device numbers and reaches RM_CONTROL 0x101 (build version with nested string pointers), which still returns EOPNOTSUPP; cuInit remains failed and no internal computation has run"
+        "Earlier real CUDA device-number fix reached RM_CONTROL 0x101; the subsequent 0022 bridge now passes that query with 30-check native/guest/Docker parity, but actual cuInit fails at client inherited share policy 0xd04 (CUDA error 304); no internal GPU computation has run",
+        "Legacy build-version coverage is limited to zero flags and bounded output ranges; concurrent remap and user-address-boundary behavior remain unverified"
       ]
     }
   }

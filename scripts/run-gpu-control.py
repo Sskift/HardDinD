@@ -15,7 +15,7 @@ import stat
 import subprocess
 import uuid
 from guest_cleanup import cleanup_group
-from gpu_probe_checks import FD_CHECKS, RM_CHECKS, CTRL_CHECKS
+from gpu_probe_checks import FD_CHECKS, RM_CHECKS, CTRL_CHECKS, BUILD_CHECKS
 from result_checks import memfd_backing_evidence
 
 
@@ -38,25 +38,26 @@ def main():
     mode.add_argument('--fd-registration', action='store_true')
     mode.add_argument('--rm-client', action='store_true')
     mode.add_argument('--rm-control', action='store_true')
+    mode.add_argument('--build-version', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
     p.add_argument('--memfd-ram', action='store_true')
     p.add_argument('--memfd-stub', action='store_true')
     args = p.parse_args()
     if not 1 <= args.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
-    fd_mode, rm_mode, ctrl_mode = args.fd_registration, args.rm_client, args.rm_control
+    fd_mode, rm_mode, ctrl_mode, bv_mode = args.fd_registration, args.rm_client, args.rm_control, args.build_version
     if ctrl_mode and args.gpu_count > 32: p.error('RM control supports at most 32 GPU IDs')
-    marker = 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
-    expected_checks = (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(args.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
-    probe_source = 'gpu_rm_control_probe.c' if ctrl_mode else 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
-    argument_suffix = '' if fd_mode or rm_mode or ctrl_mode else 'ctl'
+    marker = 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    expected_checks = BUILD_CHECKS if bv_mode else (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(args.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
+    probe_source = 'gpu_build_version_probe.c' if bv_mode else 'gpu_rm_control_probe.c' if ctrl_mode else 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
+    argument_suffix = '' if fd_mode or rm_mode or ctrl_mode or bv_mode else 'ctl'
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,40}', args.name):
         p.error('invalid evidence name')
     work, kernel = args.work.resolve(), args.kernel.resolve()
     repo = pathlib.Path(__file__).resolve().parents[1]
     output = work / 'results' / args.name
     output.mkdir(parents=True, exist_ok=False)
-    report = {'kind': 'uml_gpu_rm_control' if ctrl_mode else 'uml_gpu_rm_client' if rm_mode else 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
+    report = {'kind': 'uml_gpu_build_version' if bv_mode else 'uml_gpu_rm_control' if ctrl_mode else 'uml_gpu_rm_client' if rm_mode else 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'phases': {name: {'status': 'not_tested'} for name in
@@ -85,11 +86,14 @@ def main():
                          repo / 'scripts/result_checks.py']:
                 shutil.copy2(path, sources / path.name)
             shutil.copy2(work / 'linux-7.2.10/.harddind-patches.json', output / 'kernel-patches.json')
-            if rm_mode or ctrl_mode:
+            if rm_mode or ctrl_mode or bv_mode:
                 shutil.copy2(repo / 'kernel/experiments/0016-um-gpu-rm-client.patch', sources / '0016-um-gpu-rm-client.patch')
-            if ctrl_mode:
+            if ctrl_mode or bv_mode:
                 shutil.copy2(repo / 'kernel/experiments/0019-um-gpu-root-control.patch', sources / '0019-um-gpu-root-control.patch')
                 shutil.copy2(repo / 'kernel/experiments/0020-um-gpu-control-pointer-errors.patch', sources / '0020-um-gpu-control-pointer-errors.patch')
+            if bv_mode:
+                for filename in ['0021-um-gpu-device-numbers.patch', '0022-um-gpu-build-version.patch']:
+                    shutil.copy2(repo / 'kernel/experiments' / filename, sources / filename)
             program = output / 'gpu-guest-probe'
             with (output / 'build.log').open('x') as log:
                 subprocess.run(['gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread',
@@ -108,8 +112,8 @@ def main():
                 (root / directory).mkdir(exist_ok=True)
             shutil.copy2(program, root / 'gpu-guest-probe')
             init = root / 'sbin/harddind-gpu-control-init'
-            argument = str(args.gpu_count) if fd_mode or rm_mode or ctrl_mode else version
-            report['gpu_count'] = args.gpu_count if fd_mode or rm_mode or ctrl_mode else None
+            argument = str(args.gpu_count) if fd_mode or rm_mode or ctrl_mode or bv_mode else version
+            report['gpu_count'] = args.gpu_count if fd_mode or rm_mode or ctrl_mode or bv_mode else None
             init.write_text('''#!/bin/sh
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 mount -t proc proc /proc
@@ -194,17 +198,17 @@ poweroff -f
                              and len(row['worker_pids']) == 5
                              and len(set(row['worker_pids'])) == 5
                              and set(row['device_ioctl_pids']) == set(row['worker_pids'])
-                             and row['device_ioctl_count'] == (92 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153))
+                             and row['device_ioctl_count'] == (70 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153))
                 else:
-                    valid = valid and row['device_ioctl_count'] == (92 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154)
+                    valid = valid and row['device_ioctl_count'] == (71 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154)
                 if name in ('guest', 'disabled'):
                     row['memory_backing'] = memfd_backing_evidence(content, args.memfd_ram, args.memfd_stub)
                     if args.memfd_ram or args.memfd_stub:
                         valid = valid and row['memory_backing']['verified']
-                if ctrl_mode and name != 'disabled':
-                    row['control_results'] = [json.loads(x) for x in re.findall(r'^GPU_CTRL_RESULT (.+)$', content, re.M)]
+                if (ctrl_mode or bv_mode) and name != 'disabled':
+                    row['control_results'] = [json.loads(x) for x in re.findall(r'^' + marker + r'_RESULT (.+)$', content, re.M)]
                     row['device_results'] = [json.loads(x) for x in re.findall(r'^GPU_CTRL_DEVICE (.+)$', content, re.M)]
-                    valid = valid and len(row['control_results']) == 14 and len(row['device_results']) == args.gpu_count
+                    valid = valid and len(row['control_results']) == (24 if bv_mode else 14) and len(row['device_results']) == (0 if bv_mode else args.gpu_count)
                     if name != 'native-before':
                         baseline = report['phases']['native-before']
                         row['native_contract_matches'] = (
@@ -218,7 +222,7 @@ poweroff -f
                 trace.unlink()
                 print(name + ': ' + row['status'], flush=True)
                 (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-                if row['status'] != 'pass' and not rm_mode and not ctrl_mode:
+                if row['status'] != 'pass' and not rm_mode and not ctrl_mode and not bv_mode:
                     break
             report['diagnostic_finished'] = all(row['status'] in ('pass', 'fail') for row in report['phases'].values())
             report['diagnostic_complete'] = all(row['status'] == 'pass' for row in report['phases'].values())
