@@ -1,0 +1,6 @@
+Recreated the v4 atomicity seam (syscall and shadow note as two separate
+serialize sections with a yield between them) in a scratch build and ran
+harddind_posix_syscall_shadow_atomicity_race 5 times: FAILED 5/5
+(round>=1 'shadow vs host divergence', e.g. host holds but shadow pid 0,
+and host free but phantom pid 71).  Restored single-critical-section code;
+same test and full suite pass, repeated 10x stable.

@@ -1,0 +1,22 @@
+{
+  "ok": false,
+  "reasons": [
+    "1 error record(s) present",
+    "phase records are missing, duplicated, reordered or from an unexpected phase",
+    "shared[0]: detach_rc=201",
+    "shared[1]: detach_rc=201",
+    "shared[2]: detach_rc=201",
+    "shared[3]: detach_rc=201",
+    "child workers: expected 4, got 0",
+    "child phase did not cover every requested GPU UUID",
+    "child: expected 4 intervals, got 0",
+    "distinct derived seeds 128 != expected 136",
+    "summary records: expected 1, got 0"
+  ],
+  "overlap_ns": {
+    "shared": 49889452,
+    "multicard": 25813895,
+    "child": null
+  },
+  "gpu_count": 4
+}
