@@ -1,0 +1,121 @@
+GPU_EXPERIMENT=1 bash scripts/build-kernel.sh "/root/harddind-rebuild"
+make[1]: Entering directory '/root/harddind-rebuild/linux-7.2.10'
+make[2]: Entering directory '/root/harddind-rebuild/thread-build'
+  CC      arch/x86/um/stub_segv.o
+  CC      arch/x86/um/os-Linux/registers.o
+  CC      arch/x86/um/os-Linux/mcontext.o
+  CC      arch/um/drivers/fd.o
+  AR      arch/x86/um/os-Linux/built-in.a
+  CC      arch/um/drivers/chan_kern.o
+  CC      arch/x86/um/syscalls_64.o
+  CC      arch/um/os-Linux/elf_aux.o
+  CC      arch/um/os-Linux/execvp.o
+  CC      arch/um/os-Linux/file.o
+  CC      arch/um/drivers/chan_user.o
+  CC      arch/um/kernel/exec.o
+  CC      arch/um/drivers/line.o
+  CC      arch/um/os-Linux/helper.o
+  CC      arch/um/os-Linux/irq.o
+  AR      arch/x86/um/built-in.a
+  CC      arch/um/os-Linux/main.o
+  CC      arch/um/kernel/irq.o
+  CC      arch/um/os-Linux/mem.o
+  CC      arch/um/os-Linux/process.o
+  CC      arch/um/drivers/vector_kern.o
+  CC      arch/um/os-Linux/sigio.o
+  CC      arch/um/os-Linux/signal.o
+  CC      arch/um/os-Linux/start_up.o
+  CC      arch/um/kernel/ksyms.o
+  CC      arch/um/kernel/mem.o
+  CC      arch/um/os-Linux/time.o
+  CC      arch/um/os-Linux/tty.o
+  CC      arch/um/os-Linux/umid.o
+  CC      arch/um/kernel/physmem.o
+  CC      arch/um/os-Linux/util.o
+  CC      arch/um/os-Linux/skas/mem.o
+  CC      arch/um/kernel/process.o
+  CC      arch/um/os-Linux/skas/process.o
+  CC      arch/um/os-Linux/smp.o
+  CC      arch/um/drivers/vector_user.o
+  AR      arch/um/os-Linux/skas/built-in.a
+  AR      arch/um/os-Linux/built-in.a
+  CC      arch/um/drivers/mconsole_kern.o
+  CC      arch/um/kernel/reboot.o
+  CC      fs/hostfs/hostfs_user.o
+  CC      fs/hostfs/hostfs_user_exp.o
+  CC      fs/hostfs/hostfs_kern.o
+  CC      arch/um/kernel/sigio.o
+  CC      arch/um/kernel/signal.o
+  CC      arch/um/kernel/sysrq.o
+  CC      arch/um/drivers/ubd_kern.o
+  CC      arch/um/kernel/time.o
+  CC      arch/um/kernel/tlb.o
+  AR      fs/hostfs/built-in.a
+  AR      fs/built-in.a
+  CC      arch/um/drivers/ubd_user.o
+  CC      arch/um/drivers/null.o
+  CC      arch/um/kernel/trap.o
+  CC      arch/um/drivers/port_kern.o
+  CC      arch/um/drivers/port_user.o
+  CC      arch/um/kernel/um_arch.o
+  CC      arch/um/drivers/pty.o
+  CC      arch/um/kernel/umid.o
+  CC      arch/um/drivers/tty.o
+  CC      arch/um/drivers/xterm.o
+  CC      arch/um/drivers/xterm_kern.o
+  CC      arch/um/kernel/kmsg_dump.o
+  CC      arch/um/drivers/cow_user.o
+  CC      arch/um/drivers/random.o
+  CC      arch/um/drivers/virtio_uml.o
+  CC      arch/um/kernel/skas/stub.o
+  CC      arch/um/kernel/skas/mmu.o
+  CC      arch/um/kernel/load_file.o
+  CC      arch/um/kernel/gpu.o
+  CC      arch/um/kernel/early_printk.o
+  CC      arch/um/kernel/skas/process.o
+  CC      arch/um/kernel/smp.o
+  CC      arch/um/kernel/skas/uaccess.o
+  CC      arch/um/kernel/skas/stub_exe.o
+  STUB_EXE arch/um/kernel/skas/stub_exe.dbg
+  OBJCOPY arch/um/kernel/skas/stub_exe
+  AS      arch/um/kernel/skas/stub_exe_embed.o
+  AR      arch/um/drivers/built-in.a
+  AR      arch/um/kernel/skas/built-in.a
+  AR      arch/um/kernel/built-in.a
+  AR      arch/um/built-in.a
+  AR      built-in.a
+  AR      built-in-fixup.a
+  COPY    vmlinux.a
+  LD      vmlinux.o
+  MODPOST vmlinux.symvers
+  UPD     include/generated/utsversion.h
+  CC      init/version-timestamp.o
+  KSYMS   .tmp_vmlinux0.kallsyms.S
+  AS      .tmp_vmlinux0.kallsyms.o
+  LD      .tmp_vmlinux1
+  NM      .tmp_vmlinux1.syms
+  KSYMS   .tmp_vmlinux1.kallsyms.S
+  AS      .tmp_vmlinux1.kallsyms.o
+  LD      .tmp_vmlinux2
+  NM      .tmp_vmlinux2.syms
+  KSYMS   .tmp_vmlinux2.kallsyms.S
+  AS      .tmp_vmlinux2.kallsyms.o
+  LD      vmlinux.unstripped
+  NM      System.map
+  OBJCOPY vmlinux
+  GEN     modules.builtin.modinfo
+  GEN     modules.builtin
+  LINK linux
+make[2]: Leaving directory '/root/harddind-rebuild/thread-build'
+make[1]: Leaving directory '/root/harddind-rebuild/linux-7.2.10'
+{
+  "object": "/root/harddind-rebuild/thread-build/arch/um/kernel/skas/stub.o",
+  "section": ".__syscall_stub",
+  "relocation_targets": [
+    "stub_thread_start",
+    "stub_thread_start"
+  ],
+  "external_targets": [],
+  "passed": true
+}
+/root/harddind-rebuild/thread-build/linux

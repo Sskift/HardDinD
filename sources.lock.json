@@ -104,5 +104,11 @@
     "version": "2.5.3-2ubuntu2",
     "url": "https://archive.ubuntu.com/ubuntu/pool/main/libs/libseccomp/libseccomp-dev_2.5.3-2ubuntu2_amd64.deb",
     "sha256": "d6b68f73a9e30cb6a7c1b7cd3a6326c4291d4d4a4e763591b0f731cbc9b273cc"
+  },
+  "nvidia_abi_reference": {
+    "version": "550.120",
+    "commit": "5e52edb2034de7db4d8ae368dbc7c26b416bfa16",
+    "repository": "https://github.com/NVIDIA/open-gpu-kernel-modules.git",
+    "purpose": "ABI source reference only; does not replace the installed host driver"
   }
 }

@@ -177,3 +177,5 @@ python3 scripts/run-docker.py /root/harddind-rebuild \
 GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、UVM、锁页内存与进程退出。仅创建 `/dev/nvidia*`、转发 `nvidia-smi` 或在外层代跑计算，均不能满足目标。
 
 新的 [UML GPU 控制通道](results/starpub-2026-10-14-gpu-control/) 已在实际 guest 和内部 Docker 中完成真实 NVIDIA 版本查询、跨页参数、错误恢复、多线程及描述符生命周期检查。构建使用 `make kernel-gpu-experiment`，持久实例显式传入 `--gpu-control-experiment` 才会启用 `/dev/harddind-nvidiactl`。该节点仅开放控制查询，没有实现 CUDA、设备 mmap 或 `--gpus all` 支持；完整 GPU 验收保持失败。
+
+后续 [GPU 描述符关联实测](results/starpub-2026-10-14-gpu-fd/) 将 NVIDIA `REGISTER_FD` 接入真实 UML 和内部 Docker，验证四设备关联、高编号描述符、引用生命周期、线程与独立进程。测试同时发现并修复 UML `copy_from_user` 越过 `PROT_NONE` 读取权限的问题；默认补丁 `0014` 用通用页权限检查解决，旧内核失败和新内核通过均保留。实验补丁 `0013` 仍只提供控制与设备关联子集，内部 CUDA 和设备 mmap 未实现；不代表 GPU 目标完成。

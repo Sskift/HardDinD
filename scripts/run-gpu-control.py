@@ -15,6 +15,7 @@ import stat
 import subprocess
 import uuid
 from guest_cleanup import cleanup_group
+from gpu_probe_checks import FD_CHECKS
 
 
 def sha(path):
@@ -32,19 +33,28 @@ def main():
     p.add_argument('work', type=pathlib.Path)
     p.add_argument('--kernel', type=pathlib.Path, required=True)
     p.add_argument('--name', required=True)
+    p.add_argument('--fd-registration', action='store_true')
+    p.add_argument('--gpu-count', type=int, default=4)
     args = p.parse_args()
+    if not 1 <= args.gpu_count <= 255:
+        p.error('gpu-count must be between 1 and 255')
+    fd_mode = args.fd_registration
+    marker = 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    expected_checks = FD_CHECKS if fd_mode else CHECKS
+    probe_source = 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
+    argument_suffix = '' if fd_mode else 'ctl'
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,40}', args.name):
         p.error('invalid evidence name')
     work, kernel = args.work.resolve(), args.kernel.resolve()
     repo = pathlib.Path(__file__).resolve().parents[1]
     output = work / 'results' / args.name
     output.mkdir(parents=True, exist_ok=False)
-    report = {'kind': 'uml_gpu_control_transport', 'full_acceptance': False,
+    report = {'kind': 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'phases': {name: {'status': 'not_tested'} for name in
                          ['native-before', 'disabled', 'guest', 'native-after']},
-              'limitations': ['flat NVIDIA control ioctls only; no device mmap or CUDA',
+              'limitations': ['NVIDIA control and REGISTER_FD subset only; no device mmap or CUDA',
                               'one GPU identity per guest mm; cross-group fd use fails EXDEV',
                               'device waits disable one guest CPU interrupts; blocking GPU commands unavailable',
                               'traced functional test, not a performance comparison',
@@ -58,14 +68,18 @@ def main():
             version = re.search(r'Kernel Module\s+(\d+(?:\.\d+)+)', driver)[1]
             report['driver_version'] = driver
             sources = output / 'sources'; sources.mkdir()
-            for path in [repo / 'src/gpu_guest_probe.c', pathlib.Path(__file__).resolve(),
-                         repo / 'kernel/experiments/0012-um-gpu-control-transport.patch']:
+            for path in [repo / 'src' / probe_source, pathlib.Path(__file__).resolve(),
+                         repo / 'scripts/gpu_probe_checks.py',
+                         repo / 'sources.lock.json',
+                         repo / 'kernel/experiments/0012-um-gpu-control-transport.patch',
+                         repo / 'kernel/experiments/0013-um-gpu-register-fd.patch',
+                         repo / 'kernel/patches/0014-um-check-usercopy-read-permission.patch']:
                 shutil.copy2(path, sources / path.name)
             shutil.copy2(work / 'linux-7.2.10/.harddind-patches.json', output / 'kernel-patches.json')
             program = output / 'gpu-guest-probe'
             with (output / 'build.log').open('x') as log:
                 subprocess.run(['gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread',
-                                str(sources / 'gpu_guest_probe.c'), '-o', str(program)],
+                                str(sources / probe_source), '-o', str(program)],
                                stdout=log, stderr=subprocess.STDOUT, check=True, timeout=60)
             root = output / 'root'
             base = work / 'probe-root'
@@ -80,13 +94,15 @@ def main():
                 (root / directory).mkdir(exist_ok=True)
             shutil.copy2(program, root / 'gpu-guest-probe')
             init = root / 'sbin/harddind-gpu-control-init'
+            argument = str(args.gpu_count) if fd_mode else version
+            report['gpu_count'] = args.gpu_count if fd_mode else None
             init.write_text('''#!/bin/sh
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
 if [ -e /dev/harddind-nvidiactl ]; then
-    /gpu-guest-probe /dev/harddind-nvidiactl ''' + version + '''
+    /gpu-guest-probe /dev/harddind-nvidia''' + argument_suffix + ' ' + argument + '''
     result=$?
 else
     result=0
@@ -110,7 +126,7 @@ poweroff -f
                 phase = output / name; phase.mkdir()
                 trace, log = phase / 'syscalls.strace', phase / 'output.log'
                 cow = output / ('guest-' + uuid.uuid4().hex + '.cow')
-                command = [str(program), '/dev/nvidiactl', version]
+                command = [str(program), '/dev/nvidia' + argument_suffix, argument]
                 if name in ('guest', 'disabled'):
                     command = [str(kernel), 'umid=harddind-' + uuid.uuid4().hex[:12],
                                'mem=2G', 'ncpus=4', 'seccomp=on', 'seccomp_threads=1',
@@ -141,18 +157,18 @@ poweroff -f
                         row['cleanup'] = cleanup_group(proc.pid)
                         cow.unlink(missing_ok=True)
                 content = log.read_text(errors='replace')
-                checks = re.findall(r'^GPU_CONTROL_CHECK (\w+) (pass|fail)$', content, re.M)
+                checks = re.findall(r'^' + marker + r'_CHECK (\w+) (pass|fail)$', content, re.M)
                 row['checks'] = checks
                 row['worker_pids'] = re.findall(r'HARDDIND_GPU_WORKER guest_tgid=\d+ host_pid=(\d+)', content)
                 trace_content = trace.read_text(errors='replace')
                 ioctl_lines = [line for line in trace_content.splitlines()
-                               if re.search(r'ioctl\(\d+</dev/nvidiactl(?:<|>)', line)]
+                               if re.search(r'ioctl\(\d+</dev/nvidia(?:ctl|\d+)(?:<|>)', line)]
                 row['device_ioctl_pids'] = sorted({line.split()[0] for line in ioctl_lines})
                 row['device_ioctl_count'] = len(ioctl_lines)
                 row['trace_sha256'] = sha(trace)
                 row['inputs_unchanged'] = all(sha(path) == report['sha256'][str(path)] for path in inputs)
-                valid = (len(checks) == len(CHECKS) and {n for n, status in checks if status == 'pass'} == CHECKS
-                         and 'GPU_CONTROL_END status=0 internal_cuda_verified=0' in content)
+                valid = (len(checks) == len(expected_checks) and {n for n, status in checks if status == 'pass'} == expected_checks
+                         and marker + '_END status=0 internal_cuda_verified=0' in content)
                 if name == 'disabled':
                     valid = ('GPU_CONTROL_DISABLED status=0' in content
                              and 'HARDDIND_GPU_CONTROL_END status=0' in content
@@ -162,9 +178,9 @@ poweroff -f
                              and len(row['worker_pids']) == 5
                              and len(set(row['worker_pids'])) == 5
                              and set(row['device_ioctl_pids']) == set(row['worker_pids'])
-                             and row['device_ioctl_count'] == 153)
+                             and row['device_ioctl_count'] == (36 + args.gpu_count if fd_mode else 153))
                 else:
-                    valid = valid and row['device_ioctl_count'] == 154
+                    valid = valid and row['device_ioctl_count'] == (37 + args.gpu_count if fd_mode else 154)
                 row['status'] = 'pass' if (valid and row['exit_code'] == 0 and not row['timed_out']
                                           and row['inputs_unchanged'] and row['cleanup']['clean_shutdown']) else 'fail'
                 with gzip.GzipFile(str(trace) + '.gz', 'wb', mtime=0) as gz:

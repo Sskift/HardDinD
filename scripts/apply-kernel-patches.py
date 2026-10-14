@@ -103,7 +103,8 @@ if __name__ == "__main__":
         if sys.argv[3:] == ["--protect-experiment"]:
             patches += [repo / "kernel/experiments/0010-um-update-mapping-protection.patch"]
         if sys.argv[3:] == ["--gpu-experiment"]:
-            patches += [repo / "kernel/experiments/0012-um-gpu-control-transport.patch"]
+            patches += [repo / "kernel/experiments/0012-um-gpu-control-transport.patch",
+                        repo / "kernel/experiments/0013-um-gpu-register-fd.patch"]
     elif sys.argv[3:]:
         raise SystemExit("unknown patch-series option")
     apply_series(src, pathlib.Path(sys.argv[2]), patches)

@@ -93,7 +93,9 @@
         "starpub-2026-10-14-gpu-broker/gpu-broker-v5/report.json",
         "starpub-2026-10-14-gpu-broker/gpu-broker-v6/report.json",
         "starpub-2026-10-14-gpu-control/gpu-control-v3/report.json",
-        "starpub-2026-10-14-gpu-control/gpu-control-docker-v2/report.json"
+        "starpub-2026-10-14-gpu-control/gpu-control-docker-v2/report.json",
+        "starpub-2026-10-14-gpu-fd/gpu-fd-v3-after-uaccess/report.json",
+        "starpub-2026-10-14-gpu-fd/gpu-fd-docker-v1/report.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",

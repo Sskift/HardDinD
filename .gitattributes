@@ -7,3 +7,5 @@ results/**/*.log -text -whitespace
 results/**/*.patch -text -whitespace
 results/**/*-stub-relocations.txt -text -whitespace
 results/**/*-stub-symbols.txt -text -whitespace
+# Source snapshots also preserve formatting from failed experiments.
+results/**/sources/* -text -whitespace

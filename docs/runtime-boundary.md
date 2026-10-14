@@ -28,7 +28,7 @@ GPU 是另一项尚未完成的工程工作，不是因为外层没有显卡。�
 
 新的[共享地址空间 GPU 原型](../results/starpub-2026-10-14-gpu-broker/) 验证了实现接入所需的两项约束：单个独立进程或同 TGID 的两个线程处理全部 NVIDIA ioctl/mmap 时，外层真实四卡计算通过；同一份二进制切换到两个不同 TGID 的进程后，CUDA 上下文创建返回 800。普通 NVIDIA 设备的第二映射成功，UVM 第二映射均返回 EINVAL。v6 又在不共享 mm 的子进程中重新建立 124 个普通设备映射，4 个 UVM 映射仍失败；子进程继承文件引用和初始地址空间，未读写新映射，不能直接认定独立 UML 内核访问已可用。UVM 固定版本源码要求地址等于文件偏移，原型的任意地址别名违反这一约束，不能把其 EINVAL 泛化为所有跨 mm 方案均不可行。
 
-后续 [0012 控制通道](../results/starpub-2026-10-14-gpu-control/) 已在实际 UML 内核创建专用宿主进程，转接固定控制设备的文件引用并在共享 mm 中处理平面 ioctl；guest 和内部 Docker 的版本查询与生命周期子集通过。控制节点默认关闭；目前一个 mm 仅绑定一个 guest 线程组，跨组使用返回 EXDEV，等待时关闭当前 guest CPU 中断，因此尚不能开放阻塞 CUDA 命令。内嵌 FD 转换、设备 VMA、UVM 缺页、锁页内存和内部 CUDA 均未实现，GPU 验收仍失败。
+后续 [0012 控制通道](../results/starpub-2026-10-14-gpu-control/) 已在实际 UML 内核创建专用宿主进程，转接固定控制设备的文件引用并在共享 mm 中处理平面 ioctl；guest 和内部 Docker 的版本查询与生命周期子集通过。控制节点默认关闭；目前一个 mm 仅绑定一个 guest 线程组，跨组使用返回 EXDEV，等待时关闭当前 guest CPU 中断，因此尚不能开放阻塞 CUDA 命令。后续 [0013 描述符关联](../results/starpub-2026-10-14-gpu-fd/) 已实现 REGISTER_FD 的嵌入 FD 转换，并修复实测发现的通用用户内存读取权限缺陷；其他内嵌 FD/指针、设备 VMA、UVM 缺页、锁页内存和内部 CUDA 仍未实现，GPU 验收仍失败。
 
 评估过的现成替代也不能直接声明达标：gVisor 提供 nvproxy，但它支持的驱动版本和设备接口有明确范围；其 Docker-in-gVisor 文档还要求关闭 dockerd 的 iptables/ip6tables 并调整网络配置。它可作为实现参考，不能直接替换完整 Docker 的目标。参见 [gVisor GPU 支持](https://gvisor.dev/docs/user_guide/gpu/) 和 [Docker in gVisor](https://gvisor.dev/docs/tutorials/docker-in-gvisor/)。
 

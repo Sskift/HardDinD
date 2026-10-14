@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tarfile
 import harddind
+from gpu_probe_checks import FD_CHECKS
 
 
 CHECKS = {'open', 'real_driver_version', 'cross_page_user_pointer', 'invalid_user_pointer',
@@ -28,7 +29,17 @@ def main():
     p.add_argument('--disk', type=pathlib.Path, required=True)
     p.add_argument('--probe', type=pathlib.Path, required=True)
     p.add_argument('--name', required=True)
+    p.add_argument('--fd-registration', action='store_true')
+    p.add_argument('--gpu-count', type=int, default=4)
     a = p.parse_args()
+    if not 1 <= a.gpu_count <= 255:
+        p.error('gpu-count must be between 1 and 255')
+    fd_mode = a.fd_registration
+    marker = 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    expected_checks = FD_CHECKS if fd_mode else CHECKS
+    devices = ['--device=/dev/harddind-nvidiactl']
+    if fd_mode:
+        devices += [f'--device=/dev/harddind-nvidia{i}' for i in range(a.gpu_count)]
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,28}', a.name):
         p.error('invalid experiment name')
     work = a.work.resolve()
@@ -39,8 +50,9 @@ def main():
         p.error('refusing existing instance')
     out.mkdir(parents=True, exist_ok=False)
     inputs = [a.kernel.resolve(), a.disk.resolve(), a.probe.resolve(),
-              repo / 'scripts/harddind.py', pathlib.Path(__file__).resolve()]
-    report = {'kind': 'docker_gpu_control_transport', 'full_acceptance': False,
+              repo / 'scripts/harddind.py', pathlib.Path(__file__).resolve(),
+              repo / 'scripts/gpu_probe_checks.py']
+    report = {'kind': 'docker_gpu_fd_registration' if fd_mode else 'docker_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'sha256': {str(f): harddind.sha(f) for f in inputs},
@@ -72,11 +84,11 @@ def main():
             if rc: raise RuntimeError('command failed: ' + shlex.join(command))
             return text
         def validate_control(name, rc, text):
-            rows = re.findall(r'^GPU_CONTROL_CHECK (\w+) (pass|fail)$', text, re.M)
-            passed = (rc == 0 and len(rows) == len(CHECKS)
-                      and {n for n, status in rows if status == 'pass'} == CHECKS
-                      and f'GPU_CONTROL_VERSION {version}' in text
-                      and 'GPU_CONTROL_END status=0 internal_cuda_verified=0' in text)
+            rows = re.findall(r'^' + marker + r'_CHECK (\w+) (pass|fail)$', text, re.M)
+            passed = (rc == 0 and len(rows) == len(expected_checks)
+                      and {n for n, status in rows if status == 'pass'} == expected_checks
+                      and (fd_mode or f'GPU_CONTROL_VERSION {version}' in text)
+                      and marker + '_END status=0 internal_cuda_verified=0' in text)
             report['checks'][name] = 'pass' if passed else 'fail'
             if not passed: raise RuntimeError(name + ' failed')
         def control_check(name, command):
@@ -96,11 +108,13 @@ def main():
                     archive.addfile(entry)
                 archive.add(a.probe.resolve(), arcname='gpu-guest-probe', recursive=False)
             report['image_id'] = require(base + ['docker', 'import', '-', image], bundle.getvalue()).strip()
-            probe_args = [image, '/gpu-guest-probe', '/dev/harddind-nvidiactl', version]
+            probe_args = [image, '/gpu-guest-probe',
+                          '/dev/harddind-nvidia' if fd_mode else '/dev/harddind-nvidiactl',
+                          str(a.gpu_count) if fd_mode else version]
             rc, text = run(base + ['docker', 'run', '--rm', *probe_args])
             report['checks']['no_device'] = 'pass' if rc == 1 and 'No such file or directory' in text else 'fail'
             control_check('device_control', base + ['docker', 'run', '--name', container,
-                                                   '--device=/dev/harddind-nvidiactl', *probe_args])
+                                                   *devices, *probe_args])
             for name, extra, error in [
                 ('nonroot_denied', ['--device=/dev/harddind-nvidiactl', '--user=1000:1000'], 'Permission denied'),
                 ('device_readonly_denied', ['--device=/dev/harddind-nvidiactl:/dev/harddind-nvidiactl:r'], 'Operation not permitted'),
@@ -113,7 +127,7 @@ def main():
             try:
                 for label in ['a', 'b']:
                     command = base + ['docker', 'run', '--rm', '--name', container + '-' + label,
-                                      '--device=/dev/harddind-nvidiactl', *probe_args]
+                                      *devices, *probe_args]
                     log.write('$ ' + shlex.join(command) + '\n'); log.flush()
                     clients.append((label, subprocess.Popen(command, stdout=subprocess.PIPE,
                                                              stderr=subprocess.STDOUT)))
@@ -135,7 +149,7 @@ def main():
             require(start)
             report['restarted_state'] = harddind.read_state(instance)
             control_check('instance_restart', base + ['docker', 'run', '--rm',
-                                                       '--device=/dev/harddind-nvidiactl', *probe_args])
+                                                       *devices, *probe_args])
             report['checks']['inputs_unchanged'] = 'pass' if all(
                 harddind.sha(f) == report['sha256'][str(f)] for f in inputs) else 'fail'
         except Exception as error:

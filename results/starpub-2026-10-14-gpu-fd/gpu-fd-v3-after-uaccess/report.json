@@ -1,0 +1,542 @@
+{
+  "kind": "uml_gpu_fd_registration",
+  "full_acceptance": false,
+  "internal_cuda_verified": false,
+  "diagnostic_complete": true,
+  "started_at": "2026-10-14T12:20:19.208361+00:00",
+  "phases": {
+    "native-before": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/native-before/syscalls.strace",
+        "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/gpu-guest-probe",
+        "/dev/nvidia",
+        "4"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1281154,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "worker_pids": [],
+      "device_ioctl_pids": [
+        "1281163",
+        "1281170",
+        "1281172",
+        "1281174",
+        "1281175",
+        "1281182",
+        "1281185",
+        "1281188",
+        "1281189"
+      ],
+      "device_ioctl_count": 41,
+      "trace_sha256": "0c84d33690a907a74ac6a920df12d7f2477eb5a81e0a4ebf2165fb0525aa5c6a",
+      "inputs_unchanged": true
+    },
+    "disabled": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/disabled/syscalls.strace",
+        "/root/harddind-rebuild/gpu-fd-kernel-v2",
+        "umid=harddind-253eb3e9ab8c",
+        "mem=2G",
+        "ncpus=4",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/guest-d83fca9424c446b0b4b829bcd5838331.cow,/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/gpu-control.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-gpu-control-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1284508,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [],
+      "worker_pids": [],
+      "device_ioctl_pids": [],
+      "device_ioctl_count": 0,
+      "trace_sha256": "e9ff46beb96a567e2486854d8982c007acde26a3699b3831feba4fcc4808311f",
+      "inputs_unchanged": true
+    },
+    "guest": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/guest/syscalls.strace",
+        "/root/harddind-rebuild/gpu-fd-kernel-v2",
+        "umid=harddind-b539387956d7",
+        "mem=2G",
+        "ncpus=4",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/guest-6b8d0f6144b842d597f23b264c77b5b1.cow,/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/gpu-control.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-gpu-control-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "gpu_bridge=1"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1288767,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "worker_pids": [
+        "1290456",
+        "1290881",
+        "1290939",
+        "1291026",
+        "1291375"
+      ],
+      "device_ioctl_pids": [
+        "1290456",
+        "1290881",
+        "1290939",
+        "1291026",
+        "1291375"
+      ],
+      "device_ioctl_count": 40,
+      "trace_sha256": "fbf58003bea90927dcc7fb8136c618f1bf68548b3cf08e7a46d03fb17df2cd40",
+      "inputs_unchanged": true
+    },
+    "native-after": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/native-after/syscalls.strace",
+        "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/gpu-guest-probe",
+        "/dev/nvidia",
+        "4"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1295719,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "worker_pids": [],
+      "device_ioctl_pids": [
+        "1295734",
+        "1295788",
+        "1295789",
+        "1295790",
+        "1295791",
+        "1295818",
+        "1295820",
+        "1295822",
+        "1295826"
+      ],
+      "device_ioctl_count": 41,
+      "trace_sha256": "ca7a5143c23e01a788f324c2bc41afe670121cdcdc4432ca19f7af83015c0ad0",
+      "inputs_unchanged": true
+    }
+  },
+  "limitations": [
+    "NVIDIA control and REGISTER_FD subset only; no device mmap or CUDA",
+    "one GPU identity per guest mm; cross-group fd use fails EXDEV",
+    "device waits disable one guest CPU interrupts; blocking GPU commands unavailable",
+    "traced functional test, not a performance comparison",
+    "UML stub internal isolation is still incomplete"
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "gpu_count": 4,
+  "sha256": {
+    "/root/harddind-rebuild/gpu-fd-kernel-v2": "999505d9e7b04864abda446e92d0f9edbf9fbe7a073d6d30fc91e1d531e30aed",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/gpu-control.ext4": "dd475395301e2572bbbad4887089566009449aaa0f8a63a386df06e0a0d04a2a",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/gpu-guest-probe": "5f62ebcae58a902bf783564c9462924834b0a24dbdccff8e3583240f9b475931",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/0013-um-gpu-register-fd.patch": "9231d3588150a5fbd69b5a6ad3b07919a6a5db4fb03e0ed50b9bd33cd8372c19",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/gpu_probe_checks.py": "8d8e73274ede1e9bfa9bd6c7da537e597031971660d86586c8e676cd5a74b318",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/0014-um-check-usercopy-read-permission.patch": "f7a0f04e782b0a7db12912f358bc1e6ab111e649a3069ffeda40eb11c79ffa9a",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/sources.lock.json": "988ece9f47750560f5971a4d7fde3773091d8c6e4aae0219155a19156883e26e",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/0012-um-gpu-control-transport.patch": "d8bfd9c38f05b56547cb8c5900fc96090fc16c7fcb6ec34aba58311a8e7a6af5",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/run-gpu-control.py": "24af392e2113939344d5bcbd92144084c30007d06984e12d0854a55f55ac8918",
+    "/root/harddind-rebuild/results/gpu-fd-v3-after-uaccess/sources/gpu_fd_probe.c": "6f03a59818f18d287d6f52675580e9fbde4724c564702fe85c500b5b3cc017ee"
+  }
+}
