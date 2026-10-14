@@ -60,7 +60,8 @@
         "starpub-2026-10-14-shared-locks/shared-flock-v1.json",
         "starpub-2026-10-14-shared-locks/shared-flock-v2.json",
         "starpub-2026-10-14-shared-locks/profile-v1-analysis.json",
-        "starpub-2026-10-14-shared-inline/shared-inline-v2.json"
+        "starpub-2026-10-14-shared-inline/shared-inline-v2.json",
+        "starpub-2026-10-14-shared-inline/inline-abba-v1.json"
       ],
       "same_host_and_resources": false,
       "remaining": [

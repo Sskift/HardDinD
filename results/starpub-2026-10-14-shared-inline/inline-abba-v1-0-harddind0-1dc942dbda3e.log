@@ -1,0 +1,4 @@
+[2026-10-14T10:45:11Z INFO  virtiofsd] Waiting for vhost-user socket connection...
+[2026-10-14T10:45:11Z INFO  virtiofsd] Client connected, servicing requests
+[2026-10-14T10:45:28Z INFO  virtiofsd] Client disconnected, shutting down
+[2026-10-14T10:45:28Z INFO  virtiofsd::retry_queue] HARDDIND_LOCK_QUEUE completed=6000 interrupted=0 peak=1 remaining=0
