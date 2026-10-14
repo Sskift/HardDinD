@@ -33,4 +33,24 @@ python3 scripts/run-gpu-control.py /root/harddind-rebuild \
   --kernel /path/to/immutable/gpu-kernel --name new-gpu-control
 ```
 
-构建基于固定 Linux 7.2.10 及现有 IPI 系列补丁；不与未验证的 mprotect 实验叠加。测试使用独立磁盘、进程组和实例名，不操作 `/root/udock`。本轮仍缺内部 Docker 控制测试、实际 CUDA、显存与锁页映射、FD 转换、并行阻塞请求、进程间 FD 传递及 GPU 性能验收。
+构建基于固定 Linux 7.2.10 及现有 IPI 系列补丁；不与未验证的 mprotect 实验叠加。测试使用独立磁盘、进程组和实例名，不操作 `/root/udock`。最初的 guest 控制测试仍缺内部 Docker 验证，后续证据见下文；实际 CUDA、显存与锁页映射、内嵌 FD 转换、并行阻塞请求、进程间 FD 传递及 GPU 性能验收仍未完成。
+
+## 内部 Docker 接入与生命周期
+
+后续 `gpu-control-docker-v1` 完成 7 项检查；扩展的 `gpu-control-docker-v2` 完成 11 项检查，全部通过。持久运行器新增显式 `--gpu-control-experiment` 开关，保存到实例配置并核对重启参数，未启用时保持关闭。
+
+测试使用真实内部 Docker 的 `import`、`run --device`、`--user`、设备只读授权、`start -a` 和 `rm`：不传设备时报 ENOENT，UID 1000 打开 0600 节点时报 EACCES，只给设备读权限而尝试读写打开时报 EPERM。正常授权时完成相同的 13 项控制探针检查；容器再次启动、两个独立容器同时运行、整个 UML 实例正常关闭后重新启动，均完成同一组检查。已运行实例的 GPU 开关不一致时正确拒绝复用。两次 UML 启停均正常，内核、磁盘、探针及运行器输入哈希未变。
+
+```sh
+python3 scripts/run-gpu-control-docker.py /root/harddind-rebuild \
+  --kernel /path/to/immutable/gpu-kernel --disk /path/to/runtime.ext4 \
+  --probe /path/to/gpu-guest-probe --name new-gpu-control-docker
+```
+
+这些检查验证了内部 Docker 到真实 NVIDIA 控制设备的通路和该子集的权限行为，**没有运行内部 CUDA，也没有验证显存、UVM、GPU 计算并发或 GPU 性能**。先前缺少的内部控制测试已补上，其余缺口仍保留。
+
+## 通用回归与清理
+
+同一个新内核在默认关闭 GPU 通道时完成 `gpu-control-core-v1`：3 组映射语义、5 组线程语义以及 12 类工作负载的全部 36 个样本通过，包括写保护、固定映射替换、私有 COW、fork/文件截断、TLS、CPU 迁移和并发页表回收。没有开启 mprotect 实验。此轮允许使用宿主 CPU 0–71，未配套原生或旧内核性能对照，耗时有明显波动；不得把回归通过写成性能不退化或接近原生。
+
+核心回归退出时，清理器曾观察到一个处于 D 状态、等待文件系统写入访问的 `uml-userspace` 进程，随后在清理等待期间自行退出，未强制终止。该记录保留，不据此关闭先前的偶发退出问题。最终独立审计覆盖 14 个实验进程组和已记录的 GPU 处理进程，均无残留。原 `/root/udock` 只读健康检查仍返回 Docker 29.8.2、运行中容器 0、镜像 6。

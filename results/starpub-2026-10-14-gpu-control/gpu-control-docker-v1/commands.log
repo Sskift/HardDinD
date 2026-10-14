@@ -1,0 +1,201 @@
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 start --kernel /root/harddind-rebuild/gpu-control-kernel-v1 --disk /root/harddind-rebuild/runtime-shares-v1.ext4 --gpu-control-experiment
+{
+  "phase": "ready",
+  "run": "2761f0ad3b51",
+  "supervisor_pid": 817784,
+  "supervisor_start": "1386094075",
+  "config": {
+    "kernel": "/root/harddind-rebuild/gpu-control-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "10.0.2.3",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "abb66d3eccac7311a9e31674e4ff5205f53c21cea635e55f19b1070379d4d1e3",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": false,
+    "gpu_control_experiment": true,
+    "shares": []
+  },
+  "runtime_sha256": "d9f2d97b312bd8252a0701805fdfc1be973ebaa7d9e0ebb07f7c8b6ede212fdb",
+  "filesystems": [],
+  "guest_pid": 821249,
+  "network_pid": 821248,
+  "api_port": 38165,
+  "mconsole": "/root/harddind-rebuild/instances/gpu-control-docker-v1/uml/2761f0ad3b51/mconsole",
+  "command": [
+    "/root/harddind-rebuild/gpu-control-kernel-v1",
+    "umid=2761f0ad3b51",
+    "uml_dir=/root/harddind-rebuild/instances/gpu-control-docker-v1/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/gpu-control-docker-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=10.0.2.3",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "gpu_bridge=1"
+  ],
+  "ready_at": 1791978868.330862
+}
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker import - harddind-gpu-control:local
+sha256:dac43c6dc2e92f23227ece4d7e6ed62ab86d665a11f515d223e8310ad6804f64
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker run --rm harddind-gpu-control:local /gpu-guest-probe /dev/harddind-nvidiactl 550.120
+open: No such file or directory
+GPU_CONTROL_CHECK open fail
+
+[exit=1]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker run --name gpu-control --device=/dev/harddind-nvidiactl harddind-gpu-control:local /gpu-guest-probe /dev/harddind-nvidiactl 550.120
+GPU_CONTROL_CHECK open pass
+GPU_CONTROL_CHECK real_driver_version pass
+GPU_CONTROL_VERSION 550.120
+GPU_CONTROL_CHECK cross_page_user_pointer pass
+GPU_CONTROL_CHECK invalid_user_pointer pass
+GPU_CONTROL_BAD_SIZE result=-1 errno=22
+GPU_CONTROL_CHECK driver_rejects_bad_size pass
+GPU_CONTROL_CHECK success_after_driver_error pass
+GPU_CONTROL_CHECK dup pass
+GPU_CONTROL_CHECK close_original pass
+GPU_CONTROL_CHECK query_after_dup_close pass
+GPU_CONTROL_CHECK four_threads_same_client pass
+GPU_CONTROL_CHECK close_last_reference pass
+GPU_CONTROL_CHECK reopen_lifecycle pass
+GPU_CONTROL_CHECK independent_process_lifecycle pass
+GPU_CONTROL_END status=0 internal_cuda_verified=0
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker run --rm --device=/dev/harddind-nvidiactl --user=1000:1000 harddind-gpu-control:local /gpu-guest-probe /dev/harddind-nvidiactl 550.120
+GPU_CONTROL_CHECK open fail
+open: Permission denied
+
+[exit=1]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker run --rm --device=/dev/harddind-nvidiactl:/dev/harddind-nvidiactl:r harddind-gpu-control:local /gpu-guest-probe /dev/harddind-nvidiactl 550.120
+open: Operation not permitted
+GPU_CONTROL_CHECK open fail
+
+[exit=1]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker start -a gpu-control
+GPU_CONTROL_CHECK open pass
+GPU_CONTROL_CHECK real_driver_version pass
+GPU_CONTROL_VERSION 550.120
+GPU_CONTROL_CHECK cross_page_user_pointer pass
+GPU_CONTROL_CHECK invalid_user_pointer pass
+GPU_CONTROL_BAD_SIZE result=-1 errno=22
+GPU_CONTROL_CHECK driver_rejects_bad_size pass
+GPU_CONTROL_CHECK success_after_driver_error pass
+GPU_CONTROL_CHECK dup pass
+GPU_CONTROL_CHECK close_original pass
+GPU_CONTROL_CHECK query_after_dup_close pass
+GPU_CONTROL_CHECK four_threads_same_client pass
+GPU_CONTROL_CHECK close_last_reference pass
+GPU_CONTROL_CHECK reopen_lifecycle pass
+GPU_CONTROL_CHECK independent_process_lifecycle pass
+GPU_CONTROL_END status=0 internal_cuda_verified=0
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker rm gpu-control
+gpu-control
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 docker rm -f gpu-control
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild gpu-control-docker-v1 stop
+{
+  "phase": "stopped",
+  "run": "2761f0ad3b51",
+  "supervisor_pid": 817784,
+  "supervisor_start": "1386094075",
+  "config": {
+    "kernel": "/root/harddind-rebuild/gpu-control-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "10.0.2.3",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "abb66d3eccac7311a9e31674e4ff5205f53c21cea635e55f19b1070379d4d1e3",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": false,
+    "gpu_control_experiment": true,
+    "shares": []
+  },
+  "runtime_sha256": "d9f2d97b312bd8252a0701805fdfc1be973ebaa7d9e0ebb07f7c8b6ede212fdb",
+  "filesystems": [],
+  "guest_pid": 821249,
+  "network_pid": 821248,
+  "api_port": 38165,
+  "mconsole": "/root/harddind-rebuild/instances/gpu-control-docker-v1/uml/2761f0ad3b51/mconsole",
+  "command": [
+    "/root/harddind-rebuild/gpu-control-kernel-v1",
+    "umid=2761f0ad3b51",
+    "uml_dir=/root/harddind-rebuild/instances/gpu-control-docker-v1/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/gpu-control-docker-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=10.0.2.3",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "gpu_bridge=1"
+  ],
+  "ready_at": 1791978868.330862,
+  "guest_exit_code": 0,
+  "guest_cleanup": {
+    "process_group": 821249,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "forced_shutdown": false,
+  "network_exit_code": 0,
+  "network_cleanup": {
+    "process_group": 821248,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "filesystem_cleanup": [],
+  "stopped_at": 1791978889.6425083
+}
+
+[exit=0]

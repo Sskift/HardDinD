@@ -8,7 +8,7 @@
 
 Moby、containerd 和 runc 的源码可以修改，但删除它们的权限检查不会改变宿主系统调用的结果。获得正常 Docker API 响应，也不等于 namespace、文件系统、网络和资源隔离已经执行。
 
-UML 能在自己的内核中实现 Linux namespace、cgroup、overlayfs 和网络，因此原版 dockerd 的一部分实际功能已经运行成功。这没有证明完整兼容，更没有证明性能一致。默认补丁和第一个实验处理内核与用户进程之间的交接；新的独立实验处理同一地址空间的并行线程。它们没有跳过 guest 系统调用语义，GPU 后端仍未实现。
+UML 能在自己的内核中实现 Linux namespace、cgroup、overlayfs 和网络，因此原版 dockerd 的一部分实际功能已经运行成功。这没有证明完整兼容，更没有证明性能一致。默认补丁和第一个实验处理内核与用户进程之间的交接；新的独立实验处理同一地址空间的并行线程。它们没有跳过 guest 系统调用语义，完整 GPU 后端仍未实现。
 
 同一地址空间的线程串行化来自 `arch/um/kernel/skas/mmu.c` 的 `turnstile` 和 `arch/um/os-Linux/skas/process.c` 的用户态执行循环。删除锁会让不同线程同时修改同一份寄存器、信号栈和请求数据。正确实现需要独立线程状态、共享地址空间、TLB 更新同步、信号与退出处理；只把 `ncpus` 调大或删锁不能作为实现。
 
@@ -24,9 +24,11 @@ UML 能在自己的内核中实现 Linux namespace、cgroup、overlayfs 和网�
 
 扩大到多个线程同时 fork/exec 后，上一版并行基线出现过一次宿主进程丢失并导致 guest panic。失败记录必须保留；随后完整重测通过不等于修复已获证明。新版本增加宿主退出状态和 stub 错误码，以便继续定位偶发失败。完整性能验收仍需要控制宿主负载、应用级存储与网络对照及长期压力，不能由几项中位数代替。
 
-GPU 是另一项尚未实现的工程工作，不是因为外层没有显卡。外层四张 A100 已执行过真实 CUDA 计算；内层 `docker run --gpus all` 仍然失败。后端需要处理 NVIDIA ioctl 的内嵌指针和文件描述符、设备 mmap、UVM 与进程地址空间、锁页内存和退出清理。复制设备节点、导入驱动库镜像、在外层代跑测试都不能替代这些语义。
+GPU 是另一项尚未完成的工程工作，不是因为外层没有显卡。外层四张 A100 已执行过真实 CUDA 计算；内层 `docker run --gpus all` 仍然失败。后端需要处理 NVIDIA ioctl 的内嵌指针和文件描述符、设备 mmap、UVM 与进程地址空间、锁页内存和退出清理。复制设备节点、导入驱动库镜像、在外层代跑测试都不能替代这些语义。
 
-新的[共享地址空间 GPU 原型](../results/starpub-2026-10-14-gpu-broker/) 验证了实现接入所需的两项约束：单个独立进程或同 TGID 的两个线程处理全部 NVIDIA ioctl/mmap 时，外层真实四卡计算通过；同一份二进制切换到两个不同 TGID 的进程后，CUDA 上下文创建返回 800。普通 NVIDIA 设备的第二映射成功，UVM 第二映射均返回 EINVAL。v6 又在不共享 mm 的子进程中重新建立 124 个普通设备映射，4 个 UVM 映射仍失败；子进程继承文件引用和初始地址空间，未读写新映射，不能直接认定独立 UML 内核访问已可用。当前证据支持继续实现保留应用线程组身份的 GPU 调用通道，以及区别处理 UVM 的映射路径；没有实现 guest FD 转接、缺页、设备 VMA 或内部 GPU 计算，GPU 验收仍失败。
+新的[共享地址空间 GPU 原型](../results/starpub-2026-10-14-gpu-broker/) 验证了实现接入所需的两项约束：单个独立进程或同 TGID 的两个线程处理全部 NVIDIA ioctl/mmap 时，外层真实四卡计算通过；同一份二进制切换到两个不同 TGID 的进程后，CUDA 上下文创建返回 800。普通 NVIDIA 设备的第二映射成功，UVM 第二映射均返回 EINVAL。v6 又在不共享 mm 的子进程中重新建立 124 个普通设备映射，4 个 UVM 映射仍失败；子进程继承文件引用和初始地址空间，未读写新映射，不能直接认定独立 UML 内核访问已可用。UVM 固定版本源码要求地址等于文件偏移，原型的任意地址别名违反这一约束，不能把其 EINVAL 泛化为所有跨 mm 方案均不可行。
+
+后续 [0012 控制通道](../results/starpub-2026-10-14-gpu-control/) 已在实际 UML 内核创建专用宿主进程，转接固定控制设备的文件引用并在共享 mm 中处理平面 ioctl；guest 和内部 Docker 的版本查询与生命周期子集通过。控制节点默认关闭；目前一个 mm 仅绑定一个 guest 线程组，跨组使用返回 EXDEV，等待时关闭当前 guest CPU 中断，因此尚不能开放阻塞 CUDA 命令。内嵌 FD 转换、设备 VMA、UVM 缺页、锁页内存和内部 CUDA 均未实现，GPU 验收仍失败。
 
 评估过的现成替代也不能直接声明达标：gVisor 提供 nvproxy，但它支持的驱动版本和设备接口有明确范围；其 Docker-in-gVisor 文档还要求关闭 dockerd 的 iptables/ip6tables 并调整网络配置。它可作为实现参考，不能直接替换完整 Docker 的目标。参见 [gVisor GPU 支持](https://gvisor.dev/docs/user_guide/gpu/) 和 [Docker in gVisor](https://gvisor.dev/docs/tutorials/docker-in-gvisor/)。
 

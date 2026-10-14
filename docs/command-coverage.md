@@ -15,7 +15,7 @@
 | 单机网络 | bridge/DNS、网络连接断开、IPv6 地址、guest 内 published port/port inspect；IPv4 HTTPS、显式外层 TCP/UDP 转发与删除；MTU 配置及用户覆盖；可选补丁的 IPv4 自动发布、冲突回滚、并发发布与正常重启恢复 | IPv6 流量、不同外层地址复用同一端口、多种网络驱动、异常恢复；已测负载仍明显慢于原生 |
 | 管理 | events、context、system df、container/volume prune；外层原版 CLI 连接持久 daemon，stdin/TTY 和 buildx 入口 | 完整 system/builder 管理、多客户端与生命周期压力 |
 | Swarm | 单管理节点、service 副本、secret/config、scale/cleanup、overlay 上实际 VIP HTTP 请求 | 多节点、ingress 路由网格、stack、滚动更新和故障恢复 |
-| GPU | 保留真实 CUDA 计算失败检查 | NVIDIA ABI 后端、内部计算/传输校验、多 GPU、内存生命周期与性能 |
+| GPU | 保留真实 CUDA 计算失败检查；独立控制通道的 `--device`、查询和权限检查通过 | 完整 NVIDIA ABI 后端、内部计算/传输校验、多 GPU、内存生命周期与性能 |
 | 扩展 | 尚未专门验证 | Compose、plugin、checkpoint/restore 及其他上游兼容项 |
 
 每个结果文件记录各项 pass/fail/not_tested；是否实际通过，应以对应内核和 fixture 的原始报告为准。这个表描述测试范围，不把未运行的场景声明为可用。

@@ -155,7 +155,8 @@ def serve(a, work, instance):
     disk = a.disk.resolve()
     config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu,
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend'),
-              'publish_ports': a.publish_ports, 'shares': share_specs(a.share)}
+              'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment,
+              'shares': share_specs(a.share)}
     if config['shares']:
         config['virtiofsd'] = str(a.virtiofsd)
         config['virtiofsd_sha256'] = sha(a.virtiofsd)
@@ -168,6 +169,7 @@ def serve(a, work, instance):
     if config_file.exists():
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
+        previous.setdefault('gpu_control_experiment', False)
         if previous.get('shares'):
             previous.setdefault('share_profile', False)
             previous.setdefault('share_inline_flock', False)
@@ -255,6 +257,8 @@ def serve(a, work, instance):
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
                f'harddind_dns={a.dns}', f'harddind_mtu={a.mtu}',
                f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={a.mtu},mac=02:00:00:00:02:15']
+        if a.gpu_control_experiment:
+            cmd.append('gpu_bridge=1')
         for _, path, share, _ in filesystems:
             cmd += [f'virtio_uml.device={path}:26', 'harddind_share='+share_argument(share)]
         inherited = [guest_end.fileno()]
@@ -386,6 +390,7 @@ def main():
         s.add_argument('--network-batch', type=int, choices=range(1, 65), default=1, metavar='1..64', help='experimental link batch size (default 1)')
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
+        s.add_argument('--gpu-control-experiment', action='store_true', help='enable experimental NVIDIA control queries; no CUDA or GPU mmap support yet')
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
         s.add_argument('--virtiofsd', type=pathlib.Path, help='immutable filesystem backend binary for controlled comparisons')
         s.add_argument('--share-inline-flock', action='store_true', help='experimental inline nonblocking flock; requires a compatible backend')
@@ -418,16 +423,17 @@ def main():
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'shares': shares}
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment, 'shares': shares}
             if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile,
                                         share_inline_flock=a.share_inline_flock, virtiofsd=str(a.virtiofsd))
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
                '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
                '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch), '--mtu', str(a.mtu)]
         if a.publish_ports: cmd.append('--publish-ports')
+        if a.gpu_control_experiment: cmd.append('--gpu-control-experiment')
         for share in shares: cmd += ['--share', share['target']]
         cmd += ['--share-cache', a.share_cache]
         if a.share_profile: cmd.append('--share-profile')

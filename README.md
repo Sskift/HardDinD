@@ -25,7 +25,7 @@
 
 1. 系统调用和 fork/exec 的速度还未达到原生。
 2. 默认路径仍串行执行同一地址空间的线程。并行实验已通过线程正确性和 Docker 内的初步回归，但尚缺长期压力、异常退出与内部隔离验证。旧路径还复现了并发 fork/COW 缺陷；扩大测试后，上一版并行内核也曾在并发 fork/exec 中丢失宿主进程并崩溃。
-3. GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。Star­pub 外层的 4 张 A100 已完成真实计算；不能据此声称内部支持 GPU。
+3. 完整 GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。已有实验性的 UML 控制查询通道；Star­pub 外层的 4 张 A100 已完成真实计算，但内部 CUDA 仍未通过。
 4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证；可选的 Moby 补丁已验证 IPv4 自动 `docker -p` 子集。IPv6 流量、多个外层地址复用同一端口、外层目录共享语义、异常恢复与长期运行管理尚未完成。网络请求／响应性能仍明显低于原生。
 5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
 
@@ -175,3 +175,5 @@ python3 scripts/run-docker.py /root/harddind-rebuild \
 继续解决 UML 执行核心的系统调用开销、同一地址空间的并行线程和 GPU ABI；Moby 仅按实际接口缺口增加可复现补丁。端口入口的源码改动不代表完整 Docker 功能或 GPU 后端已经实现。
 
 GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、UVM、锁页内存与进程退出。仅创建 `/dev/nvidia*`、转发 `nvidia-smi` 或在外层代跑计算，均不能满足目标。
+
+新的 [UML GPU 控制通道](results/starpub-2026-10-14-gpu-control/) 已在实际 guest 和内部 Docker 中完成真实 NVIDIA 版本查询、跨页参数、错误恢复、多线程及描述符生命周期检查。构建使用 `make kernel-gpu-experiment`，持久实例显式传入 `--gpu-control-experiment` 才会启用 `/dev/harddind-nvidiactl`。该节点仅开放控制查询，没有实现 CUDA、设备 mmap 或 `--gpus all` 支持；完整 GPU 验收保持失败。
