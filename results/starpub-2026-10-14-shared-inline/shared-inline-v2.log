@@ -1,0 +1,869 @@
+$ /root/harddind-rebuild/share-probe native-outer_excludes_inner
+{"ready":true,"uid":0,"gid":0,"pid":3645000}
+lock-probe-1> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-1> lock
+{"op":"lock","rc":-1,"errno":11}
+lock-probe-1> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-1> quit
+$ /root/harddind-rebuild/share-probe native-inner_excludes_outer
+{"ready":true,"uid":0,"gid":0,"pid":3645001}
+lock-probe-2> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-2> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-2> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-2> quit
+$ /root/harddind-rebuild/share-probe native-shared_readers
+{"ready":true,"uid":0,"gid":0,"pid":3645002}
+lock-probe-3> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-3> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-shared_readers
+{"ready":true,"uid":0,"gid":0,"pid":3645003}
+lock-probe-4> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-4> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+lock-probe-4> quit
+lock-probe-3> quit
+$ /root/harddind-rebuild/share-probe native-independent_opens
+{"ready":true,"uid":0,"gid":0,"pid":3645004}
+lock-probe-5> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-5> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-5> open-second
+{"op":"open-second","rc":0,"errno":0}
+lock-probe-5> lock-second
+{"op":"lock-second","rc":-1,"errno":11}
+lock-probe-5> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-5> lock-second
+{"op":"lock-second","rc":0,"errno":0}
+lock-probe-5> close-second
+{"op":"close-second","rc":0,"errno":0}
+lock-probe-5> quit
+$ /root/harddind-rebuild/share-probe native-dup_last_close
+{"ready":true,"uid":0,"gid":0,"pid":3645005}
+lock-probe-6> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-6> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-6> dup
+{"op":"dup","rc":0,"errno":0}
+lock-probe-6> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-6> close-second
+{"op":"close-second","rc":0,"errno":0}
+lock-probe-6> quit
+$ /root/harddind-rebuild/share-probe native-close_dup_keeps_lock
+{"ready":true,"uid":0,"gid":0,"pid":3645006}
+lock-probe-7> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-7> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-7> dup
+{"op":"dup","rc":0,"errno":0}
+lock-probe-7> close-second
+{"op":"close-second","rc":0,"errno":0}
+lock-probe-7> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-7> quit
+$ /root/harddind-rebuild/share-probe native-fork_last_close
+{"ready":true,"uid":0,"gid":0,"pid":3645015}
+lock-probe-8> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-8> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-8> fork-hold
+{"op":"fork-hold","rc":0,"errno":0}
+lock-probe-8> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-8> release-child
+{"op":"release-child","rc":0,"errno":0}
+lock-probe-8> quit
+$ /root/harddind-rebuild/share-probe native-close_releases
+{"ready":true,"uid":0,"gid":0,"pid":3645017}
+lock-probe-9> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-9> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-9> quit
+$ /root/harddind-rebuild/share-probe native-kill_releases
+{"ready":true,"uid":0,"gid":0,"pid":3645034}
+lock-probe-10> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-10> lock
+{"op":"lock","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-blocking_inner
+{"ready":true,"uid":0,"gid":0,"pid":3645035}
+lock-probe-11> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-11> signal-ready
+{"op":"signal-ready","rc":0,"errno":0}
+lock-probe-11> wait
+{"op":"wait","rc":0,"errno":0}
+lock-probe-11> quit
+$ /root/harddind-rebuild/share-probe native-blocking_outer
+{"ready":true,"uid":0,"gid":0,"pid":3645068}
+lock-probe-12> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-12> lock
+{"op":"lock","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-blocking_outer
+{"ready":true,"uid":0,"gid":0,"pid":3645069}
+lock-probe-13> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-13> wait
+lock-probe-12> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-12> lock
+{"op":"lock","rc":-1,"errno":11}
+lock-probe-13> quit
+lock-probe-12> quit
+$ /root/harddind-rebuild/share-probe native-signal_cancels_wait
+{"ready":true,"uid":0,"gid":0,"pid":3645118}
+lock-probe-14> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-14> signal-ready
+{"op":"signal-ready","rc":0,"errno":0}
+lock-probe-14> wait
+{"op":"wait","rc":-1,"errno":4}
+lock-probe-14> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-14> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-14> quit
+$ /root/harddind-rebuild/share-probe native-kill_cancels_wait
+{"ready":true,"uid":0,"gid":0,"pid":3645159}
+lock-probe-15> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-15> signal-ready
+{"op":"signal-ready","rc":0,"errno":0}
+lock-probe-15> wait
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645240}
+lock-probe-16> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-16> lock
+{"op":"lock","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645242}
+lock-probe-17> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-17> wait
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645297}
+lock-probe-18> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-18> wait
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645315}
+lock-probe-19> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-19> wait
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645364}
+lock-probe-20> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-20> wait
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645397}
+lock-probe-21> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-21> wait
+$ /root/harddind-rebuild/share-probe native-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":3645414}
+lock-probe-22> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-22> wait
+lock-probe-16> read
+{"op":"read","rc":0,"byte":65}
+lock-probe-16> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-17> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-18> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-19> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-20> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-21> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-22> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-22> quit
+lock-probe-21> quit
+lock-probe-20> quit
+lock-probe-19> quit
+lock-probe-18> quit
+lock-probe-17> quit
+lock-probe-16> quit
+$ /root/harddind-rebuild/share-probe native-rename_keeps_lock
+{"ready":true,"uid":0,"gid":0,"pid":3645463}
+lock-probe-23> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-23> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-23> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-23> quit
+$ /root/harddind-rebuild/share-probe native-unlink_keeps_lock
+{"ready":true,"uid":0,"gid":0,"pid":3645464}
+lock-probe-24> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-24> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-24> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-24> quit
+$ /root/harddind-rebuild/share-probe native-downgrade
+{"ready":true,"uid":0,"gid":0,"pid":3645473}
+lock-probe-25> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-25> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-25> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+lock-probe-25> quit
+$ /root/harddind-rebuild/share-probe native-upgrade_failure_drops_shared
+{"ready":true,"uid":0,"gid":0,"pid":3645474}
+lock-probe-26> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-26> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+lock-probe-26> lock
+{"op":"lock","rc":-1,"errno":11}
+lock-probe-26> quit
+$ /root/harddind-rebuild/share-probe native-readonly_bind_flock
+{"ready":true,"uid":0,"gid":0,"pid":3645475}
+lock-probe-27> open-read
+{"op":"open-read","rc":0,"errno":0}
+lock-probe-27> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-27> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-27> quit
+$ /root/harddind-rebuild/share-probe native-posix_outer_excludes_inner
+{"ready":true,"uid":0,"gid":0,"pid":3645484}
+lock-probe-28> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-28> posix-lock
+{"op":"posix-lock","rc":-1,"errno":11}
+lock-probe-28> quit
+$ /root/harddind-rebuild/share-probe native-posix_inner_excludes_outer
+{"ready":true,"uid":0,"gid":0,"pid":3645485}
+lock-probe-29> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-29> posix-lock
+{"op":"posix-lock","rc":0,"errno":0}
+lock-probe-29> quit
+$ /root/harddind-rebuild/share-probe native-bench-before
+{"ready":true,"uid":0,"gid":0,"pid":3645502}
+lock-probe-30> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-30> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.001459800}
+lock-probe-30> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.001446124}
+lock-probe-30> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.001458393}
+lock-probe-30> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 start --kernel /root/harddind-rebuild/virtiofs-interrupt-kernel-v1 --disk /root/harddind-rebuild/runtime-shares-v1.ext4 --dns 1.1.1.1 --publish-ports --share /root/harddind-rebuild/shares/shared-inline-v2 --share-cache never --virtiofsd /root/harddind-rebuild/virtiofsd-inline-v1 --share-inline-flock
+{
+  "phase": "ready",
+  "run": "a3a8b93bb697",
+  "supervisor_pid": 3645520,
+  "supervisor_start": "1385643304",
+  "config": {
+    "kernel": "/root/harddind-rebuild/virtiofs-interrupt-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "c53fc2a0b949143109281151d3073c2ac9a18aff976f7345d43dfe0cfeba8403",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": true,
+    "shares": [
+      {
+        "source": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "target": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "tag": "harddind0"
+      }
+    ],
+    "virtiofsd": "/root/harddind-rebuild/virtiofsd-inline-v1",
+    "virtiofsd_sha256": "82743fb83d42c5e63633b607f26fb84a2ed2b8a20e7ca2b1375272f5d54d1790",
+    "share_inline_flock": true,
+    "share_cache": "never",
+    "share_profile": false,
+    "port_driver_sha256": "9383724216fcc46105f089ab91cf6f66dfdf77b67eeca32b30c49465882658f2"
+  },
+  "runtime_sha256": "032b2f6118aa1eb1b0cf4c00d9bd55eaad70082f51e4cb404d7bd9a013ef63ac",
+  "filesystems": [
+    {
+      "pid": 3647878,
+      "share": {
+        "source": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "target": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "tag": "harddind0"
+      },
+      "command": [
+        "/root/harddind-rebuild/virtiofsd-inline-v1",
+        "--socket-path",
+        "/root/harddind-rebuild/instances/shared-inline-v2/harddind0.sock",
+        "--shared-dir",
+        "/root/harddind-rebuild/shares/shared-inline-v2",
+        "--tag",
+        "harddind0",
+        "--sandbox",
+        "chroot",
+        "--cache",
+        "never",
+        "--inode-file-handles=never",
+        "--xattr",
+        "--posix-acl",
+        "--announce-submounts",
+        "--shared-flock",
+        "--thread-pool-size",
+        "4",
+        "--inline-flock"
+      ]
+    }
+  ],
+  "guest_pid": 3647908,
+  "network_pid": 3647895,
+  "api_port": 33049,
+  "mconsole": "/root/harddind-rebuild/instances/shared-inline-v2/uml/a3a8b93bb697/mconsole",
+  "command": [
+    "/root/harddind-rebuild/virtiofs-interrupt-kernel-v1",
+    "umid=a3a8b93bb697",
+    "uml_dir=/root/harddind-rebuild/instances/shared-inline-v2/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/shared-inline-v2/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "virtio_uml.device=/root/harddind-rebuild/instances/shared-inline-v2/harddind0.sock:26",
+    "harddind_share=harddind0:L3Jvb3QvaGFyZGRpbmQtcmVidWlsZC9zaGFyZXMvc2hhcmVkLWlubGluZS12Mg==",
+    "ssl0=fd:7",
+    "harddind_ports=1"
+  ],
+  "ready_at": 1791974361.1109052
+}
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker import /root/harddind-rebuild/results/shared-inline-v2-rootfs.tar harddind-lock-probe:local
+sha256:c84473931ce3a1f8521d137d3a4b0f7b7361fed4abc19c6f91473017382fcbf1
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker version --format '{{json .Server}}'
+{"Platform":{"Name":""},"Version":"29.8.2-harddind.1","ApiVersion":"1.56","MinAPIVersion":"1.40","Os":"linux","Arch":"amd64","Components":[{"Name":"Engine","Version":"29.8.2-harddind.1","Details":{"ApiVersion":"1.56","Arch":"amd64","BuildTime":"Wed Sep 30 19:11:51 2026","Experimental":"false","GitCommit":"8af9fe3a36bab3e039862a2ab1cef1880c9b4d03-harddind-port-7f3ab1e0a1fa","GoVersion":"go1.26.8","KernelVersion":"7.2.10","MinAPIVersion":"1.40","Module":"github.com/moby/moby/v2","ModuleVersion":"v2.0.0+unknown","Os":"linux"}},{"Name":"containerd","Version":"v2.3.6","Details":{"GitCommit":"ee2735368117d2eb259779949d5e75cdafec9761"}},{"Name":"runc","Version":"1.4.3","Details":{"GitCommit":"bb14dabeb7185bb72c8c86735d090dcb20f36587"}},{"Name":"docker-init","Version":"0.19.0","Details":{"GitCommit":""}}],"GitCommit":"8af9fe3a36bab3e039862a2ab1cef1880c9b4d03-harddind-port-7f3ab1e0a1fa","GoVersion":"go1.26.8","KernelVersion":"7.2.10","BuildTime":"2026-09-30T19:11:51.000000000+00:00"}
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-31 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-outer_excludes_inner
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-31> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-31> lock
+{"op":"lock","rc":-1,"errno":11}
+lock-probe-31> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-31> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-32 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-inner_excludes_outer
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-32> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-32> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-32> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-32> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-33 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-shared_readers
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-33> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-33> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-34 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-shared_readers
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-34> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-34> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+lock-probe-34> quit
+lock-probe-33> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-35 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-independent_opens
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-35> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-35> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-35> open-second
+{"op":"open-second","rc":0,"errno":0}
+lock-probe-35> lock-second
+{"op":"lock-second","rc":-1,"errno":11}
+lock-probe-35> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-35> lock-second
+{"op":"lock-second","rc":0,"errno":0}
+lock-probe-35> close-second
+{"op":"close-second","rc":0,"errno":0}
+lock-probe-35> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-36 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-dup_last_close
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-36> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-36> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-36> dup
+{"op":"dup","rc":0,"errno":0}
+lock-probe-36> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-36> close-second
+{"op":"close-second","rc":0,"errno":0}
+lock-probe-36> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-37 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-close_dup_keeps_lock
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-37> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-37> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-37> dup
+{"op":"dup","rc":0,"errno":0}
+lock-probe-37> close-second
+{"op":"close-second","rc":0,"errno":0}
+lock-probe-37> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-37> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-38 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-fork_last_close
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-38> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-38> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-38> fork-hold
+{"op":"fork-hold","rc":0,"errno":0}
+lock-probe-38> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-38> release-child
+{"op":"release-child","rc":0,"errno":0}
+lock-probe-38> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-39 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-close_releases
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-39> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-39> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-39> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-40 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-kill_releases
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-40> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-40> lock
+{"op":"lock","rc":0,"errno":0}
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker kill --signal=KILL lock-probe-40
+lock-probe-40
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-41 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-blocking_inner
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-41> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-41> signal-ready
+{"op":"signal-ready","rc":0,"errno":0}
+lock-probe-41> wait
+{"op":"wait","rc":0,"errno":0}
+lock-probe-41> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-42 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-blocking_outer
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-42> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-42> lock
+{"op":"lock","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe docker-blocking_outer
+{"ready":true,"uid":0,"gid":0,"pid":3653827}
+lock-probe-43> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-43> wait
+lock-probe-42> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-42> lock
+{"op":"lock","rc":-1,"errno":11}
+lock-probe-43> quit
+lock-probe-42> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-44 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-signal_cancels_wait
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-44> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-44> signal-ready
+{"op":"signal-ready","rc":0,"errno":0}
+lock-probe-44> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker kill --signal=USR1 lock-probe-44
+lock-probe-44
+
+[exit=0]
+{"op":"wait","rc":-1,"errno":4}
+lock-probe-44> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-44> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-44> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-45 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-kill_cancels_wait
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-45> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-45> signal-ready
+{"op":"signal-ready","rc":0,"errno":0}
+lock-probe-45> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker kill --signal=KILL lock-probe-45
+lock-probe-45
+
+[exit=0]
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-46 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-46> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-46> lock
+{"op":"lock","rc":0,"errno":0}
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-47 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-47> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-47> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-48 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-48> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-48> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-49 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-49> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-49> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-50 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-50> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-50> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-51 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-51> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-51> wait
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-52 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-six_waiters_no_starvation
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-52> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-52> wait
+lock-probe-46> read
+{"op":"read","rc":0,"byte":65}
+lock-probe-46> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-47> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-48> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-49> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-50> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-51> unlock
+{"op":"unlock","rc":0,"errno":0}
+{"op":"wait","rc":0,"errno":0}
+lock-probe-52> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-52> quit
+lock-probe-51> quit
+lock-probe-50> quit
+lock-probe-49> quit
+lock-probe-48> quit
+lock-probe-47> quit
+lock-probe-46> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-53 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-rename_keeps_lock
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-53> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-53> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-53> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-53> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-54 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-unlink_keeps_lock
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-54> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-54> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-54> close
+{"op":"close","rc":0,"errno":0}
+lock-probe-54> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-55 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-downgrade
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-55> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-55> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-55> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+lock-probe-55> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-56 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-upgrade_failure_drops_shared
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-56> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-56> lock-shared
+{"op":"lock-shared","rc":0,"errno":0}
+lock-probe-56> lock
+{"op":"lock","rc":-1,"errno":11}
+lock-probe-56> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-57 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share,readonly harddind-lock-probe:local /share-probe /share/docker-readonly_bind_flock
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-57> open-read
+{"op":"open-read","rc":0,"errno":0}
+lock-probe-57> lock
+{"op":"lock","rc":0,"errno":0}
+lock-probe-57> unlock
+{"op":"unlock","rc":0,"errno":0}
+lock-probe-57> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-58 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-posix_outer_excludes_inner
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-58> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-58> posix-lock
+{"op":"posix-lock","rc":0,"errno":0}
+lock-probe-58> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-59 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-posix_inner_excludes_outer
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-59> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-59> posix-lock
+{"op":"posix-lock","rc":0,"errno":0}
+lock-probe-59> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-60 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-bench-first
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-60> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-60> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.092109568}
+lock-probe-60> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.127197184}
+lock-probe-60> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.153810176}
+lock-probe-60> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 docker run --rm -i --name lock-probe-61 --mount type=bind,src=/root/harddind-rebuild/shares/shared-inline-v2,dst=/share harddind-lock-probe:local /share-probe /share/docker-bench-second
+{"ready":true,"uid":0,"gid":0,"pid":1}
+lock-probe-61> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-61> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.156864512}
+lock-probe-61> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.170970112}
+lock-probe-61> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.292098816}
+lock-probe-61> quit
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-inline-v2 stop
+{
+  "phase": "stopped",
+  "run": "a3a8b93bb697",
+  "supervisor_pid": 3645520,
+  "supervisor_start": "1385643304",
+  "config": {
+    "kernel": "/root/harddind-rebuild/virtiofs-interrupt-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "c53fc2a0b949143109281151d3073c2ac9a18aff976f7345d43dfe0cfeba8403",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": true,
+    "shares": [
+      {
+        "source": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "target": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "tag": "harddind0"
+      }
+    ],
+    "virtiofsd": "/root/harddind-rebuild/virtiofsd-inline-v1",
+    "virtiofsd_sha256": "82743fb83d42c5e63633b607f26fb84a2ed2b8a20e7ca2b1375272f5d54d1790",
+    "share_inline_flock": true,
+    "share_cache": "never",
+    "share_profile": false,
+    "port_driver_sha256": "9383724216fcc46105f089ab91cf6f66dfdf77b67eeca32b30c49465882658f2"
+  },
+  "runtime_sha256": "032b2f6118aa1eb1b0cf4c00d9bd55eaad70082f51e4cb404d7bd9a013ef63ac",
+  "filesystems": [
+    {
+      "pid": 3647878,
+      "share": {
+        "source": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "target": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "tag": "harddind0"
+      },
+      "command": [
+        "/root/harddind-rebuild/virtiofsd-inline-v1",
+        "--socket-path",
+        "/root/harddind-rebuild/instances/shared-inline-v2/harddind0.sock",
+        "--shared-dir",
+        "/root/harddind-rebuild/shares/shared-inline-v2",
+        "--tag",
+        "harddind0",
+        "--sandbox",
+        "chroot",
+        "--cache",
+        "never",
+        "--inode-file-handles=never",
+        "--xattr",
+        "--posix-acl",
+        "--announce-submounts",
+        "--shared-flock",
+        "--thread-pool-size",
+        "4",
+        "--inline-flock"
+      ]
+    }
+  ],
+  "guest_pid": 3647908,
+  "network_pid": 3647895,
+  "api_port": 33049,
+  "mconsole": "/root/harddind-rebuild/instances/shared-inline-v2/uml/a3a8b93bb697/mconsole",
+  "command": [
+    "/root/harddind-rebuild/virtiofs-interrupt-kernel-v1",
+    "umid=a3a8b93bb697",
+    "uml_dir=/root/harddind-rebuild/instances/shared-inline-v2/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/shared-inline-v2/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "virtio_uml.device=/root/harddind-rebuild/instances/shared-inline-v2/harddind0.sock:26",
+    "harddind_share=harddind0:L3Jvb3QvaGFyZGRpbmQtcmVidWlsZC9zaGFyZXMvc2hhcmVkLWlubGluZS12Mg==",
+    "ssl0=fd:7",
+    "harddind_ports=1"
+  ],
+  "ready_at": 1791974361.1109052,
+  "guest_exit_code": 0,
+  "guest_cleanup": {
+    "process_group": 3647908,
+    "forced_cleanup": false,
+    "initial_live_pids": [
+      3653466
+    ],
+    "initial_zombie_pids": [],
+    "initial_processes": [
+      {
+        "pid": 3653466,
+        "state": "R",
+        "ppid": 1,
+        "process_group": 3647908,
+        "start_time_ticks": "1385646922",
+        "comm": "uml-userspace",
+        "wchan": "0",
+        "exe_errno": 2
+      }
+    ],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "forced_shutdown": false,
+  "port_driver": {
+    "info_seen": true,
+    "error": null,
+    "remaining_ports": []
+  },
+  "network_exit_code": 0,
+  "network_cleanup": {
+    "process_group": 3647895,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "filesystem_cleanup": [
+    {
+      "share": {
+        "source": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "target": "/root/harddind-rebuild/shares/shared-inline-v2",
+        "tag": "harddind0"
+      },
+      "exit_code": 0,
+      "process_group": 3647878,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    }
+  ],
+  "stopped_at": 1791974424.3591204
+}
+
+[exit=0]
+$ /root/harddind-rebuild/share-probe native-bench-after
+{"ready":true,"uid":0,"gid":0,"pid":3663463}
+lock-probe-62> open
+{"op":"open","rc":0,"errno":0}
+lock-probe-62> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.001748120}
+lock-probe-62> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.001733979}
+lock-probe-62> bench-lock 1000
+{"op":"bench-lock","rc":0,"errno":0,"iterations":1000,"seconds":0.001746714}
+lock-probe-62> quit
