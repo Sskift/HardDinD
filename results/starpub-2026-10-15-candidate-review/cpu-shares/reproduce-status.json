@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "note": "exit0 confirms false-pass counterexamples, NOT passing runtime acceptance",
+  "observed_at": "2026-10-14T20:20:09.223472+00:00"
+}

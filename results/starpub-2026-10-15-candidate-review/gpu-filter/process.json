@@ -1,0 +1,23 @@
+{
+  "observed_at": "2026-10-14T20:19:42.108599+00:00",
+  "termination": "owner SIGTERM exact hung filter test processes, not a pass",
+  "processes": {
+    "2437518": {
+      "cmd": "/root/harddind-rebuild/arkclaude/round5/gpu-mapping-repair/.work/seccomp-filter-test/probe-b1-a1 ",
+      "status": "Name:\tprobe-b1-a1\nUmask:\t0022\nState:\tS (sleeping)\nTgid:\t2437518\nNgid:\t0\nPid:\t2437518\nPPid:\t2391922\nTracerPid:\t0\nUid:\t0\t0\t0\t0\nGid:\t0\t0\t0\t0\nFDSize:\t64\nGroups:\t0 \nNStgid:\t2437518\nNSpid:\t2437518\nNSpgid:\t2391922\nNSsid:\t2391909\nVmPeak:\t    2844 kB\nVmSize:\t    2844 kB\nVmLck:\t       0 kB\nVmPin:\t       0 kB\nVmHWM:\t     984 kB\nVmRSS:\t     984 kB\nRssAnon:\t      88 kB\nRssFile:\t     896 kB\nRssShmem:\t       0 kB\nVmData:\t     292 kB\nVmStk:\t     132 kB\nVmExe:\t       8 kB\nVmLib:\t    1796 kB\nVmPTE:\t      48 kB\nVmSwap:\t       0 kB\nHugetlbPages:\t       0 kB\nCoreDumping:\t0\nTHP_enabled:\t1\nThreads:\t1\nSigQ:\t1/1029507\nSigPnd:\t0000000000000000\nShdPnd:\t0000000000000000\nSigBlk:\t0000000000000000\nSigIgn:\t0000000000000000\nSigCgt:\t0000000000000000\nCapInh:\t0000000000000000\nCapPrm:\t00000000a80425fb\nCapEff:\t00000000a80425fb\nCapBnd:\t00000000a80425fb\nCapAmb:\t0000000000000000\nNoNewPrivs:\t0\nSeccomp:\t2\nSeccomp_filters:\t1\nSpeculation_Store_Bypass:\tthread vulnerable\nSpeculationIndirectBranch:\tconditional enabled\nCpus_allowed:\tff,ffffffff,ffffffff\nCpus_allowed_list:\t0-71\nMems_allowed:\t00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000003\nMems_allowed_list:\t0-1\nvoluntary_ctxt_switches:\t22\nnonvoluntary_ctxt_switches:\t31\n",
+      "wchan": "do_wait",
+      "stat": "2437518 (probe-b1-a1) S 2391922 2391922 2391909 0 -1 4194304 110 211 0 0 0 0 0 0 20 0 1 0 1389107036 2912256 246 18446744073709551615 94717539962880 94717539967649 140725519952368 0 0 0 0 0 0 1 0 0 17 64 0 0 0 0 0 94717539978544 94717539979281 94718459465728 140725519955604 140725519955701 140725519955701 140725519957911 0\n"
+    },
+    "2437562": {
+      "cmd": "/root/harddind-rebuild/arkclaude/round5/gpu-mapping-repair/.work/seccomp-filter-test/probe-b1-a1 ",
+      "status": "Name:\tprobe-b1-a1\nUmask:\t0022\nState:\tS (sleeping)\nTgid:\t2437562\nNgid:\t0\nPid:\t2437562\nPPid:\t2437518\nTracerPid:\t0\nUid:\t0\t0\t0\t0\nGid:\t0\t0\t0\t0\nFDSize:\t64\nGroups:\t0 \nNStgid:\t2437562\nNSpid:\t2437562\nNSpgid:\t2391922\nNSsid:\t2391909\nVmPeak:\t    2844 kB\nVmSize:\t    2844 kB\nVmLck:\t       0 kB\nVmPin:\t       0 kB\nVmHWM:\t     108 kB\nVmRSS:\t     108 kB\nRssAnon:\t     108 kB\nRssFile:\t       0 kB\nRssShmem:\t       0 kB\nVmData:\t     292 kB\nVmStk:\t     132 kB\nVmExe:\t       8 kB\nVmLib:\t    1796 kB\nVmPTE:\t      48 kB\nVmSwap:\t       0 kB\nHugetlbPages:\t       0 kB\nCoreDumping:\t0\nTHP_enabled:\t1\nThreads:\t1\nSigQ:\t1/1029507\nSigPnd:\t0000000000000000\nShdPnd:\t0000000000000000\nSigBlk:\t0000000000000000\nSigIgn:\t0000000000000000\nSigCgt:\t0000000040000000\nCapInh:\t0000000000000000\nCapPrm:\t00000000a80425fb\nCapEff:\t00000000a80425fb\nCapBnd:\t00000000a80425fb\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t2\nSeccomp_filters:\t2\nSpeculation_Store_Bypass:\tthread force mitigated\nSpeculationIndirectBranch:\tconditional force disabled\nCpus_allowed:\tff,ffffffff,ffffffff\nCpus_allowed_list:\t0-71\nMems_allowed:\t00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000003\nMems_allowed_list:\t0-1\nvoluntary_ctxt_switches:\t1\nnonvoluntary_ctxt_switches:\t0\n",
+      "wchan": "unix_stream_data_wait",
+      "stat": "2437562 (probe-b1-a1) S 2437518 2391922 2391909 0 -1 1077936192 10 0 0 0 0 0 0 0 20 0 1 0 1389107042 2912256 27 18446744073709551615 94717539962880 94717539967649 140725519952368 0 0 0 0 0 1073741824 1 0 0 17 28 0 0 0 0 0 94717539978544 94717539979281 94718459465728 140725519955604 140725519955701 140725519955701 140725519957911 0\n"
+    }
+  },
+  "sha256": {
+    "tests/models/seccomp_filter_model.c": "82f942ead07645dbf7ee57cbc5c99bfab180bdd19587f05a987c52850d3af51f",
+    "tests/models/build_seccomp_filter_test.py": "908aa2bc9ffebff6097fdf13b58a49f721b751b635b90535347e510629aa4014",
+    ".work/linux-7.2.10/arch/um/kernel/skas/stub_exe.c": "4766c98906c7e6dc466ca781ef832c5a834c9ef5885582d72b42ca26f4d269d2"
+  }
+}

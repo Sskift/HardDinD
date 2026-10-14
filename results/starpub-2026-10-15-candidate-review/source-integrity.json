@@ -1,0 +1,22 @@
+{
+  "archived_at": "2026-10-14T20:20:28.221239+00:00",
+  "scope": "unaccepted candidate snapshots and failed models; no guest/Docker/GPU compute/performance acceptance",
+  "sha256": {
+    "cpu-shares/counterexamples.json": "f00c7dbfd72f5afbc3bcdd3fa94636e12d3ef1e735a11a85425a2128859986ed",
+    "cpu-shares/reproduce-status.json": "e0abd0caad72d24e991af90ac360059128717dcdce4cf4137e3e86e403e7c144",
+    "cpu-shares/reproduce.py": "c35506d5fc178f77077149382908a58ac2e3253dd4333c6e0381cf0c64ceb04d",
+    "cpu-shares/reproduce.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu-shares/reproduce.stdout": "d44c4594f286645f7bf30efbdc2550790b8c2ed606f72cc4d669d236b9ac74d2",
+    "cpu-shares/scripts/cpu_share_checks.py": "e3368c83a15ca0a1bc90ddb3ec39e7f37b99efe7f253a8d14f0028b6300e90c1",
+    "cpu-shares/scripts/run-cpu-shares.py": "56e550ca9fdba24903a270a3668d66c939ad14f27c1e48bcc6d64ec2b0f6b656",
+    "cpu-shares/tests/test_cpu_share_checks.py": "f6f5eb717a6d30d25f4f550de21d20ec027d44224f0e56aab444f944b0b7d5bf",
+    "fp-lifetime-v2/REVIEW.md": "4a8e0140fb9872da128b08f7e5e67f78632e0ab66b93f7b6d977bad79a8b6cf6",
+    "fp-lifetime-v2/hung-model.json": "ce6e7ca07879a227c2f3101ad63d8099cd933576df2bcfd3f227b2221ef6a83a",
+    "fp-lifetime-v2/kernel/experiments/0018-um-lazy-xstate.patch": "bdbde34b70cfd5922cd2d5c42ac771324c4e392c8a6cb11eefb3ccf37f1483ab",
+    "fp-lifetime-v2/src/fp_model.c": "a9f418e1d40714fe758fcb9399cc259fd6edbd6e1e1444f0aaaa8f3b3c554bb1",
+    "gpu-filter/build_seccomp_filter_test.py": "908aa2bc9ffebff6097fdf13b58a49f721b751b635b90535347e510629aa4014",
+    "gpu-filter/process.json": "470313f6cd3bcc29da69ef68eccaf73dca1f9e7d99680095e13a35e84a361040",
+    "gpu-filter/seccomp_filter_model.c": "82f942ead07645dbf7ee57cbc5c99bfab180bdd19587f05a987c52850d3af51f",
+    "gpu-filter/stub_exe.c": "4766c98906c7e6dc466ca781ef832c5a834c9ef5885582d72b42ca26f4d269d2"
+  }
+}
