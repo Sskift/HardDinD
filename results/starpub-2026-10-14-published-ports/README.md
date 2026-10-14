@@ -8,7 +8,11 @@
 
 第一版 `publish-ports-v1` 在冲突重试时失败：首次 start 正确报告 host port unavailable，但失败回滚删除了 `NetworkSettings.Networks` 中的 bridge；第二次 start 返回成功，`NetworkSettings.Ports` 却为空。HostConfig 中的端口请求仍存在。`0002-retain-network-on-start-failure.patch` 保留失败连接的原配置，让后续 start 重试；默认 bridge、自定义 bridge、多端口回滚分别回归通过。失败结果没有覆盖或计为通过。
 
+同一自定义 Moby 二进制另跑现有 Docker 命令套件（此套件没有启用外层端口驱动）：`docker-moby-ports-v2` 为 52 pass、2 fail、2 not_tested，56 项完整返回、guest 正常退出。失败为内部 GPU 计算，以及 context 测试将版本字符串写死为 `29.8.2`，与补丁版本 `29.8.2-harddind.1` 不符。context 检查改成比较真实 daemon ID 后，`docker-moby-context-v1` 的定向重测通过；其余 55 项保持 not_tested，不能把定向运行当成完整重测。默认 seccomp、OOM/pids 限制、动态资源更新、映射语义、BuildKit 和单机 Swarm 等在前一完整运行中通过。外层端口驱动启用时的覆盖范围仍以上面的 15 项为准。
+
 `results/*.json` 是检查结果，`results/*.log` 包含真实 CLI 命令与输出；`instances/` 保存每轮 guest/network 日志、请求响应和退出清理记录。`build-v1.log`、`build-v2.log` 保存 fixture 中的二进制哈希；内核、基础盘和脚本哈希也记录在结果中。关机后端口驱动无剩余映射，guest 与 helper 进程组清空。
+
+`cleanup-audit.json` 再次检查已保存实例与本次命令回归的进程组、活动 supervisor 和现有 udock 服务状态；没有残留实验实例，现有服务仍可响应。
 
 仍未完成：IPv6 发布，不同外层 IP 上相同端口的独立映射，临时端口遇到外层冲突时重新分配，guest 本机地址与外层地址的完整语义，Swarm ingress，多实例竞争和异常退出恢复。端口上限仍受现有 helper 的 256 条转发限制（含 API）。数据传输经过原来的网络路径；不能把自动建立映射视为性能达标。
 

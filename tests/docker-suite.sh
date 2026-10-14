@@ -160,8 +160,9 @@ check network_connect_disconnect sh -c '
  docker rm -f "$id" >/dev/null && docker network rm lab-extra >/dev/null'
 check port_inspect sh -c 'docker port lab-http 80/tcp | grep -q ":18080$"'
 check context sh -c '
+ daemon_id=$(docker info --format "{{.ID}}") && [ -n "$daemon_id" ] &&
  docker context create lab-context --docker host=unix:///run/docker.sock >/dev/null &&
- docker --context lab-context info --format "{{.ServerVersion}}" | grep -qx 29.8.2 &&
+ [ "$(docker --context lab-context info --format "{{.ID}}")" = "$daemon_id" ] &&
  docker context rm lab-context >/dev/null'
 check system_df sh -c 'docker system df --format "{{.Type}} {{.TotalCount}}" | grep -q Images'
 check prune_objects sh -c '
