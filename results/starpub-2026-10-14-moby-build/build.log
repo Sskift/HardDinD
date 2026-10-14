@@ -1,0 +1,14 @@
+
+Removing bundles/
+
+---> Making bundle: binary-daemon (in bundles/binary-daemon)
+Building static bundles/binary-daemon/dockerd (linux/amd64)...
+Created binary: bundles/binary-daemon/dockerd
+
+---> Making bundle: binary-proxy (in bundles/binary-proxy)
+Building static bundles/binary-proxy/docker-proxy (linux/amd64)...
+Created binary: bundles/binary-proxy/docker-proxy
+
+Docker version 29.8.2-harddind.1, build 8af9fe3a36bab3e039862a2ab1cef1880c9b4d03-harddind-port-f3cff1008cad
+43bff0def64ccaef1eae43ad7a20b23671e255a7904ed9fcc42d23652ae87487  /root/harddind-rebuild/moby-port-bin/dockerd
+b4c288e7cc464a3782bc8957c5f45d68160b4d93b60004739a6bf05e528d5d61  /root/harddind-rebuild/moby-port-bin/docker-proxy

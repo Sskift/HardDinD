@@ -8,7 +8,7 @@
 
 ## 当前实现
 
-路线是**保留上游 Docker/containerd/runc，改造下面的 UML Linux 内核**。UML 内核作为 Starpub 外层容器中的普通进程运行，为内部 dockerd 提供 Linux 内核接口；目前没有 fork Moby，也没有修改 Starpub 的宿主内核。应用的 CPU 指令在宿主 CPU 上执行，系统调用与地址空间管理经过 UML，因此纯计算接近原生并不代表系统调用、I/O 或 GPU 同样接近原生。
+路线是**保留上游 Docker/containerd/runc，改造下面的 UML Linux 内核，并为需要外层配合的功能增加 Moby 补丁**。UML 内核作为 Starpub 外层容器中的普通进程运行，为内部 dockerd 提供 Linux 内核接口；没有修改 Starpub 的宿主内核。应用的 CPU 指令在宿主 CPU 上执行，系统调用与地址空间管理经过 UML，因此纯计算接近原生并不代表系统调用、I/O 或 GPU 同样接近原生。
 
 - 固定 Linux 7.2.10 源码和 SHA256，启用 UML seccomp、SMP，以及 Docker 所需的 namespace、cgroup、文件系统和网络功能。
 - 第一个内核补丁：`seccomp_spin=0..10000`，在内核与用户进程交接时进行有上限的轮询，再退回 futex 睡眠。默认 0 不主动轮询。实验同时记录延迟和 CPU 消耗。
@@ -50,6 +50,8 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 新的 [内存权限同步实验](results/starpub-2026-10-14-protect/) 区分已存在映射的权限变化与物理页替换，前者用宿主 `mprotect`，后者保留 `mmap`。构建使用 `make kernel-protect-experiment`，运行器使用 `--mprotect-sync`，默认关闭。真实读写保护、丢弃页、固定地址替换、COW、fork 与文件截断回归通过；Docker 测试为 53 pass、1 GPU fail、2 not_tested。专项权限切换中位耗时下降约 24%，但第一次综合对照有严重慢样本，追加对照中的四线程系统调用仍有回退；完整性能没有达标，全部结果与失败版本均保留。
 
 ## 开发与复现
+
+`make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。此阶段只确认自定义 daemon 可构建，自动 `docker -p` 的实例集成与功能验证仍在进行，现有 runtime 磁盘仍使用原版 daemon。
 
 [网络与持久运行实测](results/starpub-2026-10-14-network/) 的 11 项检查全部通过：固定摘要镜像冷拉取、容器 HTTPS、真实联网 BuildKit 构建、外层原版 CLI 的 stdin/TTY、显式 TCP/UDP 转发及删除、镜像与容器及命名卷跨重启保留。前两轮 DNS 失败也完整保留；外层默认解析器的 AAAA 查询实测约 4 秒后返回 SERVFAIL，本轮通过 `--dns 1.1.1.1` 明确选择经探测可用的解析器，没有修改外层 DNS 或过滤 AAAA。相同静态程序的 64 KiB 请求／响应测试中，原生回环与内部 Docker 中位数分别约 9171、422 Mb/s；这是特定负载的约 21.75 倍差距，不能称为网络性能达标。
 
@@ -147,6 +149,6 @@ python3 scripts/run-docker.py /root/harddind-rebuild \
 
 ## 开发方向
 
-先解决 UML 执行核心的系统调用开销、同一地址空间的并行线程和 GPU ABI，再决定 Moby/containerd 需要哪些后端改造。当前没有把 Moby fork 或完整 GPU 后端伪装成已实现。
+继续解决 UML 执行核心的系统调用开销、同一地址空间的并行线程和 GPU ABI；Moby 仅按实际接口缺口增加可复现补丁。端口入口的源码改动不代表完整 Docker 功能或 GPU 后端已经实现。
 
 GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、UVM、锁页内存与进程退出。仅创建 `/dev/nvidia*`、转发 `nvidia-smi` 或在外层代跑计算，均不能满足目标。

@@ -12,6 +12,10 @@ check:
 network:
 	bash scripts/build-network.sh "$(WORK)"
 
+.PHONY: moby
+moby:
+	bash scripts/build-moby.sh "$(WORK)"
+
 runtime-root:
 	bash scripts/make-runtime-root.sh "$(WORK)"
 

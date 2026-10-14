@@ -58,5 +58,16 @@
     "version": "alpine-3.24.2",
     "platform": "linux/amd64",
     "reference": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395"
+  },
+  "moby_port_backend": {
+    "version": "29.8.2-harddind.1",
+    "commit": "8af9fe3a36bab3e039862a2ab1cef1880c9b4d03",
+    "url": "https://codeload.github.com/moby/moby/tar.gz/8af9fe3a36bab3e039862a2ab1cef1880c9b4d03",
+    "sha256": "3df781c47d14636d6268a13e27e1150598875c3b23ab8dbae361c372d453f492"
+  },
+  "go_build": {
+    "version": "go1.26.8",
+    "url": "https://go.dev/dl/go1.26.8.linux-amd64.tar.gz",
+    "sha256": "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b"
   }
 }
