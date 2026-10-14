@@ -1,0 +1,168 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that seccomp filters can be installed...OK
+Adding 652398592 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #23 SMP Wed Oct 14 12:19:49 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000186e2cfff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000126e2cfff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000126e2cfff]
+On node 0, zone Normal: 467 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/docker-7c7daccca4574a3688abda89889759a8.cow,/root/harddind-rebuild/docker-moby-context.ext4 root=/dev/ubda rw init=/sbin/harddind-docker-init con=null con0=null,fd:1 ssl=null panic=1 docker_checks=^(image_import|swarm_init|swarm_service|swarm_secret_config|swarm_vip|swarm_scale|swarm_cleanup)$ console=tty0
+Unknown kernel command line parameters "docker_checks=^(image_import|swarm_init|swarm_service|swarm_secret_config|swarm_vip|swarm_scale|swarm_cleanup)$", will be passed to user space.
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 14888(90%)
+Dentry cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+Inode-cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 1207853
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5960.49 BogoMIPS (lpj=29802496)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Mountpoint-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 4098024K/4831412K available (6072K kernel code, 1387K rwdata, 1860K rodata, 212K init, 1284K bss, 730068K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 65536 (order: 7, 524288 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 2048 (order: 3, 32768 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 32768 (order: 6, 262144 bytes, linear)
+TCP bind hash table entries: 32768 (order: 8, 1048576 bytes, linear)
+TCP: Hash tables configured (established 32768 bind 32768)
+UDP hash table entries: 2048 (order: 5, 131072 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-9eb56d03d9de/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=20 bucket_order=0 (anon: 0)
+fuse: init (API version 7.45)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+IPVS: Registered protocols (TCP, UDP)
+IPVS: Connection hash table configured (size=4096, memory=32Kbytes)
+IPVS: ipvs loaded.
+IPVS: [rr] scheduler registered.
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/docker-7c7daccca4574a3688abda89889759a8.cow" as COW file for "/root/harddind-rebuild/docker-moby-context.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 15, Operation not permitted
+EXT4-fs (ubda): mounted filesystem 3a2c23ce-56f6-4c61-9737-10722e9f493a r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-docker-init as init process
+HARDDIND_DOCKER_BEGIN
+server=29.8.2-harddind.1 kernel=7.2.10 cpus=4 storage=overlayfs
+HARDDIND_SUITE_SHA256=2e312e84460ac40f4cbc34ae04030c13e5fc90bc5b8d9b0106c04fdf4bcfa306
+HARDDIND_RESULT {"name":"image_import","status":"pass"}
+HARDDIND_RESULT {"name":"run","status":"not_tested"}
+HARDDIND_RESULT {"name":"exit_code","status":"not_tested"}
+HARDDIND_RESULT {"name":"stdin","status":"not_tested"}
+HARDDIND_RESULT {"name":"tty","status":"not_tested"}
+HARDDIND_RESULT {"name":"lifecycle","status":"not_tested"}
+HARDDIND_RESULT {"name":"mount_tmpfs","status":"not_tested"}
+HARDDIND_RESULT {"name":"privileged_mount","status":"not_tested"}
+HARDDIND_RESULT {"name":"net_admin","status":"not_tested"}
+HARDDIND_RESULT {"name":"guest_user_namespace","status":"not_tested"}
+HARDDIND_RESULT {"name":"read_only","status":"not_tested"}
+HARDDIND_RESULT {"name":"bind_mount","status":"not_tested"}
+HARDDIND_RESULT {"name":"volume","status":"not_tested"}
+HARDDIND_RESULT {"name":"memory_oom","status":"not_tested"}
+HARDDIND_RESULT {"name":"pids_limit","status":"not_tested"}
+HARDDIND_RESULT {"name":"default_seccomp","status":"not_tested"}
+HARDDIND_RESULT {"name":"container_threads","status":"not_tested"}
+HARDDIND_THREAD_SHA256=17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3
+HARDDIND_RESULT {"name":"container_thread_semantics","status":"not_tested"}
+HARDDIND_DISPATCH_SHA256=de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758
+HARDDIND_RESULT {"name":"container_dispatch_semantics","status":"not_tested"}
+HARDDIND_MAPPING_SHA256=e8d75c79bd3b0ddc1c587c173f881a6444de248fe9d84bdf1a23af65d1bd0741
+HARDDIND_RESULT {"name":"container_mapping_semantics","status":"not_tested"}
+HARDDIND_RESULT {"name":"container_compute","status":"not_tested"}
+HARDDIND_RESULT {"name":"bridge_dns","status":"not_tested"}
+HARDDIND_RESULT {"name":"published_port_guest","status":"not_tested"}
+HARDDIND_RESULT {"name":"docker_cp","status":"not_tested"}
+HARDDIND_RESULT {"name":"save_load","status":"not_tested"}
+HARDDIND_RESULT {"name":"buildkit_multistage","status":"not_tested"}
+HARDDIND_RESULT {"name":"restart_policy","status":"not_tested"}
+HARDDIND_RESULT {"name":"healthcheck","status":"not_tested"}
+HARDDIND_RESULT {"name":"ipv6","status":"not_tested"}
+HARDDIND_RESULT {"name":"signals","status":"not_tested"}
+HARDDIND_RESULT {"name":"inspect_rename","status":"not_tested"}
+HARDDIND_RESULT {"name":"restart","status":"not_tested"}
+HARDDIND_RESULT {"name":"pause_unpause","status":"not_tested"}
+HARDDIND_RESULT {"name":"update_limits","status":"not_tested"}
+HARDDIND_RESULT {"name":"top_stats","status":"not_tested"}
+HARDDIND_RESULT {"name":"wait_exit","status":"not_tested"}
+HARDDIND_RESULT {"name":"attach","status":"not_tested"}
+HARDDIND_RESULT {"name":"commit_diff_history","status":"not_tested"}
+HARDDIND_RESULT {"name":"export_import","status":"not_tested"}
+HARDDIND_RESULT {"name":"image_tag_remove","status":"not_tested"}
+HARDDIND_RESULT {"name":"events","status":"not_tested"}
+HARDDIND_RESULT {"name":"network_connect_disconnect","status":"not_tested"}
+HARDDIND_RESULT {"name":"port_inspect","status":"not_tested"}
+HARDDIND_RESULT {"name":"context","status":"not_tested"}
+HARDDIND_RESULT {"name":"system_df","status":"not_tested"}
+HARDDIND_RESULT {"name":"prune_objects","status":"not_tested"}
+HARDDIND_RESULT {"name":"swarm_init","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_service","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_secret_config","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_vip","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_scale","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_cleanup","status":"pass"}
+HARDDIND_RESULT {"name":"gpu_fixture_import","status":"not_tested"}
+HARDDIND_RESULT {"name":"gpu_compute","status":"not_tested"}
+HARDDIND_RESULT {"name":"external_network","status":"not_tested"}
+HARDDIND_RESULT {"name":"full_docker_compatibility","status":"not_tested"}
+HARDDIND_DOCKER_END status=0
+reboot: Power down
+HARDDIND_DEFER_IPI enabled=1 received=25249 deferred=20405 handled=25244
+HARDDIND_BROKER_CACHE hits=742 stores=744
+

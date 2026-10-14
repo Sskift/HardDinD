@@ -1,0 +1,306 @@
+{
+  "kind": "docker_subset_in_candidate",
+  "checks": [
+    {
+      "name": "image_import",
+      "status": "pass"
+    },
+    {
+      "name": "run",
+      "status": "not_tested"
+    },
+    {
+      "name": "exit_code",
+      "status": "not_tested"
+    },
+    {
+      "name": "stdin",
+      "status": "not_tested"
+    },
+    {
+      "name": "tty",
+      "status": "not_tested"
+    },
+    {
+      "name": "lifecycle",
+      "status": "not_tested"
+    },
+    {
+      "name": "mount_tmpfs",
+      "status": "not_tested"
+    },
+    {
+      "name": "privileged_mount",
+      "status": "not_tested"
+    },
+    {
+      "name": "net_admin",
+      "status": "not_tested"
+    },
+    {
+      "name": "guest_user_namespace",
+      "status": "not_tested"
+    },
+    {
+      "name": "read_only",
+      "status": "not_tested"
+    },
+    {
+      "name": "bind_mount",
+      "status": "not_tested"
+    },
+    {
+      "name": "volume",
+      "status": "not_tested"
+    },
+    {
+      "name": "memory_oom",
+      "status": "not_tested"
+    },
+    {
+      "name": "pids_limit",
+      "status": "not_tested"
+    },
+    {
+      "name": "default_seccomp",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_threads",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_thread_semantics",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_dispatch_semantics",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_mapping_semantics",
+      "status": "not_tested"
+    },
+    {
+      "name": "container_compute",
+      "status": "not_tested"
+    },
+    {
+      "name": "bridge_dns",
+      "status": "not_tested"
+    },
+    {
+      "name": "published_port_guest",
+      "status": "not_tested"
+    },
+    {
+      "name": "docker_cp",
+      "status": "not_tested"
+    },
+    {
+      "name": "save_load",
+      "status": "not_tested"
+    },
+    {
+      "name": "buildkit_multistage",
+      "status": "not_tested"
+    },
+    {
+      "name": "restart_policy",
+      "status": "not_tested"
+    },
+    {
+      "name": "healthcheck",
+      "status": "not_tested"
+    },
+    {
+      "name": "ipv6",
+      "status": "not_tested"
+    },
+    {
+      "name": "signals",
+      "status": "not_tested"
+    },
+    {
+      "name": "inspect_rename",
+      "status": "not_tested"
+    },
+    {
+      "name": "restart",
+      "status": "not_tested"
+    },
+    {
+      "name": "pause_unpause",
+      "status": "not_tested"
+    },
+    {
+      "name": "update_limits",
+      "status": "not_tested"
+    },
+    {
+      "name": "top_stats",
+      "status": "not_tested"
+    },
+    {
+      "name": "wait_exit",
+      "status": "not_tested"
+    },
+    {
+      "name": "attach",
+      "status": "not_tested"
+    },
+    {
+      "name": "commit_diff_history",
+      "status": "not_tested"
+    },
+    {
+      "name": "export_import",
+      "status": "not_tested"
+    },
+    {
+      "name": "image_tag_remove",
+      "status": "not_tested"
+    },
+    {
+      "name": "events",
+      "status": "not_tested"
+    },
+    {
+      "name": "network_connect_disconnect",
+      "status": "not_tested"
+    },
+    {
+      "name": "port_inspect",
+      "status": "not_tested"
+    },
+    {
+      "name": "context",
+      "status": "not_tested"
+    },
+    {
+      "name": "system_df",
+      "status": "not_tested"
+    },
+    {
+      "name": "prune_objects",
+      "status": "not_tested"
+    },
+    {
+      "name": "swarm_init",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_service",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_secret_config",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_vip",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_scale",
+      "status": "pass"
+    },
+    {
+      "name": "swarm_cleanup",
+      "status": "pass"
+    },
+    {
+      "name": "gpu_fixture_import",
+      "status": "not_tested"
+    },
+    {
+      "name": "gpu_compute",
+      "status": "not_tested"
+    },
+    {
+      "name": "external_network",
+      "status": "not_tested"
+    },
+    {
+      "name": "full_docker_compatibility",
+      "status": "not_tested"
+    }
+  ],
+  "finished": false,
+  "checks_complete": true,
+  "suite_status": 0,
+  "subset_passed": false,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 41.90346270240843,
+  "disk_mode": "isolated_cow",
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 742,
+    "stores": 744
+  },
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": true,
+    "received": 25249,
+    "deferred": 20405,
+    "handled": 25244
+  },
+  "mprotect_sync": false,
+  "mprotect_stats": {
+    "verified": false,
+    "pages": null
+  },
+  "mapping_semantics_sha256": "e8d75c79bd3b0ddc1c587c173f881a6444de248fe9d84bdf1a23af65d1bd0741",
+  "suite_sha256": "2e312e84460ac40f4cbc34ae04030c13e5fc90bc5b8d9b0106c04fdf4bcfa306",
+  "expected_suite_sha256": "2e312e84460ac40f4cbc34ae04030c13e5fc90bc5b8d9b0106c04fdf4bcfa306",
+  "check_filter": "^(image_import|swarm_init|swarm_service|swarm_secret_config|swarm_vip|swarm_scale|swarm_cleanup)$",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "full_acceptance": false,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "kernel_sha256": "999505d9e7b04864abda446e92d0f9edbf9fbe7a073d6d30fc91e1d531e30aed",
+  "kernel_unchanged": true,
+  "cleanup": {
+    "process_group": 1499123,
+    "forced_cleanup": true,
+    "initial_live_pids": [
+      1499235
+    ],
+    "initial_zombie_pids": [],
+    "initial_processes": [
+      {
+        "pid": 1499235,
+        "state": "D",
+        "ppid": 1,
+        "process_group": 1499123,
+        "start_time_ticks": "1386314713",
+        "comm": "uml-userspace",
+        "wchan": "__inode_wait_for_writeback",
+        "exe_errno": 2
+      }
+    ],
+    "forced_processes": [
+      {
+        "pid": 1499235,
+        "state": "D",
+        "ppid": 1,
+        "process_group": 1499123,
+        "start_time_ticks": "1386314713",
+        "comm": "uml-userspace",
+        "wchan": "__inode_wait_for_writeback",
+        "exe_errno": 2
+      }
+    ],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": false
+  }
+}

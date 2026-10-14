@@ -44,3 +44,19 @@ python3 scripts/run-gpu-control-docker.py /root/harddind-rebuild \
   --probe /root/harddind-rebuild/results/new-gpu-fd/gpu-guest-probe \
   --name new-gpu-fd-docker --fd-registration --gpu-count 4
 ```
+
+## 后续通用回归与保留的失败
+
+同一修复后内核的 `gpu-fd-control-v1` 原生前后、默认关闭和启用 guest 四阶段通过，保留原 13 项控制通道能力。`gpu-fd-core-v1` 在 CPU 0–3、4 vCPU、spin=256 下通过 3 组映射、5 组线程语义和全部 36 个样本，正常退出。没有配套原生／旧内核性能对照，不能据此认定提速或无性能回退。
+
+`gpu-fd-docker-suite-v1` 的 56 项全部返回：52 pass、2 fail、2 not_tested。context 在这次较广的运行中通过，但 Swarm 清理返回 `context deadline exceeded`，内部 GPU 仍失败；两项未测仍为出站网络和完整兼容性。日志包含 agent 清理 assignments 超时。整个进程在 360 秒期限被 SIGKILL，`finished=false`；后续清理没有残留，不代表正常关机。原始日志中的 BuildKit session healthcheck 等报错也保留，不据此断言都由本轮补丁导致。
+
+进一步的 `gpu-fd-swarm-focused-v1` 在相同内核、CPU、磁盘与命令下，只选择镜像导入和六项 Swarm 检查。七项命令均通过，其余 49 项未测；guest 返回 0 并输出 Power down，但清理器发现一个 `uml-userspace` 进程处于 D 状态，等待 `__inode_wait_for_writeback`。0.25 秒等待后清理器发送 SIGKILL，最终无残留，所以该运行仍不能计为正常完成。单独运行成功不能关闭全套运行中的 Swarm 超时问题。固定 Moby 源码显示错误位于 node Stop 的 agent Leave／worker 退出等待；当前证据还不能确定具体阻塞任务。
+
+`gpu-fd-cleanup-audit.json` 在所有运行结束后独立检查本轮进程组、GPU worker 和运行器 PID，最终无残留；内核源文件逐一匹配补丁清单。原 `/root/udock` 只读健康检查仍返回 Docker 29.8.2、运行容器 0、镜像 6。
+
+## 待验证的内存后端优化
+
+UML 当前通过普通临时文件承载物理内存，启动日志明确显示工作目录不是 tmpfs。退出回写等待给出了一个具体排查方向。`src/host_memfd_probe.py` 在相同 Starpub 外层容器中验证了可执行共享 memfd：父进程执行、关闭子进程继承的原 FD/映射后通过 SCM_RIGHTS 接收并新建映射、子进程执行，以及共享写入可见性，四项均通过。只创建了一页内存，不需要挂载或新增 capability。
+
+`host-memfd-capability.json` 仅证明宿主接口可用。尚未实现或测试 UML memfd RAM 后端，也没有性能数据，不能将这项探测作为退出问题已修复或性能达标的证据。

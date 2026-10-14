@@ -1,0 +1,16 @@
+{
+  "kind": "host_memfd_capability",
+  "kernel": "5.15.0-177-generic",
+  "architecture": "x86_64",
+  "checks": {
+    "parent_execute": true,
+    "received_fd_execute": true,
+    "child_exit": true,
+    "shared_data_visible": true
+  },
+  "performance_verified": false,
+  "uml_backend_verified": false,
+  "backing": "/memfd:harddind-ram-capability (deleted)",
+  "passed": true,
+  "probe_source_sha256": "7b5921a51b295e048b6ea0ae5eceac2670c43e618bb1f8cfb6e5163c63666eb7"
+}

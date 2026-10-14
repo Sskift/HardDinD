@@ -44,8 +44,19 @@
     "same_probe_before_after_uaccess": true,
     "new_guest_all_24_checks": true,
     "new_diagnostic_complete": true,
-    "docker_11_checks": true
+    "docker_11_checks": true,
+    "control_regression_complete": true,
+    "control_trace/native-before": true,
+    "control_trace/disabled": true,
+    "control_trace/guest": true,
+    "control_trace/native-after": true,
+    "core_regression": true,
+    "no_final_residual_processes": true,
+    "kernel_source_matches_manifest": true,
+    "udock_readonly_health": true
   },
   "performance_verified": false,
-  "internal_cuda_verified": false
+  "internal_cuda_verified": false,
+  "docker_suite_completed_successfully": false,
+  "swarm_focused_clean_shutdown": false
 }

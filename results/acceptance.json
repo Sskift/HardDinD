@@ -27,7 +27,9 @@
         "starpub-2026-10-14-shared-locks/shared-profile-v1.json",
         "starpub-2026-10-14-shared-inline/shared-inline-v1.json",
         "starpub-2026-10-14-shared-inline/shared-inline-v2.json",
-        "starpub-2026-10-14-shared-inline/shared-cancel-race-v1.json"
+        "starpub-2026-10-14-shared-inline/shared-cancel-race-v1.json",
+        "starpub-2026-10-14-gpu-fd/gpu-fd-docker-suite-v1.json",
+        "starpub-2026-10-14-gpu-fd/gpu-fd-swarm-focused-v1.json"
       ],
       "remaining": [
         "published ports: IPv6, multiple outer addresses sharing a port, Swarm ingress and abnormal recovery; IPv4 subset passed",
@@ -40,7 +42,9 @@
         "Swarm leave timeout observed once; not causally attributed or closed",
         "Compose and broader upstream command scenarios",
         "intermittent forced cleanup also observed in ipi-idle MTU1500 baseline; initial process identity incomplete; cause unresolved",
-        "shared-inline-v1 shutdown exceeded 45 seconds after guest STOPPED marker; forced termination, cause unresolved"
+        "shared-inline-v1 shutdown exceeded 45 seconds after guest STOPPED marker; forced termination, cause unresolved",
+        "gpu-fd kernel full suite: Swarm assignment cleanup timed out; 56 results returned but entire run exceeded 360 seconds and was killed",
+        "gpu-fd focused Swarm: seven selected checks passed, but an exiting UML process waited for inode writeback and cleanup sent SIGKILL; cause unresolved"
       ]
     },
     "native_performance": {
