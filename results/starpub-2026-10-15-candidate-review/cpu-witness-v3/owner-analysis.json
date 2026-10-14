@@ -1,0 +1,4892 @@
+{
+  "status": "finished",
+  "started_at": "2026-10-14T23:25:34.156162+00:00",
+  "cells": {
+    "quiet-quota": {
+      "raw_correlation_replay_identical": true,
+      "source_sha256": "6166f05a605f4e491a318b13aadd518a40dfce8714ece33743cb9e5da93b0a06",
+      "capture": {
+        "count": 60,
+        "median_ms": 0.310144,
+        "p95_ms": 1.925632,
+        "max_ms": 479.204864
+      },
+      "inter_capture": {
+        "count": 59,
+        "median_ms": 99.994368,
+        "p95_ms": 120.563712,
+        "max_ms": 524.179712
+      },
+      "coverage": {
+        "covered": 300
+      },
+      "alignment_width_ns": 13073677,
+      "worst_capture": {
+        "event": "cap",
+        "k": 20,
+        "mono_begin_ns": 12867416320,
+        "proc_cpu_ns": 1270000000,
+        "max_stable": 1,
+        "stages": [
+          {
+            "name": "cpu.max.first",
+            "begin_ns": 12867416320,
+            "end_ns": 13346411008,
+            "tcpu_begin_ns": 630000000,
+            "tcpu_end_ns": 830000000
+          },
+          {
+            "name": "cpu.stat",
+            "begin_ns": 13346416128,
+            "end_ns": 13346462208,
+            "tcpu_begin_ns": 830000000,
+            "tcpu_end_ns": 830000000
+          },
+          {
+            "name": "cpu.max.second",
+            "begin_ns": 13346466816,
+            "end_ns": 13346499072,
+            "tcpu_begin_ns": 830000000,
+            "tcpu_end_ns": 830000000
+          },
+          {
+            "name": "/proc/stat",
+            "begin_ns": 13346504192,
+            "end_ns": 13346590976,
+            "tcpu_begin_ns": 830000000,
+            "tcpu_end_ns": 830000000
+          },
+          {
+            "name": "process_clock",
+            "begin_ns": 13346596608,
+            "end_ns": 13346621184,
+            "tcpu_begin_ns": 830000000,
+            "tcpu_end_ns": 830000000
+          }
+        ],
+        "max1": {
+          "errno": 0,
+          "len": 13,
+          "raw": "50000 100000"
+        },
+        "stat": {
+          "errno": 0,
+          "len": 143,
+          "present": 1,
+          "usage_usec": 1290000,
+          "nr_periods": 21,
+          "nr_throttled": 5,
+          "throttled_usec": 490000
+        },
+        "max2": {
+          "errno": 0,
+          "len": 13,
+          "raw": "50000 100000"
+        },
+        "proc": {
+          "errno": 0,
+          "len": 255
+        }
+      },
+      "longest_stage": {
+        "k": 20,
+        "stage": "cpu.max.first",
+        "guest_wall_ns": 478994688,
+        "guest_thread_cpu_ns": 200000000,
+        "host_begin_ns_lo": 13902071179021544,
+        "host_end_ns_hi": 13902071671089909,
+        "alignment_width_ns": 13073677,
+        "coverage": "covered",
+        "pre_seq": 251,
+        "post_seq": 274,
+        "entities": {
+          "thread:1141029@1390205817": {
+            "label": "thread",
+            "key": "1141029@1390205817",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071106596165,
+            "bracket_post_acq_begin_ns": 13902071677495128,
+            "host_bracket_width_ns": 570898963,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1187011,
+              "wait_ns": 668903,
+              "switches": 52
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000000001000",
+              "sigblk=0000000200003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141089@1390205835": {
+            "label": "thread",
+            "key": "1141089@1390205835",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071106862428,
+            "bracket_post_acq_begin_ns": 13902071677905213,
+            "host_bracket_width_ns": 571042785,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 2887277,
+              "wait_ns": 1672428,
+              "switches": 52
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0,
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141090@1390205836": {
+            "label": "thread",
+            "key": "1141090@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071107116364,
+            "bracket_post_acq_begin_ns": 13902071678278410,
+            "host_bracket_width_ns": 571162046,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1648941,
+              "wait_ns": 6054083,
+              "switches": 40
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0,
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141091@1390205836": {
+            "label": "thread",
+            "key": "1141091@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071107369496,
+            "bracket_post_acq_begin_ns": 13902071678643506,
+            "host_bracket_width_ns": 571274010,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1217551,
+              "wait_ns": 22646108,
+              "switches": 32
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0,
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000200000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141100@1390205847": {
+            "label": "thread",
+            "key": "1141100@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071107623442,
+            "bracket_post_acq_begin_ns": 13902071678989887,
+            "host_bracket_width_ns": 571366445,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141101@1390205847": {
+            "label": "thread",
+            "key": "1141101@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071107881166,
+            "bracket_post_acq_begin_ns": 13902071679334480,
+            "host_bracket_width_ns": 571453314,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "ep_poll"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141126@1390205853": {
+            "label": "runner",
+            "key": "1141126@1390205853",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071109374053,
+            "bracket_post_acq_begin_ns": 13902071681156865,
+            "host_bracket_width_ns": 571782812,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141128@1390205856": {
+            "label": "runner",
+            "key": "1141128@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071109678431,
+            "bracket_post_acq_begin_ns": 13902071681515260,
+            "host_bracket_width_ns": 571836829,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141130@1390205856": {
+            "label": "runner",
+            "key": "1141130@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071109986164,
+            "bracket_post_acq_begin_ns": 13902071681829827,
+            "host_bracket_width_ns": 571843663,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141137@1390205857": {
+            "label": "runner",
+            "key": "1141137@1390205857",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071110576513,
+            "bracket_post_acq_begin_ns": 13902071682495948,
+            "host_bracket_width_ns": 571919435,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 263427,
+              "wait_ns": 40647,
+              "switches": 2
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141173@1390205866": {
+            "label": "runner",
+            "key": "1141173@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071110873671,
+            "bracket_post_acq_begin_ns": 13902071683105016,
+            "host_bracket_width_ns": 572231345,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141175@1390205866": {
+            "label": "runner",
+            "key": "1141175@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071111172096,
+            "bracket_post_acq_begin_ns": 13902071683466720,
+            "host_bracket_width_ns": 572294624,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141184@1390205867": {
+            "label": "runner",
+            "key": "1141184@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071111477612,
+            "bracket_post_acq_begin_ns": 13902071683833019,
+            "host_bracket_width_ns": 572355407,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141187@1390205867": {
+            "label": "runner",
+            "key": "1141187@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071111704249,
+            "bracket_post_acq_begin_ns": 13902071684165540,
+            "host_bracket_width_ns": 572461291,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141189@1390205868": {
+            "label": "runner",
+            "key": "1141189@1390205868",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071111911327,
+            "bracket_post_acq_begin_ns": 13902071684479347,
+            "host_bracket_width_ns": 572568020,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 239932,
+              "wait_ns": 39568,
+              "switches": 4
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141192@1390205870": {
+            "label": "runner",
+            "key": "1141192@1390205870",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071112211221,
+            "bracket_post_acq_begin_ns": 13902071684790076,
+            "host_bracket_width_ns": 572578855,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 791776,
+              "wait_ns": 1225699,
+              "switches": 8
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "D",
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me",
+              "wait_transaction_locked"
+            ],
+            "cpus": [
+              0,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141217@1390205883": {
+            "label": "runner",
+            "key": "1141217@1390205883",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071112895762,
+            "bracket_post_acq_begin_ns": 13902071686362884,
+            "host_bracket_width_ns": 573467122,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 65928,
+              "wait_ns": 0,
+              "switches": 1
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141244@1390205895": {
+            "label": "runner",
+            "key": "1141244@1390205895",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071114083655,
+            "bracket_post_acq_begin_ns": 13902071689282802,
+            "host_bracket_width_ns": 575199147,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 238737,
+              "wait_ns": 2178,
+              "switches": 2
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141589@1390206075": {
+            "label": "runner",
+            "key": "1141589@1390206075",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071112351869,
+            "bracket_post_acq_begin_ns": 13902071685102323,
+            "host_bracket_width_ns": 572750454,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 869552,
+              "wait_ns": 62655,
+              "switches": 22
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141598@1390206079": {
+            "label": "runner",
+            "key": "1141598@1390206079",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071112759984,
+            "bracket_post_acq_begin_ns": 13902071686050161,
+            "host_bracket_width_ns": 573290177,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141607@1390206081": {
+            "label": "runner",
+            "key": "1141607@1390206081",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113163729,
+            "bracket_post_acq_begin_ns": 13902071686990740,
+            "host_bracket_width_ns": 573827011,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 795110,
+              "wait_ns": 38176,
+              "switches": 7
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141847@1390206197": {
+            "label": "runner",
+            "key": "1141847@1390206197",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071112487471,
+            "bracket_post_acq_begin_ns": 13902071685429427,
+            "host_bracket_width_ns": 572941956,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141871@1390206203": {
+            "label": "runner",
+            "key": "1141871@1390206203",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113689793,
+            "bracket_post_acq_begin_ns": 13902071688295541,
+            "host_bracket_width_ns": 574605748,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141981@1390206236": {
+            "label": "runner",
+            "key": "1141981@1390206236",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071112623736,
+            "bracket_post_acq_begin_ns": 13902071685739733,
+            "host_bracket_width_ns": 573115997,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1142886@1390206618": {
+            "label": "runner",
+            "key": "1142886@1390206618",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113029423,
+            "bracket_post_acq_begin_ns": 13902071686679468,
+            "host_bracket_width_ns": 573650045,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1142887@1390206620": {
+            "label": "runner",
+            "key": "1142887@1390206620",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113304583,
+            "bracket_post_acq_begin_ns": 13902071687308864,
+            "host_bracket_width_ns": 574004281,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1142888@1390206621": {
+            "label": "runner",
+            "key": "1142888@1390206621",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113435002,
+            "bracket_post_acq_begin_ns": 13902071687629338,
+            "host_bracket_width_ns": 574194336,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1142892@1390206624": {
+            "label": "runner",
+            "key": "1142892@1390206624",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113562619,
+            "bracket_post_acq_begin_ns": 13902071687945757,
+            "host_bracket_width_ns": 574383138,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143056@1390206764": {
+            "label": "runner",
+            "key": "1143056@1390206764",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071110281912,
+            "bracket_post_acq_begin_ns": 13902071682147628,
+            "host_bracket_width_ns": 571865716,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143291@1390206919": {
+            "label": "runner",
+            "key": "1143291@1390206919",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113960358,
+            "bracket_post_acq_begin_ns": 13902071688927318,
+            "host_bracket_width_ns": 574966960,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143536@1390207106": {
+            "label": "runner",
+            "key": "1143536@1390207106",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902071113818854,
+            "bracket_post_acq_begin_ns": 13902071688613307,
+            "host_bracket_width_ns": 574794453,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 82115,
+              "wait_ns": 0,
+              "switches": 3
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143584@1390207141": {
+            "label": "runner",
+            "key": "1143584@1390207141",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          }
+        },
+        "runner_births": [
+          {
+            "kind": "runner_birth",
+            "id": 1143584,
+            "starttime": 1390207141,
+            "key": "1143584@1390207141"
+          }
+        ],
+        "runner_gone": []
+      },
+      "witness_summary": {
+        "event": "summary",
+        "requested": 60,
+        "completed": 60,
+        "status": "complete",
+        "start_mono_ns": 10857137664,
+        "end_mono_ns": 16757843712,
+        "deadline_ns": 19857137664
+      },
+      "sampler": {
+        "pid": 1142616,
+        "pgid": 1142616,
+        "command": [
+          "/usr/bin/python3",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/diag/host_correlate.py",
+          "sample",
+          "--uml-pid",
+          "1141029",
+          "--out",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/run/results/witness-v3/quiet-quota/host",
+          "--duration-s",
+          "30.0",
+          "--interval-ms",
+          "10"
+        ],
+        "begin_ns": 13902064944816060,
+        "end_ns": 13902076096527492,
+        "elapsed_s": 11.151711432,
+        "cpu_ticks_delta": 580,
+        "cpu_s": 5.8,
+        "samples": 604,
+        "termination": "planned_sigterm",
+        "forced_kill": false,
+        "timed_out": false,
+        "rc": 0,
+        "planned_sigterm_ns": 13902076064878541,
+        "cleanup": {
+          "process_group": 1142616,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "note": "10 ms diagnostic polling; overhead measured here, never asserted negligible",
+        "termination_reason": "signal"
+      }
+    },
+    "quiet-unlimited": {
+      "raw_correlation_replay_identical": true,
+      "source_sha256": "6166f05a605f4e491a318b13aadd518a40dfce8714ece33743cb9e5da93b0a06",
+      "capture": {
+        "count": 60,
+        "median_ms": 0.318976,
+        "p95_ms": 2.860288,
+        "max_ms": 2.984192
+      },
+      "inter_capture": {
+        "count": 59,
+        "median_ms": 100.004096,
+        "p95_ms": 100.113152,
+        "max_ms": 106.139392
+      },
+      "coverage": {
+        "covered": 300
+      },
+      "alignment_width_ns": 17112621,
+      "worst_capture": {
+        "event": "cap",
+        "k": 24,
+        "mono_begin_ns": 22627100928,
+        "proc_cpu_ns": 520000000,
+        "max_stable": 1,
+        "stages": [
+          {
+            "name": "cpu.max.first",
+            "begin_ns": 22627100928,
+            "end_ns": 22627645952,
+            "tcpu_begin_ns": 300000000,
+            "tcpu_end_ns": 300000000
+          },
+          {
+            "name": "cpu.stat",
+            "begin_ns": 22627736576,
+            "end_ns": 22628313344,
+            "tcpu_begin_ns": 300000000,
+            "tcpu_end_ns": 300000000
+          },
+          {
+            "name": "cpu.max.second",
+            "begin_ns": 22628403968,
+            "end_ns": 22628952832,
+            "tcpu_begin_ns": 300000000,
+            "tcpu_end_ns": 300000000
+          },
+          {
+            "name": "/proc/stat",
+            "begin_ns": 22629044224,
+            "end_ns": 22629571328,
+            "tcpu_begin_ns": 300000000,
+            "tcpu_end_ns": 300000000
+          },
+          {
+            "name": "process_clock",
+            "begin_ns": 22629656832,
+            "end_ns": 22630085120,
+            "tcpu_begin_ns": 300000000,
+            "tcpu_end_ns": 300000000
+          }
+        ],
+        "max1": {
+          "errno": 0,
+          "len": 11,
+          "raw": "max 100000"
+        },
+        "stat": {
+          "errno": 0,
+          "len": 136,
+          "present": 1,
+          "usage_usec": 560000,
+          "nr_periods": 0,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        },
+        "max2": {
+          "errno": 0,
+          "len": 11,
+          "raw": "max 100000"
+        },
+        "proc": {
+          "errno": 0,
+          "len": 255
+        }
+      },
+      "longest_stage": {
+        "k": 24,
+        "stage": "cpu.stat",
+        "guest_wall_ns": 576768,
+        "guest_thread_cpu_ns": 0,
+        "host_begin_ns_lo": 13902080935650509,
+        "host_end_ns_hi": 13902080953339898,
+        "alignment_width_ns": 17112621,
+        "coverage": "covered",
+        "pre_seq": 280,
+        "post_seq": 284,
+        "entities": {
+          "thread:1141029@1390205817": {
+            "label": "thread",
+            "key": "1141029@1390205817",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080912827203,
+            "bracket_post_acq_begin_ns": 13902080962931359,
+            "host_bracket_width_ns": 50104156,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000200003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141089@1390205835": {
+            "label": "thread",
+            "key": "1141089@1390205835",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080913007422,
+            "bracket_post_acq_begin_ns": 13902080963128781,
+            "host_bracket_width_ns": 50121359,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141090@1390205836": {
+            "label": "thread",
+            "key": "1141090@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080913176875,
+            "bracket_post_acq_begin_ns": 13902080963298731,
+            "host_bracket_width_ns": 50121856,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141091@1390205836": {
+            "label": "thread",
+            "key": "1141091@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080913344310,
+            "bracket_post_acq_begin_ns": 13902080963463004,
+            "host_bracket_width_ns": 50118694,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141100@1390205847": {
+            "label": "thread",
+            "key": "1141100@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080913512527,
+            "bracket_post_acq_begin_ns": 13902080963632363,
+            "host_bracket_width_ns": 50119836,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141101@1390205847": {
+            "label": "thread",
+            "key": "1141101@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080913681966,
+            "bracket_post_acq_begin_ns": 13902080963794054,
+            "host_bracket_width_ns": 50112088,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "ep_poll"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141126@1390205853": {
+            "label": "runner",
+            "key": "1141126@1390205853",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080914507954,
+            "bracket_post_acq_begin_ns": 13902080964664852,
+            "host_bracket_width_ns": 50156898,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141128@1390205856": {
+            "label": "runner",
+            "key": "1141128@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080914648356,
+            "bracket_post_acq_begin_ns": 13902080964819720,
+            "host_bracket_width_ns": 50171364,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141130@1390205856": {
+            "label": "runner",
+            "key": "1141130@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080914784509,
+            "bracket_post_acq_begin_ns": 13902080964956077,
+            "host_bracket_width_ns": 50171568,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141137@1390205857": {
+            "label": "runner",
+            "key": "1141137@1390205857",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915057556,
+            "bracket_post_acq_begin_ns": 13902080965224791,
+            "host_bracket_width_ns": 50167235,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141173@1390205866": {
+            "label": "runner",
+            "key": "1141173@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915593753,
+            "bracket_post_acq_begin_ns": 13902080965749047,
+            "host_bracket_width_ns": 50155294,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141175@1390205866": {
+            "label": "runner",
+            "key": "1141175@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915729159,
+            "bracket_post_acq_begin_ns": 13902080965876518,
+            "host_bracket_width_ns": 50147359,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141184@1390205867": {
+            "label": "runner",
+            "key": "1141184@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915862496,
+            "bracket_post_acq_begin_ns": 13902080966003579,
+            "host_bracket_width_ns": 50141083,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141187@1390205867": {
+            "label": "runner",
+            "key": "1141187@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915995699,
+            "bracket_post_acq_begin_ns": 13902080966131925,
+            "host_bracket_width_ns": 50136226,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141189@1390205868": {
+            "label": "runner",
+            "key": "1141189@1390205868",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916145120,
+            "bracket_post_acq_begin_ns": 13902080966259603,
+            "host_bracket_width_ns": 50114483,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141192@1390205870": {
+            "label": "runner",
+            "key": "1141192@1390205870",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916278071,
+            "bracket_post_acq_begin_ns": 13902080966388739,
+            "host_bracket_width_ns": 50110668,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141217@1390205883": {
+            "label": "runner",
+            "key": "1141217@1390205883",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917083153,
+            "bracket_post_acq_begin_ns": 13902080967152570,
+            "host_bracket_width_ns": 50069417,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141244@1390205895": {
+            "label": "runner",
+            "key": "1141244@1390205895",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917897960,
+            "bracket_post_acq_begin_ns": 13902080967921728,
+            "host_bracket_width_ns": 50023768,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141589@1390206075": {
+            "label": "runner",
+            "key": "1141589@1390206075",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916546480,
+            "bracket_post_acq_begin_ns": 13902080966643209,
+            "host_bracket_width_ns": 50096729,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141598@1390206079": {
+            "label": "runner",
+            "key": "1141598@1390206079",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916949832,
+            "bracket_post_acq_begin_ns": 13902080967025184,
+            "host_bracket_width_ns": 50075352,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141607@1390206081": {
+            "label": "runner",
+            "key": "1141607@1390206081",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917619748,
+            "bracket_post_acq_begin_ns": 13902080967664374,
+            "host_bracket_width_ns": 50044626,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141847@1390206197": {
+            "label": "runner",
+            "key": "1141847@1390206197",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916681024,
+            "bracket_post_acq_begin_ns": 13902080966768879,
+            "host_bracket_width_ns": 50087855,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141981@1390206236": {
+            "label": "runner",
+            "key": "1141981@1390206236",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916815806,
+            "bracket_post_acq_begin_ns": 13902080966897696,
+            "host_bracket_width_ns": 50081890,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143056@1390206764": {
+            "label": "runner",
+            "key": "1143056@1390206764",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080914920359,
+            "bracket_post_acq_begin_ns": 13902080965090100,
+            "host_bracket_width_ns": 50169741,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143584@1390207141": {
+            "label": "runner",
+            "key": "1143584@1390207141",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915192886,
+            "bracket_post_acq_begin_ns": 13902080965365860,
+            "host_bracket_width_ns": 50172974,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144786@1390207745": {
+            "label": "runner",
+            "key": "1144786@1390207745",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080916410762,
+            "bracket_post_acq_begin_ns": 13902080966514800,
+            "host_bracket_width_ns": 50104038,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144804@1390207748": {
+            "label": "runner",
+            "key": "1144804@1390207748",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917216291,
+            "bracket_post_acq_begin_ns": 13902080967279031,
+            "host_bracket_width_ns": 50062740,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144805@1390207749": {
+            "label": "runner",
+            "key": "1144805@1390207749",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917351327,
+            "bracket_post_acq_begin_ns": 13902080967408030,
+            "host_bracket_width_ns": 50056703,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144806@1390207750": {
+            "label": "runner",
+            "key": "1144806@1390207750",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917485366,
+            "bracket_post_acq_begin_ns": 13902080967536309,
+            "host_bracket_width_ns": 50050943,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144807@1390207751": {
+            "label": "runner",
+            "key": "1144807@1390207751",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080917755202,
+            "bracket_post_acq_begin_ns": 13902080967793617,
+            "host_bracket_width_ns": 50038415,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144879@1390207786": {
+            "label": "runner",
+            "key": "1144879@1390207786",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915326301,
+            "bracket_post_acq_begin_ns": 13902080965494815,
+            "host_bracket_width_ns": 50168514,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1145012@1390207857": {
+            "label": "runner",
+            "key": "1145012@1390207857",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902080915459267,
+            "bracket_post_acq_begin_ns": 13902080965622901,
+            "host_bracket_width_ns": 50163634,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          }
+        },
+        "runner_births": [],
+        "runner_gone": []
+      },
+      "witness_summary": {
+        "event": "summary",
+        "requested": 60,
+        "completed": 60,
+        "status": "complete",
+        "start_mono_ns": 20226814720,
+        "end_mono_ns": 26127412736,
+        "deadline_ns": 29226814720
+      },
+      "sampler": {
+        "pid": 1144701,
+        "pgid": 1144701,
+        "command": [
+          "/usr/bin/python3",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/diag/host_correlate.py",
+          "sample",
+          "--uml-pid",
+          "1141029",
+          "--out",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/run/results/witness-v3/quiet-unlimited/host",
+          "--duration-s",
+          "30.0",
+          "--interval-ms",
+          "10"
+        ],
+        "begin_ns": 13902077034863837,
+        "end_ns": 13902085396245168,
+        "elapsed_s": 8.361381331,
+        "cpu_ticks_delta": 647,
+        "cpu_s": 6.47,
+        "samples": 634,
+        "termination": "planned_sigterm",
+        "forced_kill": false,
+        "timed_out": false,
+        "rc": 0,
+        "planned_sigterm_ns": 13902085357978041,
+        "cleanup": {
+          "process_group": 1144701,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "note": "10 ms diagnostic polling; overhead measured here, never asserted negligible",
+        "termination_reason": "signal"
+      }
+    },
+    "separate-observer": {
+      "raw_correlation_replay_identical": true,
+      "source_sha256": "6166f05a605f4e491a318b13aadd518a40dfce8714ece33743cb9e5da93b0a06",
+      "capture": {
+        "count": 60,
+        "median_ms": 0.265344,
+        "p95_ms": 1.50912,
+        "max_ms": 2.145536
+      },
+      "inter_capture": {
+        "count": 59,
+        "median_ms": 100.001024,
+        "p95_ms": 104.089344,
+        "max_ms": 192.221952
+      },
+      "coverage": {
+        "covered": 300
+      },
+      "alignment_width_ns": 23556916,
+      "worst_capture": {
+        "event": "cap",
+        "k": 50,
+        "mono_begin_ns": 36548029440,
+        "proc_cpu_ns": 580000000,
+        "max_stable": 1,
+        "stages": [
+          {
+            "name": "cpu.max.first",
+            "begin_ns": 36548029440,
+            "end_ns": 36548438272,
+            "tcpu_begin_ns": 340000000,
+            "tcpu_end_ns": 340000000
+          },
+          {
+            "name": "cpu.stat",
+            "begin_ns": 36548500224,
+            "end_ns": 36548886016,
+            "tcpu_begin_ns": 340000000,
+            "tcpu_end_ns": 340000000
+          },
+          {
+            "name": "cpu.max.second",
+            "begin_ns": 36548948480,
+            "end_ns": 36549344512,
+            "tcpu_begin_ns": 340000000,
+            "tcpu_end_ns": 340000000
+          },
+          {
+            "name": "/proc/stat",
+            "begin_ns": 36549406976,
+            "end_ns": 36549756928,
+            "tcpu_begin_ns": 340000000,
+            "tcpu_end_ns": 340000000
+          },
+          {
+            "name": "process_clock",
+            "begin_ns": 36549818368,
+            "end_ns": 36550174976,
+            "tcpu_begin_ns": 340000000,
+            "tcpu_end_ns": 350000000
+          }
+        ],
+        "max1": {
+          "errno": 0,
+          "len": 11,
+          "raw": "max 100000"
+        },
+        "stat": {
+          "errno": 0,
+          "len": 136,
+          "present": 1,
+          "usage_usec": 590000,
+          "nr_periods": 0,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        },
+        "max2": {
+          "errno": 0,
+          "len": 11,
+          "raw": "max 100000"
+        },
+        "proc": {
+          "errno": 0,
+          "len": 255
+        }
+      },
+      "longest_stage": {
+        "k": 0,
+        "stage": "cpu.max.first",
+        "guest_wall_ns": 501248,
+        "guest_thread_cpu_ns": 0,
+        "host_begin_ns_lo": 13902089877603740,
+        "host_end_ns_hi": 13902089901661904,
+        "alignment_width_ns": 23556916,
+        "coverage": "covered",
+        "pre_seq": 109,
+        "post_seq": 112,
+        "entities": {
+          "thread:1141029@1390205817": {
+            "label": "thread",
+            "key": "1141029@1390205817",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089842323023,
+            "bracket_post_acq_begin_ns": 13902089922172433,
+            "host_bracket_width_ns": 79849410,
+            "deltas": {
+              "utime_ticks": 4,
+              "stime_ticks": 0,
+              "exec_ns": 38820639,
+              "wait_ns": 12520212,
+              "switches": 184
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0"
+            ],
+            "cpus": [
+              0,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000000001000",
+              "sigblk=0000000200003000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000200000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141089@1390205835": {
+            "label": "thread",
+            "key": "1141089@1390205835",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089842937812,
+            "bracket_post_acq_begin_ns": 13902089922808664,
+            "host_bracket_width_ns": 79870852,
+            "deltas": {
+              "utime_ticks": 3,
+              "stime_ticks": 0,
+              "exec_ns": 29808112,
+              "wait_ns": 24298671,
+              "switches": 158
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000000002000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141090@1390205836": {
+            "label": "thread",
+            "key": "1141090@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089843538916,
+            "bracket_post_acq_begin_ns": 13902089923417359,
+            "host_bracket_width_ns": 79878443,
+            "deltas": {
+              "utime_ticks": 2,
+              "stime_ticks": 0,
+              "exec_ns": 25514735,
+              "wait_ns": 40561580,
+              "switches": 155
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R"
+            ],
+            "wchans": [
+              "0"
+            ],
+            "cpus": [
+              0,
+              2
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000200002000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141091@1390205836": {
+            "label": "thread",
+            "key": "1141091@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089844389011,
+            "bracket_post_acq_begin_ns": 13902089924026111,
+            "host_bracket_width_ns": 79637100,
+            "deltas": {
+              "utime_ticks": 4,
+              "stime_ticks": 0,
+              "exec_ns": 45704083,
+              "wait_ns": 13360712,
+              "switches": 571
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000000002000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141100@1390205847": {
+            "label": "thread",
+            "key": "1141100@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089845002512,
+            "bracket_post_acq_begin_ns": 13902089924629140,
+            "host_bracket_width_ns": 79626628,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141101@1390205847": {
+            "label": "thread",
+            "key": "1141101@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089845597309,
+            "bracket_post_acq_begin_ns": 13902089925238876,
+            "host_bracket_width_ns": 79641567,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "ep_poll"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141126@1390205853": {
+            "label": "runner",
+            "key": "1141126@1390205853",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089848874566,
+            "bracket_post_acq_begin_ns": 13902089928392540,
+            "host_bracket_width_ns": 79517974,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141128@1390205856": {
+            "label": "runner",
+            "key": "1141128@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089849769249,
+            "bracket_post_acq_begin_ns": 13902089928873833,
+            "host_bracket_width_ns": 79104584,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141130@1390205856": {
+            "label": "runner",
+            "key": "1141130@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089850679173,
+            "bracket_post_acq_begin_ns": 13902089929326272,
+            "host_bracket_width_ns": 78647099,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 80624,
+              "wait_ns": 33107,
+              "switches": 2
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141137@1390205857": {
+            "label": "runner",
+            "key": "1141137@1390205857",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089851559545,
+            "bracket_post_acq_begin_ns": 13902089930219959,
+            "host_bracket_width_ns": 78660414,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141173@1390205866": {
+            "label": "runner",
+            "key": "1141173@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089858287712,
+            "bracket_post_acq_begin_ns": 13902089935591937,
+            "host_bracket_width_ns": 77304225,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141175@1390205866": {
+            "label": "runner",
+            "key": "1141175@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089858742031,
+            "bracket_post_acq_begin_ns": 13902089936046178,
+            "host_bracket_width_ns": 77304147,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141184@1390205867": {
+            "label": "runner",
+            "key": "1141184@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089859638269,
+            "bracket_post_acq_begin_ns": 13902089936938387,
+            "host_bracket_width_ns": 77300118,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 547874,
+              "wait_ns": 0,
+              "switches": 22
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141187@1390205867": {
+            "label": "runner",
+            "key": "1141187@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089860101278,
+            "bracket_post_acq_begin_ns": 13902089937385618,
+            "host_bracket_width_ns": 77284340,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141189@1390205868": {
+            "label": "runner",
+            "key": "1141189@1390205868",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089860551754,
+            "bracket_post_acq_begin_ns": 13902089937839118,
+            "host_bracket_width_ns": 77287364,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141192@1390205870": {
+            "label": "runner",
+            "key": "1141192@1390205870",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089861448183,
+            "bracket_post_acq_begin_ns": 13902089938728207,
+            "host_bracket_width_ns": 77280024,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 978972,
+              "wait_ns": 126922,
+              "switches": 22
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141217@1390205883": {
+            "label": "runner",
+            "key": "1141217@1390205883",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089865992582,
+            "bracket_post_acq_begin_ns": 13902089943363517,
+            "host_bracket_width_ns": 77370935,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1955061,
+              "wait_ns": 235378,
+              "switches": 54
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141244@1390205895": {
+            "label": "runner",
+            "key": "1141244@1390205895",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089866882936,
+            "bracket_post_acq_begin_ns": 13902089944278557,
+            "host_bracket_width_ns": 77395621,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 366183,
+              "wait_ns": 165918,
+              "switches": 16
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141589@1390206075": {
+            "label": "runner",
+            "key": "1141589@1390206075",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089862341879,
+            "bracket_post_acq_begin_ns": 13902089939610420,
+            "host_bracket_width_ns": 77268541,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 140469,
+              "wait_ns": 237567,
+              "switches": 5
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141598@1390206079": {
+            "label": "runner",
+            "key": "1141598@1390206079",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089865094973,
+            "bracket_post_acq_begin_ns": 13902089941581777,
+            "host_bracket_width_ns": 76486804,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 0,
+              "exec_ns": 4283661,
+              "wait_ns": 75870,
+              "switches": 176
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141607@1390206081": {
+            "label": "runner",
+            "key": "1141607@1390206081",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089866437160,
+            "bracket_post_acq_begin_ns": 13902089943817241,
+            "host_bracket_width_ns": 77380081,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 833762,
+              "wait_ns": 32644,
+              "switches": 18
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141847@1390206197": {
+            "label": "runner",
+            "key": "1141847@1390206197",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089862791173,
+            "bracket_post_acq_begin_ns": 13902089940237350,
+            "host_bracket_width_ns": 77446177,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 463348,
+              "wait_ns": 0,
+              "switches": 19
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141981@1390206236": {
+            "label": "runner",
+            "key": "1141981@1390206236",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089863683768,
+            "bracket_post_acq_begin_ns": 13902089941134364,
+            "host_bracket_width_ns": 77450596,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 790575,
+              "wait_ns": 27812,
+              "switches": 30
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143584@1390207141": {
+            "label": "runner",
+            "key": "1143584@1390207141",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089855136690,
+            "bracket_post_acq_begin_ns": 13902089933796903,
+            "host_bracket_width_ns": 78660213,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144786@1390207745": {
+            "label": "runner",
+            "key": "1144786@1390207745",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089861893085,
+            "bracket_post_acq_begin_ns": 13902089939169841,
+            "host_bracket_width_ns": 77276756,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144879@1390207786": {
+            "label": "runner",
+            "key": "1144879@1390207786",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089857382925,
+            "bracket_post_acq_begin_ns": 13902089934687066,
+            "host_bracket_width_ns": 77304141,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146641@1390208704": {
+            "label": "runner",
+            "key": "1146641@1390208704",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089851121270,
+            "bracket_post_acq_begin_ns": 13902089929777272,
+            "host_bracket_width_ns": 78656002,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146650@1390208707": {
+            "label": "runner",
+            "key": "1146650@1390208707",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089852015138,
+            "bracket_post_acq_begin_ns": 13902089931107505,
+            "host_bracket_width_ns": 79092367,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146651@1390208707": {
+            "label": "runner",
+            "key": "1146651@1390208707",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089852458343,
+            "bracket_post_acq_begin_ns": 13902089931548890,
+            "host_bracket_width_ns": 79090547,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146652@1390208708": {
+            "label": "runner",
+            "key": "1146652@1390208708",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089853342824,
+            "bracket_post_acq_begin_ns": 13902089932444161,
+            "host_bracket_width_ns": 79101337,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 81820,
+              "wait_ns": 0,
+              "switches": 3
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146715@1390208731": {
+            "label": "runner",
+            "key": "1146715@1390208731",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089863238456,
+            "bracket_post_acq_begin_ns": 13902089940688434,
+            "host_bracket_width_ns": 77449978,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 417797,
+              "wait_ns": 0,
+              "switches": 17
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146846@1390208797": {
+            "label": "runner",
+            "key": "1146846@1390208797",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089864196939,
+            "bracket_post_acq_begin_ns": 13902089942026902,
+            "host_bracket_width_ns": 77829963,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146847@1390208797": {
+            "label": "runner",
+            "key": "1146847@1390208797",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089864645846,
+            "bracket_post_acq_begin_ns": 13902089942471223,
+            "host_bracket_width_ns": 77825377,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 1,
+              "exec_ns": 9147959,
+              "wait_ns": 119427,
+              "switches": 10
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146849@1390208802": {
+            "label": "runner",
+            "key": "1146849@1390208802",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089865541105,
+            "bracket_post_acq_begin_ns": 13902089942915093,
+            "host_bracket_width_ns": 77373988,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1146908@1390208823": {
+            "label": "runner",
+            "key": "1146908@1390208823",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089852899239,
+            "bracket_post_acq_begin_ns": 13902089931990062,
+            "host_bracket_width_ns": 79090823,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 0,
+              "exec_ns": 11511395,
+              "wait_ns": 243381,
+              "switches": 13
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147052@1390208878": {
+            "label": "runner",
+            "key": "1147052@1390208878",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089856932220,
+            "bracket_post_acq_begin_ns": 13902089934243640,
+            "host_bracket_width_ns": 77311420,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 314570,
+              "wait_ns": 60859,
+              "switches": 11
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147061@1390208881": {
+            "label": "runner",
+            "key": "1147061@1390208881",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089857837300,
+            "bracket_post_acq_begin_ns": 13902089935141680,
+            "host_bracket_width_ns": 77304380,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1476124,
+              "wait_ns": 35669,
+              "switches": 61
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147065@1390208881": {
+            "label": "runner",
+            "key": "1147065@1390208881",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089859191784,
+            "bracket_post_acq_begin_ns": 13902089936493653,
+            "host_bracket_width_ns": 77301869,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 537403,
+              "wait_ns": 8237,
+              "switches": 19
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147079@1390208883": {
+            "label": "runner",
+            "key": "1147079@1390208883",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089861000000,
+            "bracket_post_acq_begin_ns": 13902089938286447,
+            "host_bracket_width_ns": 77286447,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1891042,
+              "wait_ns": 0,
+              "switches": 66
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147165@1390208931": {
+            "label": "runner",
+            "key": "1147165@1390208931",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089853786542,
+            "bracket_post_acq_begin_ns": 13902089932893853,
+            "host_bracket_width_ns": 79107311,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 1,
+              "exec_ns": 8506538,
+              "wait_ns": 60997,
+              "switches": 276
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147167@1390208932": {
+            "label": "runner",
+            "key": "1147167@1390208932",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902089854231502,
+            "bracket_post_acq_begin_ns": 13902089933348250,
+            "host_bracket_width_ns": 79116748,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 1631891,
+              "wait_ns": 0,
+              "switches": 4
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147168@1390208932": {
+            "label": "runner",
+            "key": "1147168@1390208932",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          },
+          "runner:1147170@1390208934": {
+            "label": "runner",
+            "key": "1147170@1390208934",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          },
+          "runner:1147179@1390208935": {
+            "label": "runner",
+            "key": "1147179@1390208935",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          },
+          "runner:1147180@1390208935": {
+            "label": "runner",
+            "key": "1147180@1390208935",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          },
+          "runner:1147271@1390208979": {
+            "label": "runner",
+            "key": "1147271@1390208979",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          },
+          "runner:1147272@1390208983": {
+            "label": "runner",
+            "key": "1147272@1390208983",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          },
+          "runner:1147283@1390208989": {
+            "label": "runner",
+            "key": "1147283@1390208989",
+            "identity": "missing",
+            "detail": "entity not present at both bracket ticks"
+          }
+        },
+        "runner_births": [
+          {
+            "kind": "runner_birth",
+            "id": 1147272,
+            "starttime": 1390208983,
+            "key": "1147272@1390208983"
+          },
+          {
+            "kind": "runner_birth",
+            "id": 1147273,
+            "starttime": 1390208984,
+            "key": "1147273@1390208984"
+          },
+          {
+            "kind": "runner_birth",
+            "id": 1147274,
+            "starttime": 1390208985,
+            "key": "1147274@1390208985"
+          },
+          {
+            "kind": "runner_birth",
+            "id": 1147283,
+            "starttime": 1390208989,
+            "key": "1147283@1390208989"
+          }
+        ],
+        "runner_gone": [
+          {
+            "kind": "runner_gone",
+            "id": 1147168,
+            "starttime": 1390208932,
+            "key": "1147168@1390208932"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147170,
+            "starttime": 1390208934,
+            "key": "1147170@1390208934"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147179,
+            "starttime": 1390208935,
+            "key": "1147179@1390208935"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147180,
+            "starttime": 1390208935,
+            "key": "1147180@1390208935"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147271,
+            "starttime": 1390208979,
+            "key": "1147271@1390208979"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147272,
+            "starttime": 1390208983,
+            "key": "1147272@1390208983"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147273,
+            "starttime": 1390208984,
+            "key": "1147273@1390208984"
+          },
+          {
+            "kind": "runner_gone",
+            "id": 1147274,
+            "starttime": 1390208985,
+            "key": "1147274@1390208985"
+          }
+        ]
+      },
+      "witness_summary": {
+        "event": "summary",
+        "requested": 60,
+        "completed": 60,
+        "status": "complete",
+        "start_mono_ns": 31547830528,
+        "end_mono_ns": 37449757952,
+        "deadline_ns": 40547830528
+      },
+      "sampler": {
+        "pid": 1146898,
+        "pgid": 1146898,
+        "command": [
+          "/usr/bin/python3",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/diag/host_correlate.py",
+          "sample",
+          "--uml-pid",
+          "1141029",
+          "--out",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/run/results/witness-v3/separate-observer/host",
+          "--duration-s",
+          "30.0",
+          "--interval-ms",
+          "10"
+        ],
+        "begin_ns": 13902088156083217,
+        "end_ns": 13902096904221874,
+        "elapsed_s": 8.748138657,
+        "cpu_ticks_delta": 699,
+        "cpu_s": 6.99,
+        "samples": 669,
+        "termination": "planned_sigterm",
+        "forced_kill": false,
+        "timed_out": false,
+        "rc": 0,
+        "planned_sigterm_ns": 13902096865442653,
+        "cleanup": {
+          "process_group": 1146898,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "note": "10 ms diagnostic polling; overhead measured here, never asserted negligible",
+        "termination_reason": "signal"
+      }
+    },
+    "same-observer": {
+      "raw_correlation_replay_identical": true,
+      "source_sha256": "6166f05a605f4e491a318b13aadd518a40dfce8714ece33743cb9e5da93b0a06",
+      "capture": {
+        "count": 60,
+        "median_ms": 1.565184,
+        "p95_ms": 295.653888,
+        "max_ms": 497.780736
+      },
+      "inter_capture": {
+        "count": 59,
+        "median_ms": 96.722688,
+        "p95_ms": 300.882432,
+        "max_ms": 484.25344
+      },
+      "coverage": {
+        "covered": 300
+      },
+      "alignment_width_ns": 16343732,
+      "worst_capture": {
+        "event": "cap",
+        "k": 59,
+        "mono_begin_ns": 99430063872,
+        "proc_cpu_ns": 1220000000,
+        "max_stable": 1,
+        "stages": [
+          {
+            "name": "cpu.max.first",
+            "begin_ns": 99430063872,
+            "end_ns": 99825474048,
+            "tcpu_begin_ns": 830000000,
+            "tcpu_end_ns": 830000000
+          },
+          {
+            "name": "cpu.stat",
+            "begin_ns": 99825562624,
+            "end_ns": 99925044992,
+            "tcpu_begin_ns": 830000000,
+            "tcpu_end_ns": 840000000
+          },
+          {
+            "name": "cpu.max.second",
+            "begin_ns": 99925094400,
+            "end_ns": 99926052864,
+            "tcpu_begin_ns": 840000000,
+            "tcpu_end_ns": 840000000
+          },
+          {
+            "name": "/proc/stat",
+            "begin_ns": 99926233600,
+            "end_ns": 99927118336,
+            "tcpu_begin_ns": 840000000,
+            "tcpu_end_ns": 840000000
+          },
+          {
+            "name": "process_clock",
+            "begin_ns": 99927272960,
+            "end_ns": 99927844608,
+            "tcpu_begin_ns": 840000000,
+            "tcpu_end_ns": 840000000
+          }
+        ],
+        "max1": {
+          "errno": 0,
+          "len": 13,
+          "raw": "50000 100000"
+        },
+        "stat": {
+          "errno": 0,
+          "len": 151,
+          "present": 1,
+          "usage_usec": 11520000,
+          "nr_periods": 229,
+          "nr_throttled": 227,
+          "throttled_usec": 77740000
+        },
+        "max2": {
+          "errno": 0,
+          "len": 13,
+          "raw": "50000 100000"
+        },
+        "proc": {
+          "errno": 0,
+          "len": 255
+        }
+      },
+      "longest_stage": {
+        "k": 59,
+        "stage": "cpu.max.first",
+        "guest_wall_ns": 395410176,
+        "guest_thread_cpu_ns": 0,
+        "host_begin_ns_lo": 13902157743012058,
+        "host_end_ns_hi": 13902158154765966,
+        "alignment_width_ns": 16343732,
+        "coverage": "covered",
+        "pre_seq": 1835,
+        "post_seq": 1859,
+        "entities": {
+          "thread:1141029@1390205817": {
+            "label": "thread",
+            "key": "1141029@1390205817",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157709803224,
+            "bracket_post_acq_begin_ns": 13902158161930571,
+            "host_bracket_width_ns": 452127347,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 1,
+              "exec_ns": 7168765,
+              "wait_ns": 38390814,
+              "switches": 343
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              1,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000000001000",
+              "sigblk=0000000200003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141089@1390205835": {
+            "label": "thread",
+            "key": "1141089@1390205835",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157710416844,
+            "bracket_post_acq_begin_ns": 13902158162524252,
+            "host_bracket_width_ns": 452107408,
+            "deltas": {
+              "utime_ticks": 2,
+              "stime_ticks": 0,
+              "exec_ns": 19884156,
+              "wait_ns": 44292954,
+              "switches": 458
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000200000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141090@1390205836": {
+            "label": "thread",
+            "key": "1141090@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157711022272,
+            "bracket_post_acq_begin_ns": 13902158163079323,
+            "host_bracket_width_ns": 452057051,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 0,
+              "exec_ns": 11603162,
+              "wait_ns": 41249410,
+              "switches": 150
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              1,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141091@1390205836": {
+            "label": "thread",
+            "key": "1141091@1390205836",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157711627814,
+            "bracket_post_acq_begin_ns": 13902158163628010,
+            "host_bracket_width_ns": 452000196,
+            "deltas": {
+              "utime_ticks": 3,
+              "stime_ticks": 1,
+              "exec_ns": 35284208,
+              "wait_ns": 25174137,
+              "switches": 223
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              1,
+              2,
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=0000000010001000",
+              "sigblk=0000000210003000",
+              "sigpnd=0000000000000000",
+              "sigpnd=0000000000002000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141100@1390205847": {
+            "label": "thread",
+            "key": "1141100@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157712228832,
+            "bracket_post_acq_begin_ns": 13902158164213039,
+            "host_bracket_width_ns": 451984207,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "do_poll.constprop.0"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "thread:1141101@1390205847": {
+            "label": "thread",
+            "key": "1141101@1390205847",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157712827703,
+            "bracket_post_acq_begin_ns": 13902158164792495,
+            "host_bracket_width_ns": 451964792,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "ep_poll"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [
+              "shdpnd=0000000000000000",
+              "sigblk=000000001c017202",
+              "sigpnd=0000000000000000"
+            ],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141128@1390205856": {
+            "label": "runner",
+            "key": "1141128@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157716635324,
+            "bracket_post_acq_begin_ns": 13902158168410963,
+            "host_bracket_width_ns": 451775639,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141130@1390205856": {
+            "label": "runner",
+            "key": "1141130@1390205856",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157717960996,
+            "bracket_post_acq_begin_ns": 13902158168851259,
+            "host_bracket_width_ns": 450890263,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 64772,
+              "wait_ns": 0,
+              "switches": 2
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141137@1390205857": {
+            "label": "runner",
+            "key": "1141137@1390205857",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157718403290,
+            "bracket_post_acq_begin_ns": 13902158168994795,
+            "host_bracket_width_ns": 450591505,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141173@1390205866": {
+            "label": "runner",
+            "key": "1141173@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157721051523,
+            "bracket_post_acq_begin_ns": 13902158169849119,
+            "host_bracket_width_ns": 448797596,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141175@1390205866": {
+            "label": "runner",
+            "key": "1141175@1390205866",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157721491321,
+            "bracket_post_acq_begin_ns": 13902158169985931,
+            "host_bracket_width_ns": 448494610,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141184@1390205867": {
+            "label": "runner",
+            "key": "1141184@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157722371405,
+            "bracket_post_acq_begin_ns": 13902158170270444,
+            "host_bracket_width_ns": 447899039,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141187@1390205867": {
+            "label": "runner",
+            "key": "1141187@1390205867",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157723251734,
+            "bracket_post_acq_begin_ns": 13902158170546015,
+            "host_bracket_width_ns": 447294281,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141189@1390205868": {
+            "label": "runner",
+            "key": "1141189@1390205868",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157723698571,
+            "bracket_post_acq_begin_ns": 13902158170683223,
+            "host_bracket_width_ns": 446984652,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141192@1390205870": {
+            "label": "runner",
+            "key": "1141192@1390205870",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157724152615,
+            "bracket_post_acq_begin_ns": 13902158170820476,
+            "host_bracket_width_ns": 446667861,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141217@1390205883": {
+            "label": "runner",
+            "key": "1141217@1390205883",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157728202869,
+            "bracket_post_acq_begin_ns": 13902158172022409,
+            "host_bracket_width_ns": 443819540,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141244@1390205895": {
+            "label": "runner",
+            "key": "1141244@1390205895",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157729093784,
+            "bracket_post_acq_begin_ns": 13902158172313591,
+            "host_bracket_width_ns": 443219807,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141589@1390206075": {
+            "label": "runner",
+            "key": "1141589@1390206075",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157725966164,
+            "bracket_post_acq_begin_ns": 13902158171356432,
+            "host_bracket_width_ns": 445390268,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 289295,
+              "wait_ns": 94705,
+              "switches": 9
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141598@1390206079": {
+            "label": "runner",
+            "key": "1141598@1390206079",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157727305913,
+            "bracket_post_acq_begin_ns": 13902158171747652,
+            "host_bracket_width_ns": 444441739,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 453474,
+              "wait_ns": 4309,
+              "switches": 8
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141607@1390206081": {
+            "label": "runner",
+            "key": "1141607@1390206081",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157728647562,
+            "bracket_post_acq_begin_ns": 13902158172177330,
+            "host_bracket_width_ns": 443529768,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 462329,
+              "wait_ns": 232786,
+              "switches": 9
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141847@1390206197": {
+            "label": "runner",
+            "key": "1141847@1390206197",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157726414158,
+            "bracket_post_acq_begin_ns": 13902158171485663,
+            "host_bracket_width_ns": 445071505,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1141981@1390206236": {
+            "label": "runner",
+            "key": "1141981@1390206236",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157726859498,
+            "bracket_post_acq_begin_ns": 13902158171614049,
+            "host_bracket_width_ns": 444754551,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1143584@1390207141": {
+            "label": "runner",
+            "key": "1143584@1390207141",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157719720850,
+            "bracket_post_acq_begin_ns": 13902158169433241,
+            "host_bracket_width_ns": 449712391,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144786@1390207745": {
+            "label": "runner",
+            "key": "1144786@1390207745",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157725520337,
+            "bracket_post_acq_begin_ns": 13902158171227942,
+            "host_bracket_width_ns": 445707605,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1144879@1390207786": {
+            "label": "runner",
+            "key": "1144879@1390207786",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157720170832,
+            "bracket_post_acq_begin_ns": 13902158169563539,
+            "host_bracket_width_ns": 449392707,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1147167@1390208932": {
+            "label": "runner",
+            "key": "1147167@1390208932",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157719280475,
+            "bracket_post_acq_begin_ns": 13902158169285635,
+            "host_bracket_width_ns": 450005160,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1155846@1390213501": {
+            "label": "runner",
+            "key": "1155846@1390213501",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157715506423,
+            "bracket_post_acq_begin_ns": 13902158167486038,
+            "host_bracket_width_ns": 451979615,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1155847@1390213503": {
+            "label": "runner",
+            "key": "1155847@1390213503",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157715952573,
+            "bracket_post_acq_begin_ns": 13902158167962452,
+            "host_bracket_width_ns": 452009879,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1155848@1390213504": {
+            "label": "runner",
+            "key": "1155848@1390213504",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157717079943,
+            "bracket_post_acq_begin_ns": 13902158168560979,
+            "host_bracket_width_ns": 451481036,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1155849@1390213504": {
+            "label": "runner",
+            "key": "1155849@1390213504",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157717522290,
+            "bracket_post_acq_begin_ns": 13902158168704695,
+            "host_bracket_width_ns": 451182405,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1155904@1390213524": {
+            "label": "runner",
+            "key": "1155904@1390213524",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157722811439,
+            "bracket_post_acq_begin_ns": 13902158170409775,
+            "host_bracket_width_ns": 447598336,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1156020@1390213584": {
+            "label": "runner",
+            "key": "1156020@1390213584",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157720611903,
+            "bracket_post_acq_begin_ns": 13902158169710317,
+            "host_bracket_width_ns": 449098414,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 0,
+              "exec_ns": 10265468,
+              "wait_ns": 5981916,
+              "switches": 112
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              1,
+              3
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1156029@1390213585": {
+            "label": "runner",
+            "key": "1156029@1390213585",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157721931321,
+            "bracket_post_acq_begin_ns": 13902158170127129,
+            "host_bracket_width_ns": 448195808,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 1,
+              "exec_ns": 20132987,
+              "wait_ns": 19855480,
+              "switches": 419
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1156046@1390213587": {
+            "label": "runner",
+            "key": "1156046@1390213587",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157724594504,
+            "bracket_post_acq_begin_ns": 13902158170967427,
+            "host_bracket_width_ns": 446372923,
+            "deltas": {
+              "utime_ticks": 2,
+              "stime_ticks": 1,
+              "exec_ns": 34201203,
+              "wait_ns": 3137645,
+              "switches": 189
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1156047@1390213588": {
+            "label": "runner",
+            "key": "1156047@1390213588",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157725037500,
+            "bracket_post_acq_begin_ns": 13902158171097881,
+            "host_bracket_width_ns": 446060381,
+            "deltas": {
+              "utime_ticks": 1,
+              "stime_ticks": 0,
+              "exec_ns": 7455849,
+              "wait_ns": 18151250,
+              "switches": 305
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "R",
+              "S"
+            ],
+            "wchans": [
+              "0",
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              0,
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1156505@1390213798": {
+            "label": "runner",
+            "key": "1156505@1390213798",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157718842094,
+            "bracket_post_acq_begin_ns": 13902158169139344,
+            "host_bracket_width_ns": 450297250,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 0,
+              "wait_ns": 0,
+              "switches": 0
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              2
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          },
+          "runner:1159519@1390215167": {
+            "label": "runner",
+            "key": "1159519@1390215167",
+            "identity": "matched",
+            "bracket_pre_acq_end_ns": 13902157727752981,
+            "bracket_post_acq_begin_ns": 13902158171878845,
+            "host_bracket_width_ns": 444125864,
+            "deltas": {
+              "utime_ticks": 0,
+              "stime_ticks": 0,
+              "exec_ns": 32260,
+              "wait_ns": 15851,
+              "switches": 1
+            },
+            "run_wait_available": true,
+            "regressions": [],
+            "states": [
+              "S"
+            ],
+            "wchans": [
+              "futex_wait_queue_me"
+            ],
+            "cpus": [
+              1
+            ],
+            "sig_masks_seen": [],
+            "mixed_generations_in_window": 0
+          }
+        },
+        "runner_births": [],
+        "runner_gone": []
+      },
+      "witness_summary": {
+        "event": "summary",
+        "requested": 60,
+        "completed": 60,
+        "status": "complete",
+        "start_mono_ns": 93431637504,
+        "end_mono_ns": 99928317952,
+        "deadline_ns": 102431637504
+      },
+      "sampler": {
+        "pid": 1156089,
+        "pgid": 1156089,
+        "command": [
+          "/usr/bin/python3",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/diag/host_correlate.py",
+          "sample",
+          "--uml-pid",
+          "1141029",
+          "--out",
+          "/root/harddind-rebuild/cpu-witness-owner-v3/run/results/witness-v3/same-observer/host",
+          "--duration-s",
+          "30.0",
+          "--interval-ms",
+          "10"
+        ],
+        "begin_ns": 13902136107064379,
+        "end_ns": 13902158501641846,
+        "elapsed_s": 22.394577467,
+        "cpu_ticks_delta": 1823,
+        "cpu_s": 18.23,
+        "samples": 1876,
+        "termination": "planned_sigterm",
+        "forced_kill": false,
+        "timed_out": false,
+        "rc": 0,
+        "planned_sigterm_ns": 13902158473700009,
+        "cleanup": {
+          "process_group": 1156089,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "note": "10 ms diagnostic polling; overhead measured here, never asserted negligible",
+        "termination_reason": "signal"
+      }
+    }
+  },
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "exit_code": 0,
+  "finished_at": "2026-10-14T23:25:37.608569+00:00"
+}

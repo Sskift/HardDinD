@@ -47,6 +47,8 @@
 
 [GPU 事件修复的真实 CUDA 运行](results/starpub-2026-10-15-candidate-review/gpu-mapping-v11/README.md) 已确认四卡事件注册与释放成功，控制 31/31、分配 74/74 回归通过。内部 CUDA 仍初始化失败，日志保留 `0x20810108` / 992 字节和新到达的 `0x80028b` / 1 字节两类未支持控制；没有内部计算或 GPU 性能通过结论。
 
+[CPU 延迟四组对照](results/starpub-2026-10-15-candidate-review/cpu-witness-v3/README.md) 捕捉到限额组内约 479–498 ms 的长采样，而独立无限额观察进程最长约 2–3 ms；外层采样器本身有显著开销，根因和无干扰性能仍在核对。[CPU shares v5](results/starpub-2026-10-15-candidate-review/cpu-shares-v5/README.md) 则在正常关机后生成报告失败，缺失完整命令元数据，仍按失败保存。
+
 新的 `defer_ipi=1` 实验保留宿主 IPI 信号投递，在 guest 关闭中断期间原子登记待处理向量，恢复时处理，减少反复调用宿主信号屏蔽。构建使用 `make kernel-ipi-experiment`，运行器使用 `--defer-ipi`；开关默认关闭。`scripts/compare-ipi.py` 对原生、上一版内核以及同一新内核的开关两种状态做交错对照，`scripts/run-ipi-probes.py` 使用实际补丁内的协议头进行异步信号压力测试。
 
 该实验必须同时应用 `0009` 空闲等待修正：软件屏蔽不会把 IPI 留在宿主信号队列里，原来的 `signalfd` 等待因此可能漏唤醒。空闲路径现在在检查与睡眠期间屏蔽宿主 IPI，并检查软件 pending 位。原函数体的确定性复现与真实 guest 的零轮询回归见 [IPI 优化和故障定位](results/starpub-2026-10-14-ipi/)。单独应用 `0008` 的早期性能结果不能代表可用版本。

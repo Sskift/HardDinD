@@ -1,0 +1,231 @@
+{
+  "results_dir": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4",
+  "frozen_verdict": "indeterminate",
+  "replayed_verdict": "indeterminate",
+  "frozen_statuses": {
+    "guest_topology": "pass",
+    "container_identity": "pass",
+    "probe_streams": "pass",
+    "phase_2to1": "pass",
+    "phase_reversed_1to2": "indeterminate",
+    "phase_equal_control": "indeterminate",
+    "phase_ordering": "not_tested",
+    "weight_mapping": "pass",
+    "weight_timeline": "pass",
+    "capture_protocol": "pass",
+    "residency_affinity": "pass",
+    "whole_run_accounting": "pass",
+    "update_ledger": "pass",
+    "command_ledger": "pass",
+    "input_provenance": "pass",
+    "leftovers": "pass",
+    "lifecycle": "pass"
+  },
+  "replayed_statuses": {
+    "guest_topology": "pass",
+    "container_identity": "pass",
+    "probe_streams": "pass",
+    "phase_2to1": "pass",
+    "phase_reversed_1to2": "indeterminate",
+    "phase_equal_control": "indeterminate",
+    "phase_ordering": "not_tested",
+    "weight_mapping": "pass",
+    "weight_timeline": "pass",
+    "capture_protocol": "pass",
+    "residency_affinity": "pass",
+    "whole_run_accounting": "pass",
+    "update_ledger": "pass",
+    "command_ledger": "pass",
+    "input_provenance": "pass",
+    "leftovers": "pass",
+    "lifecycle": "pass"
+  },
+  "status_diffs": {},
+  "identical_17": true,
+  "raw_replay": [
+    {
+      "label": "daemon-info",
+      "kind": "info",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/daemon-info.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/daemon-info.stderr",
+      "parsed": {
+        "ncpu": 4,
+        "server_version": "29.8.2-harddind.1",
+        "cgroup_version": "2",
+        "info_raw": "ncpu=4 server=29.8.2-harddind.1 kernel=7.2.10 driver=overlayfs cgroup=2"
+      }
+    },
+    {
+      "label": "logs-a",
+      "kind": "contend_jsonl",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/logs-a.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/logs-a.stderr",
+      "events": 346,
+      "parse_errors": [],
+      "first_event": "start",
+      "last_event": "end",
+      "bytes": 214506
+    },
+    {
+      "label": "snapshot-a-0",
+      "kind": "snapshot",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-a-0.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-a-0.stderr",
+      "wall_ns": 11943080960,
+      "weight": "100"
+    },
+    {
+      "label": "snapshot-a-1",
+      "kind": "snapshot",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-a-1.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-a-1.stderr",
+      "wall_ns": 35171757056,
+      "weight": "59"
+    },
+    {
+      "label": "snapshot-a-2",
+      "kind": "snapshot",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-a-2.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-a-2.stderr",
+      "wall_ns": 48113508608,
+      "weight": "59"
+    },
+    {
+      "label": "inspect-a-0",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-a-0.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-a-0.stderr",
+      "shares": 1024,
+      "cpuset": "2",
+      "id": "8ffc4c85037f"
+    },
+    {
+      "label": "inspect-a-1",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-a-1.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-a-1.stderr",
+      "shares": 512,
+      "cpuset": "2",
+      "id": "8ffc4c85037f"
+    },
+    {
+      "label": "inspect-a-2",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-a-2.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-a-2.stderr",
+      "shares": 512,
+      "cpuset": "2",
+      "id": "8ffc4c85037f"
+    },
+    {
+      "label": "final-a",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/final-a.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/final-a.stderr",
+      "exit_code": 0,
+      "running": false
+    },
+    {
+      "label": "logs-b",
+      "kind": "contend_jsonl",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/logs-b.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/logs-b.stderr",
+      "events": 328,
+      "parse_errors": [],
+      "first_event": "start",
+      "last_event": "end",
+      "bytes": 203083
+    },
+    {
+      "label": "snapshot-b-0",
+      "kind": "snapshot",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-b-0.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-b-0.stderr",
+      "wall_ns": 14241232896,
+      "weight": "59"
+    },
+    {
+      "label": "snapshot-b-1",
+      "kind": "snapshot",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-b-1.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-b-1.stderr",
+      "wall_ns": 37101562368,
+      "weight": "100"
+    },
+    {
+      "label": "snapshot-b-2",
+      "kind": "snapshot",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-b-2.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/snapshot-b-2.stderr",
+      "wall_ns": 49311781888,
+      "weight": "59"
+    },
+    {
+      "label": "inspect-b-0",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-b-0.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-b-0.stderr",
+      "shares": 512,
+      "cpuset": "2",
+      "id": "8e755f00071d"
+    },
+    {
+      "label": "inspect-b-1",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-b-1.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-b-1.stderr",
+      "shares": 1024,
+      "cpuset": "2",
+      "id": "8e755f00071d"
+    },
+    {
+      "label": "inspect-b-2",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-b-2.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/inspect-b-2.stderr",
+      "shares": 512,
+      "cpuset": "2",
+      "id": "8e755f00071d"
+    },
+    {
+      "label": "final-b",
+      "kind": "inspect",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/final-b.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/final-b.stderr",
+      "exit_code": 0,
+      "running": false
+    },
+    {
+      "label": "update-a-1",
+      "kind": "update",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/update-a-1.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/update-a-1.stderr",
+      "pre_weight": "100",
+      "post_weight": "59"
+    },
+    {
+      "label": "update-b-1",
+      "kind": "update",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/update-b-1.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/update-b-1.stderr",
+      "pre_weight": "59",
+      "post_weight": "100"
+    },
+    {
+      "label": "update-b-2",
+      "kind": "update",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/update-b-2.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/update-b-2.stderr",
+      "pre_weight": "100",
+      "post_weight": "59"
+    },
+    {
+      "label": "ps-leftovers",
+      "kind": "inventory",
+      "stdout_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/ps-leftovers.stdout",
+      "stderr_path": "/root/harddind-rebuild/cpu-shares-owner-v4/run/results/shares-v4/ps-leftovers.stderr",
+      "nonempty_lines": 0
+    }
+  ],
+  "check_count": 17
+}
