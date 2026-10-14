@@ -1,0 +1,26 @@
+{
+  "status": "finished",
+  "pid": 3875601,
+  "started_at": "2026-10-14T21:39:06.479769+00:00",
+  "runs": {
+    "mapping-features-v4": {
+      "pid": 3875641,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-mapping-owner-v4/repo/scripts/run-gpu-control.py",
+        "/root/harddind-rebuild/gpu-mapping-owner-v4/run",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-mapping-owner-v4/kernel",
+        "--name",
+        "mapping-features-v4",
+        "--system-features",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    }
+  },
+  "full_acceptance": false,
+  "error": "Traceback (most recent call last):\n  File \"/root/harddind-rebuild/gpu-mapping-owner-v4/runtime.py\", line 16, in <module>\n    if not d.get('diagnostic_complete') or not all(v.get('cleanup',{}).get('clean_shutdown') for v in d['phases'].values()):raise RuntimeError(label+' incomplete or regression; preserve failure and stop before CUDA')\nRuntimeError: mapping-features-v4 incomplete or regression; preserve failure and stop before CUDA\n",
+  "exit_code": 1,
+  "finished_at": "2026-10-14T21:39:29.195059+00:00"
+}
