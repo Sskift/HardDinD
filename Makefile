@@ -53,6 +53,10 @@ kernel-ipi-experiment:
 kernel-protect-experiment:
 	PROTECT_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
 
+.PHONY: kernel-gpu-experiment
+kernel-gpu-experiment:
+	GPU_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
 dispatch-root:
 	bash scripts/make-dispatch-root.sh "$(WORK)"
 

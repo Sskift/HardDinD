@@ -6,6 +6,10 @@ mkdir -p "$work"
 exec 9>"$work/kernel-build.lock"
 flock -x 9
 src=$(python3 "$repo/scripts/fetch-kernel.py" "$work")
+if [ "${GPU_EXPERIMENT:-0}" = 1 ]; then
+    [ "${PROTECT_EXPERIMENT:-0}" = 0 ] || { echo 'GPU/protect combination is not validated' >&2; exit 1; }
+    IPI_EXPERIMENT=1
+fi
 if [ "${PROTECT_EXPERIMENT:-0}" = 1 ]; then IPI_EXPERIMENT=1; fi
 if [ "${IPI_EXPERIMENT:-0}" = 1 ]; then PERFORMANCE_EXPERIMENT=1; fi
 if [ "${PERFORMANCE_EXPERIMENT:-0}" = 1 ]; then CACHE_EXPERIMENT=1; fi
@@ -21,7 +25,9 @@ mkdir -p "$out"
 out=$(realpath "$out")
 options=()
 if [ "${HANDOFF_EXPERIMENT:-0}" = 1 ]; then options+=(--handoff-experiment); fi
-if [ "${PROTECT_EXPERIMENT:-0}" = 1 ]; then
+if [ "${GPU_EXPERIMENT:-0}" = 1 ]; then
+    options+=(--gpu-experiment)
+elif [ "${PROTECT_EXPERIMENT:-0}" = 1 ]; then
     options+=(--protect-experiment)
 elif [ "${IPI_EXPERIMENT:-0}" = 1 ]; then
     options+=(--ipi-experiment)

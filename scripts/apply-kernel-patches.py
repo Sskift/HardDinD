@@ -89,19 +89,21 @@ if __name__ == "__main__":
     elif sys.argv[3:] == ["--dispatch-experiment"]:
         patches += [repo / "kernel/experiments/0003-um-shared-vm-runners.patch",
                     repo / "kernel/experiments/0004-um-parallel-waiter-handoff.patch"]
-    elif sys.argv[3:] in (["--cache-experiment"], ["--sync-experiment"], ["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"]):
+    elif sys.argv[3:] in (["--cache-experiment"], ["--sync-experiment"], ["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
         patches += [repo / "kernel/experiments/0003-um-shared-vm-runners.patch",
                     repo / "kernel/experiments/0004-um-parallel-waiter-handoff.patch",
                     repo / "kernel/experiments/0005-um-cache-clean-mapping-brokers.patch"]
         if sys.argv[3:] != ["--cache-experiment"]:
             patches += [repo / "kernel/experiments/0006-um-skip-idle-mapping-sync.patch"]
-        if sys.argv[3:] in (["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"]):
+        if sys.argv[3:] in (["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
             patches += [repo / "kernel/experiments/0007-um-retain-broker-memory-fd.patch"]
-        if sys.argv[3:] in (["--ipi-experiment"], ["--protect-experiment"]):
+        if sys.argv[3:] in (["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
             patches += [repo / "kernel/experiments/0008-um-defer-ipi-masking.patch",
                         repo / "kernel/experiments/0009-um-synchronize-deferred-ipi-idle.patch"]
         if sys.argv[3:] == ["--protect-experiment"]:
             patches += [repo / "kernel/experiments/0010-um-update-mapping-protection.patch"]
+        if sys.argv[3:] == ["--gpu-experiment"]:
+            patches += [repo / "kernel/experiments/0012-um-gpu-control-transport.patch"]
     elif sys.argv[3:]:
         raise SystemExit("unknown patch-series option")
     apply_series(src, pathlib.Path(sys.argv[2]), patches)
