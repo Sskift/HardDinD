@@ -1,0 +1,18 @@
+{
+  "status": "verified",
+  "tested_main_commit": "d07e034",
+  "patches_sha256": {
+    "virtiofs/patches/0001-shared-fs-state.patch": "c097f621ead55c316450791d5180719854df102e4c6d7d06aa52642ea1ba55c2",
+    "virtiofs/patches/0002-shared-flock.patch": "424bc5c36e0c466b80310b43337e37cfb9179a314013c4f9be62d69568661340",
+    "virtiofs/patches/0003-request-profile.patch": "c8a37d35b64cff3c97a30b004ba9209c8995834a53614e64c7e572c098cf98ea",
+    "virtiofs/patches/0004-inline-flock.patch": "8f6a295326700bdb254854d54bb34090703389e5d8ed5b6e3d02748b0fac1795",
+    "virtiofs/patches/0005-shared-posix-locks.patch": "a7ffeca5fd5b847879d92b0f160035c88eee5440d6c95dd9b62b8c44ad51c37c"
+  },
+  "all_non_nvidia_lock_sections_identical": true,
+  "lockfile_difference": "main additionally pins NVIDIA share-policy and fixed-allocation ABI header hashes; NVIDIA revision and every virtiofs/Rust/dependency pin are unchanged",
+  "initial_whole_lockfile_equality_check": "failed because the earlier author snapshot predates those additional NVIDIA header hashes; scoped source/dependency comparison succeeds",
+  "runtime_source_hashes_match_remote_make_check": true,
+  "make_check_tests": 176,
+  "skips": 0,
+  "main_sources_lock_sha256": "1c961944f9fafa84dfb4a2a6721998d3ab92ab8ed9648ffc2af461a55b672c09"
+}

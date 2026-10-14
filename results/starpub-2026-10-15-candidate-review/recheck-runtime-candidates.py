@@ -154,6 +154,24 @@ for mode, cases in report['checks'].items():
               'missing raw POSIX v6 case: ' + case)
 check(owner['binary_sha256'] == load(ROOT / 'posix-v5', 'owner-status.json')['binary_sha256'],
       'POSIX backend changed between fixture comparison runs')
+integration = load(root, 'integration/report.json')
+check(integration['status'] == 'finished' and integration['exit_code'] == 0 and
+      integration['groups_empty'] and integration['inputs_unchanged'], 'POSIX integration failed')
+check('Ran 176 tests' in read(root, 'integration/check.stderr').decode() and
+      'skipped=' not in read(root, 'integration/check.stderr').decode(), 'POSIX integration incomplete')
+binding = load(root, 'integration/source-binding.json')
+check(sha(read(root, 'integration/main-sources.lock.json')) == binding['main_sources_lock_sha256'],
+      'integrated dependency lock changed')
+main_lock = load(root, 'integration/main-sources.lock.json')
+old_lock = load(root, 'repo/sources.lock.json')
+check({k: v for k, v in main_lock.items() if k != 'nvidia_abi_reference'} ==
+      {k: v for k, v in old_lock.items() if k != 'nvidia_abi_reference'},
+      'non-GPU pinned dependencies differ from tested backend')
+for name, digest in binding['patches_sha256'].items():
+    check(sha(read(root, 'repo/' + name)) == digest, 'integrated virtiofs patch differs')
+for name in ('src/share_probe.c', 'scripts/run-shared-locks.py', 'scripts/harddind.py'):
+    check(integration['sha256'][name] == owner['sources_before'][name],
+          'integrated POSIX runtime differs from actual tested source')
 
 root = ROOT / 'gpu-lifecycle-v4'
 owner = load(root, 'owner-report.json')
