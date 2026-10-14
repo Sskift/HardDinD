@@ -1,0 +1,1344 @@
+{
+  "scope": "offline reanalysis and measurement repair; no new runtime/performance acceptance",
+  "reparsed_results": {
+    "v4": {
+      "unthrottled_reference": {
+        "status": "pass",
+        "reason": "unthrottled busy threads consume the available CPUs",
+        "evidence": {
+          "expected": 3.9771165832652944,
+          "rates": {
+            "thread": 3.9489453408004986,
+            "proc": 3.9489453408004986,
+            "stat": 3.9489453408004986
+          },
+          "stat_delta": {
+            "usage_usec": 23830000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpus_flag_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 1.0,
+          "period_s": 0.1,
+          "wall_s": 6.06441472,
+          "lower": 0.9628983157669005,
+          "upper": 1.0371016842330996,
+          "lower_narrow": 0.9628938907499041,
+          "lower_wide": 0.9629017234852832,
+          "upper_wide": 1.0370982765147168,
+          "upper_narrow": 1.037106109250096,
+          "least_rate": 1.0090731212002924,
+          "worst_rate": 1.0092861716026083,
+          "rates": {
+            "thread": 1.0091658111403041,
+            "proc": 1.0091658111403041,
+            "stat": 1.0091658111403041
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 1.0090731212002924,
+              "high": 1.0092861716026083
+            },
+            "proc": {
+              "low": 1.0090731212002924,
+              "high": 1.0092861716026083
+            },
+            "stat": {
+              "low": 1.0090731212002924,
+              "high": 1.0092861716026083
+            }
+          },
+          "tolerance": 0.05,
+          "stat_delta": {
+            "usage_usec": 6120000,
+            "nr_periods": 61,
+            "nr_throttled": 61,
+            "throttled_usec": 18040000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 1.0091658111403041,
+          "sampler_cpu_cores": 0.0,
+          "other_process_cpu_cores": 0.0
+        }
+      },
+      "explicit_period_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 0.5,
+          "period_s": 0.05,
+          "wall_s": 6.089754624,
+          "lower": 0.48768423284175993,
+          "upper": 0.51231576715824,
+          "lower_narrow": 0.48768285812052575,
+          "lower_wide": 0.4876858344838289,
+          "upper_wide": 0.5123141655161711,
+          "upper_narrow": 0.5123171418794743,
+          "least_rate": 0.5024179530597829,
+          "worst_rate": 0.5025393886825512,
+          "rates": {
+            "thread": 0.5024833000561961,
+            "proc": 0.5024833000561961,
+            "stat": 0.5024833000561961
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 0.5024179530597829,
+              "high": 0.5025393886825512
+            },
+            "proc": {
+              "low": 0.5024179530597829,
+              "high": 0.5025393886825512
+            },
+            "stat": {
+              "low": 0.5024179530597829,
+              "high": 0.5025393886825512
+            }
+          },
+          "tolerance": 0.03,
+          "stat_delta": {
+            "usage_usec": 3060000,
+            "nr_periods": 122,
+            "nr_throttled": 122,
+            "throttled_usec": 21130000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.5024833000561961,
+          "sampler_cpu_cores": 0.0,
+          "other_process_cpu_cores": 0.0
+        }
+      },
+      "cpuset_single": {
+        "status": "pass",
+        "reason": "all busy threads ran only on the requested CPUs at per-CPU capacity",
+        "evidence": {
+          "expected": 0.9700729143018445,
+          "cpuset": [
+            0
+          ],
+          "rates": {
+            "thread": 0.9684561261113415,
+            "proc": 0.9684561261113415,
+            "stat": 0.9684561261113415
+          },
+          "tolerance": 0.048503645715092226,
+          "stat_delta": {
+            "usage_usec": 5990000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpuset_range": {
+        "status": "pass",
+        "reason": "all busy threads ran only on the requested CPUs at per-CPU capacity",
+        "evidence": {
+          "expected": 1.9668698140723735,
+          "cpuset": [
+            1,
+            2
+          ],
+          "rates": {
+            "thread": 1.9652307558939799,
+            "proc": 1.9652307558939799,
+            "stat": 1.9652307558939799
+          },
+          "tolerance": 0.09834349070361868,
+          "stat_delta": {
+            "usage_usec": 11990000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpuset_with_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 0.5,
+          "period_s": 0.1,
+          "wall_s": 6.000918272,
+          "lower": 0.4791698546232092,
+          "upper": 0.5208301453767907,
+          "lower_narrow": 0.47916681422117713,
+          "lower_wide": 0.4791714708918766,
+          "upper_wide": 0.5208285291081234,
+          "upper_narrow": 0.5208331857788229,
+          "least_rate": 0.5015509809236107,
+          "worst_rate": 0.5016631135540545,
+          "rates": {
+            "thread": 0.5015899006731215,
+            "proc": 0.5015899006731215,
+            "stat": 0.5015899006731215
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 0.5015509809236108,
+              "high": 0.5016631135540545
+            },
+            "proc": {
+              "low": 0.5015509809236107,
+              "high": 0.5016631135540544
+            },
+            "stat": {
+              "low": 0.5015509809236107,
+              "high": 0.5016631135540544
+            }
+          },
+          "tolerance": 0.03,
+          "stat_delta": {
+            "usage_usec": 3010000,
+            "nr_periods": 60,
+            "nr_throttled": 60,
+            "throttled_usec": 2990000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.4715944913305428,
+          "sampler_cpu_cores": 0.029995409342578695,
+          "other_process_cpu_cores": 0.0,
+          "cpuset": [
+            0
+          ]
+        }
+      },
+      "update_window_initial_2": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 0,
+          "expected": 2.0,
+          "period_s": 0.1,
+          "wall_s": 3.727103488,
+          "wall_wide_s": 3.72734592,
+          "wall_narrow_s": 3.726831872,
+          "lower": 1.8859704321684774,
+          "upper": 2.1140295678315226,
+          "lower_wide": 1.8859778488174233,
+          "lower_narrow": 1.8859621215560967,
+          "upper_wide": 2.114022151182577,
+          "upper_narrow": 2.114037878443903,
+          "least_rate": 2.0121556091042927,
+          "worst_rate": 2.0124331490100555,
+          "rates": {
+            "proc": 2.0122864911445144,
+            "stat": 2.0122864911445144
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 2.0121556091042927,
+              "high": 2.0124331490100555
+            },
+            "stat": {
+              "low": 2.0121556091042927,
+              "high": 2.0124331490100555
+            }
+          },
+          "nr_throttled": 37,
+          "throttled_usec": 7290000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 0.0,
+          "last_stable_cap_end_s": 8.26048384,
+          "samples_total": 82,
+          "used": 38,
+          "stable_total": 82,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            51
+          ],
+          "candidate_groups": [
+            38
+          ],
+          "endpoint_indexes": [
+            1,
+            38
+          ]
+        }
+      },
+      "update_window_half": {
+        "status": "indeterminate",
+        "reason": "post-update delivery below quota bound; starvation or noise",
+        "evidence": {
+          "segment": 1,
+          "expected": 0.5,
+          "period_s": 0.1,
+          "wall_s": 5.84028544,
+          "wall_wide_s": 5.840539904,
+          "wall_narrow_s": 5.839808768,
+          "lower": 0.4785969365223355,
+          "upper": 0.5214030634776645,
+          "lower_wide": 0.4785978690233087,
+          "lower_narrow": 0.478595189506041,
+          "upper_wide": 0.5214021309766913,
+          "upper_narrow": 0.5214048104939589,
+          "least_rate": 0.440027812880773,
+          "worst_rate": 0.4400829037557964,
+          "rates": {
+            "proc": 0.440046985100783,
+            "stat": 0.440046985100783
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 0.440027812880773,
+              "high": 0.4400829037557964
+            },
+            "stat": {
+              "low": 0.440027812880773,
+              "high": 0.4400829037557964
+            }
+          },
+          "nr_throttled": 59,
+          "throttled_usec": 18910000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 8.368583424,
+          "last_stable_cap_end_s": 15.104748288,
+          "samples_total": 82,
+          "used": 18,
+          "stable_total": 82,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            51
+          ],
+          "candidate_groups": [
+            18
+          ],
+          "endpoint_indexes": [
+            46,
+            64
+          ]
+        }
+      },
+      "update_window_recovered_2": {
+        "status": "indeterminate",
+        "reason": "window too short after time-based transition guards",
+        "evidence": {
+          "segment": 2,
+          "interior_samples": 9,
+          "wall_wide_s": 0.949539072,
+          "wall_narrow_s": 0.948982784,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 15.271051776,
+          "last_stable_cap_end_s": 23.105320704,
+          "samples_total": 82,
+          "used": 9,
+          "stable_total": 82,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            51
+          ],
+          "candidate_groups": [
+            9
+          ],
+          "endpoint_indexes": [
+            72,
+            80
+          ]
+        }
+      }
+    },
+    "ipi-control-v1": {
+      "unthrottled_reference": {
+        "status": "pass",
+        "reason": "unthrottled busy threads consume the available CPUs",
+        "evidence": {
+          "expected": 3.955413816026299,
+          "rates": {
+            "thread": 3.915859677866036,
+            "proc": 3.915859677866036,
+            "stat": 3.915859677866036
+          },
+          "stat_delta": {
+            "usage_usec": 23760000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpus_flag_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 1.0,
+          "period_s": 0.1,
+          "wall_s": 6.064879872,
+          "lower": 0.9629011613175114,
+          "upper": 1.0370988386824886,
+          "lower_narrow": 0.9628930322526875,
+          "lower_wide": 0.9629081347507622,
+          "upper_wide": 1.0370918652492378,
+          "upper_narrow": 1.0371069677473124,
+          "least_rate": 1.0056016800904446,
+          "worst_rate": 1.0060111255938011,
+          "rates": {
+            "thread": 1.0057907376141348,
+            "proc": 1.0057907376141348,
+            "stat": 1.0057907376141348
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 1.0056016800904446,
+              "high": 1.0060111255938011
+            },
+            "proc": {
+              "low": 1.0056016800904446,
+              "high": 1.0060111255938011
+            },
+            "stat": {
+              "low": 1.0056016800904446,
+              "high": 1.0060111255938011
+            }
+          },
+          "tolerance": 0.05,
+          "stat_delta": {
+            "usage_usec": 6100000,
+            "nr_periods": 61,
+            "nr_throttled": 61,
+            "throttled_usec": 18070000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.9991953885150258,
+          "sampler_cpu_cores": 0.0065953490991090815,
+          "other_process_cpu_cores": 0.0
+        }
+      },
+      "explicit_period_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 0.5,
+          "period_s": 0.05,
+          "wall_s": 6.084719872,
+          "lower": 0.4876740422603304,
+          "upper": 0.5123259577396696,
+          "lower_narrow": 0.4876113102956934,
+          "lower_wide": 0.48767555323212386,
+          "upper_wide": 0.5123244467678761,
+          "upper_narrow": 0.5123886897043066,
+          "least_rate": 0.4979076494221973,
+          "worst_rate": 0.5021548893478972,
+          "rates": {
+            "thread": 0.49796869268265304,
+            "proc": 0.49796869268265304,
+            "stat": 0.499612153714609
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 0.4979076494221973,
+              "high": 0.5005030640539896
+            },
+            "proc": {
+              "low": 0.4979076494221973,
+              "high": 0.5005030640539896
+            },
+            "stat": {
+              "low": 0.4995509089912475,
+              "high": 0.5021548893478972
+            }
+          },
+          "tolerance": 0.03,
+          "stat_delta": {
+            "usage_usec": 3040000,
+            "nr_periods": 122,
+            "nr_throttled": 122,
+            "throttled_usec": 21050000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.49796869268265304,
+          "sampler_cpu_cores": 0.0,
+          "other_process_cpu_cores": 0.0016434610319559506
+        }
+      },
+      "cpuset_single": {
+        "status": "pass",
+        "reason": "all busy threads ran only on the requested CPUs at per-CPU capacity",
+        "evidence": {
+          "expected": 0.9841469928247024,
+          "cpuset": [
+            0
+          ],
+          "rates": {
+            "thread": 0.9841469928247024,
+            "proc": 0.9841469928247024,
+            "stat": 0.9841469928247024
+          },
+          "tolerance": 0.049207349641235125,
+          "stat_delta": {
+            "usage_usec": 6000000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpuset_range": {
+        "status": "pass",
+        "reason": "all busy threads ran only on the requested CPUs at per-CPU capacity",
+        "evidence": {
+          "expected": 1.981132266856551,
+          "cpuset": [
+            1,
+            2
+          ],
+          "rates": {
+            "thread": 1.9613209441879857,
+            "proc": 1.9613209441879857,
+            "stat": 1.9613209441879857
+          },
+          "tolerance": 0.09905661334282756,
+          "stat_delta": {
+            "usage_usec": 11880000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpuset_with_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 0.5,
+          "period_s": 0.1,
+          "wall_s": 6.008734464,
+          "lower": 0.47919695058104,
+          "upper": 0.5208030494189599,
+          "lower_narrow": 0.47919285149206364,
+          "lower_wide": 0.4792015601260494,
+          "upper_wide": 0.5207984398739506,
+          "upper_narrow": 0.5208071485079364,
+          "least_rate": 0.5024903073546456,
+          "worst_rate": 0.5027007079517424,
+          "rates": {
+            "thread": 0.5026016739620731,
+            "proc": 0.5026016739620731,
+            "stat": 0.5026016739620731
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 0.5024903073546456,
+              "high": 0.5027007079517424
+            },
+            "proc": {
+              "low": 0.5024903073546457,
+              "high": 0.5027007079517424
+            },
+            "stat": {
+              "low": 0.5024903073546457,
+              "high": 0.5027007079517424
+            }
+          },
+          "tolerance": 0.03,
+          "stat_delta": {
+            "usage_usec": 3020000,
+            "nr_periods": 61,
+            "nr_throttled": 60,
+            "throttled_usec": 2990000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.5009374300085563,
+          "sampler_cpu_cores": 0.0016642439535167984,
+          "other_process_cpu_cores": 0.0,
+          "cpuset": [
+            0
+          ]
+        }
+      },
+      "update_window_initial_2": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 0,
+          "expected": 2.0,
+          "period_s": 0.1,
+          "wall_s": 3.620508416,
+          "wall_wide_s": 3.620722176,
+          "wall_narrow_s": 3.620246016,
+          "lower": 1.8826131716413608,
+          "upper": 2.1173868283586392,
+          "lower_wide": 1.8826201019185846,
+          "lower_narrow": 1.8826046632958988,
+          "upper_wide": 2.1173798980814156,
+          "upper_narrow": 2.117395336704101,
+          "least_rate": 2.0051248472260577,
+          "worst_rate": 2.005388575227701,
+          "rates": {
+            "proc": 2.0052432326675746,
+            "stat": 2.0052432326675746
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 2.0051248472260577,
+              "high": 2.005388575227701
+            },
+            "stat": {
+              "low": 2.0051248472260577,
+              "high": 2.005388575227701
+            }
+          },
+          "nr_throttled": 36,
+          "throttled_usec": 6900000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 0.0,
+          "last_stable_cap_end_s": 5.310364416,
+          "samples_total": 133,
+          "used": 33,
+          "stable_total": 133,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            13,
+            28,
+            45,
+            46,
+            49,
+            50,
+            53,
+            54
+          ],
+          "candidate_groups": [
+            33
+          ],
+          "endpoint_indexes": [
+            5,
+            39
+          ]
+        }
+      },
+      "update_window_half": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 1,
+          "expected": 0.5,
+          "period_s": 0.1,
+          "wall_s": 5.660506368,
+          "wall_wide_s": 5.660730624,
+          "wall_narrow_s": 5.660211712,
+          "lower": 0.47791716997146216,
+          "upper": 0.5220828300285378,
+          "lower_wide": 0.47791804480678995,
+          "lower_narrow": 0.4779160203963763,
+          "upper_wide": 0.5220819551932101,
+          "upper_narrow": 0.5220839796036237,
+          "least_rate": 0.48403645783516447,
+          "worst_rate": 0.4840808329114316,
+          "rates": {
+            "proc": 0.48405563422554926,
+            "stat": 0.48405563422554926
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 0.48403645783516447,
+              "high": 0.4840808329114316
+            },
+            "stat": {
+              "low": 0.48403645783516447,
+              "high": 0.4840808329114316
+            }
+          },
+          "nr_throttled": 56,
+          "throttled_usec": 18430000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 5.410531072,
+          "last_stable_cap_end_s": 12.3009536,
+          "samples_total": 133,
+          "used": 7,
+          "stable_total": 133,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            13,
+            28,
+            45,
+            46,
+            49,
+            50,
+            53,
+            54
+          ],
+          "candidate_groups": [
+            7
+          ],
+          "endpoint_indexes": [
+            44,
+            56
+          ]
+        }
+      },
+      "update_window_recovered_2": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 2,
+          "expected": 2.0,
+          "period_s": 0.1,
+          "wall_s": 6.81709696,
+          "wall_wide_s": 6.817298688,
+          "wall_narrow_s": 6.816853248,
+          "lower": 1.9376567470737571,
+          "upper": 2.062343252926243,
+          "lower_wide": 1.9376585918483962,
+          "lower_narrow": 1.9376545182156164,
+          "upper_wide": 2.0623414081516036,
+          "upper_narrow": 2.0623454817843836,
+          "least_rate": 2.006659914150442,
+          "worst_rate": 2.006791037200864,
+          "rates": {
+            "proc": 2.0067192941905874,
+            "stat": 2.0067192941905874
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 2.006659914150442,
+              "high": 2.006791037200864
+            },
+            "stat": {
+              "low": 2.006659914150442,
+              "high": 2.006791037200864
+            }
+          },
+          "nr_throttled": 68,
+          "throttled_usec": 13500000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 12.401098496,
+          "last_stable_cap_end_s": 19.9221568,
+          "samples_total": 133,
+          "used": 67,
+          "stable_total": 133,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            13,
+            28,
+            45,
+            46,
+            49,
+            50,
+            53,
+            54
+          ],
+          "candidate_groups": [
+            67
+          ],
+          "endpoint_indexes": [
+            64,
+            130
+          ]
+        }
+      }
+    },
+    "ipi-control-v2": {
+      "unthrottled_reference": {
+        "status": "pass",
+        "reason": "unthrottled busy threads consume the available CPUs",
+        "evidence": {
+          "expected": 3.95931571874947,
+          "rates": {
+            "thread": 3.9312705657416607,
+            "proc": 3.9312705657416607,
+            "stat": 3.9312705657416607
+          },
+          "stat_delta": {
+            "usage_usec": 23830000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpus_flag_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 1.0,
+          "period_s": 0.1,
+          "wall_s": 6.081815296,
+          "lower": 0.9630044667505798,
+          "upper": 1.0369955332494203,
+          "lower_narrow": 0.9630001433423779,
+          "lower_wide": 0.9630071372273504,
+          "upper_wide": 1.0369928627726495,
+          "upper_narrow": 1.0369998566576222,
+          "least_rate": 1.0062058674160645,
+          "worst_rate": 1.0063961010873181,
+          "rates": {
+            "thread": 1.0062785043842277,
+            "proc": 1.0062785043842277,
+            "stat": 1.0062785043842277
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 1.0062058674160645,
+              "high": 1.0063961010873181
+            },
+            "proc": {
+              "low": 1.0062058674160645,
+              "high": 1.0063961010873181
+            },
+            "stat": {
+              "low": 1.0062058674160645,
+              "high": 1.0063961010873181
+            }
+          },
+          "tolerance": 0.05,
+          "stat_delta": {
+            "usage_usec": 6120000,
+            "nr_periods": 61,
+            "nr_throttled": 61,
+            "throttled_usec": 18030000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 1.0013457666176384,
+          "sampler_cpu_cores": 0.004932737766589351,
+          "other_process_cpu_cores": 0.0
+        }
+      },
+      "explicit_period_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 0.5,
+          "period_s": 0.05,
+          "wall_s": 6.080600832,
+          "lower": 0.48766569257345393,
+          "upper": 0.5123343074265461,
+          "lower_narrow": 0.487664393178145,
+          "lower_wide": 0.48766722116769695,
+          "upper_wide": 0.512332778832303,
+          "upper_narrow": 0.512335606821855,
+          "least_rate": 0.5015330058469921,
+          "worst_rate": 0.5016480107554386,
+          "rates": {
+            "thread": 0.5015951686795415,
+            "proc": 0.5015951686795415,
+            "stat": 0.5015951686795415
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 0.5015330058469921,
+              "high": 0.5016480107554386
+            },
+            "proc": {
+              "low": 0.5015330058469921,
+              "high": 0.5016480107554386
+            },
+            "stat": {
+              "low": 0.5015330058469921,
+              "high": 0.5016480107554386
+            }
+          },
+          "tolerance": 0.03,
+          "stat_delta": {
+            "usage_usec": 3050000,
+            "nr_periods": 122,
+            "nr_throttled": 122,
+            "throttled_usec": 21090000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.499950594356002,
+          "sampler_cpu_cores": 0.0016445743235394801,
+          "other_process_cpu_cores": 0.0
+        }
+      },
+      "cpuset_single": {
+        "status": "pass",
+        "reason": "all busy threads ran only on the requested CPUs at per-CPU capacity",
+        "evidence": {
+          "expected": 0.9857539988701314,
+          "cpuset": [
+            0
+          ],
+          "rates": {
+            "thread": 0.9857539988701314,
+            "proc": 0.9857539988701314,
+            "stat": 0.9857539988701314
+          },
+          "tolerance": 0.04928769994350657,
+          "stat_delta": {
+            "usage_usec": 6000000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpuset_range": {
+        "status": "pass",
+        "reason": "all busy threads ran only on the requested CPUs at per-CPU capacity",
+        "evidence": {
+          "expected": 1.9809144230601003,
+          "cpuset": [
+            1,
+            2
+          ],
+          "rates": {
+            "thread": 1.9346930865220315,
+            "proc": 1.9545022307526323,
+            "stat": 1.9545022307526323
+          },
+          "tolerance": 0.09904572115300503,
+          "stat_delta": {
+            "usage_usec": 11840000,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0
+        }
+      },
+      "cpuset_with_quota": {
+        "status": "pass",
+        "reason": "consumption bounded by quota with throttling evidence",
+        "evidence": {
+          "expected": 0.5,
+          "period_s": 0.1,
+          "wall_s": 6.067539456,
+          "lower": 0.47939856824888194,
+          "upper": 0.5206014317511181,
+          "lower_narrow": 0.4793962784950326,
+          "lower_wide": 0.47940205319173707,
+          "upper_wide": 0.5205979468082629,
+          "upper_narrow": 0.5206037215049675,
+          "least_rate": 0.5025899021216151,
+          "worst_rate": 0.5027308047212057,
+          "rates": {
+            "thread": 0.5026749347272806,
+            "proc": 0.5026749347272806,
+            "stat": 0.5026749347272806
+          },
+          "rates_interval": {
+            "thread": {
+              "low": 0.5025899021216151,
+              "high": 0.5027308047212057
+            },
+            "proc": {
+              "low": 0.5025899021216151,
+              "high": 0.5027308047212057
+            },
+            "stat": {
+              "low": 0.5025899021216151,
+              "high": 0.5027308047212057
+            }
+          },
+          "tolerance": 0.03,
+          "stat_delta": {
+            "usage_usec": 3050000,
+            "nr_periods": 61,
+            "nr_throttled": 60,
+            "throttled_usec": 3000000,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "steal_s": 0.0,
+          "unaccounted_thread_cpu_cores": 0.0,
+          "worker_cpu_cores": 0.5026749347272806,
+          "sampler_cpu_cores": 0.0,
+          "other_process_cpu_cores": 0.0,
+          "cpuset": [
+            0
+          ]
+        }
+      },
+      "update_window_initial_2": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 0,
+          "expected": 2.0,
+          "period_s": 0.1,
+          "wall_s": 4.578182144,
+          "wall_wide_s": 4.578434816,
+          "wall_narrow_s": 4.57801472,
+          "lower": 1.9071683942158155,
+          "upper": 2.0928316057841845,
+          "lower_wide": 1.907173517352529,
+          "lower_narrow": 1.9071649992422914,
+          "upper_wide": 2.092826482647471,
+          "upper_narrow": 2.0928350007577086,
+          "least_rate": 1.9701055846592619,
+          "worst_rate": 1.9702863690224222,
+          "rates": {
+            "proc": 1.9702143157019834,
+            "stat": 1.9702143157019834
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 1.9701055846592619,
+              "high": 1.9702863690224222
+            },
+            "stat": {
+              "low": 1.9701055846592619,
+              "high": 1.9702863690224222
+            }
+          },
+          "nr_throttled": 46,
+          "throttled_usec": 9230000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 0.0,
+          "last_stable_cap_end_s": 5.281469696,
+          "samples_total": 188,
+          "used": 45,
+          "stable_total": 188,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            67
+          ],
+          "candidate_groups": [
+            45
+          ],
+          "endpoint_indexes": [
+            5,
+            49
+          ]
+        }
+      },
+      "update_window_half": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 1,
+          "expected": 0.5,
+          "period_s": 0.1,
+          "wall_s": 6.096393216,
+          "wall_wide_s": 6.096722944,
+          "wall_narrow_s": 6.096201472,
+          "lower": 0.47949607324016813,
+          "upper": 0.5205039267598319,
+          "lower_wide": 0.4794971821504507,
+          "lower_narrow": 0.4794954283295708,
+          "upper_wide": 0.5205028178495493,
+          "upper_narrow": 0.5205045716704292,
+          "least_rate": 0.5002687555290031,
+          "worst_rate": 0.5003115487584725,
+          "rates": {
+            "proc": 0.5002958129398981,
+            "stat": 0.5002958129398981
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 0.5002687555290031,
+              "high": 0.5003115487584725
+            },
+            "stat": {
+              "low": 0.5002687555290031,
+              "high": 0.5003115487584725
+            }
+          },
+          "nr_throttled": 61,
+          "throttled_usec": 21230000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 5.38169344,
+          "last_stable_cap_end_s": 12.182320384,
+          "samples_total": 188,
+          "used": 53,
+          "stable_total": 188,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            67
+          ],
+          "candidate_groups": [
+            53
+          ],
+          "endpoint_indexes": [
+            57,
+            110
+          ]
+        }
+      },
+      "update_window_recovered_2": {
+        "status": "pass",
+        "reason": "live docker update enforced within the unchanged container",
+        "evidence": {
+          "segment": 2,
+          "expected": 2.0,
+          "period_s": 0.1,
+          "wall_s": 6.90980352,
+          "wall_wide_s": 6.909996032,
+          "wall_narrow_s": 6.909601024,
+          "lower": 1.9384931859828047,
+          "upper": 2.061506814017195,
+          "lower_wide": 1.9384948995582867,
+          "lower_narrow": 1.9384913834353397,
+          "upper_wide": 2.0615051004417135,
+          "upper_narrow": 2.0615086165646606,
+          "least_rate": 2.002895506148968,
+          "worst_rate": 2.003010007658584,
+          "rates": {
+            "proc": 2.0029513082305415,
+            "stat": 2.0029513082305415
+          },
+          "rates_interval": {
+            "proc": {
+              "low": 2.002895506148968,
+              "high": 2.003010007658584
+            },
+            "stat": {
+              "low": 2.002895506148968,
+              "high": 2.003010007658584
+            }
+          },
+          "nr_throttled": 69,
+          "throttled_usec": 13690000,
+          "steal_cores": 0.0,
+          "transition_guard_s": {
+            "head": 0.5,
+            "tail": 0.2
+          },
+          "first_stable_wall_s": 12.282691328,
+          "last_stable_cap_end_s": 19.901032192,
+          "samples_total": 188,
+          "used": 68,
+          "stable_total": 188,
+          "unstable_total": 0,
+          "unstable_indexes": [],
+          "slow_indexes": [
+            67
+          ],
+          "candidate_groups": [
+            68
+          ],
+          "endpoint_indexes": [
+            118,
+            185
+          ]
+        }
+      }
+    }
+  },
+  "synthetic_boundary_results": {
+    "0.635": {
+      "status": "indeterminate",
+      "reason": "capture interval crosses the quota upper bound: violation neither proven nor excluded by the evidence",
+      "evidence": {
+        "segment": 0,
+        "expected": 0.5,
+        "period_s": 0.1,
+        "wall_s": 1.02,
+        "wall_wide_s": 1.04,
+        "wall_narrow_s": 1.0,
+        "lower": 0.37745098039215685,
+        "upper": 0.6225490196078431,
+        "lower_wide": 0.3798076923076923,
+        "lower_narrow": 0.375,
+        "upper_wide": 0.6201923076923077,
+        "upper_narrow": 0.625,
+        "least_rate": 0.610576923076923,
+        "worst_rate": 0.635,
+        "rates": {
+          "proc": 0.6225490196078431,
+          "stat": 0.6225490196078431
+        },
+        "rates_interval": {
+          "proc": {
+            "low": 0.610576923076923,
+            "high": 0.635
+          },
+          "stat": {
+            "low": 0.610576923076923,
+            "high": 0.635
+          }
+        },
+        "nr_throttled": 8,
+        "throttled_usec": 500000,
+        "steal_cores": null,
+        "used": 2
+      }
+    },
+    "0.7": {
+      "status": "fail",
+      "reason": "post-update consumption exceeds quota+period bound under every plausible capture interval",
+      "evidence": {
+        "segment": 0,
+        "expected": 0.5,
+        "period_s": 0.1,
+        "wall_s": 1.02,
+        "wall_wide_s": 1.04,
+        "wall_narrow_s": 1.0,
+        "lower": 0.37745098039215685,
+        "upper": 0.6225490196078431,
+        "lower_wide": 0.3798076923076923,
+        "lower_narrow": 0.375,
+        "upper_wide": 0.6201923076923077,
+        "upper_narrow": 0.625,
+        "least_rate": 0.673076923076923,
+        "worst_rate": 0.7,
+        "rates": {
+          "proc": 0.6862745098039215,
+          "stat": 0.6862745098039215
+        },
+        "rates_interval": {
+          "proc": {
+            "low": 0.673076923076923,
+            "high": 0.7
+          },
+          "stat": {
+            "low": 0.673076923076923,
+            "high": 0.7
+          }
+        },
+        "nr_throttled": 8,
+        "throttled_usec": 500000,
+        "steal_cores": null,
+        "used": 2
+      }
+    },
+    "0.6": {
+      "status": "pass",
+      "reason": "live docker update enforced within the unchanged container",
+      "evidence": {
+        "segment": 0,
+        "expected": 0.5,
+        "period_s": 0.1,
+        "wall_s": 1.02,
+        "wall_wide_s": 1.04,
+        "wall_narrow_s": 1.0,
+        "lower": 0.37745098039215685,
+        "upper": 0.6225490196078431,
+        "lower_wide": 0.3798076923076923,
+        "lower_narrow": 0.375,
+        "upper_wide": 0.6201923076923077,
+        "upper_narrow": 0.625,
+        "least_rate": 0.5769230769230769,
+        "worst_rate": 0.6,
+        "rates": {
+          "proc": 0.5882352941176471,
+          "stat": 0.5882352941176471
+        },
+        "rates_interval": {
+          "proc": {
+            "low": 0.5769230769230769,
+            "high": 0.6
+          },
+          "stat": {
+            "low": 0.5769230769230769,
+            "high": 0.6
+          }
+        },
+        "nr_throttled": 8,
+        "throttled_usec": 500000,
+        "steal_cores": null,
+        "used": 2
+      }
+    }
+  },
+  "missing_boundary_rejected": true,
+  "contradictory_stability_rejected": true,
+  "file_sha256": {
+    "validation.log": "90d1f77d7d6e3c0f794e81c3891b843886b690b71cdb92b78dca842adc63f091",
+    "validation-result.json": "77d7fa8c24c605c92a0ea07b6fd18ac9d42977e79bad302e87dec1ee35a498f1",
+    "manifest.json": "87a1b8c12ca5ee9555f53a0291679fbeaf0d8e77ef5fd3f7dc0b61af08988dea",
+    "recheck.py": "2d1cf65ddee78c2696b46709475209febb77c3d34ea7d72d102dc31ef9deb891",
+    "main-validation/validation.log": "d6c908cf2ad097c66593cebe61910b7d90eed10d23b32a5ff40f67d1ea4fa67b",
+    "main-validation/validation-result.json": "54c5daae5b8e3287c98bc5d86cb0ab4a5653d2f1625275803596abe41c9de403",
+    "main-validation/manifest.json": "b744dbb0095da6bd8d20b3bbf002fcf365b0b545bde92f2f2b0e1d4f65c1767d",
+    "author/owner-validation-recorded.log": "beece6ebd091c5f2d35dfb2bb6e8b014761a643a1ca4756f0063effe139107fd",
+    "author/author-final-identity.json": "1fac731d9347e4eea284a35d9aa43315d43be560b7647010e2edb0915b19406e",
+    "author/REPORT.md": "0552ad7775d89da99d42feda533a2dea21579712e9f89cdb5907eae8599789b7",
+    "author/owner-validation-result.json": "e1968c06f6c698f8f782272015272d9bea004263d6f9a2d6e2cc3d23b4c0ab35",
+    "author/manifest.json": "ded40d616b72943c45b927a2c9f73a54101d1d116ed37f1c28300daf26f1d67a",
+    "author/REPORT-v5-final.md": "59f95d4a1bf2497877afb18ba97329c20786a5a0b75610864b155f59534d0281",
+    "author/REPORT-v5.md": "688af63dc34f1b4b4ba29f06bceeb5a2655b14e436f0761ba39de4dd7bf16c14",
+    "author/tests/test_cpu_limit_checks.py": "26e412c34dd5aa32c33d5d015cd5725b9de7076de6dedc5764f0e674ea6a4939",
+    "author/scripts/run-cpu-limits.py": "d88dc06101e5317ba6351d698cf05528e16a42cd746093b4739de31fbd964c59",
+    "author/scripts/cpu_limit_checks.py": "96ea657d47c71649c82dd3616e24d820aab1d2c41f7a58b7cf26d6e2624bc276",
+    "author/src/cpu_limit_probe.c": "3711d1352a52dac4c1f64eed46aef3a0df9dbdbe14d664834268b2e13944efce",
+    "sources/tests/test_cpu_limit_checks.py": "55eb7acce37bd97b7295a90d2a921a3968a75f2fb0063c3e3bdae2683412ca71",
+    "sources/scripts/run-cpu-limits.py": "d88dc06101e5317ba6351d698cf05528e16a42cd746093b4739de31fbd964c59",
+    "sources/scripts/cpu_limit_checks.py": "8e4ccda94e15f3c59e35eaa97ac6527a54f56a0a4535add2647c0bc20d450e9f",
+    "sources/src/cpu_limit_probe.c": "49b1201d83d07dfc6207ecd7c122c70147813ffed2feb1b9db5f2eb0f9f144a0"
+  }
+}

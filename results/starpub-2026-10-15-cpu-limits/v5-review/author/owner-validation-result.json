@@ -1,0 +1,21 @@
+{
+  "command": [
+    "flock",
+    "-x",
+    "-w",
+    "60",
+    "/root/harddind-rebuild/kernel-build.lock",
+    "timeout",
+    "60",
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests"
+  ],
+  "exit_code": 0,
+  "started_at": "2026-10-14T21:09:39.993202+00:00",
+  "finished_at": "2026-10-14T21:09:40.909533+00:00",
+  "reason_for_repeat": "previous detached check produced OK but did not preserve supervisor exit code"
+}

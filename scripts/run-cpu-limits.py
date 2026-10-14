@@ -99,7 +99,11 @@ def main():
         'identity': {'hostname': platform.node(), 'kernel': platform.release(),
                      'machine': platform.machine(), 'cwd': os.getcwd(), 'uid': os.getuid()},
         'params': {'guest_cpus': a.cpus, 'window_ms': a.window_ms, 'sample_ms': a.sample_ms,
-                   'update_ms': UPDATE_MS, 'update_at_s': list(UPDATE_AT)},
+                   'update_ms': UPDATE_MS, 'update_at_s': list(UPDATE_AT),
+                   'measurement_revision': 4,
+                   'update_guards_s': {'head': checks.HEAD_GUARD_S, 'tail': checks.TAIL_GUARD_S},
+                   'capture_max_s': checks.CAPTURE_MAX_S,
+                   'min_interior_s': checks.MIN_INTERIOR_S},
         'host_before': host_state(),
         'phases': {},
         'checks': {},
@@ -305,10 +309,13 @@ def main():
             return summary
 
         # Everything stays inside the commands.log context so command evidence
-        # is flushed even when the run aborts early.
+        # is flushed even when the run aborts early. Compilation is bounded and
+        # coordinated like every other build: EX on the global/work lock while
+        # gcc runs, then downgrade to SH for the shared-kernel guest lifecycle.
+        lock_f = (work / 'kernel-build.lock').open('a')
         try:
+            fcntl.flock(lock_f, fcntl.LOCK_EX)
             build_probe()
-            lock_f = (work / 'kernel-build.lock').open('a')
             fcntl.flock(lock_f, fcntl.LOCK_SH)
             start_row = run('instance-start', base + ['start', '--kernel', str(a.kernel.resolve()),
                                                        '--disk', str(a.disk.resolve()),
@@ -393,13 +400,22 @@ def main():
                 for label, result in zip(labels, window_results):
                     report['checks'][label] = result
             timeline = report['phases']['live_update']
-            expected_keys = [(0, 200000, 100000), (0, 50000, 100000), (0, 200000, 100000)]
-            observed_keys = [s['key'] for s in checks.quota_segments(
-                [e for e in timeline['events'] if e.get('event') == 'sample'])]
-            report['checks']['update_timeline'] = {
-                'status': checks.PASS if observed_keys == expected_keys else checks.FAIL,
-                'reason': 'running probe observes each docker update through its own cpu.max',
-                'evidence': {'expected': expected_keys, 'observed': observed_keys}}
+            timeline_samples = [e for e in timeline.get('events', [])
+                                if e.get('event') == 'sample']
+            if timeline_samples:
+                # Stable captures collapse into the schedule order; captures
+                # whose two cpu.max reads disagree are allowed only on a
+                # scheduled transition (never silently assigned one setting).
+                tl_status, tl_evidence = checks.stable_timeline(
+                    timeline_samples, UPDATE_SCHEDULE)
+                report['checks']['update_timeline'] = {
+                    'status': tl_status,
+                    'reason': tl_evidence.pop('reason'), 'evidence': tl_evidence}
+            else:
+                report['checks']['update_timeline'] = {
+                    'status': checks.FAIL,
+                    'reason': 'no probe samples recorded for update timeline',
+                    'evidence': {}}
             report['checks']['same_container_identity'] = {
                 'status': checks.PASS if timeline['same_container'] else checks.FAIL,
                 'reason': 'updates and snapshots all target the container created at run -d',
