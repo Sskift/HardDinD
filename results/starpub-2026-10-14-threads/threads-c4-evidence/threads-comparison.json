@@ -1,0 +1,112 @@
+{
+  "kind": "shared_vm_runners_microbench_only",
+  "kernel_sha256": "c4a3c697bfffcbcf2cb37a47fd430f274d94ef2615582c2e4b8324353d00c8e8",
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "samples_per_case_per_mode": 6,
+  "order": [
+    {
+      "mode": "native",
+      "evidence": "threads-ab-0-native.json"
+    },
+    {
+      "mode": "legacy",
+      "evidence": "threads-ab-1-legacy.json"
+    },
+    {
+      "mode": "parallel",
+      "evidence": "threads-ab-2-parallel.json"
+    },
+    {
+      "mode": "parallel",
+      "evidence": "threads-ab-3-parallel.json"
+    },
+    {
+      "mode": "legacy",
+      "evidence": "threads-ab-4-legacy.json"
+    },
+    {
+      "mode": "native",
+      "evidence": "threads-ab-5-native.json"
+    }
+  ],
+  "comparison": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "median_seconds": {
+        "native": 0.0542843585,
+        "legacy": 0.601753216,
+        "parallel": 0.583761408
+      },
+      "parallel_over_native": 10.753768196413338,
+      "legacy_over_parallel": 1.0308204820555729
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "median_seconds": {
+        "native": 0.0291342055,
+        "legacy": 0.452845312,
+        "parallel": 0.487127552
+      },
+      "parallel_over_native": 16.720124803128748,
+      "legacy_over_parallel": 0.9296236891975266
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "median_seconds": {
+        "native": 0.34543355649999996,
+        "legacy": 0.353226112,
+        "parallel": 0.34900044799999996
+      },
+      "parallel_over_native": 1.0103258396090422,
+      "legacy_over_parallel": 1.012107904228249
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "median_seconds": {
+        "native": 0.435740929,
+        "legacy": 2.30780352,
+        "parallel": 0.39841740800000003
+      },
+      "parallel_over_native": 0.9143446976953593,
+      "legacy_over_parallel": 5.792426419279351
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "median_seconds": {
+        "native": 0.345637002,
+        "legacy": 0.347275648,
+        "parallel": 0.350323968
+      },
+      "parallel_over_native": 1.013560371062355,
+      "legacy_over_parallel": 0.9912985685295732
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "median_seconds": {
+        "native": 0.4485247795,
+        "legacy": 0.423046528,
+        "parallel": 0.370034688
+      },
+      "parallel_over_native": 0.8250038903368994,
+      "legacy_over_parallel": 1.1432618122547473
+    }
+  ],
+  "full_performance_acceptance": false,
+  "threshold": null,
+  "limitations": [
+    "CPU affinity is shared but CPUs are not exclusively reserved",
+    "no storage or network workload comparison"
+  ]
+}

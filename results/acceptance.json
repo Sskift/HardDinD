@@ -4,36 +4,36 @@
     "docker_functionality": {
       "status": "incomplete",
       "evidence": [
-        "starpub-2026-10-14-handoff/docker-cow-1.json",
-        "starpub-2026-10-14-handoff/docker-cow-2.json",
-        "starpub-2026-10-14-handoff/suite-evidence-validation.json"
+        "starpub-2026-10-14-threads/docker-threads-reviewed.json",
+        "starpub-2026-10-14-threads/evidence-validation.json"
       ],
       "remaining": [
         "external networking",
         "outer bind-mount semantics",
         "complete upstream compatibility coverage",
-        "production lifecycle"
+        "production lifecycle",
+        "shared-mm runner failure paths and internal isolation"
       ]
     },
     "native_performance": {
       "status": "fail",
       "evidence": [
-        "starpub-2026-10-14-handoff/native-comparison.json",
-        "starpub-2026-10-14-handoff/handoff-comparison.json"
+        "starpub-2026-10-14-threads/threads-comparison.json",
+        "starpub-2026-10-14-threads/threads-reviewed-semantics-1.json",
+        "starpub-2026-10-14-threads/threads-reviewed-semantics-2.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
         "syscall overhead",
         "fork/exec overhead",
-        "parallel threads in one address space",
-        "storage and networking workload comparison"
+        "storage and networking workload comparison",
+        "parallel-thread workload parity under controlled host load"
       ]
     },
     "gpu_in_container": {
       "status": "fail",
       "evidence": [
-        "starpub-2026-10-14-handoff/docker-cow-1.json",
-        "starpub-2026-10-14-handoff/docker-cow-2.json"
+        "starpub-2026-10-14-threads/docker-threads-reviewed.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",

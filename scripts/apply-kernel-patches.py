@@ -33,12 +33,15 @@ def apply_series(source, archive, patches):
             raise ValueError(f"patch path escapes source: {name}")
     with tempfile.TemporaryDirectory(prefix="harddind-patches-") as directory:
         stage = pathlib.Path(directory)
-        with tarfile.open(archive) as tar:
-            for name in paths:
-                try:
-                    member = tar.getmember(source.name + "/" + name)
-                except KeyError:
-                    continue  # A new file introduced by a patch.
+        # Stream xz once; random extraction repeatedly decompresses the kernel.
+        with tarfile.open(archive, mode="r|*") as tar:
+            prefix = source.name + "/"
+            for member in tar:
+                if not member.name.startswith(prefix):
+                    continue
+                name = member.name[len(prefix):]
+                if name not in paths:
+                    continue
                 if not member.isfile():
                     raise ValueError(f"patch target is not a regular file: {name}")
                 target = stage / name
@@ -80,7 +83,9 @@ if __name__ == "__main__":
     src = pathlib.Path(sys.argv[1]).resolve()
     patches = sorted((repo / "kernel/patches").glob("[0-9]*.patch"))
     if sys.argv[3:] == ["--handoff-experiment"]:
-        patches += sorted((repo / "kernel/experiments").glob("[0-9]*.patch"))
+        patches += [repo / "kernel/experiments/0002-um-wake-only-sleeping-peer.patch"]
+    elif sys.argv[3:] == ["--threads-experiment"]:
+        patches += [repo / "kernel/experiments/0003-um-shared-vm-runners.patch"]
     elif sys.argv[3:]:
         raise SystemExit("unknown patch-series option")
     apply_series(src, pathlib.Path(sys.argv[2]), patches)

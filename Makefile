@@ -1,17 +1,26 @@
 WORK ?= $(CURDIR)/.work
 
-.PHONY: check kernel kernel-handoff-experiment probe-root native core host-probes docker-root docker-test acceptance
+.PHONY: check kernel kernel-handoff-experiment kernel-threads-experiment thread-root thread-compare probe-root native core host-probes docker-root docker-test acceptance
 check:
 	python3 -m unittest discover -s tests -v
 	python3 -m py_compile scripts/*.py
 	@for f in scripts/*.sh; do bash -n "$$f"; done
-	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh; do sh -n "$$f"; done
+	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh tests/thread-init; do sh -n "$$f"; done
 
 kernel:
 	bash scripts/build-kernel.sh "$(WORK)"
 
 kernel-handoff-experiment:
 	HANDOFF_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
+kernel-threads-experiment:
+	THREADS_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
+thread-root:
+	bash scripts/make-thread-root.sh "$(WORK)"
+
+thread-compare:
+	python3 scripts/compare-threads.py "$(WORK)"
 
 probe-root:
 	bash scripts/make-probe-root.sh "$(WORK)"

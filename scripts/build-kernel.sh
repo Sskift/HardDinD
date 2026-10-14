@@ -2,12 +2,21 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=${1:-$repo/.work}
+mkdir -p "$work"
+exec 9>"$work/kernel-build.lock"
+flock -x 9
 src=$(python3 "$repo/scripts/fetch-kernel.py" "$work")
-out=$work/kernel-build
+if [ "${THREADS_EXPERIMENT:-0}" = 1 ]; then
+    [ "${HANDOFF_EXPERIMENT:-0}" = 0 ] || { echo 'select only one experiment' >&2; exit 1; }
+    out=$work/thread-build
+else
+    out=$work/kernel-build
+fi
 mkdir -p "$out"
 out=$(realpath "$out")
 options=()
 if [ "${HANDOFF_EXPERIMENT:-0}" = 1 ]; then options+=(--handoff-experiment); fi
+if [ "${THREADS_EXPERIMENT:-0}" = 1 ]; then options+=(--threads-experiment); fi
 python3 "$repo/scripts/apply-kernel-patches.py" "$src" "$work/cache/$(basename "$src").tar.xz" "${options[@]}"
 make -C "$src" O="$out" ARCH=um defconfig >/dev/null
 KCONFIG_CONFIG="$out/.config" "$src/scripts/kconfig/merge_config.sh" -m -O "$out" "$out/.config" "$repo/kernel/runtime.config" >/dev/null

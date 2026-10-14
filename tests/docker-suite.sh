@@ -41,6 +41,9 @@ check memory_oom sh -c '
 check pids_limit sh -c '
  docker run --rm --pids-limit 10 harddind-base:test /bin/sh -c '\''(for i in $(seq 30); do sleep 5 & done) 2>/dev/null; read n < /sys/fs/cgroup/pids.current; [ "$n" -le 10 ] && [ "$n" -ge 5 ]'\'''
 check default_seccomp docker run --rm harddind-base:test /bin/sh -c 'grep -q "Seccomp:[[:space:]]*2" /proc/self/status'
+check container_threads docker run --rm -v /corebench:/corebench:ro harddind-base:test /corebench threads 4
+echo "HARDDIND_THREAD_SHA256=$(sha256sum /thread-semantics | cut -d' ' -f1)"
+check container_thread_semantics docker run --rm -v /thread-semantics:/thread-semantics:ro harddind-base:test /thread-semantics
 check container_compute docker run --rm -v /corebench:/corebench:ro harddind-base:test /corebench processes 4
 check bridge_dns sh -c '
  docker network create lab-net >/dev/null &&

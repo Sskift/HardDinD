@@ -1,0 +1,146 @@
+{
+  "kind": "docker_subset_in_candidate",
+  "checks": [
+    {
+      "name": "image_import",
+      "status": "pass"
+    },
+    {
+      "name": "run",
+      "status": "pass"
+    },
+    {
+      "name": "exit_code",
+      "status": "pass"
+    },
+    {
+      "name": "stdin",
+      "status": "pass"
+    },
+    {
+      "name": "tty",
+      "status": "pass"
+    },
+    {
+      "name": "lifecycle",
+      "status": "pass"
+    },
+    {
+      "name": "mount_tmpfs",
+      "status": "pass"
+    },
+    {
+      "name": "privileged_mount",
+      "status": "pass"
+    },
+    {
+      "name": "net_admin",
+      "status": "pass"
+    },
+    {
+      "name": "guest_user_namespace",
+      "status": "pass"
+    },
+    {
+      "name": "read_only",
+      "status": "pass"
+    },
+    {
+      "name": "bind_mount",
+      "status": "pass"
+    },
+    {
+      "name": "volume",
+      "status": "pass"
+    },
+    {
+      "name": "memory_oom",
+      "status": "pass"
+    },
+    {
+      "name": "pids_limit",
+      "status": "pass"
+    },
+    {
+      "name": "default_seccomp",
+      "status": "pass"
+    },
+    {
+      "name": "container_threads",
+      "status": "pass"
+    },
+    {
+      "name": "container_thread_semantics",
+      "status": "pass"
+    },
+    {
+      "name": "container_compute",
+      "status": "pass"
+    },
+    {
+      "name": "bridge_dns",
+      "status": "pass"
+    },
+    {
+      "name": "published_port_guest",
+      "status": "pass"
+    },
+    {
+      "name": "docker_cp",
+      "status": "pass"
+    },
+    {
+      "name": "save_load",
+      "status": "pass"
+    },
+    {
+      "name": "buildkit_multistage",
+      "status": "pass"
+    },
+    {
+      "name": "restart_policy",
+      "status": "pass"
+    },
+    {
+      "name": "healthcheck",
+      "status": "pass"
+    },
+    {
+      "name": "ipv6",
+      "status": "pass"
+    },
+    {
+      "name": "signals",
+      "status": "pass"
+    },
+    {
+      "name": "gpu_fixture_import",
+      "status": "pass"
+    },
+    {
+      "name": "gpu_compute",
+      "status": "fail"
+    },
+    {
+      "name": "external_network",
+      "status": "not_tested"
+    },
+    {
+      "name": "full_docker_compatibility",
+      "status": "not_tested"
+    }
+  ],
+  "finished": true,
+  "checks_complete": true,
+  "suite_status": 1,
+  "subset_passed": false,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 119.47769113630056,
+  "disk_mode": "isolated_cow",
+  "threads_experiment": true,
+  "full_acceptance": false,
+  "thread_semantics_sha256": "2973c6a473f833e218aea83748fe5f30ada4d2f9a35d1a6dd0502ad103800f01",
+  "kernel_sha256": "c4a3c697bfffcbcf2cb37a47fd430f274d94ef2615582c2e4b8324353d00c8e8",
+  "kernel_unchanged": true
+}

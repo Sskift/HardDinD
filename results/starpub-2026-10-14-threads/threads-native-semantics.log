@@ -1,0 +1,6 @@
+THREAD_CHECK shared_memory_tls_futex_migration pass
+THREAD_CHECK mprotect_munmap_remap pass
+THREAD_CHECK concurrent_fork_cow pass
+THREAD_CHECK thread_lifecycle pass
+THREAD_CHECK concurrent_page_table_teardown pass
+THREAD_SEMANTICS_END status=0

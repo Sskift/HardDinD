@@ -8,7 +8,7 @@ DOCKER_CHECKS = {
     "volume", "memory_oom", "pids_limit", "default_seccomp", "container_compute",
     "bridge_dns", "published_port_guest", "docker_cp", "save_load", "buildkit_multistage",
     "restart_policy", "healthcheck", "ipv6", "signals", "gpu_fixture_import", "gpu_compute",
-    "external_network", "full_docker_compatibility",
+    "external_network", "full_docker_compatibility", "container_threads", "container_thread_semantics",
 }
 
 

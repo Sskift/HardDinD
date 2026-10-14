@@ -1,0 +1,117 @@
+{
+  "kind": "kernel_microbench_only",
+  "mode": "seccomp",
+  "cpus": 4,
+  "spin": 256,
+  "threads_experiment": false,
+  "thread_semantics": "not_tested",
+  "thread_semantics_sha256": null,
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "kernel_sha256": "744ec9d8e8a0e8614ed509b708578f575941de4070596639fe4330d65f74848b",
+  "kernel_unchanged": true,
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 15.536867929622531,
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.48672
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.520264192
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.559263232
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.34280448
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.321522688
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.347485184
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.35654272
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.419230464
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.33748736
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 2.330861824
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 2.530462464
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 2.802738944
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.489888768
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.351592704
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.474693632
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.484917248
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.483618304
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.48042112
+    }
+  ],
+  "host_cpu_seconds": 37.424797000000005,
+  "docker_acceptance": "not_tested",
+  "gpu_acceptance": "not_tested"
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Boot isolated UML tests; boot success alone is never a passing experiment."""
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -19,6 +20,9 @@ p.add_argument("--cpus", type=int, default=4)
 p.add_argument("--timeout", type=int, default=180)
 p.add_argument("--spin", type=int, default=0)
 p.add_argument("--kernel", type=pathlib.Path)
+p.add_argument("--threads-experiment", action="store_true")
+p.add_argument("--thread-semantics", action="store_true")
+p.add_argument("--disk", type=pathlib.Path)
 p.add_argument("--result-name", help="Distinct name for controlled comparisons")
 a = p.parse_args()
 if not 1 <= a.cpus <= 64 or (a.mode == "ptrace" and a.cpus != 1):
@@ -26,6 +30,10 @@ if not 1 <= a.cpus <= 64 or (a.mode == "ptrace" and a.cpus != 1):
 if not 0 <= a.spin <= 10000:
     p.error("spin must be 0..10000")
 work = a.work.resolve()
+# Builders take an exclusive lock; nested runners may share this read lock.
+# Keep the descriptor alive for the complete run, including native baselines.
+build_lock = (work / "kernel-build.lock").open("a")
+fcntl.flock(build_lock, fcntl.LOCK_SH)
 results = work / "results"
 results.mkdir(parents=True, exist_ok=True)
 tmp = work / "tmp"
@@ -37,13 +45,21 @@ if a.result_name:
     name = a.result_name
 log = results / (name + ".log")
 kernel = a.kernel.resolve() if a.kernel else work / "kernel-build/linux"
+disk = a.disk.resolve() if a.disk else work / "probe.ext4"
 cow = tmp / ("core-" + uuid.uuid4().hex + ".cow")
 cmd = [str(kernel), "umid=harddind-" + uuid.uuid4().hex[:12], "mem=2G", f"ncpus={a.cpus}",
        "seccomp=" + ("on" if a.mode == "seccomp" else "off"),
-       f"ubd0={cow},{work / 'probe.ext4'}", "root=/dev/ubda", "rw", "init=/sbin/harddind-init",
+       f"ubd0={cow},{disk}", "root=/dev/ubda", "rw", "init=/sbin/harddind-init",
        "con=null", "con0=null,fd:1", "ssl=null", "panic=1"]
+if a.thread_semantics:
+    cmd[cmd.index("init=/sbin/harddind-init")] = "init=/sbin/harddind-thread-init"
+if a.threads_experiment:
+    if a.mode != "seccomp":
+        p.error("parallel runners require seccomp")
+    cmd.append("seccomp_threads=1")
 if a.spin:
     cmd.append(f"seccomp_spin={a.spin}")
+kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 started = time.monotonic()
 usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
 timed_out = False
@@ -62,6 +78,7 @@ with log.open("w") as output:
             proc.wait()
         cow.unlink(missing_ok=True)
 text = log.read_text(errors="replace")
+kernel_unchanged = hashlib.sha256(kernel.read_bytes()).hexdigest() == kernel_sha256
 usage_after = resource.getrusage(resource.RUSAGE_CHILDREN)
 rows = []
 for line in text.splitlines():
@@ -70,10 +87,21 @@ for line in text.splitlines():
 expected = {(test, workers) for test, workers in
             [("syscall", 1), ("exec", 1), ("threads", 1), ("threads", 4), ("processes", 1), ("processes", 4)]}
 counts = {key: sum((r["test"], r["workers"]) == key for r in rows) for key in expected}
-passed = not timed_out and rc == 0 and "HARDDIND_PROBE_END status=0" in text and len(rows) == 18 and all(n == 3 for n in counts.values())
+passed = kernel_unchanged and not timed_out and rc == 0 and "HARDDIND_PROBE_END status=0" in text and len(rows) == 18 and all(n == 3 for n in counts.values())
+semantics_expected = {"shared_memory_tls_futex_migration", "mprotect_munmap_remap", "concurrent_fork_cow", "thread_lifecycle", "concurrent_page_table_teardown"}
+semantics_lines = [line.split() for line in text.splitlines() if line.startswith("THREAD_CHECK ")]
+semantics_passed = (len(semantics_lines) == len(semantics_expected) and
+                    {row[1] for row in semantics_lines if len(row) == 3 and row[2] == "pass"} == semantics_expected and
+                    "THREAD_SEMANTICS_END status=0" in text)
+if a.thread_semantics:
+    passed = passed and semantics_passed
 report = {"kind": "kernel_microbench_only", "mode": a.mode, "cpus": a.cpus,
-          "spin": a.spin,
-          "kernel_sha256": hashlib.sha256(kernel.read_bytes()).hexdigest(),
+          "spin": a.spin, "threads_experiment": a.threads_experiment,
+          "thread_semantics": semantics_passed if a.thread_semantics else "not_tested",
+          "thread_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()
+                                           if line.startswith("HARDDIND_THREAD_SHA256=")), None),
+          "host_cpu_affinity": sorted(os.sched_getaffinity(0)),
+          "kernel_sha256": kernel_sha256, "kernel_unchanged": kernel_unchanged,
           "benchmark_sha256": hashlib.sha256((work / "probe-root/corebench").read_bytes()).hexdigest(),
           "passed": passed, "exit_code": rc, "timed_out": timed_out,
           "wall_seconds": time.monotonic() - started, "measurements": rows,

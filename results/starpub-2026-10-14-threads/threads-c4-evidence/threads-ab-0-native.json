@@ -1,0 +1,102 @@
+{
+  "kind": "native_microbench",
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.068242753
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.060081657
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.066914186
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.030700866
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.027567545
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.025805717
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.350310111
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.351436652
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.354261171
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.507449018
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.439382965
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.432098893
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.353538431
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.350712502
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.446514942
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.486027079
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.478690278
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.397378862
+    }
+  ]
+}

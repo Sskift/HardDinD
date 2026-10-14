@@ -11,6 +11,7 @@
 - 固定 Linux 7.2.10 源码和 SHA256，启用 UML seccomp、SMP，以及 Docker 所需的 namespace、cgroup、文件系统和网络功能。
 - 第一个内核补丁：`seccomp_spin=0..10000`，在内核与用户进程交接时进行有上限的轮询，再退回 futex 睡眠。默认 0 不主动轮询。实验同时记录延迟和 CPU 消耗。
 - 另有实验补丁：在交接状态字中登记睡眠者，只唤醒已经准备睡眠的一端；用原子交接避免漏唤醒。实测没有稳定加速，因此保留在 `kernel/experiments/`，**不纳入默认构建**。
+- 新的并行线程实验：`seccomp_threads=1` 为每个虚拟 CPU 建立独立宿主执行进程，以 `CLONE_VM` 共享地址空间；独立保存信号栈、寄存器和 TLS。映射操作交给固定进程串行处理，撤销映射或写权限在返回前同步生效。实验未纳入默认构建。
 - 同一份静态程序分别测外层原生执行、ptrace、seccomp；区分多进程与同一进程多线程。
 - 在独立 guest 中运行原版 Docker 29.8.2，执行功能测试。没有关闭 Docker 自身的 bridge、iptables 或 cgroup 来绕过失败。
 - CUDA 测试实际分配显存、上传数据、运行 PTX、下载结果并校验全部元素。外层成功和内部 Docker 成功分开记录。
@@ -19,7 +20,7 @@
 ## 已知未完成项
 
 1. 系统调用和 fork/exec 的速度还未达到原生。
-2. UML 仍将同一地址空间的用户态线程串行化；只增加 `ncpus` 不能解决。
+2. 默认路径仍串行执行同一地址空间的线程。并行实验已通过线程正确性和 Docker 内的初步回归，但尚缺长期压力、异常退出与内部隔离验证。旧路径还复现了并发 fork/COW 缺陷。
 3. GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。Star­pub 外层的 4 张 A100 已完成真实计算；不能据此声称内部支持 GPU。
 4. 对外网络、外层目录共享语义和长期运行管理尚未重建；当前 Docker 测试只在隔离的实验 guest 内执行。
 5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
@@ -28,9 +29,11 @@
 
 后续的 [交接协议实验与重复回归](results/starpub-2026-10-14-handoff/) 没有证明稳定加速，实验补丁未纳入默认构建。原生入口的实际限制、线程及 GPU 缺口见 [运行边界](docs/runtime-boundary.md)。目前没有验证过能同时满足三个目标的后端。
 
+新的 [并行线程实验](results/starpub-2026-10-14-threads/) 在相同 4 个宿主 CPU 上做了串行 A/B/B/A 对照：四线程纯计算中位数从 2.584 秒降到 0.533 秒，原生为 0.449 秒；系统调用和 fork/exec 仍分别约为原生的 7.8 倍和 19.7 倍。不能据此认定整体性能达标。
+
 ## 开发与复现
 
-内核构建和运行要求 Linux x86_64；需要 Python 3.9+、GCC、make、flex、bison、bc、libelf 开发文件、e2fsprogs、patch 和 tar。准备 Docker rootfs 需要容器内 root，以设置文件所有权和执行 chroot，不要求外层特权容器。GPU 测试镜像使用外层已安装的 NVIDIA `libcuda`、PTX JIT 库及其 glibc 依赖，另行记录哈希；这些库不纳入 Git，也不能代替 GPU 设备后端。
+内核构建和运行要求 Linux x86_64；需要 Python 3.9+、GCC、make、flex、bison、bc、libelf 开发文件、e2fsprogs、util-linux（flock）、patch 和 tar。准备 Docker rootfs 需要容器内 root，以设置文件所有权和执行 chroot，不要求外层特权容器。GPU 测试镜像使用外层已安装的 NVIDIA `libcuda`、PTX JIT 库及其 glibc 依赖，另行记录哈希；这些库不纳入 Git，也不能代替 GPU 设备后端。
 
 ```sh
 make check
@@ -61,6 +64,22 @@ python3 scripts/run-core.py /root/harddind-rebuild --mode seccomp --cpus 4 --spi
 执行 `python3 scripts/summarize.py /root/harddind-rebuild/results` 汇总原生与 guest 微基准。汇总器检查两边程序哈希相同、各组数据完整，不将微基准自动判为完整性能验收通过。
 
 实验构建使用 `make kernel-handoff-experiment WORK=...`，之后运行 `make host-probes WORK=...`。它直接测试 `unshare`、`clone`、`clone3`，并使用补丁内同一个协议头文件进行 60 万次线程／进程交接校验。执行 `python3 scripts/compare-handoff.py WORK --before PATH_TO_PREVIOUS_KERNEL`，按 before/after/after/before 顺序运行三档轮询配置。再次执行 `make kernel` 会恢复默认补丁集；源码中的未知本地修改会阻止恢复。
+
+并行线程实验单独构建为 `WORK/thread-build/linux`，不会覆盖 `WORK/kernel-build/linux`：
+
+```sh
+make kernel-threads-experiment WORK=/root/harddind-rebuild
+make thread-root WORK=/root/harddind-rebuild
+make thread-compare WORK=/root/harddind-rebuild
+python3 scripts/run-core.py /root/harddind-rebuild \
+  --kernel /root/harddind-rebuild/thread-build/linux --threads-experiment \
+  --thread-semantics --disk /root/harddind-rebuild/thread.ext4
+python3 scripts/run-docker.py /root/harddind-rebuild \
+  --kernel /root/harddind-rebuild/thread-build/linux --threads-experiment \
+  --disk /root/harddind-rebuild/docker.ext4 --timeout 360
+```
+
+`thread-root` 依赖先生成的 `probe-root`。Docker 磁盘须用本版构建器重新生成，才能包含新增的线程检查。`thread-compare` 对原生和两条执行路径使用同一份程序和同一组 CPU，按原生／旧路径／并行／并行／旧路径／原生顺序执行；它只比较微基准。线程语义检查独立执行，旧路径的失败记录不会被微基准成功覆盖。运行中的内核不能被重新构建替换，运行器会将哈希变化判为失败。
 
 ## 开发方向
 

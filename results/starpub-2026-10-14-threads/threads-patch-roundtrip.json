@@ -1,0 +1,10 @@
+{
+  "restored_identical": true,
+  "default_patches": {
+    "0001-um-bounded-seccomp-polling.patch": "b06fb9363b303f71a3d7d34d71c3c6b58143f555cd01ade51690ba6439b728cd"
+  },
+  "experimental_patches": {
+    "0001-um-bounded-seccomp-polling.patch": "b06fb9363b303f71a3d7d34d71c3c6b58143f555cd01ade51690ba6439b728cd",
+    "0003-um-shared-vm-runners.patch": "1c73e686efb62f5aeef55a2026c6731e0019ee4564a1639ab9332537be703aeb"
+  }
+}
