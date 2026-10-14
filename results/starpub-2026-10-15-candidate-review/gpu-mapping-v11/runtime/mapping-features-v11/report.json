@@ -1,0 +1,1488 @@
+{
+  "kind": "uml_gpu_system_features",
+  "full_acceptance": false,
+  "internal_cuda_verified": false,
+  "diagnostic_complete": true,
+  "async_wait": true,
+  "async_debug": 0,
+  "started_at": "2026-10-14T23:14:05.614110+00:00",
+  "phases": {
+    "native-before": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/native-before/syscalls.strace",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/gpu-guest-probe",
+        "/dev/nvidia",
+        "50"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1077194,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "client",
+          "pass"
+        ],
+        [
+          "initial_query",
+          "pass"
+        ],
+        [
+          "normal",
+          "pass"
+        ],
+        [
+          "zeroed",
+          "pass"
+        ],
+        [
+          "four_threads",
+          "pass"
+        ],
+        [
+          "release_client",
+          "pass"
+        ],
+        [
+          "independent_process_0",
+          "pass"
+        ],
+        [
+          "independent_process_1",
+          "pass"
+        ],
+        [
+          "independent_process_2",
+          "pass"
+        ],
+        [
+          "independent_process_3",
+          "pass"
+        ]
+      ],
+      "worker_pids": [],
+      "async_worker_pids": [],
+      "device_ioctl_pids": [
+        "1077197",
+        "1077198",
+        "1077199",
+        "1077200",
+        "1077201",
+        "1077211",
+        "1077212",
+        "1077213",
+        "1077222"
+      ],
+      "device_ioctl_count": 442,
+      "trace_sha256": "6e8f3c5c79da2dc5ff223d38d12dda6f2fe03b67c83a82ba22a3b72a2c27c363",
+      "inputs_unchanged": true,
+      "feature_observations": {
+        "checks": [
+          [
+            "open_control",
+            "pass"
+          ],
+          [
+            "client",
+            "pass"
+          ],
+          [
+            "initial_query",
+            "pass"
+          ],
+          [
+            "normal",
+            "pass"
+          ],
+          [
+            "zeroed",
+            "pass"
+          ],
+          [
+            "four_threads",
+            "pass"
+          ],
+          [
+            "release_client",
+            "pass"
+          ],
+          [
+            "independent_process_0",
+            "pass"
+          ],
+          [
+            "independent_process_1",
+            "pass"
+          ],
+          [
+            "independent_process_2",
+            "pass"
+          ],
+          [
+            "independent_process_3",
+            "pass"
+          ]
+        ],
+        "results": [
+          {
+            "case": "normal",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "zeroed",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f00000400000000000000",
+            "child_before": "00000000",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "client_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000000758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "000000000758d5c1f0010000000000000060bad5967f00000400000023000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "object_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c100000000f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c100000000f0010000000000000060bad5967f00000400000057000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "object_unknown",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c198badcfef0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c198badcfef0010000000000000060bad5967f00000400000057000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "child_null",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000000000000000000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000000000000000000040000001f000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_low",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000010000000000000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000100000000000000040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_noncanonical",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000000000000000008004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000000000000000080040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_wrap",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000ffffffffffffffff04000000efbeadde",
+            "header_after": "0758d5c10758d5c1f001000000000000ffffffffffffffff040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_readonly",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "child_none",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "cross_rw",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000fe6fbad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f001000000000000fe6fbad5967f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "cross_ro",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000fe6fbad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f001000000000000fe6fbad5967f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b00b6a5"
+          },
+          {
+            "case": "cross_none",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000fe6fbad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f001000000000000fe6fbad5967f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "header_readonly",
+            "rc": -1,
+            "errno": 14,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "header_none",
+            "rc": -1,
+            "errno": 14,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f000004000000efbeadde",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000000000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f0000000000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_short",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000003000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f0000030000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_long",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f000005000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f0000050000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_max",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000000060bad5967f0000ffffffffefbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000060bad5967f0000ffffffff1f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "null_size_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f001000000000000000000000000000000000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000000000000000000000000000001f000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "flags_1",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000010000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000010000000060bad5967f0000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_2",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000020000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000020000000060bad5967f0000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_4",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000040000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000040000000060bad5967f0000040000006a000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_8",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000080000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000080000000060bad5967f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "flags_high",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000000000800060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000000000800060bad5967f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "flags_all",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000ffffffff0060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000ffffffff0060bad5967f0000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "client_zero_bad_size",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000000758d5c1f0010000000000000060bad5967f000003000000efbeadde",
+            "header_after": "000000000758d5c1f0010000000000000060bad5967f00000300000023000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "client_zero_bad_pointer",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000000758d5c1f001000000000000010000000000000004000000efbeadde",
+            "header_after": "000000000758d5c1f00100000000000001000000000000000400000023000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "finn_readonly",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000040000000060bad5967f000004000000efbeadde",
+            "header_after": "0758d5c10758d5c1f0010000040000000060bad5967f0000040000006a000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "finn_bad_size",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "0758d5c10758d5c1f0010000040000000060bad5967f0000ffffffffefbeadde",
+            "header_after": "0758d5c10758d5c1f0010000040000000060bad5967f0000ffffffff1f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          }
+        ],
+        "identities": [
+          {
+            "client": 3251984391
+          }
+        ],
+        "ends": [
+          "0"
+        ],
+        "observation_complete": true,
+        "probe_checks_pass": true
+      }
+    },
+    "disabled": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/disabled/syscalls.strace",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/kernel",
+        "umid=harddind-66c5afa70095",
+        "mem=2G",
+        "ncpus=4",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/guest-12fd7bb9ee4e4a859ef988cb26ec6b7c.cow,/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/gpu-control.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-gpu-control-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1077767,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [],
+      "worker_pids": [],
+      "async_worker_pids": [],
+      "device_ioctl_pids": [],
+      "device_ioctl_count": 0,
+      "trace_sha256": "bb53f6436a1ebea125e2f77dea4aa9e041e0be257ae4dd49fdcc602633144ca9",
+      "inputs_unchanged": true,
+      "memory_backing": {
+        "verified": true,
+        "ram_requested": false,
+        "stub_requested": false,
+        "ram_allocations": [
+          {
+            "backend": "file",
+            "bytes": 4096
+          },
+          {
+            "backend": "file",
+            "bytes": 2206113792
+          },
+          {
+            "backend": "file",
+            "bytes": 4096
+          }
+        ],
+        "stub_backend": "file"
+      }
+    },
+    "guest": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/guest/syscalls.strace",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/kernel",
+        "umid=harddind-dbf961c66152",
+        "mem=2G",
+        "ncpus=4",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/guest-5e67d4e461a5440c935f51065d984ab4.cow,/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/gpu-control.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-gpu-control-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "gpu_bridge=1",
+        "gpu_async_wait=1"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1078800,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "client",
+          "pass"
+        ],
+        [
+          "initial_query",
+          "pass"
+        ],
+        [
+          "normal",
+          "pass"
+        ],
+        [
+          "zeroed",
+          "pass"
+        ],
+        [
+          "four_threads",
+          "pass"
+        ],
+        [
+          "release_client",
+          "pass"
+        ],
+        [
+          "independent_process_0",
+          "pass"
+        ],
+        [
+          "independent_process_1",
+          "pass"
+        ],
+        [
+          "independent_process_2",
+          "pass"
+        ],
+        [
+          "independent_process_3",
+          "pass"
+        ]
+      ],
+      "worker_pids": [
+        "1079266",
+        "1079474",
+        "1079565",
+        "1079664",
+        "1079772"
+      ],
+      "async_worker_pids": [
+        "1079266",
+        "1079474",
+        "1079565",
+        "1079664",
+        "1079772"
+      ],
+      "device_ioctl_pids": [
+        "1079266",
+        "1079474",
+        "1079565",
+        "1079664",
+        "1079772"
+      ],
+      "device_ioctl_count": 441,
+      "trace_sha256": "0eb819e09aafadb7e006436750dd773c4dffa8274d9df10982b0807004fce587",
+      "inputs_unchanged": true,
+      "feature_observations": {
+        "checks": [
+          [
+            "open_control",
+            "pass"
+          ],
+          [
+            "client",
+            "pass"
+          ],
+          [
+            "initial_query",
+            "pass"
+          ],
+          [
+            "normal",
+            "pass"
+          ],
+          [
+            "zeroed",
+            "pass"
+          ],
+          [
+            "four_threads",
+            "pass"
+          ],
+          [
+            "release_client",
+            "pass"
+          ],
+          [
+            "independent_process_0",
+            "pass"
+          ],
+          [
+            "independent_process_1",
+            "pass"
+          ],
+          [
+            "independent_process_2",
+            "pass"
+          ],
+          [
+            "independent_process_3",
+            "pass"
+          ]
+        ],
+        "results": [
+          {
+            "case": "normal",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f00100000000000000100040000000000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "zeroed",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f00100000000000000100040000000000400000000000000",
+            "child_before": "00000000",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "client_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000002558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "000000002558d5c1f00100000000000000100040000000000400000023000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "object_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c100000000f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c100000000f00100000000000000100040000000000400000057000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "object_unknown",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c198badcfef001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c198badcfef00100000000000000100040000000000400000057000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "child_null",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000000000000000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000000000000000000040000001f000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_low",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000010000000000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000100000000000000040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_noncanonical",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000000000000000008004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000000000000000080040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_wrap",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000ffffffffffffffff04000000efbeadde",
+            "header_after": "2558d5c12558d5c1f001000000000000ffffffffffffffff040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_readonly",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000010004000000000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "child_none",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000010004000000000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "cross_rw",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000fe1f00400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f001000000000000fe1f0040000000000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "cross_ro",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000fe1f00400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f001000000000000fe1f004000000000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b00b6a5"
+          },
+          {
+            "case": "cross_none",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000fe1f00400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f001000000000000fe1f004000000000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "header_readonly",
+            "rc": -1,
+            "errno": 14,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "header_none",
+            "rc": -1,
+            "errno": 14,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f001000000000000001000400000000004000000efbeadde",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000000000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000010004000000000000000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_short",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000003000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000010004000000000030000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_long",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000001000400000000005000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000010004000000000050000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_max",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f0010000000000000010004000000000ffffffffefbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000010004000000000ffffffff1f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "null_size_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000000000000000000000000000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000000000000000000000000000000000001f000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "flags_1",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000001000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000010000000010004000000000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_2",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000002000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000020000000010004000000000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_4",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000004000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000040000000010004000000000040000006a000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_8",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000008000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f00100000800000000100040000000000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "flags_high",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000000000080001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f00100000000008000100040000000000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "flags_all",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f0010000ffffffff001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000ffffffff0010004000000000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "client_zero_bad_size",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000002558d5c1f001000000000000001000400000000003000000efbeadde",
+            "header_after": "000000002558d5c1f00100000000000000100040000000000300000023000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "client_zero_bad_pointer",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000002558d5c1f001000000000000010000000000000004000000efbeadde",
+            "header_after": "000000002558d5c1f00100000000000001000000000000000400000023000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "finn_readonly",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f001000004000000001000400000000004000000efbeadde",
+            "header_after": "2558d5c12558d5c1f0010000040000000010004000000000040000006a000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "finn_bad_size",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "2558d5c12558d5c1f0010000040000000010004000000000ffffffffefbeadde",
+            "header_after": "2558d5c12558d5c1f0010000040000000010004000000000ffffffff1f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          }
+        ],
+        "identities": [
+          {
+            "client": 3251984421
+          }
+        ],
+        "ends": [
+          "0"
+        ],
+        "observation_complete": true,
+        "probe_checks_pass": true
+      },
+      "async_wait_verified": true,
+      "memory_backing": {
+        "verified": true,
+        "ram_requested": false,
+        "stub_requested": false,
+        "ram_allocations": [
+          {
+            "backend": "file",
+            "bytes": 4096
+          },
+          {
+            "backend": "file",
+            "bytes": 3215671296
+          },
+          {
+            "backend": "file",
+            "bytes": 4096
+          }
+        ],
+        "stub_backend": "file"
+      },
+      "native_comparison": {
+        "matches": true,
+        "matched": 31,
+        "total": 31,
+        "differences": []
+      }
+    },
+    "native-after": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/native-after/syscalls.strace",
+        "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/gpu-guest-probe",
+        "/dev/nvidia",
+        "50"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1080645,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "client",
+          "pass"
+        ],
+        [
+          "initial_query",
+          "pass"
+        ],
+        [
+          "normal",
+          "pass"
+        ],
+        [
+          "zeroed",
+          "pass"
+        ],
+        [
+          "four_threads",
+          "pass"
+        ],
+        [
+          "release_client",
+          "pass"
+        ],
+        [
+          "independent_process_0",
+          "pass"
+        ],
+        [
+          "independent_process_1",
+          "pass"
+        ],
+        [
+          "independent_process_2",
+          "pass"
+        ],
+        [
+          "independent_process_3",
+          "pass"
+        ]
+      ],
+      "worker_pids": [],
+      "async_worker_pids": [],
+      "device_ioctl_pids": [
+        "1080648",
+        "1080649",
+        "1080652",
+        "1080659",
+        "1080660",
+        "1080669",
+        "1080670",
+        "1080671",
+        "1080672"
+      ],
+      "device_ioctl_count": 442,
+      "trace_sha256": "0c20ed465b610b5e373a593c93e2dfd07c2dfec3161fc74a93e7f6cdd7695b4f",
+      "inputs_unchanged": true,
+      "feature_observations": {
+        "checks": [
+          [
+            "open_control",
+            "pass"
+          ],
+          [
+            "client",
+            "pass"
+          ],
+          [
+            "initial_query",
+            "pass"
+          ],
+          [
+            "normal",
+            "pass"
+          ],
+          [
+            "zeroed",
+            "pass"
+          ],
+          [
+            "four_threads",
+            "pass"
+          ],
+          [
+            "release_client",
+            "pass"
+          ],
+          [
+            "independent_process_0",
+            "pass"
+          ],
+          [
+            "independent_process_1",
+            "pass"
+          ],
+          [
+            "independent_process_2",
+            "pass"
+          ],
+          [
+            "independent_process_3",
+            "pass"
+          ]
+        ],
+        "results": [
+          {
+            "case": "normal",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "zeroed",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f00000400000000000000",
+            "child_before": "00000000",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "client_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000003c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "000000003c58d5c1f00100000000000000603068747f00000400000023000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "object_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c100000000f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c100000000f00100000000000000603068747f00000400000057000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "object_unknown",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c198badcfef00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c198badcfef00100000000000000603068747f00000400000057000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "child_null",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000000000000000000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f0010000000000000000000000000000040000001f000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_low",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000010000000000000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f0010000000000000100000000000000040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_noncanonical",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000000000000000008004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f0010000000000000000000000000080040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_wrap",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000ffffffffffffffff04000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f001000000000000ffffffffffffffff040000001e000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "child_readonly",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "child_none",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "cross_rw",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000fe6f3068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f001000000000000fe6f3068747f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "cross_ro",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000fe6f3068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f001000000000000fe6f3068747f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b00b6a5"
+          },
+          {
+            "case": "cross_none",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000fe6f3068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f001000000000000fe6f3068747f0000040000001e000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "header_readonly",
+            "rc": -1,
+            "errno": 14,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "header_none",
+            "rc": -1,
+            "errno": 14,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f000004000000efbeadde",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000000000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f0000000000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_short",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000003000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f0000030000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_long",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f000005000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f0000050000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "size_max",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000000000603068747f0000ffffffffefbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000000000603068747f0000ffffffff1f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "null_size_zero",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f001000000000000000000000000000000000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f0010000000000000000000000000000000000001f000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "flags_1",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000100000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000100000000603068747f0000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_2",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000200000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000200000000603068747f0000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_4",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000400000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000400000000603068747f0000040000006a000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "flags_8",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000800000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000800000000603068747f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "flags_high",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000000008000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000000008000603068747f00000400000000000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "0b000000"
+          },
+          {
+            "case": "flags_all",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f0010000ffffffff00603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f0010000ffffffff00603068747f0000040000001f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "client_zero_bad_size",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000003c58d5c1f00100000000000000603068747f000003000000efbeadde",
+            "header_after": "000000003c58d5c1f00100000000000000603068747f00000300000023000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "client_zero_bad_pointer",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "000000003c58d5c1f001000000000000010000000000000004000000efbeadde",
+            "header_after": "000000003c58d5c1f00100000000000001000000000000000400000023000000",
+            "child_before": "n/a",
+            "child_after": "n/a"
+          },
+          {
+            "case": "finn_readonly",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000400000000603068747f000004000000efbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000400000000603068747f0000040000006a000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          },
+          {
+            "case": "finn_bad_size",
+            "rc": 0,
+            "errno": 0,
+            "header_before": "3c58d5c13c58d5c1f00100000400000000603068747f0000ffffffffefbeadde",
+            "header_after": "3c58d5c13c58d5c1f00100000400000000603068747f0000ffffffff1f000000",
+            "child_before": "d8c7b6a5",
+            "child_after": "d8c7b6a5"
+          }
+        ],
+        "identities": [
+          {
+            "client": 3251984444
+          }
+        ],
+        "ends": [
+          "0"
+        ],
+        "observation_complete": true,
+        "probe_checks_pass": true
+      },
+      "native_comparison": {
+        "matches": true,
+        "matched": 31,
+        "total": 31,
+        "differences": []
+      }
+    }
+  },
+  "limitations": [
+    "NVIDIA control, REGISTER_FD and optional RM root-client/policy subset; no device mmap or CUDA",
+    "one GPU identity per guest mm; cross-group fd use fails EXDEV",
+    "GPU waits are schedulable but not cancellable",
+    "traced functional test, not a performance comparison",
+    "UML stub internal isolation is still incomplete",
+    "Policy setter results do not verify object sharing, CUDA IPC or guest UID credentials"
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "probe_iterations": 50,
+  "policy_iterations": null,
+  "gpu_count": 4,
+  "sha256": {
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/kernel": "3f3f97080af4fbb92662d346e9cd39016a1722ae39e83ed35d827f1fe12f7380",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/gpu-control.ext4": "1135154ad4359589c08dea28677baccf5e3492978b31cc1fef8f9f52a0b9e65a",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/gpu-guest-probe": "fb6fd2fd81ba2edfa4ced43d33968cfc8bffdfb62cc30ecb259fcca83e24a987",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/gpu_alloc_checks.py": "bcc5145d930c650b28feba7f1077333c5457f3c0cf08ff5efb6814af8a346220",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0027-um-gpu-system-features.patch": "61cf3b6fab60d55ea0a7118d73fd187513150cfe90ca7f80941e186d0152cfa9",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0013-um-gpu-register-fd.patch": "9231d3588150a5fbd69b5a6ad3b07919a6a5db4fb03e0ed50b9bd33cd8372c19",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0025-um-gpu-policy-driver-validation.patch": "04507582088e1207cea01a74b6bea11e481cad16d0900dc2576aa46ff80b09af",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/gpu_probe_checks.py": "c70afd22161402dc0f64e54aa007697930bfea11c0fc37be3f4b9b9a3843827d",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0014-um-check-usercopy-read-permission.patch": "f7a0f04e782b0a7db12912f358bc1e6ab111e649a3069ffeda40eb11c79ffa9a",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/gpu_policy_checks.py": "6de21bcdc44b3509c840d1d0607df3c8b7d4ce86c4d77f3d94ee883f1cbc79a7",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0015-um-opt-in-memfd-backing.patch": "a47998019908f3121e3eba2bc55c836a1607f07961efa85bc7b2f4cb440b3c05",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0023-um-gpu-client-policy.patch": "98762aefead3c35bb05473d0559d925fa1963ed435da1015cda6499a6db80372",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/gpu_feature_checks.py": "a3d225557988330c72473c0c720d137562301e1510b3ef75b2543ec27a308f02",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/sources.lock.json": "1c961944f9fafa84dfb4a2a6721998d3ab92ab8ed9648ffc2af461a55b672c09",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0012-um-gpu-control-transport.patch": "d8bfd9c38f05b56547cb8c5900fc96090fc16c7fcb6ec34aba58311a8e7a6af5",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0022-um-gpu-build-version.patch": "df36ea10aff1413da5663a41e552c445ddf9b0ee1e4cbbe43d9dcea33ac9e8e2",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0020-um-gpu-control-pointer-errors.patch": "c374c850675720ccf3f1e271a2d5e55401f2a14bb6611f9505216c05fa156eee",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0026-um-gpu-fixed-alloc.patch": "e8ab01f2251bf1c9fcccfb6ca76324c5fb33c7c2041bffe3f88bf24088a8c9b1",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0019-um-gpu-root-control.patch": "52248ab2f322698ff9ad87049d53c0b786e2a7faf05824900c627d10d08f0ec6",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/result_checks.py": "97b14437839b98ff361b31dc3b9d97268c887fb764e7589de756b8f028b0c046",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/run-gpu-control.py": "1f636440841500da1b12f7015aee9580cc10094a27ba81716b40239cdaba5b83",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0017-um-gpu-async-wait.patch": "6422d2e1915782261a4f24b1060a2eec8fab4173a93b0ee4d22970aebfb7008e",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0021-um-gpu-device-numbers.patch": "d4f810a9ac7aa54a7eaddf6bac5d28248ff3f953811270f91ccc4d61fb585020",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/gpu_system_features_probe.c": "5c5be41c25f198b99a8504caafb48b472314a8b23ca479aa6b462f8a4f2c9683",
+    "/root/harddind-rebuild/gpu-mapping-owner-v11/run/results/mapping-features-v11/sources/0016-um-gpu-rm-client.patch": "f1c06d96b980e9457ebd2b66193a4ae42a89031a4d1364967c81eac47182415f"
+  },
+  "diagnostic_finished": true
+}
