@@ -75,7 +75,7 @@ CPU 限制另用 `scripts/run-cpu-limits.py WORK --kernel KERNEL --disk DISK --n
 
 [自动端口发布实测](results/starpub-2026-10-14-published-ports/) 的 15 项检查通过，覆盖外层回环 TCP/UDP 数据校验、停止与删除后的释放、默认和自定义 bridge 冲突重试、多端口回滚、临时端口、范围、`-P`、四个并发发布与整个实例重启恢复。第一版冲突失败记录保留。控制请求经实例专用的串口通道传递，数据仍走原有 libslirp 路径；此次没有宣称性能提升。IPv6、不同外层地址复用同一端口、Swarm ingress 和异常恢复尚未通过验收。
 
-[IPv6 与地址发布候选实测](results/starpub-2026-10-15-publish/) 在实际 Docker 中为 11 pass、1 IPv6 fail、9 not_tested。新增的实际 guest 地址共享、释放、复用和失败回滚已通过；IPv6 完整报文检查超时，而单独的小报文诊断能正确往返，正在继续定位。失败记录、构建源码和进程清理证据均保留，候选实现尚未合入。
+[IPv6 与地址发布候选实测](results/starpub-2026-10-15-publish/) 在实际 Docker 中为 11 pass、1 IPv6 fail、9 not_tested。新增的实际 guest 地址共享、释放、复用和失败回滚已通过。后续诊断确认 IPv6 TCP 64 KiB 可用，而 MTU 1500 下 IPv6 UDP 从 1453 字节起失败，报头与固定版 libslirp 源码指向缺少 IPv6 分片和重组。失败记录、构建源码和进程清理证据均保留，候选实现尚未合入。
 
 ```sh
 make moby port-agent network WORK=/root/harddind-rebuild
