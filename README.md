@@ -195,3 +195,5 @@ GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、
 [驱动版本二级指针实测](results/starpub-2026-10-14-gpu-build-version/) 用补丁 `0022` 接入该查询，30 项探针及 24 组原始结果在原生、guest 和五次内部 Docker 运行中一致，原有根查询与线程回归通过。完整 CUDA 实际通过 `0x101` 后，在下一条客户端继承共享策略 `0xd04` 失败；内部 GPU 计算、UVM、设备映射和接近原生性能仍未完成。
 
 [GPU 可调度等待实测](results/starpub-2026-10-15-gpu-async/) 新增默认关闭的 `0017` 实验：通过完成 IRQ 让等待 ioctl 的任务进入 guest 调度器。相同人工延迟的同步／异步对照、worker 死亡唤醒、四 CPU 查询与内部 Docker 并发重启通过；真实 CUDA 仍在 `0xd04` 失败。使用 `make kernel-gpu-async-experiment` 构建，实例须显式传入 `--gpu-control-experiment --gpu-async-wait`。这不代表完整 GPU 或近原生性能达标。
+
+[CUDA 客户端策略实测](results/starpub-2026-10-15-gpu-policy-trace/) 补充了 `0xd04` 的真实二级参数：原生两条 PID 策略的目标都是当前 RM 客户端句柄，内部第一条仍被拒绝。追踪器现在记录有界参数快照，原生前后四卡计算通过；这为后续身份语义实现提供输入证据，不代表内部 GPU 已完成。

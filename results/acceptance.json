@@ -158,7 +158,8 @@
         "starpub-2026-10-15-gpu-async/gpu-async-off-v1/report.json",
         "starpub-2026-10-15-gpu-async/gpu-async-core-v1.json",
         "starpub-2026-10-15-gpu-async/gpu-async-cleanup-audit.json",
-        "starpub-2026-10-15-gpu-async/evidence-validation.json"
+        "starpub-2026-10-15-gpu-async/evidence-validation.json",
+        "starpub-2026-10-15-gpu-policy-trace/policy-observation.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",
