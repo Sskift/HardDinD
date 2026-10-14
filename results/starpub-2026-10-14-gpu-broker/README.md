@@ -23,7 +23,7 @@
 
 ## 映射边界
 
-第二个映射是在同一个共享 mm 中选择另一个虚拟地址，仅执行 mmap/munmap，没有额外读写 MMIO。**尚未验证映射到 UML 内核所在的另一个宿主 mm**：
+v2、v4 的第二个映射是在同一个共享 mm 中选择另一个虚拟地址，仅执行 mmap/munmap，没有额外读写 MMIO。这两轮没有验证另一个宿主 mm；后续 v6 的独立 mm 检查见下文：
 
 - nvidiactl：116 次第二映射成功。
 - nvidia0–3：合计 8 次第二映射成功。
@@ -53,12 +53,20 @@ v4 与 v5 的 CUDA 探针、转发库、源码和运行器哈希完全相同，�
 
 UML 目前的每 CPU 执行进程有不同 TGID，因此不能直接把一个 CUDA 客户端的调用随意分发给这些执行进程。后续内核接入应验证按 guest 线程组绑定一组宿主 GPU 处理线程，同时保留正确的 mm、文件描述符和生命周期。不能把整个 guest 的所有独立应用合并成一个 GPU 身份，也不能在映射管理进程缓存复用时遗留前一个应用的 GPU 资源。
 
+## 独立地址空间中的新映射
+
+`gpu-broker-v6 --brokers 2 --threads --modes native mmap crossmm` 完成三种模式，每种均验证外层四卡计算、上传、下载和释放，退出正常，无强制清理或残留。crossmm 在每次原始设备 mmap 成功后，以不含 CLONE_VM/CLONE_THREAD 的原始 clone 建立一个独立 mm 的子进程，再在子进程中发起新的 mmap/munmap；子进程仅使用原始系统调用。strace 核对了全部 128 个子进程的创建标志、实际设备 mmap 和退出。
+
+新映射结果：nvidiactl 116 次成功，nvidia0–3 合计 8 次成功，nvidia-uvm 4 次全部 EINVAL。报告显式保留 `all_alias_mappings_supported=false`，不能把诊断模式的 pass 当成全部设备映射成功。每个阶段的原始 trace 解压哈希均与报告一致；本轮还保存参与编译的完整源码快照。
+
+这证明该探针能够在另一个宿主 mm 中重新建立普通设备映射，但子进程仍继承父进程的文件引用和地址空间初始内容，且没有读取或写入新映射。**尚未验证独立启动的 UML 内核进程接收 FD 后的映射、数据一致性或 guest 内核用户内存访问**。UVM 的拒绝原因、锁页和缺页路径也尚未解决；GPU 验收仍为 fail。
+
 ## 尚未实现和验证
 
 - UML 内核字符设备、ioctl 分发、设备 VMA 与文件描述符转换。
 - 原型使用 CLONE_FILES，实际 UML 执行进程的文件表独立，不能据此省略 FD 转换。
 - 不同处理 PID 交错执行已失败；同 TGID 的串行交错子集通过，真正并发、fork/exec 和异常退出生命周期仍未验证。
-- 普通设备的跨 mm 别名、UVM、锁页内存、托管内存、guest 内核 copy_to/from_user 与 cgroup 计费。
+- 普通设备跨 mm 别名在实际 UML 内核中的接入与数据访问、UVM、锁页内存、托管内存、guest 内核 copy_to/from_user 与 cgroup 计费。
 - 内部 `docker run --gpus all` 的实际工作负载和同机 GPU 性能对照。
 
 复现：
@@ -66,6 +74,7 @@ UML 目前的每 CPU 执行进程有不同 TGID，因此不能直接把一个 CU
 ```sh
 python3 scripts/run-gpu-broker.py /root/harddind-rebuild --name new-gpu-broker
 python3 scripts/run-gpu-broker.py /root/harddind-rebuild --name new-gpu-threads --brokers 2 --threads
+python3 scripts/run-gpu-broker.py /root/harddind-rebuild --name new-gpu-crossmm --brokers 2 --threads --modes native mmap crossmm
 ```
 
 每个结果目录只能新建，原始失败不被重试覆盖。此原型不能作为一般应用的预加载库安装。

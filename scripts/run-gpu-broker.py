@@ -45,7 +45,7 @@ def main():
     p.add_argument('--name', required=True)
     p.add_argument('--brokers', type=int, choices=[1, 2, 3, 4], default=1)
     p.add_argument('--threads', action='store_true', help='share TGID as well as mm/files; raw syscall workers only')
-    p.add_argument('--modes', nargs='+', choices=['native', 'ioctl', 'mmap', 'alias'],
+    p.add_argument('--modes', nargs='+', choices=['native', 'ioctl', 'mmap', 'alias', 'crossmm'],
                    default=['native', 'ioctl', 'mmap', 'alias'])
     args = p.parse_args()
     if not args.name or len(args.name) > 40 or not all(c.isalnum() or c in '-_' for c in args.name):
@@ -81,15 +81,21 @@ def main():
             report['strace_version'] = subprocess.check_output(['strace', '-V'], text=True).splitlines()[0]
             report['compiler'] = subprocess.check_output(['gcc', '--version'], text=True).splitlines()[0]
             report['sha256'] = {str(path): sha(path) for path in inputs}
+            snapshot = output / 'sources'; snapshot.mkdir()
+            sources = []
+            for path in inputs:
+                target = snapshot / path.name
+                target.write_bytes(path.read_bytes()); sources.append(target)
+            report['source_snapshots'] = {str(path.relative_to(output)): sha(path) for path in sources}
             with (output / 'build.log').open('x') as log:
                 for command in [
-                    ['gcc', '-O2', '-Wall', '-Wextra', '-Werror', str(inputs[0]), '-ldl', '-o', str(program)],
+                    ['gcc', '-O2', '-Wall', '-Wextra', '-Werror', str(sources[0]), '-ldl', '-o', str(program)],
                     ['gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared',
-                     '-fno-stack-protector', '-fno-builtin', str(inputs[1]), '-pthread', '-o', str(shim)],
+                     '-fno-stack-protector', '-fno-builtin', str(sources[1]), '-pthread', '-o', str(shim)],
                 ]:
                     log.write(json.dumps(command) + '\n'); log.flush()
                     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=60)
-            inputs += [program, shim]
+            inputs += sources + [program, shim]
             report['sha256'] = {str(path): sha(path) for path in inputs}
             for mode in args.modes:
                 phase = output / mode; phase.mkdir()
@@ -162,6 +168,28 @@ def main():
                             route_valid = (route_valid and set(row['gpu_mmap_pids']) == brokers
                                 and sum(s['mmaps'] + s['alias_ok'] + s['alias_failed'] for s in row['broker_stats'])
                                     == sum(row['gpu_mmap_pids'].values()))
+                        if mode == 'crossmm':
+                            attempts = [dict(zip(['child', 'kind', 'result', 'exited'], map(int, values)))
+                                for values in re.findall(r'HARDDIND_GPU_CROSS_ALIAS child=(\d+) kind=(\d+) result=(-?\d+) exited=(\d+)', stderr)]
+                            row['cross_mm_attempts'] = attempts
+                            children = {str(a['child']) for a in attempts}
+                            row['alias_clone_records'] = [line for line in clone_records(content)
+                                if any(re.search(r'= ' + pid + r'\b', line) for pid in children)]
+                            route_valid = (route_valid and len(attempts) == sum(s['mmaps'] for s in row['broker_stats'])
+                                and len(children) == len(attempts) and not children.intersection(brokers | owners)
+                                and all(a['exited'] == 1 for a in attempts)
+                                and len(row['alias_clone_records']) == len(children)
+                                and all('CLONE_VM' not in line and 'CLONE_THREAD' not in line for line in row['alias_clone_records'])
+                                and set(row['gpu_mmap_pids']) == brokers | children
+                                and all(row['gpu_mmap_pids'][pid] == 1 for pid in children)
+                                and sum(row['gpu_mmap_pids'][pid] for pid in brokers) == len(attempts))
+                            for stats_row in row['broker_stats']:
+                                matches = [a for a in attempts if a['kind'] == stats_row['kind']]
+                                route_valid = (route_valid and sum(a['result'] == 0 for a in matches) == stats_row['alias_ok']
+                                    and sum(a['result'] < 0 for a in matches) == stats_row['alias_failed'])
+                    if mode in ('alias', 'crossmm'):
+                        row['all_alias_mappings_supported'] = bool(row['broker_stats']) and all(
+                            s['alias_failed'] == 0 and s['alias_ok'] == s['mmaps'] for s in row['broker_stats'])
                 row['routing_verified'] = route_valid
                 row['inputs_unchanged'] = all(sha(path) == report['sha256'][str(path)] for path in inputs)
                 row['status'] = 'pass' if (row['exit_code'] == 0 and not row['timed_out']

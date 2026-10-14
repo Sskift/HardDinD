@@ -1,0 +1,2 @@
+["gcc", "-O2", "-Wall", "-Wextra", "-Werror", "/root/harddind-rebuild/results/gpu-broker-v6/sources/cuda_probe.c", "-ldl", "-o", "/root/harddind-rebuild/results/gpu-broker-v6/cuda-probe"]
+["gcc", "-O2", "-Wall", "-Wextra", "-Werror", "-fPIC", "-shared", "-fno-stack-protector", "-fno-builtin", "/root/harddind-rebuild/results/gpu-broker-v6/sources/gpu_broker_probe.c", "-pthread", "-o", "/root/harddind-rebuild/results/gpu-broker-v6/gpu-broker.so"]

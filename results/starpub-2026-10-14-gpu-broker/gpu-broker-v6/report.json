@@ -1,0 +1,1384 @@
+{
+  "kind": "outer_shared_mm_gpu_broker",
+  "full_acceptance": false,
+  "internal_gpu_verified": false,
+  "diagnostic_complete": true,
+  "broker_count": 2,
+  "thread_workers": true,
+  "started_at": "2026-10-14T11:22:10.560375+00:00",
+  "modes": {
+    "native": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "32",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-broker-v6/native/syscalls.strace",
+        "-e",
+        "trace=openat,ioctl,mmap,munmap,close,clone,clone3,prctl,exit,exit_group",
+        "/root/harddind-rebuild/results/gpu-broker-v6/cuda-probe"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 142758,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "compute_results": [
+        {
+          "gpu": 0,
+          "elements": 1048576,
+          "seconds": 0.007948231,
+          "verified": true
+        },
+        {
+          "gpu": 1,
+          "elements": 1048576,
+          "seconds": 0.008302735,
+          "verified": true
+        },
+        {
+          "gpu": 2,
+          "elements": 1048576,
+          "seconds": 0.003597353,
+          "verified": true
+        },
+        {
+          "gpu": 3,
+          "elements": 1048576,
+          "seconds": 0.005270161,
+          "verified": true
+        }
+      ],
+      "four_outer_gpus_verified": true,
+      "trace_sha256": "03b5e854b8ac9dcd0a0d29752e1d290dc9be68d781849f89d81e77b80ac4849e",
+      "gpu_ioctl_pids": {
+        "142767": 2725
+      },
+      "gpu_mmap_pids": {
+        "142767": 128
+      },
+      "gpu_libraries": {
+        "/usr/lib/x86_64-linux-gnu/libcuda.so.550.120": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.550.120": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d"
+      },
+      "routing_verified": true,
+      "inputs_unchanged": true
+    },
+    "mmap": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "32",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-broker-v6/mmap/syscalls.strace",
+        "-e",
+        "trace=openat,ioctl,mmap,munmap,close,clone,clone3,prctl,exit,exit_group",
+        "-E",
+        "LD_PRELOAD=/root/harddind-rebuild/results/gpu-broker-v6/gpu-broker.so",
+        "-E",
+        "HARDDIND_GPU_BROKER_MODE=mmap",
+        "-E",
+        "HARDDIND_GPU_BROKER_COUNT=2",
+        "-E",
+        "HARDDIND_GPU_BROKER_THREADS=1",
+        "/root/harddind-rebuild/results/gpu-broker-v6/cuda-probe"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 144883,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "compute_results": [
+        {
+          "gpu": 0,
+          "elements": 1048576,
+          "seconds": 0.007320626,
+          "verified": true
+        },
+        {
+          "gpu": 1,
+          "elements": 1048576,
+          "seconds": 0.005375663,
+          "verified": true
+        },
+        {
+          "gpu": 2,
+          "elements": 1048576,
+          "seconds": 0.004574021,
+          "verified": true
+        },
+        {
+          "gpu": 3,
+          "elements": 1048576,
+          "seconds": 0.003398823,
+          "verified": true
+        }
+      ],
+      "four_outer_gpus_verified": true,
+      "trace_sha256": "306794a07507e10bf607bab787d0903fb58986585aaeff6990415015e5b766b1",
+      "gpu_ioctl_pids": {
+        "144889": 1363,
+        "144890": 1362
+      },
+      "gpu_mmap_pids": {
+        "144889": 64,
+        "144890": 64
+      },
+      "gpu_libraries": {
+        "/usr/lib/x86_64-linux-gnu/libcuda.so.550.120": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.550.120": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d"
+      },
+      "broker_stats": [
+        {
+          "kind": 0,
+          "ioctls": 1925,
+          "mmaps": 116,
+          "alias_ok": 0,
+          "alias_failed": 0
+        },
+        {
+          "kind": 1,
+          "ioctls": 164,
+          "mmaps": 8,
+          "alias_ok": 0,
+          "alias_failed": 0
+        },
+        {
+          "kind": 2,
+          "ioctls": 636,
+          "mmaps": 4,
+          "alias_ok": 0,
+          "alias_failed": 0
+        }
+      ],
+      "alias_errors": [],
+      "owner_pids": [
+        144888
+      ],
+      "broker_pids": [
+        144889,
+        144890
+      ],
+      "worker_clone_records": [
+        "144888 11:22:13.906845 clone(child_stack=0x7f2fe082fff0, flags=CLONE_VM|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[144889], child_tidptr=0x7f2fe0a67c8c) = 144889 <0.000056>",
+        "144888 11:22:13.907021 clone(child_stack=0x7f2fe072fff0, flags=CLONE_VM|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[144890], child_tidptr=0x7f2fe0a67ce4) = 144890 <0.000051>"
+      ],
+      "routing_verified": true,
+      "inputs_unchanged": true
+    },
+    "crossmm": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "32",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-broker-v6/crossmm/syscalls.strace",
+        "-e",
+        "trace=openat,ioctl,mmap,munmap,close,clone,clone3,prctl,exit,exit_group",
+        "-E",
+        "LD_PRELOAD=/root/harddind-rebuild/results/gpu-broker-v6/gpu-broker.so",
+        "-E",
+        "HARDDIND_GPU_BROKER_MODE=crossmm",
+        "-E",
+        "HARDDIND_GPU_BROKER_COUNT=2",
+        "-E",
+        "HARDDIND_GPU_BROKER_THREADS=1",
+        "/root/harddind-rebuild/results/gpu-broker-v6/cuda-probe"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 145694,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "compute_results": [
+        {
+          "gpu": 0,
+          "elements": 1048576,
+          "seconds": 0.006552033,
+          "verified": true
+        },
+        {
+          "gpu": 1,
+          "elements": 1048576,
+          "seconds": 0.022533009,
+          "verified": true
+        },
+        {
+          "gpu": 2,
+          "elements": 1048576,
+          "seconds": 0.006188584,
+          "verified": true
+        },
+        {
+          "gpu": 3,
+          "elements": 1048576,
+          "seconds": 0.005215868,
+          "verified": true
+        }
+      ],
+      "four_outer_gpus_verified": true,
+      "trace_sha256": "e14c82cc30ea4a0823e5874a91f75a8845704b97ff6661258b573ec62b4a0ea6",
+      "gpu_ioctl_pids": {
+        "145698": 1363,
+        "145699": 1362
+      },
+      "gpu_mmap_pids": {
+        "145698": 64,
+        "145709": 1,
+        "145699": 64,
+        "145710": 1,
+        "145719": 1,
+        "145728": 1,
+        "145746": 1,
+        "145747": 1,
+        "145756": 1,
+        "145757": 1,
+        "145758": 1,
+        "145759": 1,
+        "145760": 1,
+        "145761": 1,
+        "145762": 1,
+        "145763": 1,
+        "145772": 1,
+        "145773": 1,
+        "145798": 1,
+        "145799": 1,
+        "145800": 1,
+        "145801": 1,
+        "145810": 1,
+        "145811": 1,
+        "145812": 1,
+        "145813": 1,
+        "145830": 1,
+        "145841": 1,
+        "145848": 1,
+        "145849": 1,
+        "145850": 1,
+        "145859": 1,
+        "145860": 1,
+        "145861": 1,
+        "145862": 1,
+        "145871": 1,
+        "145872": 1,
+        "145934": 1,
+        "145971": 1,
+        "145973": 1,
+        "145982": 1,
+        "145983": 1,
+        "145984": 1,
+        "145985": 1,
+        "145986": 1,
+        "145994": 1,
+        "145999": 1,
+        "146000": 1,
+        "146001": 1,
+        "146038": 1,
+        "146039": 1,
+        "146048": 1,
+        "146049": 1,
+        "146058": 1,
+        "146059": 1,
+        "146060": 1,
+        "146061": 1,
+        "146086": 1,
+        "146087": 1,
+        "146110": 1,
+        "146254": 1,
+        "146534": 1,
+        "146668": 1,
+        "146779": 1,
+        "146875": 1,
+        "146959": 1,
+        "147211": 1,
+        "147313": 1,
+        "148161": 1,
+        "148283": 1,
+        "148370": 1,
+        "148438": 1,
+        "148491": 1,
+        "148494": 1,
+        "148535": 1,
+        "148569": 1,
+        "148618": 1,
+        "148637": 1,
+        "148671": 1,
+        "148674": 1,
+        "148873": 1,
+        "148884": 1,
+        "148905": 1,
+        "148939": 1,
+        "148980": 1,
+        "149006": 1,
+        "149072": 1,
+        "149104": 1,
+        "149149": 1,
+        "149169": 1,
+        "149175": 1,
+        "149242": 1,
+        "149335": 1,
+        "149380": 1,
+        "149468": 1,
+        "149512": 1,
+        "149526": 1,
+        "149544": 1,
+        "149640": 1,
+        "149801": 1,
+        "149841": 1,
+        "149844": 1,
+        "149859": 1,
+        "149860": 1,
+        "149875": 1,
+        "149880": 1,
+        "149882": 1,
+        "149883": 1,
+        "149897": 1,
+        "149908": 1,
+        "149915": 1,
+        "149959": 1,
+        "149971": 1,
+        "149980": 1,
+        "149981": 1,
+        "150049": 1,
+        "150063": 1,
+        "150067": 1,
+        "150083": 1,
+        "150132": 1,
+        "150151": 1,
+        "150183": 1,
+        "150193": 1,
+        "150222": 1,
+        "150237": 1,
+        "150247": 1,
+        "150267": 1,
+        "150278": 1,
+        "150279": 1,
+        "150297": 1
+      },
+      "gpu_libraries": {
+        "/usr/lib/x86_64-linux-gnu/libcuda.so.550.120": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.550.120": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d"
+      },
+      "broker_stats": [
+        {
+          "kind": 0,
+          "ioctls": 1925,
+          "mmaps": 116,
+          "alias_ok": 116,
+          "alias_failed": 0
+        },
+        {
+          "kind": 1,
+          "ioctls": 164,
+          "mmaps": 8,
+          "alias_ok": 8,
+          "alias_failed": 0
+        },
+        {
+          "kind": 2,
+          "ioctls": 636,
+          "mmaps": 4,
+          "alias_ok": 0,
+          "alias_failed": 4
+        }
+      ],
+      "alias_errors": [
+        {
+          "kind": 2,
+          "errno": 22,
+          "count": 4
+        }
+      ],
+      "owner_pids": [
+        145697
+      ],
+      "broker_pids": [
+        145698,
+        145699
+      ],
+      "worker_clone_records": [
+        "145697 11:22:17.416150 clone(child_stack=0x7f48f4d47ff0, flags=CLONE_VM|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[145698], child_tidptr=0x7f48f4f7fc8c) = 145698 <0.000064>",
+        "145697 11:22:17.416401 clone(child_stack=0x7f48f4c47ff0, flags=CLONE_VM|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, parent_tid=[145699], child_tidptr=0x7f48f4f7fce4) = 145699 <0.000032>"
+      ],
+      "cross_mm_attempts": [
+        {
+          "child": 145709,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145710,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145719,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145728,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145746,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145747,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145756,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145757,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145758,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145759,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145760,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145761,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145762,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145763,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145772,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145773,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145798,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145799,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145800,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145801,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145810,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145811,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145812,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145813,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145830,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145841,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145848,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145849,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145850,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145859,
+          "kind": 2,
+          "result": -22,
+          "exited": 1
+        },
+        {
+          "child": 145860,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145861,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145862,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145871,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145872,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145934,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145971,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145973,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145982,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145983,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145984,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145985,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145986,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145994,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 145999,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146000,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146001,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146038,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146039,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146048,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146049,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146058,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146059,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146060,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146061,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146086,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146087,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146110,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146254,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146534,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146668,
+          "kind": 2,
+          "result": -22,
+          "exited": 1
+        },
+        {
+          "child": 146779,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146875,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 146959,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 147211,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 147313,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148161,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148283,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148370,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148438,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148491,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148494,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148535,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148569,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148618,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148637,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148671,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148674,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148873,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148884,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148905,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148939,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 148980,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149006,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149072,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149104,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149149,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149169,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149175,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149242,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149335,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149380,
+          "kind": 2,
+          "result": -22,
+          "exited": 1
+        },
+        {
+          "child": 149468,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149512,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149526,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149544,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149640,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149801,
+          "kind": 1,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149841,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149844,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149859,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149860,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149875,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149880,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149882,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149883,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149897,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149908,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149915,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149959,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149971,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149980,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 149981,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150049,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150063,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150067,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150083,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150132,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150151,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150183,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150193,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150222,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150237,
+          "kind": 2,
+          "result": -22,
+          "exited": 1
+        },
+        {
+          "child": 150247,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150267,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150278,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150279,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        },
+        {
+          "child": 150297,
+          "kind": 0,
+          "result": 0,
+          "exited": 1
+        }
+      ],
+      "alias_clone_records": [
+        "145697 11:22:17.452869 clone(child_stack=NULL, flags=SIGCHLD) = 145709 <0.000228>",
+        "145697 11:22:17.478927 clone(child_stack=NULL, flags=SIGCHLD) = 145710 <0.000217>",
+        "145697 11:22:17.502639 clone(child_stack=NULL, flags=SIGCHLD) = 145719 <0.000189>",
+        "145697 11:22:17.526202 clone(child_stack=NULL, flags=SIGCHLD) = 145728 <0.000202>",
+        "145697 11:22:17.594520 clone(child_stack=NULL, flags=SIGCHLD) = 145746 <0.000431>",
+        "145697 11:22:17.632073 clone(child_stack=NULL, flags=SIGCHLD) = 145747 <0.001470>",
+        "145697 11:22:17.643907 clone(child_stack=NULL, flags=SIGCHLD) = 145756 <0.000964>",
+        "145697 11:22:17.655644 clone(child_stack=NULL, flags=SIGCHLD) = 145757 <0.001327>",
+        "145697 11:22:17.661481 clone(child_stack=NULL, flags=SIGCHLD) = 145758 <0.001141>",
+        "145697 11:22:17.666479 clone(child_stack=NULL, flags=SIGCHLD) = 145759 <0.001442>",
+        "145697 11:22:17.678067 clone(child_stack=NULL, flags=SIGCHLD) = 145760 <0.001311>",
+        "145697 11:22:17.687682 clone(child_stack=NULL, flags=SIGCHLD) = 145761 <0.000928>",
+        "145697 11:22:17.699287 clone(child_stack=NULL, flags=SIGCHLD) = 145762 <0.001113>",
+        "145697 11:22:17.711196 clone(child_stack=NULL, flags=SIGCHLD) = 145763 <0.001942>",
+        "145697 11:22:17.722671 clone(child_stack=NULL, flags=SIGCHLD) = 145772 <0.002239>",
+        "145697 11:22:17.734169 clone(child_stack=NULL, flags=SIGCHLD) = 145773 <0.002251>",
+        "145697 11:22:17.839247 clone(child_stack=NULL, flags=SIGCHLD) = 145798 <0.001678>",
+        "145697 11:22:17.849762 clone(child_stack=NULL, flags=SIGCHLD) = 145799 <0.001300>",
+        "145697 11:22:17.857171 clone(child_stack=NULL, flags=SIGCHLD) = 145800 <0.001163>",
+        "145697 11:22:17.864539 clone(child_stack=NULL, flags=SIGCHLD) = 145801 <0.000969>",
+        "145697 11:22:17.906016 clone(child_stack=NULL, flags=SIGCHLD) = 145810 <0.001680>",
+        "145697 11:22:17.917933 clone(child_stack=NULL, flags=SIGCHLD) = 145811 <0.002109>",
+        "145697 11:22:17.930747 clone(child_stack=NULL, flags=SIGCHLD) = 145812 <0.001878>",
+        "145697 11:22:17.940632 clone(child_stack=NULL, flags=SIGCHLD) = 145813 <0.001889>",
+        "145697 11:22:17.997072 clone(child_stack=NULL, flags=SIGCHLD) = 145830 <0.002639>",
+        "145697 11:22:18.011474 clone(child_stack=NULL, flags=SIGCHLD) = 145841 <0.001588>",
+        "145697 11:22:18.022026 clone(child_stack=NULL, flags=SIGCHLD) = 145848 <0.001936>",
+        "145697 11:22:18.032661 clone(child_stack=NULL, flags=SIGCHLD) = 145849 <0.001376>",
+        "145697 11:22:18.074344 clone(child_stack=NULL, flags=SIGCHLD) = 145850 <0.002775>",
+        "145697 11:22:18.105494 clone(child_stack=NULL, flags=SIGCHLD) = 145859 <0.002966>",
+        "145697 11:22:18.114161 clone(child_stack=NULL, flags=SIGCHLD) = 145860 <0.001435>",
+        "145697 11:22:18.123438 clone(child_stack=NULL, flags=SIGCHLD) = 145861 <0.001262>",
+        "145697 11:22:18.131541 clone(child_stack=NULL, flags=SIGCHLD) = 145862 <0.001269>",
+        "145697 11:22:18.146039 clone(child_stack=NULL, flags=SIGCHLD) = 145871 <0.001801>",
+        "145697 11:22:18.179315 clone(child_stack=NULL, flags=SIGCHLD) = 145872 <0.002020>",
+        "145697 11:22:18.450012 clone(child_stack=NULL, flags=SIGCHLD) = 145934 <0.000887>",
+        "145697 11:22:18.504848 clone(child_stack=NULL, flags=SIGCHLD) = 145971 <0.002956>",
+        "145697 11:22:18.520318 clone(child_stack=NULL, flags=SIGCHLD) = 145973 <0.001892>",
+        "145697 11:22:18.533466 clone(child_stack=NULL, flags=SIGCHLD) = 145982 <0.001277>",
+        "145697 11:22:18.540446 clone(child_stack=NULL, flags=SIGCHLD) = 145983 <0.001301>",
+        "145697 11:22:18.545615 clone(child_stack=NULL, flags=SIGCHLD) = 145984 <0.001167>",
+        "145697 11:22:18.555986 clone(child_stack=NULL, flags=SIGCHLD) = 145985 <0.001539>",
+        "145697 11:22:18.565502 clone(child_stack=NULL, flags=SIGCHLD) = 145986 <0.001249>",
+        "145697 11:22:18.575167 clone(child_stack=NULL, flags=SIGCHLD) = 145994 <0.001317>",
+        "145697 11:22:18.587232 clone(child_stack=NULL, flags=SIGCHLD) = 145999 <0.002177>",
+        "145697 11:22:18.598494 clone(child_stack=NULL, flags=SIGCHLD) = 146000 <0.002435>",
+        "145697 11:22:18.610598 clone(child_stack=NULL, flags=SIGCHLD) = 146001 <0.001565>",
+        "145697 11:22:18.701040 clone(child_stack=NULL, flags=SIGCHLD) = 146038 <0.003168>",
+        "145697 11:22:18.713730 clone(child_stack=NULL, flags=SIGCHLD) = 146039 <0.002420>",
+        "145697 11:22:18.723249 clone(child_stack=NULL, flags=SIGCHLD) = 146048 <0.002175>",
+        "145697 11:22:18.738760 clone(child_stack=NULL, flags=SIGCHLD) = 146049 <0.002689>",
+        "145697 11:22:18.790262 clone(child_stack=NULL, flags=SIGCHLD) = 146058 <0.002572>",
+        "145697 11:22:18.802653 clone(child_stack=NULL, flags=SIGCHLD) = 146059 <0.002116>",
+        "145697 11:22:18.812913 clone(child_stack=NULL, flags=SIGCHLD) = 146060 <0.001395>",
+        "145697 11:22:18.825177 clone(child_stack=NULL, flags=SIGCHLD) = 146061 <0.001872>",
+        "145697 11:22:18.877559 clone(child_stack=NULL, flags=SIGCHLD) = 146086 <0.002012>",
+        "145697 11:22:18.890179 clone(child_stack=NULL, flags=SIGCHLD) = 146087 <0.002923>",
+        "145697 11:22:18.901781 clone(child_stack=NULL, flags=SIGCHLD) = 146110 <0.002698>",
+        "145697 11:22:18.915228 clone(child_stack=NULL, flags=SIGCHLD) = 146254 <0.003386>",
+        "145697 11:22:18.986932 clone(child_stack=NULL, flags=SIGCHLD) = 146534 <0.003173>",
+        "145697 11:22:19.049457 clone(child_stack=NULL, flags=SIGCHLD) = 146668 <0.003154>",
+        "145697 11:22:19.067022 clone(child_stack=NULL, flags=SIGCHLD) = 146779 <0.002940>",
+        "145697 11:22:19.080347 clone(child_stack=NULL, flags=SIGCHLD) = 146875 <0.002136>",
+        "145697 11:22:19.094633 clone(child_stack=NULL, flags=SIGCHLD) = 146959 <0.002231>",
+        "145697 11:22:19.160062 clone(child_stack=NULL, flags=SIGCHLD) = 147211 <0.003860>",
+        "145697 11:22:19.205120 clone(child_stack=NULL, flags=SIGCHLD) = 147313 <0.003939>",
+        "145697 11:22:19.822284 clone(child_stack=NULL, flags=SIGCHLD) = 148161 <0.001435>",
+        "145697 11:22:19.891985 clone(child_stack=NULL, flags=SIGCHLD) = 148283 <0.003363>",
+        "145697 11:22:19.979561 clone(child_stack=NULL, flags=SIGCHLD) = 148370 <0.003082>",
+        "145697 11:22:19.999070 clone(child_stack=NULL, flags=SIGCHLD) = 148438 <0.003056>",
+        "145697 11:22:20.046686 clone(child_stack=NULL, flags=SIGCHLD) = 148491 <0.003409>",
+        "145697 11:22:20.058530 clone(child_stack=NULL, flags=SIGCHLD) = 148494 <0.004174>",
+        "145697 11:22:20.079297 clone(child_stack=NULL, flags=SIGCHLD) = 148535 <0.003431>",
+        "145697 11:22:20.095036 clone(child_stack=NULL, flags=SIGCHLD) = 148569 <0.003395>",
+        "145697 11:22:20.112883 clone(child_stack=NULL, flags=SIGCHLD) = 148618 <0.003129>",
+        "145697 11:22:20.164658 clone(child_stack=NULL, flags=SIGCHLD) = 148637 <0.003694>",
+        "145697 11:22:20.191083 clone(child_stack=NULL, flags=SIGCHLD) = 148671 <0.002593>",
+        "145697 11:22:20.248347 clone(child_stack=NULL, flags=SIGCHLD) = 148674 <0.003851>",
+        "145697 11:22:20.334797 clone(child_stack=NULL, flags=SIGCHLD) = 148873 <0.011754>",
+        "145697 11:22:20.357996 clone(child_stack=NULL, flags=SIGCHLD) = 148884 <0.003625>",
+        "145697 11:22:20.372187 clone(child_stack=NULL, flags=SIGCHLD) = 148905 <0.016075>",
+        "145697 11:22:20.398216 clone(child_stack=NULL, flags=SIGCHLD) = 148939 <0.002938>",
+        "145697 11:22:20.473979 clone(child_stack=NULL, flags=SIGCHLD) = 148980 <0.003864>",
+        "145697 11:22:20.490905 clone(child_stack=NULL, flags=SIGCHLD) = 149006 <0.003594>",
+        "145697 11:22:20.505531 clone(child_stack=NULL, flags=SIGCHLD) = 149072 <0.003812>",
+        "145697 11:22:20.565685 clone(child_stack=NULL, flags=SIGCHLD) = 149104 <0.003351>",
+        "145697 11:22:20.607034 clone(child_stack=NULL, flags=SIGCHLD) = 149149 <0.003398>",
+        "145697 11:22:20.623818 clone(child_stack=NULL, flags=SIGCHLD) = 149169 <0.021238>",
+        "145697 11:22:20.655719 clone(child_stack=NULL, flags=SIGCHLD) = 149175 <0.003109>",
+        "145697 11:22:20.672666 clone(child_stack=NULL, flags=SIGCHLD) = 149242 <0.003286>",
+        "145697 11:22:20.744907 clone(child_stack=NULL, flags=SIGCHLD) = 149335 <0.003399>",
+        "145697 11:22:20.766963 clone(child_stack=NULL, flags=SIGCHLD) = 149380 <0.002994>",
+        "145697 11:22:20.819030 clone(child_stack=NULL, flags=SIGCHLD) = 149468 <0.025426>",
+        "145697 11:22:20.862286 clone(child_stack=NULL, flags=SIGCHLD) = 149512 <0.003609>",
+        "145697 11:22:20.878602 clone(child_stack=NULL, flags=SIGCHLD) = 149526 <0.003553>",
+        "145697 11:22:20.900759 clone(child_stack=NULL, flags=SIGCHLD) = 149544 <0.003599>",
+        "145697 11:22:20.992370 clone(child_stack=NULL, flags=SIGCHLD) = 149640 <0.003858>",
+        "145697 11:22:21.347848 clone(child_stack=NULL, flags=SIGCHLD) = 149801 <0.001336>",
+        "145697 11:22:21.444597 clone(child_stack=NULL, flags=SIGCHLD) = 149841 <0.002069>",
+        "145697 11:22:21.457275 clone(child_stack=NULL, flags=SIGCHLD) = 149844 <0.001727>",
+        "145697 11:22:21.470593 clone(child_stack=NULL, flags=SIGCHLD) = 149859 <0.001197>",
+        "145697 11:22:21.477321 clone(child_stack=NULL, flags=SIGCHLD) = 149860 <0.001059>",
+        "145697 11:22:21.483629 clone(child_stack=NULL, flags=SIGCHLD) = 149875 <0.001558>",
+        "145697 11:22:21.493343 clone(child_stack=NULL, flags=SIGCHLD) = 149880 <0.001486>",
+        "145697 11:22:21.514208 clone(child_stack=NULL, flags=SIGCHLD) = 149882 <0.002677>",
+        "145697 11:22:21.527412 clone(child_stack=NULL, flags=SIGCHLD) = 149883 <0.001633>",
+        "145697 11:22:21.551903 clone(child_stack=NULL, flags=SIGCHLD) = 149897 <0.003227>",
+        "145697 11:22:21.582317 clone(child_stack=NULL, flags=SIGCHLD) = 149908 <0.003362>",
+        "145697 11:22:21.596572 clone(child_stack=NULL, flags=SIGCHLD) = 149915 <0.001816>",
+        "145697 11:22:21.695206 clone(child_stack=NULL, flags=SIGCHLD) = 149959 <0.003534>",
+        "145697 11:22:21.717115 clone(child_stack=NULL, flags=SIGCHLD) = 149971 <0.002199>",
+        "145697 11:22:21.746796 clone(child_stack=NULL, flags=SIGCHLD) = 149980 <0.002858>",
+        "145697 11:22:21.761050 clone(child_stack=NULL, flags=SIGCHLD) = 149981 <0.003157>",
+        "145697 11:22:21.823752 clone(child_stack=NULL, flags=SIGCHLD) = 150049 <0.002994>",
+        "145697 11:22:21.853983 clone(child_stack=NULL, flags=SIGCHLD) = 150063 <0.003247>",
+        "145697 11:22:21.876840 clone(child_stack=NULL, flags=SIGCHLD) = 150067 <0.002872>",
+        "145697 11:22:21.888781 clone(child_stack=NULL, flags=SIGCHLD) = 150083 <0.002697>",
+        "145697 11:22:21.928165 clone(child_stack=NULL, flags=SIGCHLD) = 150132 <0.001850>",
+        "145697 11:22:21.958327 clone(child_stack=NULL, flags=SIGCHLD) = 150151 <0.003263>",
+        "145697 11:22:21.978338 clone(child_stack=NULL, flags=SIGCHLD) = 150183 <0.002783>",
+        "145697 11:22:21.989021 clone(child_stack=NULL, flags=SIGCHLD) = 150193 <0.002213>",
+        "145697 11:22:22.025596 clone(child_stack=NULL, flags=SIGCHLD) = 150222 <0.003311>",
+        "145697 11:22:22.047679 clone(child_stack=NULL, flags=SIGCHLD) = 150237 <0.016595>",
+        "145697 11:22:22.095903 clone(child_stack=NULL, flags=SIGCHLD) = 150247 <0.002972>",
+        "145697 11:22:22.118645 clone(child_stack=NULL, flags=SIGCHLD) = 150267 <0.003307>",
+        "145697 11:22:22.144842 clone(child_stack=NULL, flags=SIGCHLD) = 150278 <0.003908>",
+        "145697 11:22:22.164580 clone(child_stack=NULL, flags=SIGCHLD) = 150279 <0.003686>",
+        "145697 11:22:22.196880 clone(child_stack=NULL, flags=SIGCHLD) = 150297 <0.004077>"
+      ],
+      "all_alias_mappings_supported": false,
+      "routing_verified": true,
+      "inputs_unchanged": true
+    }
+  },
+  "limitations": [
+    "outer process experiment, not an implemented UML or Docker GPU backend",
+    "helper shares CLONE_FILES; UML fd translation is not tested",
+    "strace and syscall proxy change timing; no GPU performance acceptance",
+    "one CUDA process, sequential cards; fork and concurrent client lifecycle unverified",
+    "multiple brokers alternate serially; simultaneous syscalls are not tested",
+    "device alias test maps and unmaps only; it does not read or write MMIO",
+    "guest page faults, pinned pages, UVM migration and guest cgroup accounting are unverified"
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host_load_before": "39.91 50.56 50.93 23/50429 142437\n",
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "strace_version": "strace -- version 5.16",
+  "compiler": "gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0",
+  "sha256": {
+    "/root/harddind-rebuild/src/cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "/root/harddind-rebuild/src/gpu_broker_probe.c": "e7e00e6eba229c7e8261f2670bfcbbb0e6b83c7e5ad9933ec91adc71ae95bbb7",
+    "/root/harddind-rebuild/scripts/run-gpu-broker.py": "868ad5ca16f7068cfa60d4a96a9d1f8d36054f51452a56b0df9c9d64071a0b3c",
+    "/root/harddind-rebuild/results/gpu-broker-v6/sources/cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "/root/harddind-rebuild/results/gpu-broker-v6/sources/gpu_broker_probe.c": "e7e00e6eba229c7e8261f2670bfcbbb0e6b83c7e5ad9933ec91adc71ae95bbb7",
+    "/root/harddind-rebuild/results/gpu-broker-v6/sources/run-gpu-broker.py": "868ad5ca16f7068cfa60d4a96a9d1f8d36054f51452a56b0df9c9d64071a0b3c",
+    "/root/harddind-rebuild/results/gpu-broker-v6/cuda-probe": "ce39d7bb3d6b5f0e6a14f08d78f6ad1330e75b58e6e356e30bf97a94948946a6",
+    "/root/harddind-rebuild/results/gpu-broker-v6/gpu-broker.so": "d03921fe5dc4b646b9c180c3f0280a28ae58942d30d5a803401282b9def3ba27"
+  },
+  "source_snapshots": {
+    "sources/cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "sources/gpu_broker_probe.c": "e7e00e6eba229c7e8261f2670bfcbbb0e6b83c7e5ad9933ec91adc71ae95bbb7",
+    "sources/run-gpu-broker.py": "868ad5ca16f7068cfa60d4a96a9d1f8d36054f51452a56b0df9c9d64071a0b3c"
+  },
+  "host_load_after": "42.97 50.84 51.01 30/50730 150812\n"
+}

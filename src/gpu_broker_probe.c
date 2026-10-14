@@ -51,7 +51,7 @@ static unsigned broker_count = 1, next_broker;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pid_t owner;
 static const size_t stack_size = 1024 * 1024;
-static int enabled, forward_mmap, alias_maps, failed, thread_workers;
+static int enabled, forward_mmap, alias_maps, cross_mm, failed, thread_workers;
 static struct { dev_t device; int kind; } devices[40];
 static unsigned device_count;
 static unsigned long calls[3], maps[3], alias_ok[3], alias_failed[3];
@@ -146,13 +146,14 @@ static void add_device(const char *path, int kind) {
 __attribute__((constructor)) static void initialize(void) {
     const char *mode = getenv("HARDDIND_GPU_BROKER_MODE");
     if (!mode) return;
-    if (strcmp(mode, "ioctl") && strcmp(mode, "mmap") && strcmp(mode, "alias")) {
+    if (strcmp(mode, "ioctl") && strcmp(mode, "mmap") && strcmp(mode, "alias") && strcmp(mode, "crossmm")) {
         fprintf(stderr, "invalid GPU broker mode\n"); _exit(120);
     }
     owner = getpid();
     thread_workers = getenv("HARDDIND_GPU_BROKER_THREADS") != NULL;
     forward_mmap = strcmp(mode, "ioctl") != 0;
-    alias_maps = !strcmp(mode, "alias");
+    cross_mm = !strcmp(mode, "crossmm");
+    alias_maps = !strcmp(mode, "alias") || cross_mm;
     add_device("/dev/nvidiactl", 0); add_device("/dev/nvidia-uvm", 2);
     for (unsigned i = 0; i < 32; i++) {
         char path[64]; snprintf(path, sizeof(path), "/dev/nvidia%u", i);
@@ -200,6 +201,60 @@ int ioctl(int fd, unsigned long command, ...) {
     return result;
 }
 
+/* Fork a private mm for this mapping attempt. The child uses raw syscalls only,
+ * including exit; it must not touch the inherited, potentially locked libc.
+ * This tests a new device mapping, not an inherited VMA or copied contents. */
+static long cross_mm_alias(int kind, size_t length, int prot, int flags, int fd, off64_t offset) {
+    struct alias_result { atomic_int done; long result; };
+    struct alias_result *answer = (void *)raw6(SYS_mmap, 0, 4096, PROT_READ | PROT_WRITE,
+                                               MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if ((long)answer < 0 && (long)answer >= -4095) { failed = 1; return (long)answer; }
+    long child = raw6(SYS_clone, SIGCHLD, 0, 0, 0, 0, 0);
+    if (child == 0) {
+        unsigned long blocked_signals = ~0UL;
+        raw6(SYS_rt_sigprocmask, SIG_SETMASK, (long)&blocked_signals, 0, sizeof(blocked_signals), 0, 0);
+        raw6(SYS_prctl, PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0, 0);
+        if (raw6(SYS_getppid, 0, 0, 0, 0, 0, 0) != owner)
+            raw6(SYS_exit, 122, 0, 0, 0, 0, 0);
+        long alias = raw6(SYS_mmap, 0, length, prot,
+                           flags & ~(MAP_FIXED | MAP_FIXED_NOREPLACE), fd, offset);
+        answer->result = alias < 0 && alias >= -4095 ? alias :
+            raw6(SYS_munmap, alias, length, 0, 0, 0, 0);
+        atomic_store_explicit(&answer->done, 1, memory_order_release);
+        raw6(SYS_exit, 0, 0, 0, 0, 0, 0);
+        __builtin_unreachable();
+    }
+    long result = -EIO;
+    int status = 0, exited = 0;
+    if (child < 0) {
+        failed = 1; result = child;
+    } else {
+        double deadline = now() + 30;
+        for (;;) {
+            pid_t reaped = waitpid(child, &status, WNOHANG);
+            if (reaped == child) {
+                exited = WIFEXITED(status) && !WEXITSTATUS(status);
+                if (exited && atomic_load_explicit(&answer->done, memory_order_acquire))
+                    result = answer->result;
+                else failed = 1;
+                break;
+            }
+            if (reaped < 0 && errno != EINTR) { failed = 1; break; }
+            if (now() > deadline) {
+                failed = 1; kill(child, SIGKILL);
+                while (waitpid(child, NULL, 0) < 0 && errno == EINTR) {}
+                result = -ETIMEDOUT; break;
+            }
+            struct timespec pause = { .tv_nsec = 1000000 };
+            nanosleep(&pause, NULL);
+        }
+    }
+    fprintf(stderr, "HARDDIND_GPU_CROSS_ALIAS child=%ld kind=%d result=%ld exited=%d\n",
+            child, kind, result, exited);
+    raw6(SYS_munmap, (long)answer, 4096, 0, 0, 0, 0);
+    return result;
+}
+
 static void *map_device(void *address, size_t length, int prot, int flags, int fd, off64_t offset) {
     int kind = enabled && forward_mmap ? device_kind(fd) : -1;
     if (kind < 0) return (void *)syscall(SYS_mmap, address, length, prot, flags, fd, offset);
@@ -210,14 +265,14 @@ static void *map_device(void *address, size_t length, int prot, int flags, int f
     if (alias_maps && result >= 0) {
         /* Do not read or write MMIO. Test whether the same owned device mapping
          * can be mapped twice; UML kernel access would need a second alias. */
-        long alias = invoke(SYS_mmap, 0, length, prot,
-                            flags & ~(MAP_FIXED | MAP_FIXED_NOREPLACE), fd, offset);
+        long alias = cross_mm ? cross_mm_alias(kind, length, prot, flags, fd, offset) :
+            invoke(SYS_mmap, 0, length, prot, flags & ~(MAP_FIXED | MAP_FIXED_NOREPLACE), fd, offset);
         if (alias < 0 && alias >= -4095) {
             alias_failed[kind]++;
             if (-alias < 256) alias_errno[kind][-alias]++;
         } else {
             alias_ok[kind]++;
-            if (invoke(SYS_munmap, alias, length, 0, 0, 0, 0)) failed = 1;
+            if (!cross_mm && invoke(SYS_munmap, alias, length, 0, 0, 0, 0)) failed = 1;
         }
     }
     pthread_mutex_unlock(&mutex);
