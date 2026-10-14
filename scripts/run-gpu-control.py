@@ -15,7 +15,7 @@ import stat
 import subprocess
 import uuid
 from guest_cleanup import cleanup_group
-from gpu_probe_checks import FD_CHECKS
+from gpu_probe_checks import FD_CHECKS, RM_CHECKS
 from result_checks import memfd_backing_evidence
 
 
@@ -34,30 +34,32 @@ def main():
     p.add_argument('work', type=pathlib.Path)
     p.add_argument('--kernel', type=pathlib.Path, required=True)
     p.add_argument('--name', required=True)
-    p.add_argument('--fd-registration', action='store_true')
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument('--fd-registration', action='store_true')
+    mode.add_argument('--rm-client', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
     p.add_argument('--memfd-ram', action='store_true')
     p.add_argument('--memfd-stub', action='store_true')
     args = p.parse_args()
     if not 1 <= args.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
-    fd_mode = args.fd_registration
-    marker = 'GPU_FD' if fd_mode else 'GPU_CONTROL'
-    expected_checks = FD_CHECKS if fd_mode else CHECKS
-    probe_source = 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
-    argument_suffix = '' if fd_mode else 'ctl'
+    fd_mode, rm_mode = args.fd_registration, args.rm_client
+    marker = 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    expected_checks = RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
+    probe_source = 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
+    argument_suffix = '' if fd_mode or rm_mode else 'ctl'
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,40}', args.name):
         p.error('invalid evidence name')
     work, kernel = args.work.resolve(), args.kernel.resolve()
     repo = pathlib.Path(__file__).resolve().parents[1]
     output = work / 'results' / args.name
     output.mkdir(parents=True, exist_ok=False)
-    report = {'kind': 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
+    report = {'kind': 'uml_gpu_rm_client' if rm_mode else 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'phases': {name: {'status': 'not_tested'} for name in
                          ['native-before', 'disabled', 'guest', 'native-after']},
-              'limitations': ['NVIDIA control and REGISTER_FD subset only; no device mmap or CUDA',
+              'limitations': ['NVIDIA control, REGISTER_FD and optional RM root-client subset; no device mmap or CUDA',
                               'one GPU identity per guest mm; cross-group fd use fails EXDEV',
                               'device waits disable one guest CPU interrupts; blocking GPU commands unavailable',
                               'traced functional test, not a performance comparison',
@@ -81,6 +83,8 @@ def main():
                          repo / 'scripts/result_checks.py']:
                 shutil.copy2(path, sources / path.name)
             shutil.copy2(work / 'linux-7.2.10/.harddind-patches.json', output / 'kernel-patches.json')
+            if rm_mode:
+                shutil.copy2(repo / 'kernel/experiments/0016-um-gpu-rm-client.patch', sources / '0016-um-gpu-rm-client.patch')
             program = output / 'gpu-guest-probe'
             with (output / 'build.log').open('x') as log:
                 subprocess.run(['gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread',
@@ -99,8 +103,8 @@ def main():
                 (root / directory).mkdir(exist_ok=True)
             shutil.copy2(program, root / 'gpu-guest-probe')
             init = root / 'sbin/harddind-gpu-control-init'
-            argument = str(args.gpu_count) if fd_mode else version
-            report['gpu_count'] = args.gpu_count if fd_mode else None
+            argument = str(args.gpu_count) if fd_mode or rm_mode else version
+            report['gpu_count'] = args.gpu_count if fd_mode or rm_mode else None
             init.write_text('''#!/bin/sh
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 mount -t proc proc /proc
@@ -185,9 +189,9 @@ poweroff -f
                              and len(row['worker_pids']) == 5
                              and len(set(row['worker_pids'])) == 5
                              and set(row['device_ioctl_pids']) == set(row['worker_pids'])
-                             and row['device_ioctl_count'] == (36 + args.gpu_count if fd_mode else 153))
+                             and row['device_ioctl_count'] == (201 if rm_mode else 36 + args.gpu_count if fd_mode else 153))
                 else:
-                    valid = valid and row['device_ioctl_count'] == (37 + args.gpu_count if fd_mode else 154)
+                    valid = valid and row['device_ioctl_count'] == (205 if rm_mode else 37 + args.gpu_count if fd_mode else 154)
                 if name in ('guest', 'disabled'):
                     row['memory_backing'] = memfd_backing_evidence(content, args.memfd_ram, args.memfd_stub)
                     if args.memfd_ram or args.memfd_stub:
@@ -199,8 +203,9 @@ poweroff -f
                 trace.unlink()
                 print(name + ': ' + row['status'], flush=True)
                 (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-                if row['status'] != 'pass':
+                if row['status'] != 'pass' and not rm_mode:
                     break
+            report['diagnostic_finished'] = all(row['status'] in ('pass', 'fail') for row in report['phases'].values())
             report['diagnostic_complete'] = all(row['status'] == 'pass' for row in report['phases'].values())
         except (Exception, KeyboardInterrupt) as error:
             report['error'] = f'{type(error).__name__}: {error}'

@@ -1,0 +1,589 @@
+{
+  "kind": "uml_gpu_fd_registration",
+  "full_acceptance": false,
+  "internal_cuda_verified": false,
+  "diagnostic_complete": true,
+  "started_at": "2026-10-14T13:59:56.577514+00:00",
+  "phases": {
+    "native-before": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/native-before/syscalls.strace",
+        "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/gpu-guest-probe",
+        "/dev/nvidia",
+        "4"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3675768,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "worker_pids": [],
+      "device_ioctl_pids": [
+        "3675771",
+        "3675772",
+        "3675773",
+        "3675774",
+        "3675775",
+        "3675776",
+        "3675777",
+        "3675778",
+        "3675779"
+      ],
+      "device_ioctl_count": 41,
+      "trace_sha256": "29d67ac65e4f89d7e175963d8f725be4789b105fb61709501a07e12b0db43f89",
+      "inputs_unchanged": true
+    },
+    "disabled": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/disabled/syscalls.strace",
+        "/root/harddind-rebuild/gpu-rm-kernel-v1",
+        "umid=harddind-ad9be3bb7e93",
+        "mem=2G",
+        "ncpus=4",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/guest-0060c17932b54b24b0eb3dbb7ac9c241.cow,/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/gpu-control.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-gpu-control-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "memfd_ram=1",
+        "memfd_stub=1"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3676472,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [],
+      "worker_pids": [],
+      "device_ioctl_pids": [],
+      "device_ioctl_count": 0,
+      "trace_sha256": "165ba4e0c88993ee3f39c3122bf5b0b2a5a108cfe24ced815716a8598c59e67b",
+      "inputs_unchanged": true,
+      "memory_backing": {
+        "verified": true,
+        "ram_requested": true,
+        "stub_requested": true,
+        "ram_allocations": [
+          {
+            "backend": "memfd",
+            "bytes": 4096
+          },
+          {
+            "backend": "memfd",
+            "bytes": 2992730112
+          },
+          {
+            "backend": "memfd",
+            "bytes": 4096
+          }
+        ],
+        "stub_backend": "memfd"
+      }
+    },
+    "guest": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/guest/syscalls.strace",
+        "/root/harddind-rebuild/gpu-rm-kernel-v1",
+        "umid=harddind-b2f1703fa48e",
+        "mem=2G",
+        "ncpus=4",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/guest-6642f9211d16448a98f8074ab04ec0c2.cow,/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/gpu-control.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-gpu-control-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "memfd_ram=1",
+        "memfd_stub=1",
+        "gpu_bridge=1"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3677745,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "worker_pids": [
+        "3678169",
+        "3678296",
+        "3678320",
+        "3678382",
+        "3678457"
+      ],
+      "device_ioctl_pids": [
+        "3678169",
+        "3678296",
+        "3678320",
+        "3678382",
+        "3678457"
+      ],
+      "device_ioctl_count": 40,
+      "trace_sha256": "fd21ac186cde5eae3c4cfd34184e523d596205dfe31278d897066beaaa5cb3db",
+      "inputs_unchanged": true,
+      "memory_backing": {
+        "verified": true,
+        "ram_requested": true,
+        "stub_requested": true,
+        "ram_allocations": [
+          {
+            "backend": "memfd",
+            "bytes": 4096
+          },
+          {
+            "backend": "memfd",
+            "bytes": 2594504704
+          },
+          {
+            "backend": "memfd",
+            "bytes": 4096
+          }
+        ],
+        "stub_backend": "memfd"
+      }
+    },
+    "native-after": {
+      "status": "pass",
+      "command": [
+        "strace",
+        "-f",
+        "-qq",
+        "-yy",
+        "-tt",
+        "-T",
+        "-s",
+        "80",
+        "-e",
+        "trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group",
+        "-o",
+        "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/native-after/syscalls.strace",
+        "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/gpu-guest-probe",
+        "/dev/nvidia",
+        "4"
+      ],
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3679406,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "pipe_read_from_protnone",
+          "pass"
+        ],
+        [
+          "pipe_write_to_readonly",
+          "pass"
+        ],
+        [
+          "pipe_recovery_preserves_data",
+          "pass"
+        ],
+        [
+          "open_control_and_gpu",
+          "pass"
+        ],
+        [
+          "invalid_source_fd",
+          "pass"
+        ],
+        [
+          "non_device_source_fd",
+          "pass"
+        ],
+        [
+          "gpu_source_rejected",
+          "pass"
+        ],
+        [
+          "control_self_reference",
+          "pass"
+        ],
+        [
+          "high_guest_fd",
+          "pass"
+        ],
+        [
+          "high_fd_registration",
+          "pass"
+        ],
+        [
+          "duplicate_registration",
+          "pass"
+        ],
+        [
+          "source_close",
+          "pass"
+        ],
+        [
+          "target_retains_registration",
+          "pass"
+        ],
+        [
+          "close_registered_target",
+          "pass"
+        ],
+        [
+          "all_gpu_devices_registration",
+          "pass"
+        ],
+        [
+          "control_target_registration",
+          "pass"
+        ],
+        [
+          "linked_control_as_source_rejected",
+          "pass"
+        ],
+        [
+          "copyin_fault",
+          "pass"
+        ],
+        [
+          "copyin_fault_does_not_register",
+          "pass"
+        ],
+        [
+          "copyout_fault",
+          "pass"
+        ],
+        [
+          "copyout_fault_keeps_registration",
+          "pass"
+        ],
+        [
+          "four_threads_shared_control",
+          "pass"
+        ],
+        [
+          "reopen_lifecycle",
+          "pass"
+        ],
+        [
+          "independent_process_lifecycle",
+          "pass"
+        ]
+      ],
+      "worker_pids": [],
+      "device_ioctl_pids": [
+        "3679409",
+        "3679411",
+        "3679412",
+        "3679414",
+        "3679416",
+        "3679419",
+        "3679421",
+        "3679422",
+        "3679423"
+      ],
+      "device_ioctl_count": 41,
+      "trace_sha256": "4da867626e1557383c861cb7a7f59c5a69a72251fa56f8d0993031d46ab71e5e",
+      "inputs_unchanged": true
+    }
+  },
+  "limitations": [
+    "NVIDIA control, REGISTER_FD and optional RM root-client subset; no device mmap or CUDA",
+    "one GPU identity per guest mm; cross-group fd use fails EXDEV",
+    "device waits disable one guest CPU interrupts; blocking GPU commands unavailable",
+    "traced functional test, not a performance comparison",
+    "UML stub internal isolation is still incomplete"
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "gpu_count": 4,
+  "sha256": {
+    "/root/harddind-rebuild/gpu-rm-kernel-v1": "ae7ed172388f4e251d9b93994511d3887fc94465a42d2fabc516f15f2c713e00",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/gpu-control.ext4": "d3830365ca4916eed0bb760d962a1157534b4bfc8ff2073fc37ba24bb827b856",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/gpu-guest-probe": "5f62ebcae58a902bf783564c9462924834b0a24dbdccff8e3583240f9b475931",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/0013-um-gpu-register-fd.patch": "9231d3588150a5fbd69b5a6ad3b07919a6a5db4fb03e0ed50b9bd33cd8372c19",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/gpu_probe_checks.py": "7e9c086dad8da36a9fa45805ca1e68ea905507ba7a0eee189dcd05cfce562389",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/0014-um-check-usercopy-read-permission.patch": "f7a0f04e782b0a7db12912f358bc1e6ab111e649a3069ffeda40eb11c79ffa9a",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/0015-um-opt-in-memfd-backing.patch": "a47998019908f3121e3eba2bc55c836a1607f07961efa85bc7b2f4cb440b3c05",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/sources.lock.json": "0e151b2205b2776340a0d9d88700a84b51c7a291c4a2ae9220c4085fed06ad3e",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/0012-um-gpu-control-transport.patch": "d8bfd9c38f05b56547cb8c5900fc96090fc16c7fcb6ec34aba58311a8e7a6af5",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/result_checks.py": "97b14437839b98ff361b31dc3b9d97268c887fb764e7589de756b8f028b0c046",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/run-gpu-control.py": "d131bbaa6ae7965686f631072210fd5f565b00f2144209ad6f001d38a4abca7d",
+    "/root/harddind-rebuild/results/gpu-rm-fd-regression-v1/sources/gpu_fd_probe.c": "6f03a59818f18d287d6f52675580e9fbde4724c564702fe85c500b5b3cc017ee"
+  },
+  "diagnostic_finished": true
+}

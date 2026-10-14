@@ -114,14 +114,20 @@
         "starpub-2026-10-14-memfd/memfd-gpu-fd-v1/report.json",
         "starpub-2026-10-14-memfd/memfd-gpu-docker-v1/report.json",
         "starpub-2026-10-14-memfd/memfd-gpu-control-v1/report.json",
-        "starpub-2026-10-14-memfd/memfd-docker-suite-v1.json"
+        "starpub-2026-10-14-memfd/memfd-docker-suite-v1.json",
+        "starpub-2026-10-14-gpu-rm/gpu-rm-v1/report.json",
+        "starpub-2026-10-14-gpu-rm/gpu-rm-docker-v1/report.json",
+        "starpub-2026-10-14-gpu-rm/gpu-rm-fd-regression-v1/report.json",
+        "starpub-2026-10-14-gpu-rm/gpu-rm-cleanup-audit.json",
+        "starpub-2026-10-14-gpu-rm/evidence-validation.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",
         "CUDA compute inside Docker",
         "memory mapping and pinned memory",
         "multi-GPU and process lifecycle",
-        "GPU performance comparison"
+        "GPU performance comparison",
+        "RM root-client allocation/free: native 29/29, guest and five nested Docker lifecycle runs 28/29; unsupported allocation class error semantics differ; device objects, UVM/mmap and CUDA remain absent"
       ]
     }
   }
