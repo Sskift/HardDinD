@@ -113,7 +113,8 @@ if __name__ == "__main__":
                         repo / "kernel/experiments/0019-um-gpu-root-control.patch",
                         repo / "kernel/experiments/0020-um-gpu-control-pointer-errors.patch",
                         repo / "kernel/experiments/0021-um-gpu-device-numbers.patch",
-                        repo / "kernel/experiments/0022-um-gpu-build-version.patch"]
+                        repo / "kernel/experiments/0022-um-gpu-build-version.patch",
+                        repo / "kernel/experiments/0023-um-gpu-client-policy.patch"]
     elif options:
         raise SystemExit("unknown patch-series option")
     if async_mode:

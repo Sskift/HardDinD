@@ -1,0 +1,30 @@
+{
+  "time": "2026-10-14T16:57:11.723355+00:00",
+  "kind": "local_lightweight_integration_checks",
+  "kernel_build": false,
+  "runtime_test": false,
+  "patch_reconstructed_from_observed_remote_content": true,
+  "patch_sha256_matches_remote_tested_candidate": true,
+  "patch_series_unit_tests": {
+    "passed": 2,
+    "failed": 0
+  },
+  "python_syntax": "pass",
+  "git_diff_check": "pass",
+  "gpu_c_patch_sequence": {
+    "base": ".work/gpu-kernel-fd-v1/new/arch/um/kernel/gpu.c",
+    "patch_numbers": [
+      16,
+      19,
+      20,
+      21,
+      22,
+      23,
+      17
+    ],
+    "fuzz": 0,
+    "all_apply": true,
+    "result_sha256": "74f4d382dd712284f1ef89f4206b89d5ce2ecc3011663e01771b455faba0f560",
+    "scope": "Only arch/um/kernel/gpu.c sections; not a replacement for full source/kernel build validation."
+  }
+}
