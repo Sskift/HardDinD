@@ -4,7 +4,7 @@
 
 **重建中，尚未达到这三个目标。当前是可复现的内核开发和验收仓库，不能当成已完成的 Docker 替代品安装。**
 
-旧版保存于 Git 标签 `archive/uml-6.6.158-20261014`。旧包装命令和安装器已移除。开发分支为 `codex/runtime-rebuild`。
+旧版保存于 Git 标签 `archive/uml-6.6.158-20261014`。旧包装命令和安装器已移除。按用户要求，后续开发直接提交并推送到 `main`。
 
 ## 当前实现
 
@@ -50,6 +50,21 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 新的 [内存权限同步实验](results/starpub-2026-10-14-protect/) 区分已存在映射的权限变化与物理页替换，前者用宿主 `mprotect`，后者保留 `mmap`。构建使用 `make kernel-protect-experiment`，运行器使用 `--mprotect-sync`，默认关闭。真实读写保护、丢弃页、固定地址替换、COW、fork 与文件截断回归通过；Docker 测试为 53 pass、1 GPU fail、2 not_tested。专项权限切换中位耗时下降约 24%，但第一次综合对照有严重慢样本，追加对照中的四线程系统调用仍有回退；完整性能没有达标，全部结果与失败版本均保留。
 
 ## 开发与复现
+
+新的持久运行实验使用 `scripts/harddind.py`。它保存独立 COW 磁盘，启动网络后端和真实 dockerd，外层使用同版本的原版 Docker CLI；`stop` 通过 UML 管理通道请求 guest 正常关机。网络后端固定 libslirp 4.6.1，目前支持 IPv4 TCP/UDP 和显式外层端口转发。这个入口仍属实验，GPU、自动同步 `docker -p`、外层 bind 路径和完整网络性能尚未完成。
+
+```sh
+make network WORK=/root/harddind-rebuild
+make runtime-root WORK=/root/harddind-rebuild
+python3 scripts/harddind.py /root/harddind-rebuild dev start --kernel /path/to/immutable/ipi-idle-kernel
+python3 scripts/harddind.py /root/harddind-rebuild dev docker version
+python3 scripts/harddind.py /root/harddind-rebuild dev docker buildx version
+# 若容器已在 guest 的 8080 端口发布服务，再显式映射到外层回环接口：
+python3 scripts/harddind.py /root/harddind-rebuild dev forward add tcp 127.0.0.1 8080 8080
+python3 scripts/harddind.py /root/harddind-rebuild dev stop
+```
+
+`runtime-root` 默认从干净的 `protect-docker-root` 复制，可直接调用其脚本传入其他已固定包版本的 Docker rootfs。实例镜像、容器和卷保存在 `WORK/instances/NAME/root.cow`；同名实例输入变化会拒绝启动。API 仅转发到外层回环地址的动态端口，CLI 使用独立配置目录；未实现额外认证。`scripts/run-runtime.py` 从新实例测试镜像冷拉取、容器 HTTPS、联网构建、交互、TCP/UDP 显式转发、同程序网络对照和跨重启持久化，不把该测试子集计为完整验收。
 
 内核构建和运行要求 Linux x86_64；需要 Python 3.9+、GCC、make、flex、bison、bc、libelf 开发文件、e2fsprogs、util-linux（flock）、patch 和 tar。准备 Docker rootfs 需要容器内 root，以设置文件所有权和执行 chroot，不要求外层特权容器。GPU 测试镜像使用外层已安装的 NVIDIA `libcuda`、PTX JIT 库及其 glibc 依赖，另行记录哈希；这些库不纳入 Git，也不能代替 GPU 设备后端。
 

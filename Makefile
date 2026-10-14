@@ -6,6 +6,14 @@ check:
 	python3 -m py_compile scripts/*.py
 	@for f in scripts/*.sh; do bash -n "$$f"; done
 	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh tests/thread-init tests/dispatch-init tests/profile-init tests/mapping-init; do sh -n "$$f"; done
+	@for f in guest/*; do sh -n "$$f"; done
+
+.PHONY: network runtime-root
+network:
+	bash scripts/build-network.sh "$(WORK)"
+
+runtime-root:
+	bash scripts/make-runtime-root.sh "$(WORK)"
 
 kernel:
 	bash scripts/build-kernel.sh "$(WORK)"

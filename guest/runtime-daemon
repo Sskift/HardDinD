@@ -1,0 +1,28 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+shutdown() {
+    trap '' INT TERM
+    kill -TERM "$daemon" 2>/dev/null
+    wait "$daemon"
+    sync
+    echo HARDDIND_RUNTIME_STOPPED
+    poweroff -f
+}
+# The outer helper forwards this API only onto a loopback port. Internal bridge,
+# firewall and cgroup behavior remain the stock daemon's defaults.
+dockerd --host=unix:///run/docker.sock --host=tcp://10.0.2.15:2375 --tls=false > /run/dockerd.log 2>&1 &
+daemon=$!
+trap shutdown INT TERM
+ready=0
+for i in $(seq 90); do
+    if docker info >/dev/null 2>&1; then ready=1; break; fi
+    kill -0 "$daemon" 2>/dev/null || break
+    sleep 1
+done
+if [ "$ready" = 1 ]; then
+    echo HARDDIND_RUNTIME_READY
+    wait "$daemon"
+else
+    cat /run/dockerd.log
+fi
+shutdown
