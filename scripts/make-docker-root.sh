@@ -2,6 +2,8 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(realpath "${1:?work directory required}")
+exec 9>"$work/kernel-build.lock"
+flock -x 9
 root=$work/docker-root
 disk=$work/docker.ext4
 [ "$(id -u)" = 0 ] || { echo 'container root is required to prepare ownership and chroot' >&2; exit 1; }
@@ -31,6 +33,7 @@ PY
 gcc -O2 -Wall -Wextra -Werror -static -pthread "$repo/src/corebench.c" -o "$root/corebench"
 gcc -O2 -Wall -Wextra -Werror -static -pthread "$repo/src/thread_semantics.c" -o "$root/thread-semantics"
 gcc -O2 -Wall -Wextra -Werror -static -pthread "$repo/src/dispatchbench.c" -o "$root/dispatchbench"
+gcc -O2 -Wall -Wextra -Werror -static "$repo/src/mapping_semantics.c" -o "$root/mapping-semantics"
 gcc -O2 -Wall -Wextra -Werror "$repo/src/cuda_probe.c" -ldl -o "$root/cuda-probe"
 python3 "$repo/scripts/make-gpu-fixture.py" "$work"
 install -m 755 "$repo/tests/docker-init" "$root/sbin/harddind-docker-init"

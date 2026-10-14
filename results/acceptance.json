@@ -4,6 +4,9 @@
     "docker_functionality": {
       "status": "incomplete",
       "evidence": [
+        "starpub-2026-10-14-protect/docker-protect-v3.json",
+        "starpub-2026-10-14-protect/protect-v3-mapping-spin0.json",
+        "starpub-2026-10-14-protect/protect-v3-mapping-spin256.json",
         "starpub-2026-10-14-ipi/docker-ipi-idle.json",
         "starpub-2026-10-14-ipi/docker-ipi-final.json",
         "starpub-2026-10-14-ipi/docker-ipi-cleanup-audit.json",
@@ -24,6 +27,10 @@
     "native_performance": {
       "status": "fail",
       "evidence": [
+        "starpub-2026-10-14-protect/protect-v3-comparison.json",
+        "starpub-2026-10-14-protect/protect-v3-recheck-comparison.json",
+        "starpub-2026-10-14-protect/protect-profile-comparison.json",
+        "starpub-2026-10-14-protect/protect-v3-trace-comparison.json",
         "starpub-2026-10-14-ipi/ipi-idle-comparison.json",
         "starpub-2026-10-14-ipi/ipi-idle-trace-comparison.json"
       ],
@@ -34,12 +41,15 @@
         "memory mapping overhead",
         "storage and networking application comparison",
         "performance parity with controlled host load",
-        "four-thread syscall regression in latest on/off microbenchmark comparison"
+        "four-thread syscall regression in latest on/off microbenchmark comparison",
+        "severe slow samples in first mprotect comparison; cause not established by later successful run",
+        "four-thread syscall and parallel-exec regressions in mprotect recheck"
       ]
     },
     "gpu_in_container": {
       "status": "fail",
       "evidence": [
+        "starpub-2026-10-14-protect/docker-protect-v3.json",
         "starpub-2026-10-14-ipi/docker-ipi-idle.json"
       ],
       "remaining": [

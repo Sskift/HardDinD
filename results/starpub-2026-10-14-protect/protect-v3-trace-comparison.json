@@ -1,0 +1,605 @@
+{
+  "kind": "spin_trace_counts_not_timings",
+  "feature": "mprotect-sync",
+  "sha256": {
+    "kernel": "dee5acab165c0fcd0b354ea4db0698410066e3b83f4c01d643b4f81f3fa91b8e",
+    "benchmark": "7f6b6dd37da5ccb75eba34ac28f24802f5a90221988cbc6d11c031b45fd3555f",
+    "disk": "2308d2fb80a5358edaf1b1629c9a892ccf6f4b9511e62986a65adc47b541a5be"
+  },
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "spin": 256,
+  "off_report": "protect-v3-trace-off.json",
+  "on_report": "protect-v3-trace-on.json",
+  "phases": [
+    {
+      "case": "empty",
+      "iterations": 8,
+      "off": {
+        "case": "empty",
+        "iterations": 8,
+        "first_line": 19477,
+        "last_line": 19504,
+        "host_syscalls": {
+          "futex": 10,
+          "write": 1,
+          "rt_sigreturn": 3
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2
+        },
+        "signals": {
+          "SIGSYS": 3
+        }
+      },
+      "on": {
+        "case": "empty",
+        "iterations": 8,
+        "first_line": 19664,
+        "last_line": 19693,
+        "host_syscalls": {
+          "futex": 10,
+          "write": 1,
+          "rt_sigreturn": 3
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2
+        },
+        "signals": {
+          "SIGSYS": 3
+        }
+      }
+    },
+    {
+      "case": "getpid",
+      "iterations": 200,
+      "off": {
+        "case": "getpid",
+        "iterations": 200,
+        "first_line": 19516,
+        "last_line": 20862,
+        "host_syscalls": {
+          "futex": 435,
+          "write": 1,
+          "rt_sigreturn": 218,
+          "rt_sigprocmask": 16,
+          "kill": 4
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "getpid": 200
+        },
+        "signals": {
+          "SIGSYS": 203,
+          "SIGALRM": 13,
+          "SIGRT_2": 2
+        }
+      },
+      "on": {
+        "case": "getpid",
+        "iterations": 200,
+        "first_line": 19705,
+        "last_line": 21119,
+        "host_syscalls": {
+          "futex": 448,
+          "write": 1,
+          "rt_sigreturn": 223,
+          "rt_sigprocmask": 24,
+          "kill": 4
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "getpid": 200
+        },
+        "signals": {
+          "SIGSYS": 203,
+          "SIGALRM": 17,
+          "SIGRT_2": 3
+        }
+      }
+    },
+    {
+      "case": "map_none",
+      "iterations": 8,
+      "off": {
+        "case": "map_none",
+        "iterations": 8,
+        "first_line": 20874,
+        "last_line": 21058,
+        "host_syscalls": {
+          "futex": 72,
+          "write": 1,
+          "rt_sigreturn": 19
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 19
+        }
+      },
+      "on": {
+        "case": "map_none",
+        "iterations": 8,
+        "first_line": 21132,
+        "last_line": 21337,
+        "host_syscalls": {
+          "futex": 74,
+          "write": 1,
+          "rt_sigreturn": 19
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 19
+        }
+      }
+    },
+    {
+      "case": "map_1page",
+      "iterations": 8,
+      "off": {
+        "case": "map_1page",
+        "iterations": 8,
+        "first_line": 21071,
+        "last_line": 21597,
+        "host_syscalls": {
+          "futex": 208,
+          "write": 1,
+          "rt_sigreturn": 35,
+          "mmap": 8,
+          "munmap": 16,
+          "rt_sigprocmask": 8,
+          "kill": 2
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 19,
+          "SIGSEGV": 8,
+          "SIGALRM": 8
+        }
+      },
+      "on": {
+        "case": "map_1page",
+        "iterations": 8,
+        "first_line": 21350,
+        "last_line": 21868,
+        "host_syscalls": {
+          "futex": 197,
+          "write": 1,
+          "rt_sigreturn": 35,
+          "mmap": 8,
+          "rt_sigprocmask": 8,
+          "kill": 2,
+          "munmap": 16
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 19,
+          "SIGSEGV": 8,
+          "SIGALRM": 8
+        }
+      }
+    },
+    {
+      "case": "map_16pages",
+      "iterations": 8,
+      "off": {
+        "case": "map_16pages",
+        "iterations": 8,
+        "first_line": 21610,
+        "last_line": 24451,
+        "host_syscalls": {
+          "futex": 1168,
+          "write": 1,
+          "rt_sigreturn": 173,
+          "mmap": 128,
+          "munmap": 16,
+          "rt_sigprocmask": 28,
+          "kill": 6
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 19,
+          "SIGSEGV": 128,
+          "SIGALRM": 24,
+          "SIGRT_2": 2
+        }
+      },
+      "on": {
+        "case": "map_16pages",
+        "iterations": 8,
+        "first_line": 21880,
+        "last_line": 24788,
+        "host_syscalls": {
+          "futex": 1167,
+          "write": 1,
+          "rt_sigreturn": 181,
+          "mmap": 128,
+          "rt_sigprocmask": 36,
+          "kill": 8,
+          "munmap": 16
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 19,
+          "SIGSEGV": 128,
+          "SIGALRM": 32,
+          "SIGRT_2": 2
+        }
+      }
+    },
+    {
+      "case": "map_protect",
+      "iterations": 8,
+      "off": {
+        "case": "map_protect",
+        "iterations": 8,
+        "first_line": 24463,
+        "last_line": 27564,
+        "host_syscalls": {
+          "futex": 1241,
+          "write": 1,
+          "rt_sigreturn": 190,
+          "mmap": 226,
+          "rt_sigprocmask": 36,
+          "kill": 8,
+          "munmap": 16
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "mprotect": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 27,
+          "SIGSEGV": 128,
+          "SIGALRM": 32,
+          "SIGRT_2": 3
+        }
+      },
+      "on": {
+        "case": "map_protect",
+        "iterations": 8,
+        "first_line": 24800,
+        "last_line": 27722,
+        "host_syscalls": {
+          "futex": 1229,
+          "write": 1,
+          "rt_sigreturn": 177,
+          "rt_sigprocmask": 20,
+          "kill": 6,
+          "mmap": 128,
+          "mprotect": 8,
+          "munmap": 16
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mmap": 8,
+          "mprotect": 8,
+          "munmap": 8
+        },
+        "signals": {
+          "SIGSYS": 27,
+          "SIGALRM": 19,
+          "SIGSEGV": 128,
+          "SIGRT_2": 3
+        }
+      }
+    },
+    {
+      "case": "reuse_16pages",
+      "iterations": 8,
+      "off": {
+        "case": "reuse_16pages",
+        "iterations": 8,
+        "first_line": 27881,
+        "last_line": 27910,
+        "host_syscalls": {
+          "futex": 10,
+          "write": 1,
+          "rt_sigreturn": 3
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2
+        },
+        "signals": {
+          "SIGSYS": 3
+        }
+      },
+      "on": {
+        "case": "reuse_16pages",
+        "iterations": 8,
+        "first_line": 28038,
+        "last_line": 28067,
+        "host_syscalls": {
+          "futex": 10,
+          "write": 1,
+          "rt_sigreturn": 3
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2
+        },
+        "signals": {
+          "SIGSYS": 3
+        }
+      }
+    },
+    {
+      "case": "protect_pair",
+      "iterations": 8,
+      "off": {
+        "case": "protect_pair",
+        "iterations": 8,
+        "first_line": 28264,
+        "last_line": 28780,
+        "host_syscalls": {
+          "futex": 145,
+          "write": 1,
+          "rt_sigreturn": 22,
+          "mmap": 176,
+          "kill": 1,
+          "rt_sigprocmask": 2
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mprotect": 16
+        },
+        "signals": {
+          "SIGSYS": 19,
+          "SIGALRM": 2,
+          "SIGRT_2": 1
+        }
+      },
+      "on": {
+        "case": "protect_pair",
+        "iterations": 8,
+        "first_line": 28429,
+        "last_line": 28785,
+        "host_syscalls": {
+          "futex": 138,
+          "write": 1,
+          "rt_sigreturn": 22,
+          "mprotect": 16,
+          "rt_sigprocmask": 2,
+          "kill": 1
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "mprotect": 16
+        },
+        "signals": {
+          "SIGSYS": 19,
+          "SIGALRM": 3
+        }
+      }
+    },
+    {
+      "case": "fork",
+      "iterations": 4,
+      "off": {
+        "case": "fork",
+        "iterations": 4,
+        "first_line": 28820,
+        "last_line": 30393,
+        "host_syscalls": {
+          "futex": 483,
+          "write": 1,
+          "rt_sigreturn": 96,
+          "clone": 4,
+          "mmap": 134,
+          "rt_sigprocmask": 66,
+          "kill": 7,
+          "munmap": 32,
+          "wait4": 8,
+          "close": 12,
+          "sendmsg": 4,
+          "recvmsg": 4,
+          "arch_prctl": 4
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "clone": 4,
+          "wait4": 4,
+          "getpid": 4,
+          "set_robust_list": 4,
+          "exit_group": 4
+        },
+        "signals": {
+          "SIGSYS": 23,
+          "SIGRT_2": 19,
+          "SIGSEGV": 32,
+          "SIGCHLD": 4,
+          "SIGALRM": 22
+        }
+      },
+      "on": {
+        "case": "fork",
+        "iterations": 4,
+        "first_line": 28827,
+        "last_line": 30230,
+        "host_syscalls": {
+          "futex": 473,
+          "write": 2,
+          "rt_sigreturn": 73,
+          "clone": 5,
+          "mprotect": 18,
+          "rt_sigprocmask": 32,
+          "mmap": 99,
+          "munmap": 32,
+          "wait4": 6,
+          "sendmsg": 5,
+          "recvmsg": 5,
+          "close": 14,
+          "arch_prctl": 4,
+          "execveat": 1,
+          "kill": 6
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "clone": 4,
+          "wait4": 4,
+          "getpid": 4,
+          "set_robust_list": 4,
+          "exit_group": 4,
+          "exit": 1
+        },
+        "signals": {
+          "SIGSYS": 24,
+          "SIGRT_2": 8,
+          "SIGSEGV": 32,
+          "SIGALRM": 11,
+          "SIGCHLD": 3
+        }
+      }
+    },
+    {
+      "case": "exec",
+      "iterations": 4,
+      "off": {
+        "case": "exec",
+        "iterations": 4,
+        "first_line": 30425,
+        "last_line": 35147,
+        "host_syscalls": {
+          "futex": 1726,
+          "write": 1,
+          "rt_sigreturn": 290,
+          "clone": 8,
+          "mmap": 317,
+          "rt_sigprocmask": 102,
+          "kill": 18,
+          "munmap": 71,
+          "wait4": 16,
+          "close": 24,
+          "sendmsg": 8,
+          "recvmsg": 8,
+          "arch_prctl": 8
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "clone": 4,
+          "wait4": 4,
+          "getpid": 8,
+          "set_robust_list": 8,
+          "execve": 4,
+          "arch_prctl": 8,
+          "brk": 16,
+          "set_tid_address": 4,
+          "rseq": 4,
+          "uname": 4,
+          "prlimit64": 4,
+          "readlink": 4,
+          "getrandom": 4,
+          "mprotect": 4,
+          "exit_group": 4
+        },
+        "signals": {
+          "SIGSYS": 87,
+          "SIGRT_2": 12,
+          "SIGSEGV": 136,
+          "SIGCHLD": 8,
+          "SIGALRM": 55
+        }
+      },
+      "on": {
+        "case": "exec",
+        "iterations": 4,
+        "first_line": 30262,
+        "last_line": 34892,
+        "host_syscalls": {
+          "futex": 1714,
+          "write": 1,
+          "rt_sigreturn": 286,
+          "clone": 8,
+          "mmap": 232,
+          "mprotect": 27,
+          "rt_sigprocmask": 94,
+          "kill": 18,
+          "munmap": 70,
+          "wait4": 16,
+          "close": 24,
+          "sendmsg": 8,
+          "recvmsg": 8,
+          "arch_prctl": 8
+        },
+        "trapped_guest_syscalls": {
+          "write": 1,
+          "clock_gettime": 2,
+          "clone": 4,
+          "wait4": 4,
+          "getpid": 8,
+          "set_robust_list": 8,
+          "execve": 4,
+          "arch_prctl": 8,
+          "brk": 16,
+          "set_tid_address": 4,
+          "rseq": 4,
+          "uname": 4,
+          "prlimit64": 4,
+          "readlink": 4,
+          "getrandom": 4,
+          "mprotect": 4,
+          "exit_group": 4
+        },
+        "signals": {
+          "SIGSYS": 87,
+          "SIGRT_2": 10,
+          "SIGSEGV": 136,
+          "SIGCHLD": 8,
+          "SIGALRM": 53
+        }
+      }
+    }
+  ],
+  "product_acceptance": false,
+  "limitations": [
+    "strace changes scheduling and signal counts; do not infer time percentages",
+    "phase boundaries include marker completion, clocks and timer activity"
+  ]
+}

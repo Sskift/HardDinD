@@ -1,0 +1,257 @@
+{
+  "kind": "kernel_microbench_only",
+  "mode": "seccomp",
+  "cpus": 4,
+  "spin": 256,
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 1617,
+    "stores": 1620
+  },
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": true,
+    "received": 8905,
+    "deferred": 8700,
+    "handled": 8905
+  },
+  "mprotect_sync": true,
+  "mprotect_stats": {
+    "verified": true,
+    "pages": 41657
+  },
+  "mapping_semantics": true,
+  "mapping_semantics_sha256": "e8d75c79bd3b0ddc1c587c173f881a6444de248fe9d84bdf1a23af65d1bd0741",
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "thread_semantics": true,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "kernel_sha256": "dee5acab165c0fcd0b354ea4db0698410066e3b83f4c01d643b4f81f3fa91b8e",
+  "kernel_unchanged": true,
+  "cleanup": {
+    "process_group": 2910755,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 12.956127965822816,
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.412999168
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.437289216
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.4663232
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.192245504
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.190490624
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.223543296
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.348270336
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.347198208
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.351729408
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.389941504
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.407267072
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.35040256
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.351616768
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.351780864
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.348859648
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.406045952
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.371102976
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.356846848
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.421942784,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.468571904,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.42241152,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.073981696,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.066708992,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.0602496,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.181101312,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.210109952,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.182201856,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.298723328,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.21148672,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.268512512,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.107132416,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.116409344,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.085644032,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.31779584,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.27234176,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.244125696,
+      "verified": true
+    }
+  ],
+  "host_cpu_seconds": 28.174789999999998,
+  "docker_acceptance": "not_tested",
+  "gpu_acceptance": "not_tested"
+}

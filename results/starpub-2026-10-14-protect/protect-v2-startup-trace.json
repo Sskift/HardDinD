@@ -1,0 +1,92 @@
+{
+  "kind": "diagnostic_only",
+  "mode": "trace",
+  "spin": 256,
+  "sha256": {
+    "kernel": "4dbe4c830a07c32c54c1b919ae3509f27df57a5bef2b144dec2901291a357ea2",
+    "benchmark": "7f6b6dd37da5ccb75eba34ac28f24802f5a90221988cbc6d11c031b45fd3555f",
+    "disk": "2308d2fb80a5358edaf1b1629c9a892ccf6f4b9511e62986a65adc47b541a5be"
+  },
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "command": [
+    "strace",
+    "-f",
+    "-qq",
+    "-tt",
+    "-s",
+    "256",
+    "-o",
+    "/root/harddind-rebuild/results/protect-v2-startup-trace.strace",
+    "-e",
+    "trace=futex,rt_sigprocmask,rt_sigreturn,mmap,munmap,mprotect,clone,clone3,execve,execveat,sendmsg,recvmsg,close,write,wait4,kill,arch_prctl,memfd_create",
+    "/root/harddind-rebuild/protect-kernel-v2",
+    "umid=harddind-profile-fa462245eab4",
+    "mem=2G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "ubd0=/root/harddind-rebuild/tmp/profile-f6975feee3a6472f92be1bed61962c8b.cow,/root/harddind-rebuild/profile.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-profile-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "defer_ipi=1",
+    "mprotect_sync=1",
+    "profile_trace=1"
+  ],
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": false,
+    "received": null,
+    "deferred": null,
+    "handled": null
+  },
+  "mprotect_sync": true,
+  "mprotect_stats": {
+    "verified": false,
+    "pages": null
+  },
+  "passed": false,
+  "exit_code": -6,
+  "timed_out": false,
+  "cleanup": {
+    "process_group": 2876714,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "wall_seconds": 2.0915429051965475,
+  "host_before": {
+    "cpu_stat": "usage_usec 14286031050388\nuser_usec 13841095797227\nsystem_usec 444935253161\nnr_periods 20409127\nnr_throttled 150710\nthrottled_usec 159591145979\n",
+    "cpu_pressure": "some avg10=0.05 avg60=1.03 avg300=2.98 total=14119804488\nfull avg10=0.03 avg60=0.62 avg300=1.59 total=3992629419\n",
+    "loadavg": "47.66 56.50 58.69 37/53266 2876713\n",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+  },
+  "host_after": {
+    "cpu_stat": "usage_usec 14286069227472\nuser_usec 13841130766410\nsystem_usec 444938461061\nnr_periods 20409148\nnr_throttled 150710\nthrottled_usec 159591145979\n",
+    "cpu_pressure": "some avg10=0.04 avg60=0.99 avg300=2.96 total=14119807845\nfull avg10=0.02 avg60=0.60 avg300=1.58 total=3992631389\n",
+    "loadavg": "47.66 56.50 58.69 36/53271 2876893\n",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+  },
+  "host_cpu_seconds": 0.423197,
+  "voluntary_context_switches": 18144,
+  "involuntary_context_switches": 191,
+  "measurements": [],
+  "timings_usable": false,
+  "product_acceptance": false
+}

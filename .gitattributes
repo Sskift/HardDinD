@@ -3,3 +3,7 @@ kernel/patches/*.patch -whitespace
 kernel/experiments/*.patch -whitespace
 # Keep console evidence byte-for-byte, including guest CRLF output.
 results/**/*.log -text -whitespace
+# Archived patches and objdump output retain their original formatting.
+results/**/fixtures/*.patch -text -whitespace
+results/**/*-stub-relocations.txt -text -whitespace
+results/**/*-stub-symbols.txt -text -whitespace

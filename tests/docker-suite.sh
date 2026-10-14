@@ -51,6 +51,8 @@ check container_thread_semantics docker run --rm -v /thread-semantics:/thread-se
 echo "HARDDIND_DISPATCH_SHA256=$(sha256sum /dispatchbench | cut -d' ' -f1)"
 check container_dispatch_semantics docker run --rm -v /dispatchbench:/dispatchbench:ro harddind-base:test /bin/sh -c '
  for test in identity fdio mapping thread_syscalls isolation parallel_exec; do /dispatchbench "$test" || exit 1; done'
+echo "HARDDIND_MAPPING_SHA256=$(sha256sum /mapping-semantics | cut -d' ' -f1)"
+check container_mapping_semantics docker run --rm -v /mapping-semantics:/mapping-semantics:ro harddind-base:test /mapping-semantics
 check container_compute docker run --rm -v /corebench:/corebench:ro harddind-base:test /corebench processes 4
 check bridge_dns sh -c '
  docker network create lab-net >/dev/null &&

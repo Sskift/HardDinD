@@ -9,6 +9,12 @@ spec.loader.exec_module(checks)
 
 
 class DockerEvidenceTests(unittest.TestCase):
+    def test_mprotect_option_requires_actual_work(self):
+        for log in ["", "HARDDIND_MPROTECT_SYNC enabled=1 pages=0\n",
+                    "HARDDIND_MPROTECT_SYNC enabled=1 pages=10\n" * 2]:
+            self.assertFalse(checks.mprotect_evidence(log)["verified"])
+        self.assertTrue(checks.mprotect_evidence("HARDDIND_MPROTECT_SYNC enabled=1 pages=10\n")["verified"])
+
     def test_deferred_ipi_option_requires_actual_delivery(self):
         for log in ["", "HARDDIND_DEFER_IPI enabled=1 received=4 deferred=0 handled=4\n",
                     "HARDDIND_DEFER_IPI enabled=1 received=4 deferred=5 handled=4\n",

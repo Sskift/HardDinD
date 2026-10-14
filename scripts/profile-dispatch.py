@@ -12,7 +12,7 @@ import subprocess
 import time
 import uuid
 from guest_cleanup import cleanup_group
-from result_checks import deferred_ipi_evidence
+from result_checks import deferred_ipi_evidence, mprotect_evidence
 
 p = argparse.ArgumentParser()
 p.add_argument("work", type=pathlib.Path)
@@ -20,6 +20,7 @@ p.add_argument("--kernel", type=pathlib.Path, required=True)
 p.add_argument("--mode", choices=["native", "trap", "guest", "trace"], required=True)
 p.add_argument("--spin", type=int, default=256)
 p.add_argument("--defer-ipi", action="store_true")
+p.add_argument("--mprotect-sync", action="store_true")
 p.add_argument("--name", required=True)
 p.add_argument("--timeout", type=int, default=240)
 a = p.parse_args()
@@ -29,6 +30,8 @@ if not 0 <= a.spin <= 10000:
     p.error("invalid spin")
 if a.defer_ipi and a.mode in ("native", "trap"):
     p.error("deferred IPIs apply only to guests")
+if a.mprotect_sync and a.mode in ("native", "trap"):
+    p.error("mprotect synchronization applies only to guests")
 work = a.work.resolve()
 lock = (work / "kernel-build.lock").open("a")
 fcntl.flock(lock, fcntl.LOCK_SH)
@@ -60,6 +63,8 @@ else:
            "init=/sbin/harddind-profile-init", "con=null", "con0=null,fd:1", "ssl=null", "panic=1"]
     if a.defer_ipi:
         cmd += ["defer_ipi=1"]
+    if a.mprotect_sync:
+        cmd += ["mprotect_sync=1"]
     if a.mode == "trace":
         cmd += ["profile_trace=1"]
         cmd = ["strace", "-f", "-qq", "-tt", "-s", "256", "-o", str(trace),
@@ -99,11 +104,15 @@ passed = rc == 0 and not timed_out and cleanup["clean_shutdown"] and valid and u
 if a.mode in ("guest", "trace"):
     passed = passed and "PROFILE_STATUS=0" in content and f"PROFILE_SHA256={hashes['benchmark']}" in content
 ipi_stats = deferred_ipi_evidence(content)
+protect_stats = mprotect_evidence(content)
+if a.mprotect_sync:
+    passed = passed and protect_stats["verified"]
 if a.defer_ipi:
     passed = passed and ipi_stats["verified"]
 report = {"kind": "diagnostic_only", "mode": a.mode, "spin": a.spin, "sha256": hashes,
           "host_cpu_affinity": sorted(os.sched_getaffinity(0)), "command": cmd,
           "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
+          "mprotect_sync": a.mprotect_sync, "mprotect_stats": protect_stats,
           "passed": passed, "exit_code": rc, "timed_out": timed_out, "cleanup": cleanup,
           "wall_seconds": elapsed, "host_before": before, "host_after": after,
           "host_cpu_seconds": usage1.ru_utime + usage1.ru_stime - usage0.ru_utime - usage0.ru_stime,

@@ -5,7 +5,7 @@ check:
 	python3 -m unittest discover -s tests -v
 	python3 -m py_compile scripts/*.py
 	@for f in scripts/*.sh; do bash -n "$$f"; done
-	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh tests/thread-init tests/dispatch-init tests/profile-init; do sh -n "$$f"; done
+	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh tests/thread-init tests/dispatch-init tests/profile-init tests/mapping-init; do sh -n "$$f"; done
 
 kernel:
 	bash scripts/build-kernel.sh "$(WORK)"
@@ -30,8 +30,16 @@ kernel-performance-experiment:
 kernel-ipi-experiment:
 	IPI_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
 
+.PHONY: kernel-protect-experiment
+kernel-protect-experiment:
+	PROTECT_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
 dispatch-root:
 	bash scripts/make-dispatch-root.sh "$(WORK)"
+
+.PHONY: mapping-root
+mapping-root:
+	bash scripts/make-mapping-root.sh "$(WORK)"
 
 thread-root:
 	bash scripts/make-thread-root.sh "$(WORK)"

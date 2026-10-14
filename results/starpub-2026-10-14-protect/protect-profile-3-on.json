@@ -1,0 +1,292 @@
+{
+  "kind": "diagnostic_only",
+  "mode": "guest",
+  "spin": 256,
+  "sha256": {
+    "kernel": "dee5acab165c0fcd0b354ea4db0698410066e3b83f4c01d643b4f81f3fa91b8e",
+    "benchmark": "7f6b6dd37da5ccb75eba34ac28f24802f5a90221988cbc6d11c031b45fd3555f",
+    "disk": "2308d2fb80a5358edaf1b1629c9a892ccf6f4b9511e62986a65adc47b541a5be"
+  },
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "command": [
+    "/root/harddind-rebuild/protect-kernel-v3",
+    "umid=harddind-profile-c3e221b42f48",
+    "mem=2G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "ubd0=/root/harddind-rebuild/tmp/profile-4a75a78cfc0644779f55c9818df553e2.cow,/root/harddind-rebuild/profile.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-profile-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "defer_ipi=1",
+    "mprotect_sync=1"
+  ],
+  "defer_ipi": true,
+  "deferred_ipi_stats": {
+    "verified": true,
+    "received": 1009,
+    "deferred": 1004,
+    "handled": 1009
+  },
+  "mprotect_sync": true,
+  "mprotect_stats": {
+    "verified": true,
+    "pages": 20088
+  },
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "cleanup": {
+    "process_group": 3004182,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "wall_seconds": 2.782596504315734,
+  "host_before": {
+    "cpu_stat": "usage_usec 14304485935903\nuser_usec 13858057026029\nsystem_usec 446428909874\nnr_periods 20417035\nnr_throttled 151747\nthrottled_usec 160813776241\n",
+    "cpu_pressure": "some avg10=0.14 avg60=0.56 avg300=4.01 total=14167335474\nfull avg10=0.00 avg60=0.18 avg300=1.81 total=4014944851\n",
+    "loadavg": "51.17 61.39 60.99 47/52970 3004181\n",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+  },
+  "host_after": {
+    "cpu_stat": "usage_usec 14304544151553\nuser_usec 13858112430449\nsystem_usec 446431721104\nnr_periods 20417063\nnr_throttled 151747\nthrottled_usec 160813776241\n",
+    "cpu_pressure": "some avg10=0.12 avg60=0.54 avg300=3.99 total=14167347267\nfull avg10=0.00 avg60=0.17 avg300=1.79 total=4014952435\n",
+    "loadavg": "51.17 61.39 60.99 32/52992 3004581\n",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+  },
+  "host_cpu_seconds": 4.133763,
+  "voluntary_context_switches": 16488,
+  "involuntary_context_switches": 226,
+  "measurements": [
+    {
+      "case": "empty",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 5.376e-06,
+      "verified": true
+    },
+    {
+      "case": "getpid",
+      "repeat": 0,
+      "iterations": 100000,
+      "seconds": 0.403980032,
+      "verified": true
+    },
+    {
+      "case": "map_none",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.001216768,
+      "verified": true
+    },
+    {
+      "case": "map_1page",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.00775168,
+      "verified": true
+    },
+    {
+      "case": "map_16pages",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.050336,
+      "verified": true
+    },
+    {
+      "case": "map_protect",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.043532032,
+      "verified": true
+    },
+    {
+      "case": "reuse_16pages",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 1.3312e-05,
+      "verified": true
+    },
+    {
+      "case": "protect_pair",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.006650624,
+      "verified": true
+    },
+    {
+      "case": "fork",
+      "repeat": 0,
+      "iterations": 40,
+      "seconds": 0.043755008,
+      "verified": true
+    },
+    {
+      "case": "exec",
+      "repeat": 0,
+      "iterations": 40,
+      "seconds": 0.10845824,
+      "verified": true
+    },
+    {
+      "case": "empty",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 5.12e-06,
+      "verified": true
+    },
+    {
+      "case": "getpid",
+      "repeat": 1,
+      "iterations": 100000,
+      "seconds": 0.4780608,
+      "verified": true
+    },
+    {
+      "case": "map_none",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.001995008,
+      "verified": true
+    },
+    {
+      "case": "map_1page",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.0093632,
+      "verified": true
+    },
+    {
+      "case": "map_16pages",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.04183296,
+      "verified": true
+    },
+    {
+      "case": "map_protect",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.115558656,
+      "verified": true
+    },
+    {
+      "case": "reuse_16pages",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 2.688e-05,
+      "verified": true
+    },
+    {
+      "case": "protect_pair",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.009746432,
+      "verified": true
+    },
+    {
+      "case": "fork",
+      "repeat": 1,
+      "iterations": 40,
+      "seconds": 0.036036864,
+      "verified": true
+    },
+    {
+      "case": "exec",
+      "repeat": 1,
+      "iterations": 40,
+      "seconds": 0.061190912,
+      "verified": true
+    },
+    {
+      "case": "empty",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 4.864e-06,
+      "verified": true
+    },
+    {
+      "case": "getpid",
+      "repeat": 2,
+      "iterations": 100000,
+      "seconds": 0.396475136,
+      "verified": true
+    },
+    {
+      "case": "map_none",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.002024192,
+      "verified": true
+    },
+    {
+      "case": "map_1page",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.006743296,
+      "verified": true
+    },
+    {
+      "case": "map_16pages",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.048818176,
+      "verified": true
+    },
+    {
+      "case": "map_protect",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.049839872,
+      "verified": true
+    },
+    {
+      "case": "reuse_16pages",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 1.28e-05,
+      "verified": true
+    },
+    {
+      "case": "protect_pair",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.007679488,
+      "verified": true
+    },
+    {
+      "case": "fork",
+      "repeat": 2,
+      "iterations": 40,
+      "seconds": 0.075103488,
+      "verified": true
+    },
+    {
+      "case": "exec",
+      "repeat": 2,
+      "iterations": 40,
+      "seconds": 0.0678336,
+      "verified": true
+    }
+  ],
+  "timings_usable": true,
+  "product_acceptance": false
+}

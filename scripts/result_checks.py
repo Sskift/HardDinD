@@ -10,6 +10,7 @@ DOCKER_CHECKS = {
     "restart_policy", "healthcheck", "ipv6", "signals", "gpu_fixture_import", "gpu_compute",
     "external_network", "full_docker_compatibility", "container_threads", "container_thread_semantics",
     "container_dispatch_semantics",
+    "container_mapping_semantics",
     "inspect_rename", "restart", "pause_unpause", "update_limits", "top_stats", "wait_exit", "attach",
     "commit_diff_history", "export_import", "image_tag_remove", "events", "network_connect_disconnect",
     "port_inspect", "context", "system_df", "prune_objects", "swarm_init", "swarm_service",
@@ -32,6 +33,12 @@ def deferred_ipi_evidence(log):
     received, deferred, handled = map(int, rows[0])
     return {"verified": 0 < deferred <= received and 0 < handled <= received,
             "received": received, "deferred": deferred, "handled": handled}
+
+
+def mprotect_evidence(log):
+    rows = re.findall(r"^HARDDIND_MPROTECT_SYNC enabled=1 pages=(\d+)$", log, flags=re.MULTILINE)
+    pages = int(rows[0]) if len(rows) == 1 else None
+    return {"verified": pages is not None and pages > 0, "pages": pages}
 
 
 def docker_evidence(log, exit_code, timed_out):

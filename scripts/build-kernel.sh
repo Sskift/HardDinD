@@ -6,6 +6,7 @@ mkdir -p "$work"
 exec 9>"$work/kernel-build.lock"
 flock -x 9
 src=$(python3 "$repo/scripts/fetch-kernel.py" "$work")
+if [ "${PROTECT_EXPERIMENT:-0}" = 1 ]; then IPI_EXPERIMENT=1; fi
 if [ "${IPI_EXPERIMENT:-0}" = 1 ]; then PERFORMANCE_EXPERIMENT=1; fi
 if [ "${PERFORMANCE_EXPERIMENT:-0}" = 1 ]; then CACHE_EXPERIMENT=1; fi
 if [ "${CACHE_EXPERIMENT:-0}" = 1 ]; then DISPATCH_EXPERIMENT=1; fi
@@ -20,7 +21,9 @@ mkdir -p "$out"
 out=$(realpath "$out")
 options=()
 if [ "${HANDOFF_EXPERIMENT:-0}" = 1 ]; then options+=(--handoff-experiment); fi
-if [ "${IPI_EXPERIMENT:-0}" = 1 ]; then
+if [ "${PROTECT_EXPERIMENT:-0}" = 1 ]; then
+    options+=(--protect-experiment)
+elif [ "${IPI_EXPERIMENT:-0}" = 1 ]; then
     options+=(--ipi-experiment)
 elif [ "${PERFORMANCE_EXPERIMENT:-0}" = 1 ]; then
     options+=(--performance-experiment)
@@ -51,4 +54,5 @@ if ! cmp -s "$config_stage/.config" "$out/.config"; then
     cp "$config_stage/.config" "$out/.config"
 fi
 make -C "$src" O="$out" ARCH=um -j"${JOBS:-8}" linux
+python3 "$repo/scripts/check-stub-relocations.py" "$out/arch/um/kernel/skas/stub.o"
 printf '%s\n' "$out/linux"

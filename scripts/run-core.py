@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 import uuid
-from result_checks import broker_cache_evidence, deferred_ipi_evidence
+from result_checks import broker_cache_evidence, deferred_ipi_evidence, mprotect_evidence
 from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
@@ -25,11 +25,17 @@ p.add_argument("--kernel", type=pathlib.Path)
 p.add_argument("--threads-experiment", action="store_true")
 p.add_argument("--broker-cache", action="store_true")
 p.add_argument("--defer-ipi", action="store_true")
+p.add_argument("--mprotect-sync", action="store_true")
+p.add_argument("--mapping-semantics", action="store_true")
 p.add_argument("--thread-semantics", action="store_true")
 p.add_argument("--dispatch-bench", action="store_true")
 p.add_argument("--disk", type=pathlib.Path)
 p.add_argument("--result-name", help="Distinct name for controlled comparisons")
 a = p.parse_args()
+if a.mapping_semantics and not a.dispatch_bench:
+    p.error("mapping fixture includes the dispatch suite; use --dispatch-bench")
+if a.mprotect_sync and not a.threads_experiment:
+    p.error("mprotect synchronization requires parallel runners")
 if a.broker_cache and not a.threads_experiment:
     p.error("broker cache requires parallel runners")
 if not 1 <= a.cpus <= 64 or (a.mode == "ptrace" and a.cpus != 1):
@@ -51,6 +57,8 @@ if a.result_name:
         p.error("result-name must contain only letters, digits, hyphens and underscores")
     name = a.result_name
 log = results / (name + ".log")
+if log.exists() or (results / (name + ".json")).exists():
+    p.error("refusing to overwrite evidence")
 kernel = a.kernel.resolve() if a.kernel else work / "kernel-build/linux"
 disk = a.disk.resolve() if a.disk else work / "probe.ext4"
 cow = tmp / ("core-" + uuid.uuid4().hex + ".cow")
@@ -62,6 +70,8 @@ if a.thread_semantics:
     cmd[cmd.index("init=/sbin/harddind-init")] = "init=/sbin/harddind-thread-init"
 if a.dispatch_bench:
     cmd = ["init=/sbin/harddind-dispatch-init" if arg.startswith("init=") else arg for arg in cmd]
+if a.mapping_semantics:
+    cmd = ["init=/sbin/harddind-mapping-init" if arg.startswith("init=") else arg for arg in cmd]
 if a.threads_experiment:
     if a.mode != "seccomp":
         p.error("parallel runners require seccomp")
@@ -72,6 +82,8 @@ if a.broker_cache:
     cmd.append("seccomp_broker_cache=1")
 if a.defer_ipi:
     cmd.append("defer_ipi=1")
+if a.mprotect_sync:
+    cmd.append("mprotect_sync=1")
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 started = time.monotonic()
 usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -122,7 +134,21 @@ if a.dispatch_bench:
     passed = passed and dispatch_hash == expected_hash and all(
         r.get("verified") is True for r in rows if (r["test"], r["workers"]) in dispatch_cases)
 cache_stats = broker_cache_evidence(text)
+mapping_sha = None
+mapping_passed = None
+if a.mapping_semantics:
+    mapping_sha = hashlib.sha256((work / "mapping-root/mapping-semantics").read_bytes()).hexdigest()
+    mapping_expected = {"lazy_discard_and_protection", "fixed_file_replacement_private_cow", "fork_cow_and_file_truncate"}
+    mapping_rows = [line.split() for line in text.splitlines() if line.startswith("MAPPING_CHECK ")]
+    mapping_passed = (len(mapping_rows) == len(mapping_expected) and
+                      {row[1] for row in mapping_rows if len(row) == 3 and row[2] == "pass"} == mapping_expected and
+                      "MAPPING_SEMANTICS_END status=0" in text.splitlines() and
+                      f"HARDDIND_MAPPING_SHA256={mapping_sha}" in text.splitlines())
+    passed = passed and mapping_passed
 ipi_stats = deferred_ipi_evidence(text)
+protect_stats = mprotect_evidence(text)
+if a.mprotect_sync:
+    passed = passed and protect_stats["verified"]
 if a.defer_ipi:
     passed = passed and ipi_stats["verified"]
 if a.broker_cache:
@@ -133,6 +159,8 @@ report = {"kind": "kernel_microbench_only", "mode": a.mode, "cpus": a.cpus,
           "broker_cache": a.broker_cache,
           "broker_cache_stats": cache_stats,
           "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
+          "mprotect_sync": a.mprotect_sync, "mprotect_stats": protect_stats,
+          "mapping_semantics": mapping_passed, "mapping_semantics_sha256": mapping_sha,
           "dispatch_benchmark_sha256": dispatch_hash,
           "thread_semantics": semantics_passed if a.thread_semantics or a.dispatch_bench else "not_tested",
           "thread_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()

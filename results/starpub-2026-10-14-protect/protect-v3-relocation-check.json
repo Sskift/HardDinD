@@ -1,0 +1,10 @@
+{
+  "object": "/root/harddind-rebuild/thread-build/arch/um/kernel/skas/stub.o",
+  "section": ".__syscall_stub",
+  "relocation_targets": [
+    "stub_thread_start",
+    "stub_thread_start"
+  ],
+  "external_targets": [],
+  "passed": true
+}

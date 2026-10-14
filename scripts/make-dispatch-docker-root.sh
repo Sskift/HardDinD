@@ -14,6 +14,7 @@ flock -x 9
 cp -a "$base" "$root"
 install -m 755 "$work/dispatch-root/dispatchbench" "$root/dispatchbench"
 install -m 755 "$work/dispatch-root/thread-semantics" "$root/thread-semantics"
+gcc -O2 -Wall -Wextra -Werror -static "$repo/src/mapping_semantics.c" -o "$root/mapping-semantics"
 install -m 755 "$repo/tests/docker-suite.sh" "$root/docker-suite.sh"
 install -m 755 "$repo/tests/docker-init" "$root/sbin/harddind-docker-init"
 truncate -s 4G "$disk"

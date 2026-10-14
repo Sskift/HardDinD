@@ -1,0 +1,276 @@
+{
+  "kind": "diagnostic_only",
+  "mode": "native",
+  "spin": 256,
+  "sha256": {
+    "kernel": "dee5acab165c0fcd0b354ea4db0698410066e3b83f4c01d643b4f81f3fa91b8e",
+    "benchmark": "7f6b6dd37da5ccb75eba34ac28f24802f5a90221988cbc6d11c031b45fd3555f",
+    "disk": "2308d2fb80a5358edaf1b1629c9a892ccf6f4b9511e62986a65adc47b541a5be"
+  },
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "command": [
+    "/root/harddind-rebuild/profile-root/profilebench",
+    "time"
+  ],
+  "defer_ipi": false,
+  "deferred_ipi_stats": {
+    "verified": false,
+    "received": null,
+    "deferred": null,
+    "handled": null
+  },
+  "mprotect_sync": false,
+  "mprotect_stats": {
+    "verified": false,
+    "pages": null
+  },
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "cleanup": {
+    "process_group": 3005380,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "wall_seconds": 0.37287837266921997,
+  "host_before": {
+    "cpu_stat": "usage_usec 14305053709591\nuser_usec 13858595106366\nsystem_usec 446458603225\nnr_periods 20417260\nnr_throttled 151747\nthrottled_usec 160813776241\n",
+    "cpu_pressure": "some avg10=0.01 avg60=0.39 avg300=3.72 total=14167420439\nfull avg10=0.00 avg60=0.12 avg300=1.67 total=4015002364\n",
+    "loadavg": "50.73 60.62 60.75 35/52963 3005379\n",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+  },
+  "host_after": {
+    "cpu_stat": "usage_usec 14305061307068\nuser_usec 13858602189534\nsystem_usec 446459117533\nnr_periods 20417264\nnr_throttled 151747\nthrottled_usec 160813776241\n",
+    "cpu_pressure": "some avg10=0.01 avg60=0.39 avg300=3.72 total=14167421229\nfull avg10=0.00 avg60=0.12 avg300=1.67 total=4015003126\n",
+    "loadavg": "50.73 60.62 60.75 40/52965 3005620\n",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+  },
+  "host_cpu_seconds": 0.27363499999999996,
+  "voluntary_context_switches": 485,
+  "involuntary_context_switches": 15,
+  "measurements": [
+    {
+      "case": "empty",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 1.607e-06,
+      "verified": true
+    },
+    {
+      "case": "getpid",
+      "repeat": 0,
+      "iterations": 100000,
+      "seconds": 0.06225721,
+      "verified": true
+    },
+    {
+      "case": "map_none",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.000308875,
+      "verified": true
+    },
+    {
+      "case": "map_1page",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.000878504,
+      "verified": true
+    },
+    {
+      "case": "map_16pages",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.004885554,
+      "verified": true
+    },
+    {
+      "case": "map_protect",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.00522732,
+      "verified": true
+    },
+    {
+      "case": "reuse_16pages",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 7.927e-06,
+      "verified": true
+    },
+    {
+      "case": "protect_pair",
+      "repeat": 0,
+      "iterations": 128,
+      "seconds": 0.000562429,
+      "verified": true
+    },
+    {
+      "case": "fork",
+      "repeat": 0,
+      "iterations": 40,
+      "seconds": 0.008209536,
+      "verified": true
+    },
+    {
+      "case": "exec",
+      "repeat": 0,
+      "iterations": 40,
+      "seconds": 0.010168185,
+      "verified": true
+    },
+    {
+      "case": "empty",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 2.14e-07,
+      "verified": true
+    },
+    {
+      "case": "getpid",
+      "repeat": 1,
+      "iterations": 100000,
+      "seconds": 0.060145939,
+      "verified": true
+    },
+    {
+      "case": "map_none",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.000288576,
+      "verified": true
+    },
+    {
+      "case": "map_1page",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.000882071,
+      "verified": true
+    },
+    {
+      "case": "map_16pages",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.005024612,
+      "verified": true
+    },
+    {
+      "case": "map_protect",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.005149882,
+      "verified": true
+    },
+    {
+      "case": "reuse_16pages",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 9.138e-06,
+      "verified": true
+    },
+    {
+      "case": "protect_pair",
+      "repeat": 1,
+      "iterations": 128,
+      "seconds": 0.000652619,
+      "verified": true
+    },
+    {
+      "case": "fork",
+      "repeat": 1,
+      "iterations": 40,
+      "seconds": 0.00366698,
+      "verified": true
+    },
+    {
+      "case": "exec",
+      "repeat": 1,
+      "iterations": 40,
+      "seconds": 0.011137614,
+      "verified": true
+    },
+    {
+      "case": "empty",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 3.04e-07,
+      "verified": true
+    },
+    {
+      "case": "getpid",
+      "repeat": 2,
+      "iterations": 100000,
+      "seconds": 0.065310234,
+      "verified": true
+    },
+    {
+      "case": "map_none",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.000405146,
+      "verified": true
+    },
+    {
+      "case": "map_1page",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.001170747,
+      "verified": true
+    },
+    {
+      "case": "map_16pages",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.006121531,
+      "verified": true
+    },
+    {
+      "case": "map_protect",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.006520484,
+      "verified": true
+    },
+    {
+      "case": "reuse_16pages",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 1.2483e-05,
+      "verified": true
+    },
+    {
+      "case": "protect_pair",
+      "repeat": 2,
+      "iterations": 128,
+      "seconds": 0.000823377,
+      "verified": true
+    },
+    {
+      "case": "fork",
+      "repeat": 2,
+      "iterations": 40,
+      "seconds": 0.004410535,
+      "verified": true
+    },
+    {
+      "case": "exec",
+      "repeat": 2,
+      "iterations": 40,
+      "seconds": 0.011485057,
+      "verified": true
+    }
+  ],
+  "timings_usable": true,
+  "product_acceptance": false
+}

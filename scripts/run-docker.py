@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 import uuid
-from result_checks import docker_evidence, broker_cache_evidence, deferred_ipi_evidence
+from result_checks import docker_evidence, broker_cache_evidence, deferred_ipi_evidence, mprotect_evidence
 from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
@@ -23,9 +23,12 @@ p.add_argument("--kernel", type=pathlib.Path)
 p.add_argument("--threads-experiment", action="store_true")
 p.add_argument("--broker-cache", action="store_true")
 p.add_argument("--defer-ipi", action="store_true")
+p.add_argument("--mprotect-sync", action="store_true")
 p.add_argument("--checks", help="Run only check names matching this regex; others stay not_tested")
 p.add_argument("--result-name", default="docker")
 a = p.parse_args()
+if a.mprotect_sync and not a.threads_experiment:
+    p.error("mprotect synchronization requires parallel runners")
 if a.checks:
     if not re.fullmatch(r"[A-Za-z0-9_|^$().-]+", a.checks):
         p.error("check filter must be a compact regex without whitespace")
@@ -62,6 +65,8 @@ if a.broker_cache:
     cmd.append("seccomp_broker_cache=1")
 if a.defer_ipi:
     cmd.append("defer_ipi=1")
+if a.mprotect_sync:
+    cmd.append("mprotect_sync=1")
 if a.checks:
     cmd.append("docker_checks=" + a.checks)
 timed_out = False
@@ -93,6 +98,10 @@ if suite_sha != expected_suite_sha:
     evidence["finished"] = False
 cache_stats = broker_cache_evidence(text)
 ipi_stats = deferred_ipi_evidence(text)
+protect_stats = mprotect_evidence(text)
+if a.mprotect_sync and not protect_stats["verified"]:
+    evidence["subset_passed"] = False
+    evidence["finished"] = False
 if a.defer_ipi and not ipi_stats["verified"]:
     evidence["subset_passed"] = False
     evidence["finished"] = False
@@ -108,6 +117,9 @@ report = {"kind": "docker_subset_in_candidate", **evidence, "exit_code": rc,
           "broker_cache": a.broker_cache,
           "broker_cache_stats": cache_stats,
           "defer_ipi": a.defer_ipi, "deferred_ipi_stats": ipi_stats,
+          "mprotect_sync": a.mprotect_sync, "mprotect_stats": protect_stats,
+          "mapping_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()
+                                              if line.startswith("HARDDIND_MAPPING_SHA256=")), None),
           "suite_sha256": suite_sha, "expected_suite_sha256": expected_suite_sha,
           "check_filter": a.checks,
           "host_cpu_affinity": sorted(os.sched_getaffinity(0)),

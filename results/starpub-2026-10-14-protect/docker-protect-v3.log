@@ -1,0 +1,203 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that seccomp filters can be installed...OK
+Adding 824397824 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #17 SMP Wed Oct 14 05:41:28 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000191234fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000131234fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000131234fff]
+On node 0, zone Normal: 459 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/docker-d407a29334724859aa94c4a649757fbc.cow,/root/harddind-rebuild/protect-docker.ext4 root=/dev/ubda rw init=/sbin/harddind-docker-init con=null con0=null,fd:1 ssl=null panic=1 console=tty0
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 15192(92%)
+Dentry cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+Inode-cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 1249845
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 6115.32 BogoMIPS (lpj=30576640)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Mountpoint-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 4095616K/4999380K available (5936K kernel code, 1353K rwdata, 1828K rodata, 210K init, 1261K bss, 900444K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 65536 (order: 7, 524288 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 2048 (order: 3, 32768 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 32768 (order: 6, 262144 bytes, linear)
+TCP bind hash table entries: 32768 (order: 8, 1048576 bytes, linear)
+TCP: Hash tables configured (established 32768 bind 32768)
+UDP hash table entries: 2048 (order: 5, 131072 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-1e7dbf43a590/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=20 bucket_order=0 (anon: 0)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+IPVS: Registered protocols (TCP, UDP)
+IPVS: Connection hash table configured (size=4096, memory=32Kbytes)
+IPVS: ipvs loaded.
+IPVS: [rr] scheduler registered.
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/docker-d407a29334724859aa94c4a649757fbc.cow" as COW file for "/root/harddind-rebuild/protect-docker.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 15, Operation not permitted
+EXT4-fs (ubda): mounted filesystem bf2a3772-1349-40f0-8bab-c3d83dd2d1b1 r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-docker-init as init process
+HARDDIND_DOCKER_BEGIN
+server=29.8.2 kernel=7.2.10 cpus=4 storage=overlayfs
+HARDDIND_SUITE_SHA256=f3e5a2cb4e5dd29342d4eca122eaaad50810f5e546aa08e27836fe95e0df56b2
+HARDDIND_RESULT {"name":"image_import","status":"pass"}
+HARDDIND_RESULT {"name":"run","status":"pass"}
+HARDDIND_RESULT {"name":"exit_code","status":"pass"}
+HARDDIND_RESULT {"name":"stdin","status":"pass"}
+HARDDIND_RESULT {"name":"tty","status":"pass"}
+HARDDIND_RESULT {"name":"lifecycle","status":"pass"}
+HARDDIND_RESULT {"name":"mount_tmpfs","status":"pass"}
+HARDDIND_RESULT {"name":"privileged_mount","status":"pass"}
+HARDDIND_RESULT {"name":"net_admin","status":"pass"}
+HARDDIND_RESULT {"name":"guest_user_namespace","status":"pass"}
+HARDDIND_RESULT {"name":"read_only","status":"pass"}
+HARDDIND_RESULT {"name":"bind_mount","status":"pass"}
+HARDDIND_RESULT {"name":"volume","status":"pass"}
+HARDDIND_RESULT {"name":"memory_oom","status":"pass"}
+HARDDIND_RESULT {"name":"pids_limit","status":"pass"}
+HARDDIND_RESULT {"name":"default_seccomp","status":"pass"}
+HARDDIND_RESULT {"name":"container_threads","status":"pass"}
+HARDDIND_THREAD_SHA256=17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3
+HARDDIND_RESULT {"name":"container_thread_semantics","status":"pass"}
+HARDDIND_DISPATCH_SHA256=de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758
+HARDDIND_RESULT {"name":"container_dispatch_semantics","status":"pass"}
+HARDDIND_MAPPING_SHA256=e8d75c79bd3b0ddc1c587c173f881a6444de248fe9d84bdf1a23af65d1bd0741
+HARDDIND_RESULT {"name":"container_mapping_semantics","status":"pass"}
+HARDDIND_RESULT {"name":"container_compute","status":"pass"}
+HARDDIND_RESULT {"name":"bridge_dns","status":"pass"}
+HARDDIND_RESULT {"name":"published_port_guest","status":"pass"}
+HARDDIND_RESULT {"name":"docker_cp","status":"pass"}
+HARDDIND_RESULT {"name":"save_load","status":"pass"}
+HARDDIND_RESULT {"name":"buildkit_multistage","status":"pass"}
+HARDDIND_RESULT {"name":"restart_policy","status":"pass"}
+HARDDIND_RESULT {"name":"healthcheck","status":"pass"}
+HARDDIND_RESULT {"name":"ipv6","status":"pass"}
+HARDDIND_RESULT {"name":"signals","status":"pass"}
+HARDDIND_RESULT {"name":"inspect_rename","status":"pass"}
+HARDDIND_RESULT {"name":"restart","status":"pass"}
+HARDDIND_RESULT {"name":"pause_unpause","status":"pass"}
+HARDDIND_RESULT {"name":"update_limits","status":"pass"}
+HARDDIND_RESULT {"name":"top_stats","status":"pass"}
+HARDDIND_RESULT {"name":"wait_exit","status":"pass"}
+HARDDIND_RESULT {"name":"attach","status":"pass"}
+HARDDIND_RESULT {"name":"commit_diff_history","status":"pass"}
+HARDDIND_RESULT {"name":"export_import","status":"pass"}
+HARDDIND_RESULT {"name":"image_tag_remove","status":"pass"}
+HARDDIND_RESULT {"name":"events","status":"pass"}
+HARDDIND_RESULT {"name":"network_connect_disconnect","status":"pass"}
+HARDDIND_RESULT {"name":"port_inspect","status":"pass"}
+HARDDIND_RESULT {"name":"context","status":"pass"}
+HARDDIND_RESULT {"name":"system_df","status":"pass"}
+HARDDIND_RESULT {"name":"prune_objects","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_init","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_service","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_secret_config","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_vip","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_scale","status":"pass"}
+HARDDIND_RESULT {"name":"swarm_cleanup","status":"pass"}
+HARDDIND_RESULT {"name":"gpu_fixture_import","status":"pass"}
+HARDDIND_RESULT {"name":"gpu_compute","status":"fail"}
+docker: Error response from daemon: failed to discover GPU vendor from CDI: no known GPU vendor found
+
+Run 'docker run --help' for more information
+HARDDIND_RESULT {"name":"external_network","status":"not_tested"}
+HARDDIND_RESULT {"name":"full_docker_compatibility","status":"not_tested"}
+time="2026-10-14T05:46:04Z" level=warning msg="Configuration migrated from version 2, use `containerd config migrate` to avoid migration" t="37.632µs"
+time="2026-10-14T05:46:04.812951163Z" level=warning msg="failed check for fsverity support" error="enable fsverity failed: operation not supported" path=/var/lib/docker/containerd/daemon/io.containerd.content.v1.content
+time="2026-10-14T05:46:05.644134267Z" level=warning msg="failed check for fsverity support" error="enable fsverity failed: operation not supported" path=/var/lib/docker/plugins/storage
+time="2026-10-14T05:46:05.789077627Z" level=warning msg="Failed to find nft tool" error="exec: \"nft\": executable file not found in $PATH"
+time="2026-10-14T05:46:07.767522939Z" level=warning msg="Could not load necessary modules for IPSEC rules: protocol not supported"
+time="2026-10-14T05:46:08.313002363Z" level=warning msg="WARNING: No swap limit support"
+time="2026-10-14T05:46:08.313077371Z" level=warning msg="WARNING: No cpuset support"
+time="2026-10-14T05:46:08.832102011Z" level=warning msg="git source cannot be enabled: failed to find git binary: exec: \"git\": executable file not found in $PATH"
+time="2026-10-14T05:47:40.581514107Z" level=error msg="failed sending message on channel" error="write unix /var/run/docker/containerd/containerd.sock.ttrpc->@: write: broken pipe"
+time="2026-10-14T05:48:07.905533051Z" level=warning msg="healthcheck failed" actualDuration=4.509696ms error="Unavailable: connection error: desc = \"transport: Error while dialing: only one connection allowed\"" timeout=15s
+time="2026-10-14T05:48:07.925630587Z" level=warning msg="healthcheck failed" actualDuration=21.826304ms error="Unavailable: connection error: desc = \"transport: Error while dialing: only one connection allowed\"" timeout=15s
+time="2026-10-14T05:48:12.447246715Z" level=error msg="healthcheck failed fatally" error="session healthcheck failed fatally: Unavailable: connection error: desc = \"transport: Error while dialing: only one connection allowed\""
+time="2026-10-14T05:48:12.449126011Z" level=error msg="healthcheck failed fatally" error="session healthcheck failed fatally: Unavailable: connection error: desc = \"transport: Error while dialing: only one connection allowed\""
+time="2026-10-14T05:49:56.178257787Z" level=warning msg="Failed to retrieve SP list for cleanup: protocol not supported"
+time="2026-10-14T05:49:56.186854011Z" level=warning msg="Failed to retrieve SA list for cleanup: protocol not supported"
+time="2026-10-14T05:49:56.213350011Z" level=warning msg="Failed to retrieve SP list for cleanup: protocol not supported"
+time="2026-10-14T05:49:56.225438587Z" level=warning msg="Failed to retrieve SA list for cleanup: protocol not supported"
+time="2026-10-14T05:49:57.498907771Z" level=error msg="set bridge default vlan failed" error="failed to enable default vlan on bridge br0: open /sys/class/net/br0/bridge/default_pvid: permission denied"
+time="2026-10-14T05:49:58.392251003Z" level=warning msg="MAC address changed" iface=br0 ifi=2 ip4=10.0.0.1/24 ip6="<nil>" mac="ea:d1:9a:82:d2:97" mcastRouteOk=true n=1 newMAC="ce:86:2e:d6:97:05"
+time="2026-10-14T05:49:59.697343099Z" level=error msg="set bridge default vlan failed" error="failed to enable default vlan on bridge br0: open /sys/class/net/br0/bridge/default_pvid: permission denied"
+time="2026-10-14T05:50:00.126128763Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:36381->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=z6y3kt4iaxyoaskp6mji81si3 service.id=yvkkqa9u17m2gm0b0bsxdumbx task.id=95d71nokpy9kgyjsksyoii0mw
+time="2026-10-14T05:50:00.126526843Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:36381->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=z6y3kt4iaxyoaskp6mji81si3 service.id=yvkkqa9u17m2gm0b0bsxdumbx task.id=ou1m204lu6ipvuuutu49bq52n
+time="2026-10-14T05:50:00.620311675Z" level=warning msg="MAC address changed" iface=br0 ifi=2 ip4=10.0.1.1/24 ip6="<nil>" mac="8e:2b:1c:c0:2f:a3" mcastRouteOk=true n=1 newMAC="02:fa:90:5e:9f:da"
+time="2026-10-14T05:50:02.171859323Z" level=warning msg="Running modprobe ip_vs failed with message: `modprobe: can't change directory to '/lib/modules': No such file or directory`, error: exit status 1"
+time="2026-10-14T05:50:06.163903355Z" level=error msg="pulling image failed" error="failed to resolve reference \"docker.io/library/harddind-base:test\": failed to do request: Head \"https://registry-1.docker.io/v2/library/harddind-base/manifests/test\": dial tcp: lookup registry-1.docker.io on 127.0.0.11:53: read udp 127.0.0.1:48022->127.0.0.11:53: read: connection refused" module=node/agent/taskmanager node.id=z6y3kt4iaxyoaskp6mji81si3 service.id=ptinr82hmqa8ta219eiy8gg7a task.id=jdbqflut81ty86impbbnbbtjf
+time="2026-10-14T05:50:27.603283835Z" level=warning msg="rmServiceBinding 12425155327d4bf4c224d424eb908de175d642251fc02526bb8cbb92ced521d2 possible transient state ok:false entries:0 set:false "
+time="2026-10-14T05:50:43.097109883Z" level=warning msg="rmServiceBinding d36952f1c82f6f250b9131995fc9c4a403594093dd8bd1370e33b01463fc677e possible transient state ok:false entries:0 set:false "
+time="2026-10-14T05:50:43.131443067Z" level=warning msg="rmServiceBinding b3fe64d0a5d7a156d6a8db3dbc2b6e8ab563ad029c158f6d0d64594522e6e0ee possible transient state ok:false entries:0 set:false "
+time="2026-10-14T05:50:44.448095867Z" level=error msg="network lab-overlay remove failed: error while removing network: unknown network lab-overlay id v9mv8u7ppe0fqirks5uur4bjl" module=node/agent/taskmanager node.id=z6y3kt4iaxyoaskp6mji81si3 service.id=ptinr82hmqa8ta219eiy8gg7a task.id=jdbqflut81ty86impbbnbbtjf
+time="2026-10-14T05:50:44.448285563Z" level=error msg="network lab-overlay remove failed: error while removing network: unknown network lab-overlay id v9mv8u7ppe0fqirks5uur4bjl" module=node/agent node.id=z6y3kt4iaxyoaskp6mji81si3
+time="2026-10-14T05:50:44.450115451Z" level=error msg="network lab-overlay remove failed: error while removing network: unknown network lab-overlay id v9mv8u7ppe0fqirks5uur4bjl" module=node/agent/taskmanager node.id=z6y3kt4iaxyoaskp6mji81si3 service.id=yvkkqa9u17m2gm0b0bsxdumbx task.id=95d71nokpy9kgyjsksyoii0mw
+time="2026-10-14T05:50:44.471442555Z" level=error msg="failed to remove node" error="rpc error: code = Aborted desc = dispatcher is stopped" method="(*Dispatcher).Session" node.id=z6y3kt4iaxyoaskp6mji81si3 node.session=4wf9yy247whztbdl7mqmskeeq
+time="2026-10-14T05:51:00.603965819Z" level=error msg="Handler for POST /containers/{name:.*}/start returned error" error-response="failed to discover GPU vendor from CDI: no known GPU vendor found" method=POST module=api request-url=/v1.56/containers/8553bb0659773757c73210c4323edfcac967d718cc16c6fc2493d7910912ff8a/start status=500 vars="map[name:8553bb0659773757c73210c4323edfcac967d718cc16c6fc2493d7910912ff8a version:1.56]"
+HARDDIND_DOCKER_END status=1
+reboot: Power down
+HARDDIND_DEFER_IPI enabled=1 received=191735 deferred=154816 handled=191723
+HARDDIND_MPROTECT_SYNC enabled=1 pages=323580
+HARDDIND_BROKER_CACHE hits=2473 stores=2475
+

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare IPI off/on syscall counts; traced elapsed times are never compared."""
+"""Compare feature off/on syscall counts; traced times are never compared."""
 import argparse
 import gzip
 import importlib.util
@@ -26,11 +26,16 @@ def load(report_path):
     return report, {row["case"]: row for row in phases}
 
 
-def compare(off_path, on_path):
+def compare(off_path, on_path, feature="defer-ipi"):
     off, off_phases = load(off_path)
     on, on_phases = load(on_path)
-    if off["defer_ipi"] or not on["defer_ipi"] or not on["deferred_ipi_stats"]["verified"]:
-        raise ValueError("expected verified IPI off/on traces")
+    key = feature.replace("-", "_")
+    stats = "deferred_ipi_stats" if feature == "defer-ipi" else "mprotect_stats"
+    other = "mprotect_sync" if feature == "defer-ipi" else "defer_ipi"
+    if off.get(key) or not on.get(key) or not on[stats]["verified"]:
+        raise ValueError("expected verified feature off/on traces")
+    if off.get(other, False) != on.get(other, False):
+        raise ValueError("another feature changed")
     for key in ("sha256", "host_cpu_affinity", "spin"):
         if off[key] != on[key]:
             raise ValueError("different inputs: " + key)
@@ -40,7 +45,7 @@ def compare(off_path, on_path):
         if before["iterations"] != after["iterations"]:
             raise ValueError("different work per phase")
         rows.append({"case": case, "iterations": before["iterations"], "off": before, "on": after})
-    return {"kind": "ipi_trace_counts_not_timings", "sha256": on["sha256"],
+    return {"kind": key + "_trace_counts_not_timings", "feature": feature, "sha256": on["sha256"],
             "host_cpu_affinity": on["host_cpu_affinity"], "spin": on["spin"],
             "off_report": off_path.name, "on_report": on_path.name, "phases": rows,
             "product_acceptance": False,
@@ -53,8 +58,9 @@ if __name__ == "__main__":
     p.add_argument("off", type=pathlib.Path)
     p.add_argument("on", type=pathlib.Path)
     p.add_argument("output", type=pathlib.Path)
+    p.add_argument("--feature", choices=["defer-ipi", "mprotect-sync"], default="defer-ipi")
     a = p.parse_args()
-    result = compare(a.off, a.on)
+    result = compare(a.off, a.on, a.feature)
     with a.output.open("x") as f:
         json.dump(result, f, indent=2)
         f.write("\n")

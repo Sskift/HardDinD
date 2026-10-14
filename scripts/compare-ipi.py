@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native / previous kernel / same-kernel IPI off/on, in mirrored order."""
+"""Native / previous kernel / same-kernel feature off/on, in mirrored order."""
 import argparse
 import fcntl
 import hashlib
@@ -9,12 +9,14 @@ import pathlib
 import statistics
 import subprocess
 import sys
+import time
 
 p = argparse.ArgumentParser()
 p.add_argument("work", type=pathlib.Path)
 p.add_argument("--baseline", type=pathlib.Path, required=True)
 p.add_argument("--kernel", type=pathlib.Path, required=True)
 p.add_argument("--name", default="ipi")
+p.add_argument("--feature", choices=["defer-ipi", "mprotect-sync"], default="defer-ipi")
 a = p.parse_args()
 if not a.name or not all(c.isalnum() or c in "-_" for c in a.name):
     p.error("invalid name")
@@ -33,11 +35,17 @@ cases = [("syscall", 1), ("exec", 1), ("threads", 1), ("threads", 4), ("processe
 order = ["native", "baseline", "off", "on", "on", "off", "baseline", "native"]
 groups = {mode: [] for mode in set(order)}
 evidence, failures = [], []
+def host_state():
+    return {"time_unix": time.time(), **{name: pathlib.Path(path).read_text() for name, path in {
+        "cpu_stat": "/sys/fs/cgroup/cpu.stat", "cpu_pressure": "/sys/fs/cgroup/cpu.pressure",
+        "loadavg": "/proc/loadavg", "memory_events": "/sys/fs/cgroup/memory.events"}.items()}}
+
 for index, mode in enumerate(order):
     name = f"{a.name}-{index}-{mode}"
     file = out / (name + ".json")
     if file.exists() or (out / (name + ".log")).exists():
         raise RuntimeError("refusing to overwrite evidence")
+    host_before = host_state()
     if mode == "native":
         rows = []
         for case_index, (test, workers) in enumerate(cases):
@@ -54,8 +62,11 @@ for index, mode in enumerate(order):
         cmd = [sys.executable, str(repo / "scripts/run-core.py"), str(work), "--kernel", str(kernel),
                "--threads-experiment", "--broker-cache", "--dispatch-bench", "--disk", str(work / "dispatch.ext4"),
                "--spin", "256", "--timeout", "300", "--result-name", name]
-        if mode == "on":
+        if a.feature == "mprotect-sync":
+            # Compare against the previous IPI+idle kernel with IPI enabled.
             cmd += ["--defer-ipi"]
+        if mode == "on":
+            cmd += ["--" + a.feature]
         proc = subprocess.run(cmd, stdout=subprocess.DEVNULL)
         report = json.loads(file.read_text())
         if (report["kernel_sha256"] != hashes["baseline" if mode == "baseline" else "kernel"]
@@ -67,7 +78,7 @@ for index, mode in enumerate(order):
         else:
             rows = report["measurements"]
     groups[mode].extend(rows)
-    evidence.append({"mode": mode, "file": file.name})
+    evidence.append({"mode": mode, "file": file.name, "host_before": host_before, "host_after": host_state()})
     print(name + (": FAILED" if file.name in failures else ": complete"), flush=True)
 if hashes != {key: sha(path) for key, path in paths.items()}:
     raise RuntimeError("input changed during comparison")
@@ -81,7 +92,8 @@ for test, workers in cases:
                        "off_over_on": median["off"] / median["on"] if median["off"] and median["on"] else None,
                        "on_over_native": median["on"] / median["native"] if median["on"] and median["native"] else None})
 complete = not failures and all(all(value is not None for value in row["median_seconds"].values()) for row in comparison)
-summary = {"kind": "ipi_microbench_not_acceptance", "comparison_complete": complete, "failed_runs": failures,
+summary = {"kind": a.feature.replace("-", "_") + "_microbench_not_acceptance", "feature": a.feature,
+           "comparison_complete": complete, "failed_runs": failures,
            "sha256": hashes, "order": evidence, "host_cpu_affinity": sorted(os.sched_getaffinity(0)),
            "comparison": comparison, "full_performance_acceptance": False, "threshold": None}
 (out / (a.name + "-comparison.json")).write_text(json.dumps(summary, indent=2) + "\n")

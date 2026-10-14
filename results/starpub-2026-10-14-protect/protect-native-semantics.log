@@ -1,0 +1,4 @@
+MAPPING_CHECK lazy_discard_and_protection pass
+MAPPING_CHECK fixed_file_replacement_private_cow pass
+MAPPING_CHECK fork_cow_and_file_truncate pass
+MAPPING_SEMANTICS_END status=0
