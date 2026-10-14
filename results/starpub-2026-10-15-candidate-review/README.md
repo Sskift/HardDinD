@@ -48,3 +48,11 @@ timeout 20 python3 cpu-shares/reproduce.py
 ## 四卡原生生命周期 v3
 
 [gpu-lifecycle-v3](gpu-lifecycle-v3/README.md) 保存了报告解析的长度/整数边界修复和实际四卡原生失败。严格 C 编译及独立消毒器夹具通过，Python 测试 48 通过、2 跳过；真实 GPU 运行暴露了线程上下文顺序、子进程换行解析、周期时间字段缺失及初始化后同步缺口。全部 10 个进程组为空，源码/驱动库未变。原生基线和内部 GPU 完整验收仍未通过。
+
+## GPU 映射 v6
+
+[gpu-mapping-v6](gpu-mapping-v6/README.md) 记录设备注册修复后的真实结果：GPU worker 和普通查询恢复，但固定控制参数长度的校验顺序回归，31 项原生语义仅 24 项一致。精确补丁复现、构建前后源码哈希以及全部 5 个进程组清理均通过；显存分配和 CUDA 阶段没有运行。准备失败的 v5 也保留，未算作有效运行。
+
+## GPU 映射 v7 与节点选择 v8/v9
+
+[v7](gpu-mapping-v7/README.md) 修复固定控制长度的校验顺序后，真实控制 31/31、分配 74/74 均与原生一致。内部 CUDA 暴露兼容别名设备号与 NVIDIA 标准设备号不同的问题；[v8](gpu-mapping-v8/README.md) 使用同一内核和修正脚本，已进入真实控制/UVM 转发，下一缺口是 ioctl `0xc23046d7` 及控制 `0x216`/128 字节均返回 `EOPNOTSUPP`。[v9](gpu-mapping-v9/README.md) 同脚本验证了旧后端节点回退。三次原生前后均完成四卡计算；内部 CUDA 仍失败，性能和完整 GPU 均未验收。

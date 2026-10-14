@@ -1,0 +1,36 @@
+{
+  "observed_at": "2026-10-14T22:12:27.478427+00:00",
+  "processes": [
+    {
+      "pid": 204145,
+      "comm": "bash",
+      "command": "/bin/bash -c source /root/harddind-rebuild/arkclaude/runtime/config/shell-snapshots/snapshot-bash-1792010670409-socet2.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'mkdir -p .work/official-check && exec 9>/root/harddind-rebuild/kernel-build.lock && flock -x 9 && JOBS=4 bash scripts/build-network.sh .work/official-check 2>&1 | tail -3 && .work/official-check/network-backend --version' < /dev/null && pwd -P >| /tmp/claude-da50-cwd ",
+      "wchan": "do_wait"
+    },
+    {
+      "pid": 204151,
+      "comm": "bash",
+      "command": "bash scripts/build-network.sh .work/official-check ",
+      "wchan": "do_wait"
+    },
+    {
+      "pid": 204156,
+      "comm": "bash",
+      "command": "bash /root/harddind-rebuild/arkclaude/round6/publish-compat/scripts/build-libslirp.sh .work/official-check  ",
+      "wchan": "do_wait"
+    },
+    {
+      "pid": 204159,
+      "comm": "flock",
+      "command": "flock -x 9 ",
+      "wchan": "locks_lock_inode_wait"
+    },
+    {
+      "pid": 204152,
+      "comm": "tail",
+      "command": "tail -3 ",
+      "wchan": "pipe_read"
+    }
+  ],
+  "action": "SIGTERM only blocked child flock 204159, after exact command/wchan verification; allows build shell to unwind without overlapping runtime"
+}

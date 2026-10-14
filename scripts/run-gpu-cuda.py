@@ -38,7 +38,7 @@ def main():
             'internal_cuda_verified':False,'diagnostic_complete':False,'async_wait':a.async_wait,
             'started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'sha256':{str(f):harddind.sha(f) for f in inputs},'gpu_count':a.gpu_count,
-            'phases':{},'limitations':['manual guest device selection; not Docker --gpus integration',
+            'phases':{},'commands':[],'limitations':['manual guest device selection; not Docker --gpus integration',
             'one process, sequential cards; concurrency and memory lifecycle stress remain',
             'ioctl tracing changes timing; not GPU performance acceptance']}
     (out/'sources').mkdir()
@@ -61,7 +61,10 @@ def main():
                     if proc.poll() is None:os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=15)
                     cleanup=cleanup_group(proc.pid)
             commands.write(f'[{label} exit={rc} timeout={timed_out}]\n');commands.flush()
-            return {'exit_code':rc,'timed_out':timed_out,'cleanup':cleanup,'command':cmd}
+            row={'label':label,'pid':proc.pid,'exit_code':rc,'timed_out':timed_out,
+                 'cleanup':cleanup,'command':cmd}
+            report['commands'].append(row)
+            return row
         def require(label,cmd,**kwargs):
             row=run(label,cmd,**kwargs)
             if row['exit_code'] or row['timed_out'] or not row['cleanup']['clean_shutdown']:
@@ -83,8 +86,10 @@ def main():
             return row
         try:
             program=out/'cuda-probe';logger=out/'cuda-ioctl-trace.so'
-            require('build-probe',['gcc','-O2','-Wall','-Wextra','-Werror',str(repo/'src/cuda_probe.c'),'-ldl','-o',str(program)])
-            require('build-logger',['gcc','-O2','-Wall','-Wextra','-Werror','-shared','-fPIC',str(repo/'src/cuda_ioctl_trace.c'),'-o',str(logger)])
+            with (work/'kernel-build.lock').open('a') as lock:
+                fcntl.flock(lock,fcntl.LOCK_EX)
+                require('build-probe',['gcc','-O2','-Wall','-Wextra','-Werror',str(repo/'src/cuda_probe.c'),'-ldl','-o',str(program)])
+                require('build-logger',['gcc','-O2','-Wall','-Wextra','-Werror','-shared','-fPIC',str(repo/'src/cuda_ioctl_trace.c'),'-o',str(logger)])
             inputs += [program,logger]
             report['sha256'].update({str(f):harddind.sha(f) for f in [program,logger]})
             listing=subprocess.check_output(['ldconfig','-p'],text=True)
@@ -116,15 +121,38 @@ def main():
                         *(['--gpu-async-wait'] if a.async_wait else [])])
             report['ready_state']=harddind.read_state(instance)
             with (out/'rootfs.tar').open('rb') as archive:require('import',base+['docker','import','-',image],stdin=archive)
-            devices=['--device=/dev/harddind-nvidiactl:/dev/nvidiactl']
-            devices += [f'--device=/dev/harddind-nvidia{i}:/dev/nvidia{i}' for i in range(a.gpu_count)]
+            # libcuda validates the canonical NVIDIA device numbers. New
+            # backends can expose compatibility aliases on a different major;
+            # importing those aliases makes libcuda replace the node with one
+            # that the container's device rules do not allow.
+            report['device_node_probes']=[]
+            report['device_source_prefix']=None
+            for label,prefix in [('gpu-nodes-standard','/dev/nvidia'),
+                                 ('gpu-nodes-compat','/dev/harddind-nvidia')]:
+                nodes=[prefix+'ctl']+[prefix+str(i) for i in range(a.gpu_count)]
+                targets=['/dev/nvidiactl']+[f'/dev/nvidia{i}' for i in range(a.gpu_count)]
+                candidate=[f'--device={node}:{target}' for node,target in zip(nodes,targets)]
+                probe=run(label,base+['docker','run','--rm',*candidate,image,'/bin/true'])
+                probe['guest_source_prefix']=prefix
+                probe['stderr']=(out/(label+'.stderr')).read_text(errors='replace')
+                report['device_node_probes'].append(probe)
+                missing=(probe['exit_code']>0 and 'error gathering device information' in probe['stderr']
+                         and any(node in probe['stderr'] for node in nodes) and 'no such file' in probe['stderr'])
+                if probe['timed_out'] or not probe['cleanup']['clean_shutdown'] or (probe['exit_code']!=0 and not missing):
+                    raise RuntimeError('GPU node probe failed without a missing device: '+prefix)
+                if probe['exit_code']==0:
+                    devices=candidate
+                    report['device_source_prefix']=prefix
+                    break
+            else:
+                raise RuntimeError('no complete set of guest GPU control/card nodes')
             # Both paths belong to the guest daemon's filesystem. A backend
             # can expose its standard UVM node without a HardDinD alias.
             report['uvm_node_probes']=[]
             report['uvm_node_available']=False
             report['uvm_device_source']=None
-            for label,node in [('uvm-node','/dev/harddind-nvidia-uvm'),
-                               ('uvm-node-standard','/dev/nvidia-uvm')]:
+            for label,node in [('uvm-node-standard','/dev/nvidia-uvm'),
+                               ('uvm-node','/dev/harddind-nvidia-uvm')]:
                 probe=run(label,base+['docker','run','--rm',f'--device={node}:/dev/nvidia-uvm',image,'/bin/true'])
                 probe['guest_source']=node
                 probe['stderr']=(out/(label+'.stderr')).read_text(errors='replace')

@@ -1,0 +1,78 @@
+--- a/arch/um/kernel/gpu.c
++++ b/arch/um/kernel/gpu.c
+@@ -405,10 +405,26 @@
+ 	return result;
+ }
+ 
+-/* NV_ESC_RM_ALLOC (0x2b): only root-client allocation is exposed.  Every
+- * other hClass carries a class-specific pAllocParms block (and possibly a
+- * nested rights mask), so it is rejected rather than forwarding an
+- * untranslated guest pointer to the host driver. */
++/* NVIDIA 550.120 class/clcb33.h: optional four-byte NvHandle hClient.
++ * The non-FINN allocator derives its copy length from resource_list.h,
++ * not paramsSize. RS_ACCESS_MASK is one u32 (rs_access.h). Neither child
++ * carries another pointer or host FD. Serialized allocations need a
++ * different wire schema and remain unsupported. */
++static void gpu_alloc_pointer(u64 *pointer, size_t size, bool writeable)
++{
++	void __user *nested = (void __user *)(unsigned long)*pointer;
++
++	if (!*pointer)
++		return;
++	if (!access_ok(nested, size)) {
++		*pointer = ~0ULL;
++		return;
++	}
++	fault_in_readable(nested, size);
++	if (writeable)
++		fault_in_safe_writeable(nested, size);
++}
++
+ static long gpu_rm_alloc(struct gpu_file *state, unsigned int command,
+ 			 unsigned long arg, size_t size)
+ {
+@@ -417,20 +433,39 @@
+ 		struct gpu_nvos21 v21;
+ 		struct gpu_nvos64 v64;
+ 	} params = {};
++	u64 alloc_pointer, rights_pointer = 0;
++	bool access_api = size == sizeof(struct gpu_nvos64);
+ 	long result;
+ 
+ 	if (copy_from_user(&params, (void __user *)arg, size))
+ 		return -EFAULT;
++	if (params.v64.hClass == 0xcb33) {
++		if (access_api && (params.v64.flags & 1))
++			return -EOPNOTSUPP; /* NVOS64_FLAGS_FINN_SERIALIZED */
++		alloc_pointer = params.v64.pAllocParms;
++		gpu_alloc_pointer(&params.v64.pAllocParms, sizeof(u32), true);
++		if (access_api) {
++			rights_pointer = params.v64.pRightsRequested;
++			gpu_alloc_pointer(&params.v64.pRightsRequested,
++					  sizeof(u32), false);
++		}
++		result = um_tlb_sync(state->mm);
++		if (result)
++			return result;
++		result = gpu_rm_request(state, command, &params, size);
++		params.v64.pAllocParms = alloc_pointer;
++		if (access_api)
++			params.v64.pRightsRequested = rights_pointer;
++		return gpu_rm_copyback(arg, &params, size, result);
++	}
+ 	if (params.v64.hClass != 0x00 && params.v64.hClass != 0x01 &&
+ 	    params.v64.hClass != 0x41)
+ 		return -EOPNOTSUPP;
+ 	if (params.v64.pAllocParms ||
+-	    (size == sizeof(struct gpu_nvos21) ?
+-	     params.v21.paramsSize : params.v64.paramsSize))
++	    (access_api ? params.v64.paramsSize : params.v21.paramsSize))
+ 		return -EOPNOTSUPP;
+-	/* The 48-byte NVOS64 form additionally carries a rights mask pointer
+-	 * and FINN flags: nested data this transport cannot translate yet. */
+-	if (size == sizeof(struct gpu_nvos64) &&
++	/* Root-client parameter/FINN variants remain unimplemented. */
++	if (access_api &&
+ 	    (params.v64.pRightsRequested || params.v64.flags))
+ 		return -EOPNOTSUPP;
+ 	result = gpu_rm_request(state, command, &params, size);

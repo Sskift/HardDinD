@@ -1,0 +1,5 @@
+{
+  "before_sha256": "164d20c29f03fef34f2bfa1e3872050fdeb8c7b6c1ecb7333e8d9f11fdcbd675",
+  "after_sha256": "d3a3aabfa9e6c5268a48920528d5cdfdfa106b764be4e7e5b705ccfbd6f14ed7",
+  "reason": "restore driver-owned size validation for bounded fixed controls 0xd04/0x1f0"
+}

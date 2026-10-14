@@ -1,0 +1,21 @@
+{
+  "status": "finished",
+  "pid": 266326,
+  "started_at": "2026-10-14T22:14:43.439420+00:00",
+  "full_acceptance": false,
+  "child_pid": 266343,
+  "command": [
+    "python3",
+    "/root/harddind-rebuild/gpu-mapping-owner-v9/repo/scripts/run-gpu-cuda.py",
+    "/root/harddind-rebuild/gpu-mapping-owner-v9/run",
+    "--kernel",
+    "/root/harddind-rebuild/gpu-mapping-owner-v9/kernel",
+    "--disk",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "--name",
+    "mapping-cuda-v9",
+    "--async-wait"
+  ],
+  "exit_code": 1,
+  "finished_at": "2026-10-14T22:15:43.964365+00:00"
+}
