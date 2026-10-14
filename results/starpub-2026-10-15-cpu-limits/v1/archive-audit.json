@@ -1,0 +1,15 @@
+{
+  "fixed_phase_verdicts_reparsed": [
+    "unthrottled_reference",
+    "cpus_flag_quota",
+    "explicit_period_quota",
+    "cpuset_single",
+    "cpuset_range",
+    "cpuset_with_quota"
+  ],
+  "input_source_hashes_match": true,
+  "process_groups_empty": 71,
+  "original_overall_verdict": "fail",
+  "update_verdicts_reparsed": true,
+  "raw_command_streams_present": 69
+}

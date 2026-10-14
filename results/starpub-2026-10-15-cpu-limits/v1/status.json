@@ -1,0 +1,21 @@
+{
+  "status": "finished",
+  "started_at": "2026-10-14T19:31:52.357687+00:00",
+  "supervisor_pid": 1673283,
+  "pid": 1673284,
+  "command": [
+    "python3",
+    "/root/harddind-rebuild/cpu-limits-owner-v1/repo/scripts/run-cpu-limits.py",
+    "/root/harddind-rebuild/cpu-limits-owner-v1/run",
+    "--kernel",
+    "/root/harddind-rebuild/gpu-system-features-kernel-v2",
+    "--disk",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "--name",
+    "cpu-limits-v1",
+    "--cpus",
+    "4"
+  ],
+  "exit_code": 1,
+  "finished_at": "2026-10-14T19:38:48.407531+00:00"
+}

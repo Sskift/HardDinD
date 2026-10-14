@@ -11,6 +11,10 @@ target:
 * enforcement also requires the cgroup's own nr_throttled/throttled_usec
   counters to advance and three independent consumption measurements
   (per-thread CPU clocks, process CPU clock, cpu.stat usage_usec) to agree.
+  Quota delivery applies to total cgroup usage: sampler work and concurrent
+  docker exec observations also consume that quota. Worker/process time must
+  respect the upper bound and agree with total usage, but cannot individually
+  be required to consume the entire cgroup budget.
 * if the unthrottled reference does not clearly exceed the upper enforcement
   band, offered load was insufficient and the result is indeterminate --
   never pass.
@@ -150,7 +154,9 @@ def classify_quota(summary, expected, period_s, reference=None):
     agree, tol = rates_agree(rates, expected)
     common = {'expected': expected, 'period_s': period_s, 'wall_s': wall,
               'lower': lower, 'upper': upper, 'rates': rates, 'tolerance': tol,
-              'stat_delta': delta}
+              'stat_delta': delta,
+              'nonworker_cpu_cores': rates['proc'] - rates['thread'],
+              'other_process_cpu_cores': rates['stat'] - rates['proc']}
     if max(rates.values()) > upper:
         return _result(FAIL, 'consumption exceeds the CFS quota+period bound', **common)
     if delta['nr_throttled'] < 1 or delta['throttled_usec'] <= 0:
@@ -158,7 +164,7 @@ def classify_quota(summary, expected, period_s, reference=None):
                        'no throttling counters; quota effect cannot be demonstrated', **common)
     if not agree:
         return _result(INDETERMINATE, 'independent CPU counters disagree', **common)
-    if min(rates.values()) < lower:
+    if rates['stat'] < lower:
         return _result(INDETERMINATE, 'consumption below quota delivery bound; host starvation or noise', **common)
     if reference is not None:
         ref_rates = reference['rates']
@@ -293,7 +299,7 @@ def classify_update_run(summary, schedule, reference=None):
             r = _result(FAIL, 'post-update consumption exceeds quota+period bound', **ev)
         elif rates['nr_throttled'] < 1 or rates['throttled_usec'] <= 0:
             r = _result(INDETERMINATE, 'no throttling counters in update window', **ev)
-        elif min(rates['proc'], rates['stat']) < lower:
+        elif rates['stat'] < lower:
             r = _result(INDETERMINATE, 'post-update delivery below quota bound; starvation or noise', **ev)
         elif abs(rates['proc'] - rates['stat']) > max(AGREE_MIN, AGREE_REL * cores):
             r = _result(INDETERMINATE, 'post-update CPU counters disagree', **ev)

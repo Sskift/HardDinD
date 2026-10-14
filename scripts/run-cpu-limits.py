@@ -425,6 +425,7 @@ def main():
 
             stop_row = run('instance-stop', base + ['stop'], timeout=90)
             report['stop_exit'] = stop_row['exit_code']
+            require(stop_row, 'instance stop')
         except Exception as error:
             note_error('run', error)
         finally:

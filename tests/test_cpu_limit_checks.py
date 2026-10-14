@@ -143,6 +143,22 @@ class QuotaTests(unittest.TestCase):
         r, _ = classify(events, checks.classify_quota, 1.0, 0.1, None)
         self.assertEqual(r['status'], checks.INDETERMINATE, r)
 
+    def test_sampler_cpu_is_part_of_cgroup_quota(self):
+        # Real v1 run: worker clocks omit the sampler's CPU consumption.
+        # Total cgroup delivery is in band, and independent counters agree.
+        events = spin_event_stream(consumed_cores=.477, proc_cores=.493,
+                                   stat_cores=.493, quota=.5, period_us=50000,
+                                   throttled=100, throttled_usec=2000000)
+        r, _ = classify(events, checks.classify_quota, .5, .05)
+        self.assertEqual(r['status'], checks.PASS, r)
+
+    def test_large_unexplained_nonworker_load_is_not_pass(self):
+        events = spin_event_stream(consumed_cores=.1, proc_cores=.493,
+                                   stat_cores=.493, quota=.5, period_us=50000,
+                                   throttled=100, throttled_usec=2000000)
+        r, _ = classify(events, checks.classify_quota, .5, .05)
+        self.assertEqual(r['status'], checks.INDETERMINATE, r)
+
     def test_insufficient_reference_load_indeterminate(self):
         # Limit is nominally respected, but the reference cannot clear the
         # band: enforcement was not functionally distinguished.
