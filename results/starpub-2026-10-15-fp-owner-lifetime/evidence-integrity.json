@@ -1,0 +1,50 @@
+{
+  "all_pass": true,
+  "scope": "integrity of rejected candidate and failing userspace model; no kernel or performance acceptance",
+  "checks": [
+    {
+      "check": "frozen source 0018-um-lazy-xstate.patch",
+      "pass": true
+    },
+    {
+      "check": "frozen source REVIEW.md",
+      "pass": true
+    },
+    {
+      "check": "frozen source fp_model.c",
+      "pass": true
+    },
+    {
+      "check": "frozen source build.log",
+      "pass": true
+    },
+    {
+      "check": "frozen source lifetime_repro.c",
+      "pass": true
+    },
+    {
+      "check": "actual kernel candidate identity",
+      "pass": true
+    },
+    {
+      "check": "build succeeded",
+      "pass": true
+    },
+    {
+      "check": "model failed with ASAN UAF",
+      "pass": true
+    },
+    {
+      "check": "failure at original model owner lock",
+      "pass": true
+    },
+    {
+      "check": "free step is owner harness",
+      "pass": true
+    },
+    {
+      "check": "model functions included unchanged",
+      "pass": true
+    }
+  ]
+}

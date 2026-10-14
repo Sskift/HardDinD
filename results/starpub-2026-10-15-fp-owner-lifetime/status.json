@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-14T19:19:57.418797+00:00",
+  "scope": "userspace model reclamation counterexample, NOT an actual kernel exploit or guest run",
+  "build_command": [
+    "cc",
+    "-g",
+    "-O1",
+    "-fsanitize=address",
+    "-fno-omit-frame-pointer",
+    "-pthread",
+    "/root/harddind-rebuild/fp-owner-lifetime-v1/lifetime_repro.c",
+    "-o",
+    "/root/harddind-rebuild/fp-owner-lifetime-v1/lifetime-repro"
+  ],
+  "build_exit": 0,
+  "sha256": {
+    "0018-um-lazy-xstate.patch": "ac5d95128680ac856166b5b26b844e0a1391fc91a2a0cd01df8f9dc85f8c9339",
+    "lifetime-repro": "a826f54fbfc5cc40bdc28c951abaaee1d7cc7a401c4b87ef370275635c9f9ad0",
+    "REVIEW.md": "515b038b535eca432e8f2822405c469c420c879eccb988fe5dde44671ccf1ec1",
+    "fp_model.c": "d2ad26cf58c5862ad0ec97f4825428744e8fd7e13dc6d78ddb4247bdcc522e61",
+    "build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lifetime_repro.c": "d23b82b95f7b2915e37a8dde5aa6feda4246e714c7fd614de7b128f9b3ea12a3"
+  },
+  "run_exit": 1,
+  "asan_use_after_free": true,
+  "current_kernel_source_sha256": "cb3198f1c9ed4370b3a3434a9b1d91456cd6c6551649f920c60b8753172a6b97",
+  "current_kernel_source_path": "/root/harddind-rebuild/arkclaude/round6/fp-repair/.work/lazy-tree/arch/x86/um/fp_lazy.c"
+}

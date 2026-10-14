@@ -1,0 +1,1072 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: lazy XSTATE handoff for the SECCOMP syscall path
+
+In SECCOMP mode each guest syscall traps through a host SIGSYS: the host
+saves the guest XSTATE into the parked signal frame on the runner's stub
+stack and reloads it on rt_sigreturn. On top of those unavoidable hardware
+save/restores, UML copied the full XSTATE image out of the frame into
+current->...regs.fp on entry and back into the very same frame on exit,
+roughly two full-XSTATE memcpys per guest syscall although almost no syscall
+touches FP state.
+
+This keeps the parked frame authoritative and moves only embedded ownership
+bookkeeping. It replaces the earlier salvage-list experiment: there is no
+heap allocation anywhere on the handoff path, so memory pressure cannot
+degrade it and there is no OOM panic; retained bytes are bounded by live
+tasks, not exited ones.
+
+  - entry (get_stub_state_seccomp) arms the task as LIVE owner of the
+    frame, without copying;
+  - exit (set_stub_state_seccomp) skips the write-back while the same task
+    still owns the same frame; the host rt_sigreturn then reloads the bytes
+    it itself saved;
+  - when another task reuses the runner first (threads multiplexing one
+    stub), or the task resumes on another vCPU runner after migration, the
+    owner's own regs->fp buffer receives the bytes under a per-runner
+    handoff lock and a per-task lock; no salvage nodes exist;
+  - task exit detaches with the task lock only, so it never dereferences
+    its mm after exit_mm(); destroy_context clears every runner record
+    (broker, per-CPU runners and GPU worker) and broker-cache reuse starts
+    from a clean record;
+  - genuine FP consumers materialise on demand: guest signal delivery
+    (copy_sc_to_user), sigreturn (copy_sc_from_user), the FP/XSTATE
+    regsets used by ptrace and coredumps (including partial writes), fork
+    (arch_dup_task_struct) and exec (flush_thread).
+
+GP register copies, FS/GS base sync, single-stepping, queued mapping/GPU
+stub work (which parks without rt_sigreturn and never rewrites the frame)
+and the i387 conversion are untouched. i386 keeps eager copies. Default is
+OFF (lazyxstate=0); with lazyxstate=0 the generated code path copies
+exactly as before. The feature stacks on the parallel shared-VM runner
+series and the GPU stack; no syscall is special-cased.
+
+This is a reproducibility experiment, not a performance claim.
+
+---
+diff --git a/arch/um/include/shared/registers.h b/arch/um/include/shared/registers.h
+--- a/arch/um/include/shared/registers.h
++++ b/arch/um/include/shared/registers.h
+@@ -8,9 +8,39 @@
+ 
+ #include <sysdep/ptrace.h>
+ 
++struct mm_id;
++
+ extern int init_pid_registers(int pid);
+ extern void get_safe_registers(unsigned long *regs, unsigned long *fp_regs);
+ extern int get_fp_registers(int pid, unsigned long *regs);
+ extern int put_fp_registers(int pid, unsigned long *regs);
+ 
++struct task_struct;
++
++/*
++ * Experimental lazy XSTATE handoff for the SECCOMP syscall path
++ * (lazyxstate=1). No-ops with the feature off and on i386. See
++ * arch/x86/um/fp_lazy.c for the ownership state machine.
++ */
++/* Host just wrote frame on runner at syscall entry; arm ownership. */
++extern int uml_fp_enter(struct uml_pt_regs *regs, struct mm_id *runner,
++			void *frame, unsigned int size);
++/*
++ * Runner frame is about to be resumed. Returns 1 when the frame must be
++ * left untouched (fast path), 0 when regs->fp was copied into it, negative
++ * errno on unrecoverable protocol corruption.
++ */
++extern int uml_fp_leave(struct uml_pt_regs *regs, struct mm_id *runner,
++			void *frame, unsigned int size);
++/* Make regs->fp authoritative before reading it (signal, ptrace, fork). */
++extern void uml_fp_materialize(struct uml_pt_regs *regs);
++/* Drop parked state immediately before regs->fp is overwritten wholesale. */
++extern void uml_fp_discard(struct uml_pt_regs *regs);
++/* Initialise a fresh child/kthread descriptor (parent image already copied). */
++extern void uml_fp_reset(struct uml_pt_regs *regs);
++/* Task is exiting; detach without dereferencing its (possibly dead) mm. */
++extern void uml_fp_exit(struct task_struct *tsk);
++/* Clear runner ownership at mm destruction / broker-cache reuse. */
++extern void uml_fp_handoff_reset(struct mm_id *runner);
++
+ #endif
+diff --git a/arch/um/include/shared/skas/mm_id.h b/arch/um/include/shared/skas/mm_id.h
+--- a/arch/um/include/shared/skas/mm_id.h
++++ b/arch/um/include/shared/skas/mm_id.h
+@@ -10,6 +10,21 @@
+ 
+ #define STUB_MAX_FDS 4
+ 
++/*
++ * Experimental lazy XSTATE handoff bookkeeping (lazyxstate=1), one record
++ * per SECCOMP runner. Plain scalar fields only: this header is also compiled
++ * by the userspace-facing units, so all locking lives in
++ * arch/x86/um/fp_lazy.c. @owner is a struct uml_pt_regs * used for identity
++ * comparison only; it is never dereferenced through this struct and task
++ * exit / mm teardown clear it before the referenced memory can go away.
++ */
++struct um_fp_handoff {
++	void *owner;
++	unsigned long long token;
++	/* Test-and-set lock word; 0 means unlocked. */
++	unsigned int lock;
++};
++
+ struct mm_id {
+ 	int pid;
+ 	unsigned long stack;
+@@ -21,6 +36,8 @@
+ 	int syscall_fd_map[STUB_MAX_FDS];
+ 	/* Physical-memory FD retained by a parallel mapping broker at host FD 1. */
+ 	int cached_phys_fd;
++
++	struct um_fp_handoff fp_handoff;
+ };
+ 
+ struct mutex *__get_turnstile(struct mm_id *mm_id);
+diff --git a/arch/um/kernel/exec.c b/arch/um/kernel/exec.c
+--- a/arch/um/kernel/exec.c
++++ b/arch/um/kernel/exec.c
+@@ -24,6 +24,11 @@
+ {
+ 	arch_flush_thread(&current->thread.arch);
+ 
++	/*
++	 * get_safe_registers() overwrites the whole FP image with the clean
++	 * exec state; detach anything parked in a stub frame first.
++	 */
++	uml_fp_discard(&current_pt_regs()->regs);
+ 	get_safe_registers(current_pt_regs()->regs.gp,
+ 			   current_pt_regs()->regs.fp);
+ }
+diff --git a/arch/um/kernel/process.c b/arch/um/kernel/process.c
+--- a/arch/um/kernel/process.c
++++ b/arch/um/kernel/process.c
+@@ -160,11 +160,18 @@
+ 		if (sp != 0)
+ 			REGS_SP(p->thread.regs.regs.gp) = sp;
+ 
++		/*
++		 * The child starts life with an in-memory FP image; it must
++		 * not inherit the parent's lazy frame ownership.
++		 */
++		uml_fp_reset(&p->thread.regs.regs);
++
+ 		handler = fork_handler;
+ 
+ 		arch_copy_thread(&current->thread.arch, &p->thread.arch);
+ 	} else {
+ 		get_safe_registers(p->thread.regs.regs.gp, p->thread.regs.regs.fp);
++		uml_fp_reset(&p->thread.regs.regs);
+ 		p->thread.request.thread.proc = args->fn;
+ 		p->thread.request.thread.arg = args->fn_arg;
+ 		handler = new_thread_handler;
+@@ -199,12 +206,29 @@
+ 		memset((void *)dst + sizeof(init_task), 0,
+ 		       arch_task_struct_size - sizeof(init_task));
+ 	} else {
++		/*
++		 * The child inherits the parent's FP image through this
++		 * whole-task copy; make sure that image is material rather
++		 * than parked in a stub frame the child will never own.
++		 */
++		uml_fp_materialize(&src->thread.regs.regs);
+ 		memcpy(dst, src, arch_task_struct_size);
+ 	}
+ 
+ 	return 0;
+ }
+ 
++void exit_thread(struct task_struct *tsk)
++{
++	/*
++	 * Detach the dying task from any lazy XSTATE ownership. This runs
++	 * after exit_mm(), so it must not dereference the task's mm: the
++	 * runner-side owner record is reconciled by the next frame handoff
++	 * or cleared when the mm context is destroyed.
++	 */
++	uml_fp_exit(&tsk->thread.regs.regs);
++}
++
+ void um_idle_sleep(void)
+ {
+ 	if (time_travel_mode != TT_MODE_OFF)
+diff --git a/arch/um/kernel/skas/mmu.c b/arch/um/kernel/skas/mmu.c
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -16,6 +16,7 @@
+ #include <os.h>
+ #include <skas.h>
+ #include <stub-data.h>
++#include <registers.h>
+ 
+ /* Ensure the stub_data struct covers the allocated area */
+ static_assert(sizeof(struct stub_data) == STUB_DATA_PAGES * UM_KERN_PAGE_SIZE);
+@@ -51,6 +52,9 @@
+ 			continue;
+ 		ctx->id = cached->id;
+ 		memset(&cached->id, 0, sizeof(cached->id));
++		/* A broker never executes guest code, but start the recycled
++		 * record from a clean state. */
++		uml_fp_handoff_reset(&ctx->id);
+ 		list_replace(&cached->list, &ctx->list);
+ 		broker_cache_hits++;
+ 		return 1;
+@@ -77,6 +81,8 @@
+ 		err = syscall_stub_flush(&ctx->id);
+ 	if (err || ctx->id.pid < 2)
+ 		return 0;
++	/* Brokers never run guest tasks; publish a clean handoff record. */
++	uml_fp_handoff_reset(&ctx->id);
+ 	memset(data->syscall_data, 0, sizeof(data->syscall_data));
+ 	memset(ctx->id.syscall_fd_map, 0, sizeof(ctx->id.syscall_fd_map));
+ 	data->clone_pid = 0;
+@@ -216,6 +222,8 @@
+ 		struct mm_id *id = &mmu->cpu_ids[cpu];
+ 		if (!id->stack)
+ 			continue;
++		/* Detach any task still referencing this runner's frame. */
++		uml_fp_handoff_reset(id);
+ 		if (id->pid > 1)
+ 			os_kill_ptraced_process(id->pid, 1);
+ 		if (id->sock)
+@@ -227,6 +235,7 @@
+ 	if (mmu->gpu_id.stack) {
+ 		/* 0017: stop completion interrupts and fail any waiter before
+ 		 * the worker is killed and its socket is closed. */
++		uml_fp_handoff_reset(&mmu->gpu_id);
+ 		if (mmu->gpu_async_irq) {
+ 			complete_all(&mmu->gpu_done);
+ 			um_free_irq(mmu->gpu_async_irq, mm);
+@@ -243,6 +252,7 @@
+ 		return;
+ 	}
+ 
++	uml_fp_handoff_reset(&mmu->id);
+ 	if (mmu->id.pid > 0) {
+ 		os_kill_ptraced_process(mmu->id.pid, 1);
+ 		mmu->id.pid = -1;
+diff --git a/arch/um/os-Linux/skas/process.c b/arch/um/os-Linux/skas/process.c
+--- a/arch/um/os-Linux/skas/process.c
++++ b/arch/um/os-Linux/skas/process.c
+@@ -647,7 +647,8 @@
+ 		if (using_seccomp) {
+ 			struct stub_data *proc_data = (void *) mm_id->stack;
+ 
+-			err = set_stub_state(regs, proc_data, singlestepping());
++			err = set_stub_state_seccomp(regs, proc_data, mm_id,
++						     singlestepping());
+ 			if (err) {
+ 				printk(UM_KERN_ERR "%s - failed to set regs: %d",
+ 				       __func__, err);
+@@ -683,7 +684,8 @@
+ 			mm_id->syscall_data_len = 0;
+ 			mm_id->syscall_fd_num = 0;
+ 
+-			err = get_stub_state(regs, proc_data, NULL);
++			err = get_stub_state_seccomp(regs, proc_data, mm_id,
++						     NULL);
+ 			if (err) {
+ 				printk(UM_KERN_ERR "%s - failed to get regs: %d",
+ 				       __func__, err);
+diff --git a/arch/x86/um/Makefile b/arch/x86/um/Makefile
+--- a/arch/x86/um/Makefile
++++ b/arch/x86/um/Makefile
+@@ -11,7 +11,7 @@
+ 
+ obj-y = bugs_$(BITS).o delay.o fault.o \
+ 	ptrace.o ptrace_$(BITS).o ptrace_user.o setjmp_$(BITS).o signal.o \
+-	stub_segv.o \
++	fp_lazy.o stub_segv.o \
+ 	sys_call_table_$(BITS).o sysrq_$(BITS).o tls_$(BITS).o \
+ 	subarch.o os-Linux/
+ 
+diff --git a/arch/x86/um/fp_lazy.c b/arch/x86/um/fp_lazy.c
+--- /dev/null
++++ b/arch/x86/um/fp_lazy.c
+@@ -0,0 +1,437 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Lazy XSTATE handoff for the UML SECCOMP syscall path (experiment 0018).
++ *
++ * In SECCOMP mode every guest syscall traps through a host SIGSYS. The host
++ * saves the guest XSTATE into the parked signal frame on the runner's stub
++ * stack and reloads it on rt_sigreturn. Without laziness the UML kernel also
++ * memcpys the whole image out of the frame into current->...regs.fp on entry
++ * and back into the same frame on exit: roughly two full-XSTATE copies per
++ * guest syscall, even though the overwhelming majority of syscalls never
++ * touch FP state.
++ *
++ * This file keeps the parked frame authoritative and moves only ownership
++ * bookkeeping. Unlike the earlier salvage-list prototype there is no heap
++ * allocation on any path: the task descriptor is embedded in
++ * struct uml_pt_regs and the per-runner handoff record in struct mm_id.
++ *
++ * States (descriptor in struct uml_pt_regs):
++ *
++ *   UML_FP_EAGER (0): regs->fp is authoritative (historical behaviour; the
++ *                     state at boot and after materialise/discard/fork/exit).
++ *   UML_FP_LIVE:     the authoritative bytes sit in the parked frame
++ *                     fp_frame on runner fp_home; fp[] is stale.
++ *
++ *   entry  uml_fp_enter(): host just wrote frame F on runner R -> arm LIVE
++ *   exit   uml_fp_leave(): same task still owns the same frame -> skip the
++ *                          write-back so rt_sigreturn reloads it verbatim
++ *                          (fast path); otherwise collect the task's own
++ *                          bytes (cross-CPU migration), push the bytes of
++ *                          the frame's previous owner into that owner's own
++ *                          regs->fp buffer, then write the frame.
++ *   reader uml_fp_materialize(): signal delivery, FP/XSTATE regsets
++ *                          (ptrace and coredumps), fork -> frame into fp[]
++ *   writer uml_fp_discard(): sigreturn/exec overwrite fp[] wholesale ->
++ *                          drop ownership without copying
++ *   exit   uml_fp_exit(): dying task detaches using ONLY its task lock, so
++ *                          it never dereferences its mm after exit_mm(); the
++ *                          runner-side record is cleared by the next frame
++ *                          handoff or by uml_fp_handoff_reset() at mm death.
++ *
++ * Locking: one handoff lock per runner and one lock per task. The handoff
++ * lock is always taken first; uml_fp_exit() takes only the task lock. The
++ * words are plain integers in headers shared with userspace-compiled units;
++ * all operations on them live in this kernel-side file.
++ *
++ * Default off (lazyxstate=0): behaviour is the old eager copy. i386 always
++ * uses the eager path because it additionally converts the legacy i387
++ * image on every transition.
++ */
++
++#include <linux/atomic.h>
++#include <linux/build_bug.h>
++#include <linux/irqflags.h>
++#include <linux/kernel.h>
++#include <linux/panic.h>
++#include <linux/processor.h>
++#include <linux/string.h>
++#include <registers.h>
++#include <skas/mm_id.h>
++#include <init.h>
++
++unsigned int uml_lazy_xstate;
++
++static_assert(sizeof(struct um_fp_handoff) == 24);
++
++#ifdef __x86_64__
++
++/* ---- tiny IRQ-safe test-and-set locks over the embedded lock words ---- */
++
++static __always_inline void handoff_lock(struct um_fp_handoff *handoff,
++					 unsigned long *flags)
++{
++	local_irq_save(*flags);
++	if (unlikely(cmpxchg(&handoff->lock, 0, 1) != 0)) {
++		do {
++			cpu_relax();
++		} while (READ_ONCE(handoff->lock) ||
++			 cmpxchg(&handoff->lock, 0, 1) != 0);
++	}
++}
++
++static __always_inline void handoff_unlock(struct um_fp_handoff *handoff,
++					   unsigned long flags)
++{
++	smp_store_release(&handoff->lock, 0);
++	local_irq_restore(flags);
++}
++
++static __always_inline void desc_lock(struct uml_pt_regs *regs)
++{
++	if (unlikely(cmpxchg(&regs->fp_lock, 0, 1) != 0)) {
++		do {
++			cpu_relax();
++		} while (READ_ONCE(regs->fp_lock) ||
++			 cmpxchg(&regs->fp_lock, 0, 1) != 0);
++	}
++}
++
++static __always_inline void desc_unlock(struct uml_pt_regs *regs)
++{
++	smp_store_release(&regs->fp_lock, 0);
++}
++
++/* ---- entry / exit ------------------------------------------------------- */
++
++int uml_fp_enter(struct uml_pt_regs *regs, struct mm_id *runner,
++		 void *frame, unsigned int size)
++{
++	struct um_fp_handoff *handoff = &runner->fp_handoff;
++	unsigned long flags;
++
++	if (!uml_lazy_xstate)
++		goto eager;
++
++	handoff_lock(handoff, &flags);
++	if (unlikely(handoff->owner != NULL)) {
++		/*
++		 * Every frame write (uml_fp_leave) clears ownership, so an
++		 * armed owner here means a missing set/get round: refuse
++		 * rather than silently overwrite someone's image.
++		 */
++		handoff_unlock(handoff, flags);
++		return -EINVAL;
++	}
++
++	regs->fp_token = ++handoff->token;
++	handoff->owner = regs;
++	regs->fp_home = runner;
++	regs->fp_frame = frame;
++	regs->fp_size = size;
++	smp_store_release(&regs->fp_state, UML_FP_LIVE);
++	handoff_unlock(handoff, flags);
++	return 1;
++
++eager:
++	uml_fp_reset(regs);
++	memcpy(regs->fp, frame, size);
++	return 0;
++}
++
++/*
++ * Resolve this task's own image before frame G on runner is written.
++ * Returns 1 when the frame must be left untouched (fast path), 0 when
++ * regs->fp is ready to copy, -EINVAL on unrecoverable protocol corruption.
++ *
++ * Every decision is made with the descriptor lock plus, when a home exists,
++ * the home handoff lock. Taking the lockless fp_home hint at face value
++ * would race a concurrent remote relinquish (it clears fp_home before
++ * flipping state to EAGER) and could observe a torn pair.
++ */
++static int fp_resolve_self(struct uml_pt_regs *regs, struct mm_id *runner,
++			   void *frame)
++{
++	struct um_fp_handoff *handoff;
++	struct mm_id *home;
++	unsigned long flags;
++
++	home = READ_ONCE(regs->fp_home);
++	if (home) {
++		handoff = &home->fp_handoff;
++		handoff_lock(handoff, &flags);
++		desc_lock(regs);
++		if (regs->fp_home) {
++			if (smp_load_acquire(&regs->fp_state) != UML_FP_LIVE) {
++				/*
++				 * A remote runner already pushed the image
++				 * into regs->fp; the release of this lock
++				 * pairs with that copy.
++				 */
++				desc_unlock(regs);
++				handoff_unlock(handoff, flags);
++				return 0;
++			}
++			if (WARN_ONCE(handoff->owner != regs ||
++				      regs->fp_token != handoff->token,
++				      "lazy xstate: live state without frame owner\n")) {
++				desc_unlock(regs);
++				handoff_unlock(handoff, flags);
++				return -EINVAL;
++			}
++			if (home == runner && regs->fp_frame == frame) {
++				/* Fast path: host reloads its own saved frame. */
++				handoff->owner = NULL;
++				regs->fp_home = NULL;
++				smp_store_release(&regs->fp_state, UML_FP_EAGER);
++				desc_unlock(regs);
++				handoff_unlock(handoff, flags);
++				return 1;
++			}
++			/* Cross-CPU migration or a moved nested frame slot. */
++			memcpy(regs->fp, regs->fp_frame, regs->fp_size);
++			handoff->owner = NULL;
++			regs->fp_home = NULL;
++			smp_store_release(&regs->fp_state, UML_FP_EAGER);
++		}
++		desc_unlock(regs);
++		handoff_unlock(handoff, flags);
++		return 0;
++	}
++
++	/*
++	 * No home. Remote relinquishes only clear fp_home, never re-arm it,
++	 * so state cannot flip to LIVE here.
++	 */
++	desc_lock(regs);
++	WRITE_ONCE(regs->fp_home, NULL);
++	if (WARN_ON_ONCE(smp_load_acquire(&regs->fp_state) == UML_FP_LIVE,
++			 "lazy xstate: live state without a home runner\n")) {
++		desc_unlock(regs);
++		return -EINVAL;
++	}
++	desc_unlock(regs);
++	return 0;
++}
++
++int uml_fp_leave(struct uml_pt_regs *regs, struct mm_id *runner,
++		 void *frame, unsigned int size)
++{
++	struct um_fp_handoff *handoff;
++	struct uml_pt_regs *owner;
++	unsigned long flags;
++	int lazy;
++
++	if (!uml_lazy_xstate)
++		return 0;
++
++	lazy = fp_resolve_self(regs, runner, frame);
++	if (lazy < 0)
++		return lazy;
++	if (lazy == 1)
++		return 1;
++
++	/*
++	 * The frame may still hold the image of a previous owner: preserve
++	 * it in that owner's own fp[] buffer before we overwrite it. Owner
++	 * pointers are identity only; the per-task lock serialises a
++	 * concurrent uml_fp_exit()/materialise.
++	 */
++	handoff = &runner->fp_handoff;
++	handoff_lock(handoff, &flags);
++	owner = handoff->owner;
++	if (owner == regs) {
++		/* Own live frame on this runner but a different frame slot
++		 * (nested signal); the image was collected above. */
++		handoff->owner = NULL;
++	} else if (owner) {
++		desc_lock(owner);
++		if (smp_load_acquire(&owner->fp_state) == UML_FP_LIVE &&
++		    owner->fp_home == runner &&
++		    owner->fp_token == handoff->token &&
++		    owner->fp_frame == frame) {
++			memcpy(owner->fp, frame, owner->fp_size);
++			owner->fp_home = NULL;
++			smp_store_release(&owner->fp_state, UML_FP_EAGER);
++			handoff->owner = NULL;
++		} else {
++			/* Token/identity mismatch (stale record): drop it. */
++			handoff->owner = NULL;
++		}
++		desc_unlock(owner);
++	}
++
++	memcpy(frame, regs->fp, size);
++	handoff_unlock(handoff, flags);
++	return 0;
++}
++
++/* ---- genuine FP consumers ---------------------------------------------- */
++
++void uml_fp_materialize(struct uml_pt_regs *regs)
++{
++	struct um_fp_handoff *handoff;
++	struct mm_id *home;
++	unsigned long flags;
++
++	if (smp_load_acquire(&regs->fp_state) != UML_FP_LIVE)
++		return;
++	home = READ_ONCE(regs->fp_home);
++	if (unlikely(!home)) {
++		smp_store_release(&regs->fp_state, UML_FP_EAGER);
++		return;
++	}
++
++	handoff = &home->fp_handoff;
++	handoff_lock(handoff, &flags);
++	desc_lock(regs);
++	if (smp_load_acquire(&regs->fp_state) == UML_FP_LIVE) {
++		if (WARN_ONCE(handoff->owner != regs ||
++			      regs->fp_token != handoff->token,
++			      "lazy xstate: live state without frame owner\n")) {
++			/* Impossible by construction; keep fp[] authoritative. */
++		} else {
++			memcpy(regs->fp, regs->fp_frame, regs->fp_size);
++			handoff->owner = NULL;
++		}
++		regs->fp_home = NULL;
++		smp_store_release(&regs->fp_state, UML_FP_EAGER);
++	}
++	desc_unlock(regs);
++	handoff_unlock(handoff, flags);
++}
++
++void uml_fp_discard(struct uml_pt_regs *regs)
++{
++	struct um_fp_handoff *handoff;
++	struct mm_id *home;
++	unsigned long flags;
++
++	if (smp_load_acquire(&regs->fp_state) != UML_FP_LIVE)
++		return;
++	home = READ_ONCE(regs->fp_home);
++	if (unlikely(!home)) {
++		smp_store_release(&regs->fp_state, UML_FP_EAGER);
++		return;
++	}
++
++	handoff = &home->fp_handoff;
++	handoff_lock(handoff, &flags);
++	desc_lock(regs);
++	if (smp_load_acquire(&regs->fp_state) == UML_FP_LIVE) {
++		if (handoff->owner == regs &&
++		    regs->fp_token == handoff->token)
++			handoff->owner = NULL;
++		/* The caller is about to overwrite fp[] wholesale. */
++		regs->fp_home = NULL;
++		smp_store_release(&regs->fp_state, UML_FP_EAGER);
++	}
++	desc_unlock(regs);
++	handoff_unlock(handoff, flags);
++}
++
++/* ---- lifetime ----------------------------------------------------------- */
++
++void uml_fp_reset(struct uml_pt_regs *regs)
++{
++	regs->fp_home = NULL;
++	regs->fp_frame = NULL;
++	regs->fp_size = 0;
++	regs->fp_token = 0;
++	WRITE_ONCE(regs->fp_lock, 0);
++	smp_store_release(&regs->fp_state, UML_FP_EAGER);
++}
++
++void uml_fp_exit(struct uml_pt_regs *regs)
++{
++	/*
++	 * No mm dereference: exit_mm() may already have destroyed the home
++	 * runner. A concurrent handoff either finishes first (its copy lands
++	 * in this still allocated task struct) or observes EAGER and merely
++	 * clears the runner-side record.
++	 */
++	desc_lock(regs);
++	WRITE_ONCE(regs->fp_home, NULL);
++	smp_store_release(&regs->fp_state, UML_FP_EAGER);
++	desc_unlock(regs);
++}
++
++void uml_fp_handoff_reset(struct mm_id *runner)
++{
++	/* No guest task can reference a runner being destroyed or recycled. */
++	WRITE_ONCE(runner->fp_handoff.owner, NULL);
++	WRITE_ONCE(runner->fp_handoff.token, 0);
++	WRITE_ONCE(runner->fp_handoff.lock, 0);
++}
++
++static int __init uml_lazy_xstate_setup(char *line, int *add)
++{
++	*add = 0;
++	if (!strcmp(line, "0")) {
++		uml_lazy_xstate = 0;
++		return 0;
++	}
++	if (!strcmp(line, "1")) {
++		uml_lazy_xstate = 1;
++		return 0;
++	}
++	panic("Invalid lazyxstate value, expected 0 or 1\n");
++}
++__uml_setup("lazyxstate=", uml_lazy_xstate_setup,
++"lazyxstate=<0|1>\n"
++"    Keep guest XSTATE in the parked SECCOMP signal frame until a real\n"
++"    consumer (guest signal, ptrace/coredump, fork, exec) needs it.\n"
++"    Experimental, default 0, x86_64 only. Validate with the FP lifecycle\n"
++"    regression probes and the parallel-runner/GPU kernels.\n"
++);
++
++#else /* !__x86_64__ */
++
++/*
++ * i386 converts the legacy i387 image on every transition; keep the eager
++ * copies and provide no-op bookkeeping.
++ */
++int uml_fp_enter(struct uml_pt_regs *regs, struct mm_id *runner,
++		 void *frame, unsigned int size)
++{
++	uml_fp_reset(regs);
++	memcpy(regs->fp, frame, size);
++	return 0;
++}
++
++int uml_fp_leave(struct uml_pt_regs *regs, struct mm_id *runner,
++		 void *frame, unsigned int size)
++{
++	return 0;
++}
++
++void uml_fp_materialize(struct uml_pt_regs *regs)
++{
++}
++
++void uml_fp_discard(struct uml_pt_regs *regs)
++{
++}
++
++void uml_fp_reset(struct uml_pt_regs *regs)
++{
++	regs->fp_home = NULL;
++	regs->fp_frame = NULL;
++	regs->fp_size = 0;
++	regs->fp_token = 0;
++	WRITE_ONCE(regs->fp_lock, 0);
++	smp_store_release(&regs->fp_state, UML_FP_EAGER);
++}
++
++void uml_fp_exit(struct uml_pt_regs *regs)
++{
++	uml_fp_reset(regs);
++}
++
++void uml_fp_handoff_reset(struct mm_id *runner)
++{
++	runner->fp_handoff.owner = NULL;
++	runner->fp_handoff.token = 0;
++	runner->fp_handoff.lock = 0;
++}
++
++#endif
+diff --git a/arch/x86/um/os-Linux/mcontext.c b/arch/x86/um/os-Linux/mcontext.c
+--- a/arch/x86/um/os-Linux/mcontext.c
++++ b/arch/x86/um/os-Linux/mcontext.c
+@@ -13,6 +13,7 @@
+ #undef sigcontext
+ #include <sysdep/ptrace.h>
+ #include <sysdep/mcontext.h>
++#include <registers.h>
+ #include <arch.h>
+ 
+ void get_regs_from_mc(struct uml_pt_regs *regs, mcontext_t *mc)
+@@ -148,28 +149,98 @@
+ 	return res;
+ }
+ 
++static int locate_xstate(struct stub_data *data, mcontext_t *mcontext,
++			 struct _fpstate **fpstate_out,
++			 struct _xstate_64 **xstate_out, int *size_out,
++			 unsigned long *fp_size_out);
++
+ int get_stub_state(struct uml_pt_regs *regs, struct stub_data *data,
+ 		   unsigned long *fp_size_out)
+ {
+ 	mcontext_t *mcontext;
+ 	struct _fpstate *fpstate_stub;
+ 	struct _xstate_64 *xstate_stub;
+-	int fp_size, xstate_size;
++	int xstate_size;
++
++	/* mctx_offset is verified by wait_stub_done_seccomp */
++	mcontext = (void *)&data->sigstack[data->mctx_offset];
++
++	get_regs_from_mc(regs, mcontext);
++
++	if (locate_xstate(data, mcontext, &fpstate_stub, &xstate_stub,
++			  &xstate_size, fp_size_out))
++		return -EINVAL;
++
++	memcpy(&regs->fp, xstate_stub, xstate_size);
++
++	/* We do not need to read the x86_64 FS_BASE/GS_BASE registers as
++	 * we do not permit userspace to set them directly.
++	 */
++
++#ifdef CONFIG_X86_32
++	/* Read the i387 legacy FP registers */
++	if (um_fxsr_from_i387((void *)&regs->fp, fpstate_stub))
++		return -EINVAL;
++#endif
++
++	return 0;
++}
++
++/*
++ * SECCOMP entry: same as get_stub_state, but the runner (the mm_id whose stub
++ * produced the frame) may keep the frame as the authoritative XSTATE image
++ * instead of copying it into regs->fp (lazyxstate=1).
++ */
++int get_stub_state_seccomp(struct uml_pt_regs *regs, struct stub_data *data,
++			  struct mm_id *runner, unsigned long *fp_size_out)
++{
++	mcontext_t *mcontext;
++	struct _fpstate *fpstate_stub;
++	struct _xstate_64 *xstate_stub;
++	int xstate_size;
++	int lazy;
+ 
+ 	/* mctx_offset is verified by wait_stub_done_seccomp */
+ 	mcontext = (void *)&data->sigstack[data->mctx_offset];
+ 
+ 	get_regs_from_mc(regs, mcontext);
+ 
++	if (locate_xstate(data, mcontext, &fpstate_stub, &xstate_stub,
++			  &xstate_size, fp_size_out))
++		return -EINVAL;
++
++	/* Returns 1 when ownership was armed; 0 when it copied eagerly. */
++	lazy = uml_fp_enter(regs, runner, xstate_stub, xstate_size);
++	if (lazy < 0)
++		return lazy;
++
++#ifdef CONFIG_X86_32
++	/* Read the i387 legacy FP registers */
++	if (um_fxsr_from_i387((void *)&regs->fp, fpstate_stub))
++		return -EINVAL;
++#endif
++
++	return 0;
++}
++
++/* Locate the XSTATE image in the parked signal frame and validate bounds. */
++static int locate_xstate(struct stub_data *data, mcontext_t *mcontext,
++			 struct _fpstate **fpstate_out,
++			 struct _xstate_64 **xstate_out, int *size_out,
++			 unsigned long *fp_size_out)
++{
++	struct _fpstate *fpstate_stub;
++	int fp_size, xstate_size;
++
+ 	fpstate_stub = get_fpstate(data, mcontext, &fp_size);
+ 	if (!fpstate_stub)
+ 		return -EINVAL;
+ 
+ #ifdef CONFIG_X86_32
+-	xstate_stub = (void *)&fpstate_stub->_fxsr_env;
++	*xstate_out = (void *)&fpstate_stub->_fxsr_env;
+ 	xstate_size = fp_size - offsetof(struct _fpstate_32, _fxsr_env);
+ #else
+-	xstate_stub = (void *)fpstate_stub;
++	*xstate_out = (void *)fpstate_stub;
+ 	xstate_size = fp_size;
+ #endif
+ 
+@@ -179,18 +250,8 @@
+ 	if (xstate_size > host_fp_size)
+ 		return -ENOSPC;
+ 
+-	memcpy(&regs->fp, xstate_stub, xstate_size);
+-
+-	/* We do not need to read the x86_64 FS_BASE/GS_BASE registers as
+-	 * we do not permit userspace to set them directly.
+-	 */
+-
+-#ifdef CONFIG_X86_32
+-	/* Read the i387 legacy FP registers */
+-	if (um_fxsr_from_i387((void *)&regs->fp, fpstate_stub))
+-		return -EINVAL;
+-#endif
+-
++	*fpstate_out = fpstate_stub;
++	*size_out = xstate_size;
+ 	return 0;
+ }
+ 
+@@ -206,13 +267,14 @@
+ 		      const struct user_regset *regset,
+ 		      struct membuf to);
+ 
+-int set_stub_state(struct uml_pt_regs *regs, struct stub_data *data,
+-		   int single_stepping)
++static int set_stub_state_core(struct uml_pt_regs *regs, struct stub_data *data,
++			       struct mm_id *runner, int single_stepping)
+ {
+ 	mcontext_t *mcontext;
+ 	struct _fpstate *fpstate_stub;
+ 	struct _xstate_64 *xstate_stub;
+ 	int fp_size, xstate_size;
++	int lazy = 0;
+ 
+ 	/* mctx_offset is verified by wait_stub_done_seccomp */
+ 	mcontext = (void *)&data->sigstack[data->mctx_offset];
+@@ -237,7 +299,18 @@
+ 	xstate_size = fp_size;
+ #endif
+ 
+-	memcpy(xstate_stub, &regs->fp, xstate_size);
++	/*
++	 * The SECCOMP runner may already hold this task's authoritative
++	 * image in the very same frame: leave the bytes untouched and let
++	 * the host rt_sigreturn reload them verbatim. Otherwise the frame
++	 * owner is reconciled first and regs->fp is copied as usual.
++	 */
++	if (runner)
++		lazy = uml_fp_leave(regs, runner, xstate_stub, xstate_size);
++	if (lazy < 0)
++		return lazy;
++	if (!lazy)
++		memcpy(xstate_stub, &regs->fp, xstate_size);
+ 
+ #ifdef __i386__
+ 	/*
+@@ -264,3 +337,15 @@
+ 
+ 	return 0;
+ }
++
++int set_stub_state(struct uml_pt_regs *regs, struct stub_data *data,
++		   int single_stepping)
++{
++	return set_stub_state_core(regs, data, NULL, single_stepping);
++}
++
++int set_stub_state_seccomp(struct uml_pt_regs *regs, struct stub_data *data,
++			   struct mm_id *runner, int single_stepping)
++{
++	return set_stub_state_core(regs, data, runner, single_stepping);
++}
+diff --git a/arch/x86/um/ptrace.c b/arch/x86/um/ptrace.c
+--- a/arch/x86/um/ptrace.c
++++ b/arch/x86/um/ptrace.c
+@@ -5,6 +5,7 @@
+ #include <linux/regset.h>
+ #include <asm/user32.h>
+ #include <asm/sigcontext.h>
++#include <registers.h>
+ 
+ #ifdef CONFIG_X86_32
+ /*
+@@ -114,7 +115,10 @@
+ 			     const struct user_regset *regset,
+ 			     struct membuf to)
+ {
+-	struct user_fxsr_struct *fxsave = (void *)target->thread.regs.regs.fp;
++	struct user_fxsr_struct *fxsave;
++
++	uml_fp_materialize(&target->thread.regs.regs);
++	fxsave = (void *)target->thread.regs.regs.fp;
+ 
+ 	return _um_i387_from_fxsr(to, fxsave);
+ }
+@@ -149,10 +153,14 @@
+ 			     unsigned int pos, unsigned int count,
+ 			     const void *kbuf, const void __user *ubuf)
+ {
+-	struct user_fxsr_struct *fxsave = (void *)target->thread.regs.regs.fp;
++	struct user_fxsr_struct *fxsave;
+ 	const struct user_i387_struct *from;
+ 	struct user_i387_struct buf;
+ 
++	/* Partial write: untouched image bytes must remain present. */
++	uml_fp_materialize(&target->thread.regs.regs);
++	fxsave = (void *)target->thread.regs.regs.fp;
++
+ 	if (ubuf) {
+ 		if (copy_from_user(&buf, ubuf, sizeof(buf)))
+ 			return -EFAULT;
+@@ -217,9 +225,11 @@
+ 			      const struct user_regset *regset,
+ 			      struct membuf to)
+ {
+-	void *fpregs = task_pt_regs(target)->regs.fp;
++	struct uml_pt_regs *regs = &task_pt_regs(target)->regs;
+ 
+-	membuf_write(&to, fpregs, regset->size * regset->n);
++	/* Coredumps and ptrace read the authoritative image. */
++	uml_fp_materialize(regs);
++	membuf_write(&to, regs->fp, regset->size * regset->n);
+ 	return 0;
+ }
+ 
+@@ -228,10 +238,14 @@
+ 			      unsigned int pos, unsigned int count,
+ 			      const void *kbuf, const void __user *ubuf)
+ {
+-	void *fpregs = task_pt_regs(target)->regs.fp;
++	struct uml_pt_regs *regs = &task_pt_regs(target)->regs;
++	int ret;
+ 
+-	return user_regset_copyin(&pos, &count, &kbuf, &ubuf,
+-				  fpregs, 0, regset->size * regset->n);
++	/* Partial regset writes must keep the unmodified portion intact. */
++	uml_fp_materialize(regs);
++	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf,
++				 regs->fp, 0, regset->size * regset->n);
++	return ret;
+ }
+ 
+ static struct user_regset uml_regsets[] __ro_after_init = {
+diff --git a/arch/x86/um/shared/sysdep/mcontext.h b/arch/x86/um/shared/sysdep/mcontext.h
+--- a/arch/x86/um/shared/sysdep/mcontext.h
++++ b/arch/x86/um/shared/sysdep/mcontext.h
+@@ -7,6 +7,7 @@
+ #define __SYS_SIGCONTEXT_X86_H
+ 
+ #include <stub-data.h>
++#include <skas/mm_id.h>
+ 
+ extern void get_regs_from_mc(struct uml_pt_regs *, mcontext_t *);
+ extern void get_mc_from_regs(struct uml_pt_regs *regs, mcontext_t *mc,
+@@ -17,6 +18,19 @@
+ extern int set_stub_state(struct uml_pt_regs *regs, struct stub_data *data,
+ 			  int single_stepping);
+ 
++/*
++ * SECCOMP hot-path variants. The runner (struct mm_id the trapped stub
++ * belongs to) participates in the experimental lazy XSTATE handoff; see
++ * arch/x86/um/fp_lazy.c. With lazyxstate=0 these copy exactly like the
++ * non-seccomp functions.
++ */
++extern int get_stub_state_seccomp(struct uml_pt_regs *regs,
++				  struct stub_data *data, struct mm_id *runner,
++				  unsigned long *fp_size_out);
++extern int set_stub_state_seccomp(struct uml_pt_regs *regs,
++				  struct stub_data *data,
++				  struct mm_id *runner, int single_stepping);
++
+ #ifdef __i386__
+ 
+ #define GET_FAULTINFO_FROM_MC(fi, mc) \
+diff --git a/arch/x86/um/shared/sysdep/ptrace.h b/arch/x86/um/shared/sysdep/ptrace.h
+--- a/arch/x86/um/shared/sysdep/ptrace.h
++++ b/arch/x86/um/shared/sysdep/ptrace.h
+@@ -46,12 +46,32 @@
+ 
+ extern unsigned long host_fp_size;
+ 
++/*
++ * Experimental lazy XSTATE handoff state (lazyxstate=1). Plain scalar fields
++ * only: this header is shared with userspace-compiled units; the locking and
++ * state machine live in arch/x86/um/fp_lazy.c.
++ *
++ * UML_FP_EAGER (0): fp[] is authoritative, i.e. the historical behaviour.
++ * UML_FP_LIVE: the authoritative XSTATE is the parked stub signal frame
++ * fp_frame on the runner fp_home (token validated), and fp[] is stale.
++ */
++#define UML_FP_EAGER	0
++#define UML_FP_LIVE	1
++
+ struct uml_pt_regs {
+ 	unsigned long gp[MAX_REG_NR];
+ 	struct faultinfo faultinfo;
+ 	long syscall;
+ 	int is_user;
+ 
++	/* Lazy XSTATE handoff descriptor; ignored while fp_state == EAGER. */
++	void *fp_home;			/* struct mm_id *: frame owner runner */
++	void *fp_frame;			/* authoritative frame location */
++	unsigned long long fp_token;	/* matches the runner's token */
++	unsigned int fp_size;		/* XSTATE size recorded at arm */
++	unsigned int fp_lock;		/* per-task test-and-set lock word */
++	unsigned int fp_state;		/* UML_FP_EAGER / UML_FP_LIVE */
++
+ 	/* Dynamically sized FP registers (holds an XSTATE) */
+ 	unsigned long fp[];
+ };
+diff --git a/arch/x86/um/signal.c b/arch/x86/um/signal.c
+--- a/arch/x86/um/signal.c
++++ b/arch/x86/um/signal.c
+@@ -88,6 +88,12 @@
+ 	from_fp64 = (void __user *)sc.fpstate;
+ #endif
+ 
++	/*
++	 * rt_sigreturn replaces the whole FP image; detach anything parked
++	 * in the SECCOMP stub frame before the overwrite.
++	 */
++	uml_fp_discard(&regs->regs);
++
+ 	err = copy_from_user(regs->regs.fp, from_fp64, host_fp_size);
+ 	if (err)
+ 		return 1;
+@@ -114,6 +120,10 @@
+ 	struct sigcontext sc;
+ 	struct faultinfo * fi = &current->thread.arch.faultinfo;
+ 	int err;
++
++	/* The guest signal frame carries the current FP image. */
++	uml_fp_materialize(&regs->regs);
++
+ 	memset(&sc, 0, sizeof(struct sigcontext));
+ 
+ #define PUTREG(regno, regname) sc.regname = regs->regs.gp[HOST_##regno]

@@ -20,7 +20,7 @@
 
 每个结果文件记录各项 pass/fail/not_tested；是否实际通过，应以对应内核和 fixture 的原始报告为准。这个表描述测试范围，不把未运行的场景声明为可用。
 
-后续独立证据还包括 [Compose 多服务](../results/starpub-2026-10-14-compose/README.md)、[GPU 系统能力与分配边界](../results/starpub-2026-10-15-gpu-system-features/README.md) 和 [POSIX 锁候选](../results/starpub-2026-10-15-posix-candidate-v1/README.md)。GPU 控制接口通过不代表内部计算可用；锁候选实际为 Docker 35/37，仍未合入正式补丁目录。这些运行使用各自记录的内核和输入，不能合并成当前版本的一次完整验收。
+后续独立证据还包括 [Compose 多服务](../results/starpub-2026-10-14-compose/README.md)、[GPU 系统能力与分配边界](../results/starpub-2026-10-15-gpu-system-features/README.md) 和 [POSIX 范围修复候选](../results/starpub-2026-10-15-posix-candidate-v2/README.md)。GPU 控制接口通过不代表内部计算可用；锁候选第二次运行完成原生和内部 Docker 各 38 项现有检查，但完整 PID、死锁、exec 等语义仍未完成，首次启动超时的失败也保留，候选尚未合入正式补丁目录。这些运行使用各自记录的内核和输入，不能合并成当前版本的一次完整验收。
 
 最新内存权限实验的 56 个检查返回 53 pass、1 GPU fail、2 not_tested，guest 正常退出。新增项目是容器内真实内存映射语义；没有增加 GPU、出站网络或完整兼容性覆盖。证据见 `results/starpub-2026-10-14-protect/docker-protect-v3.json`。
 
