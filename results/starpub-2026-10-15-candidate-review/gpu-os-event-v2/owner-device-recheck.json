@@ -1,0 +1,94 @@
+{
+  "reason": "Owner reused v1 CLI invocation and omitted checker --device for cards1..3. No probe/checker source or raw capture changed. Recheck with each actual requested device.",
+  "checker_sha256": "4356b7ea8a94cdada34af28bef2b3d909b7fb45d3fcd338c9ffe632a9743be8c",
+  "results": {
+    "0": {
+      "request": {
+        "device": "/dev/nvidia0",
+        "ctl_device": "/dev/nvidiactl",
+        "poll_ms": 30
+      },
+      "stdout_sha256": "d4ae92c09aa37932faeb533a7778d03fb1a12a341acc12804040216c6c36a074",
+      "verdict": {
+        "ok": true,
+        "mode": "native_abi",
+        "reasons": [],
+        "cases_seen": [
+          "alloc_free",
+          "double_free",
+          "duplicate_alloc",
+          "hdevice_ignored",
+          "missing_free",
+          "opaque_tag_not_fd",
+          "two_independent_clients"
+        ]
+      }
+    },
+    "1": {
+      "request": {
+        "device": "/dev/nvidia1",
+        "ctl_device": "/dev/nvidiactl",
+        "poll_ms": 30
+      },
+      "stdout_sha256": "b12fa5359914400f277af27db0900266660f00f4cea4689d3689d19b5d88ee18",
+      "verdict": {
+        "ok": true,
+        "mode": "native_abi",
+        "reasons": [],
+        "cases_seen": [
+          "alloc_free",
+          "double_free",
+          "duplicate_alloc",
+          "hdevice_ignored",
+          "missing_free",
+          "opaque_tag_not_fd",
+          "two_independent_clients"
+        ]
+      }
+    },
+    "2": {
+      "request": {
+        "device": "/dev/nvidia2",
+        "ctl_device": "/dev/nvidiactl",
+        "poll_ms": 30
+      },
+      "stdout_sha256": "218bed0c8a80ac6c99652406934ebc815b0b31d12492891715aa55b6def26509",
+      "verdict": {
+        "ok": true,
+        "mode": "native_abi",
+        "reasons": [],
+        "cases_seen": [
+          "alloc_free",
+          "double_free",
+          "duplicate_alloc",
+          "hdevice_ignored",
+          "missing_free",
+          "opaque_tag_not_fd",
+          "two_independent_clients"
+        ]
+      }
+    },
+    "3": {
+      "request": {
+        "device": "/dev/nvidia3",
+        "ctl_device": "/dev/nvidiactl",
+        "poll_ms": 30
+      },
+      "stdout_sha256": "388be596ea5fd1b0cb109cb135a3cc1ee693496eda7908f6f31dc620a2f3f736",
+      "verdict": {
+        "ok": true,
+        "mode": "native_abi",
+        "reasons": [],
+        "cases_seen": [
+          "alloc_free",
+          "double_free",
+          "duplicate_alloc",
+          "hdevice_ignored",
+          "missing_free",
+          "opaque_tag_not_fd",
+          "two_independent_clients"
+        ]
+      }
+    }
+  }
+}
