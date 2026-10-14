@@ -217,6 +217,47 @@ for name in ('src/cuda_lifecycle_probe.c', 'scripts/gpu_lifecycle_checks.py'):
           'integrated lifecycle implementation differs from native-tested source')
 check('Ran 66 tests' in read(root, 'checker-tests.stderr').decode() and
       'skipped=' not in read(root, 'checker-tests.stderr').decode(), 'v5 tests incomplete')
-print('Archive/source hashes, raw failures, CUDA reparse and all recorded cleanup groups verified.')
+root = ROOT / 'fp-matrix-v1'
+owner = load(root, 'owner-status.json')
+verify_archive(root, owner)
+for name, digest in owner['sources'].items():
+    check(sha(read(root, 'repo/' + name)) == digest, 'FP source changed: ' + name)
+expected_cases = {
+    'gp-syscall', 'fp-preserve', 'fp-signal-preserve', 'fp-signal-edit',
+    'gp-signal-edit', 'fp-nested', 'fp-threads-1', 'fp-threads-4',
+    'frame-churn', 'thread-exit-churn', 'runner-lifetime', 'fork-fp',
+    'exec-reset', 'ptrace-prefix-semantics', 'ptrace-gp-fp',
+}
+expected_cells = {
+    f'{kernel}-{cpus}cpu-p{parallel}-l{lazy}'
+    for kernel in ('eager', 'lazy') for cpus in (1, 4) for parallel in (0, 1)
+    for lazy in ((0,) if kernel == 'eager' else (0, 1))
+}
+check(set(owner['cells']) == expected_cells and owner['all_cells_passed'] and
+      owner['exit_code'] == 0 and owner['classifier_negative_checks'] == 6,
+      'FP matrix coverage or completion changed')
+for label, verdict in {'native': owner['native'], **owner['cells']}.items():
+    content = read(root, label + '.stdout').decode()
+    rows = [json.loads(line) for line in content.splitlines() if line.startswith('{')]
+    check(Counter(row.get('case') for row in rows) == Counter(expected_cases) and
+          rows == verdict['rows'] and verdict['verdict'] == 'pass' and
+          not verdict['errors'] and not verdict['skipped'] and
+          all(row['test'] == 'fp_probe' and row['status'] == 'pass' and
+              row['ok'] is True for row in rows), 'FP raw case mismatch: ' + label)
+    if label != 'native':
+        for prefix, expected in (
+                ('HARDDIND_FP_PROBE_SHA256=', 'HARDDIND_FP_PROBE_SHA256=' + owner['probe_sha256']),
+                ('HARDDIND_FP_PROBE_RC=', 'HARDDIND_FP_PROBE_RC=0'),
+                ('HARDDIND_FP_END ', 'HARDDIND_FP_END status=0')):
+            check([line for line in content.splitlines() if line.startswith(prefix)] == [expected],
+                  'FP completion/hash marker differs: ' + label)
+        check(verdict['kernel_unchanged'], 'FP kernel changed')
+audit = load(root, 'owner-cleanup-audit.json')
+check(len(owner['commands']) == len(audit) == 15 and owner['groups_empty'] and
+      set(audit) == groups_in(owner) and all(v == [[], []] for v in audit.values()) and
+      all(c['exit_code'] == 0 and not c['timed_out'] for c in owner['commands']),
+      'FP command or independent cleanup evidence changed')
+print('Archive/source hashes, raw failures, CUDA/FP reparse and recorded cleanup groups verified.')
 print('CPU v3 fail; CPU v4 indeterminate; POSIX v5 fail, v6 pass; native CUDA v4 fail, v5 pass.')
+print('FP matrix: native 15 cases and 12 guest configurations x 15 cases pass; diagnostic only.')
 print('Internal GPU and full/performance acceptance remain unverified.')

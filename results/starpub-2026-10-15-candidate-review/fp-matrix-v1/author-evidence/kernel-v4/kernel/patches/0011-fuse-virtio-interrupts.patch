@@ -1,0 +1,355 @@
+Subject: [PATCH] fuse: deliver cancellable virtiofs requests on the priority queue
+
+Send FUSE_INTERRUPT with a reply buffer, retain the original request until
+completion, retry EAGAIN, and close the signal-before-FR_SENT race.
+
+--- a/fs/fuse/dev.c
++++ b/fs/fuse/dev.c
+@@ -173,6 +173,18 @@
+ 		fuse_request_free(req);
+ 	}
+ }
++
++void fuse_request_get(struct fuse_req *req)
++{
++	__fuse_get_request(req);
++}
++EXPORT_SYMBOL_GPL(fuse_request_get);
++
++void fuse_request_put(struct fuse_req *req)
++{
++	fuse_put_request(req);
++}
++EXPORT_SYMBOL_GPL(fuse_request_put);
+ 
+ unsigned int fuse_len_args(unsigned int numargs, struct fuse_arg *args)
+ {
+--- a/fs/fuse/dev.h
++++ b/fs/fuse/dev.h
+@@ -12,6 +12,7 @@
+ struct fuse_chan;
+ struct fuse_dev;
+ struct fuse_args;
++struct fuse_req;
+ struct fuse_copy_state;
+ struct fuse_backing_map;
+ struct file;
+@@ -39,6 +40,10 @@
+ int fuse_chan_send_bg(struct fuse_chan *fch, struct fuse_args *args, gfp_t gfp_flags);
+ int fuse_chan_send_notify_reply(struct fuse_chan *fch, struct fuse_args *args, u64 unique);
+ void fuse_chan_resend(struct fuse_chan *fch);
++
++/* Transport-owned asynchronous references, independent of request completion. */
++void fuse_request_get(struct fuse_req *req);
++void fuse_request_put(struct fuse_req *req);
+ 
+ struct fuse_forget_link *fuse_alloc_forget(void);
+ void fuse_chan_queue_forget(struct fuse_chan *fch, struct fuse_forget_link *forget,
+--- a/fs/fuse/fuse_dev_i.h
++++ b/fs/fuse/fuse_dev_i.h
+@@ -38,6 +38,7 @@
+  * @FR_PRIVATE:		request is on private list
+  * @FR_ASYNC:		request is asynchronous
+  * @FR_URING:		request is handled through fuse-io-uring
++ * @FR_VIRTIO_INTR:	virtio interrupt work has been scheduled once
+  */
+ enum fuse_req_flag {
+ 	FR_ISREPLY,
+@@ -53,6 +54,7 @@
+ 	FR_PRIVATE,
+ 	FR_ASYNC,
+ 	FR_URING,
++	FR_VIRTIO_INTR,
+ };
+ 
+ /**
+@@ -102,6 +104,9 @@
+ 	 * args
+ 	 */
+ 	void *argbuf;
++
++	/** @intr_work: Transport interrupt allocation in sleepable context */
++	struct work_struct intr_work;
+ #endif
+ 
+ 	/** @chan: fuse_chan this request belongs to */
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -80,15 +80,21 @@
+ 	size_t window_len;
+ };
+ 
+-struct virtio_fs_forget_req {
++struct virtio_fs_hiprio_req {
+ 	struct fuse_in_header ih;
+-	struct fuse_forget_in arg;
++	union {
++		struct fuse_forget_in forget;
++		struct fuse_interrupt_in interrupt;
++	} arg;
+ };
+ 
+-struct virtio_fs_forget {
++struct virtio_fs_hiprio {
+ 	/* This request can be temporarily queued on virt queue */
+ 	struct list_head list;
+-	struct virtio_fs_forget_req req;
++	struct virtio_fs_hiprio_req req;
++	struct fuse_out_header oh;
++	/* Held until interrupt completion, even if the original request ends. */
++	struct fuse_req *original;
+ };
+ 
+ struct virtio_fs_req_work {
+@@ -527,31 +533,55 @@
+ 	return 0;
+ }
+ 
+-/* Work function for hiprio completion */
++static void virtio_fs_free_hiprio(struct virtio_fs_hiprio *msg)
++{
++	if (msg->original)
++		fuse_request_put(msg->original);
++	kfree(msg);
++}
++
++/* Complete FORGET and INTERRUPT requests on the priority queue. */
+ static void virtio_fs_hiprio_done_work(struct work_struct *work)
+ {
+ 	struct virtio_fs_vq *fsvq = container_of(work, struct virtio_fs_vq,
+ 						 done_work);
+ 	struct virtqueue *vq = fsvq->vq;
+-
+-	/* Free completed FUSE_FORGET requests */
++	struct virtio_fs_hiprio *msg, *next;
++	LIST_HEAD(completed);
++
+ 	spin_lock(&fsvq->lock);
+ 	do {
+ 		unsigned int len;
+-		void *req;
+ 
+ 		virtqueue_disable_cb(vq);
+-
+-		while ((req = virtqueue_get_buf(vq, &len)) != NULL) {
+-			kfree(req);
++		while ((msg = virtqueue_get_buf(vq, &len)) != NULL) {
++			if (msg->original && len) {
++				if (len != sizeof(msg->oh) || msg->oh.len != len ||
++				    msg->oh.unique != msg->req.ih.unique) {
++					pr_warn_ratelimited("virtio-fs: invalid interrupt reply\n");
++				} else if (msg->oh.error == -EAGAIN &&
++					   !test_bit(FR_FINISHED, &msg->original->flags) &&
++					   test_bit(FR_SENT, &msg->original->flags)) {
++					/* The interrupt may have arrived before the original. */
++					list_add_tail(&msg->list, &fsvq->queued_reqs);
++					continue;
++				} else if (msg->oh.error == -ENOSYS) {
++					WRITE_ONCE(msg->original->chan->no_interrupt, 1);
++				}
++			}
++			list_add_tail(&msg->list, &completed);
+ 			dec_in_flight_req(fsvq);
+ 		}
+ 	} while (!virtqueue_enable_cb(vq));
+-
+ 	if (!list_empty(&fsvq->queued_reqs))
+ 		schedule_work(&fsvq->dispatch_work);
+-
+ 	spin_unlock(&fsvq->lock);
++
++	/* Dropping the last original-request reference can release channel state. */
++	list_for_each_entry_safe(msg, next, &completed, list) {
++		list_del(&msg->list);
++		virtio_fs_free_hiprio(msg);
++	}
+ }
+ 
+ static void virtio_fs_request_dispatch_work(struct work_struct *work)
+@@ -615,29 +645,34 @@
+  * Returns 1 if queue is full and sender should wait a bit before sending
+  * next request, 0 otherwise.
+  */
+-static int send_forget_request(struct virtio_fs_vq *fsvq,
+-			       struct virtio_fs_forget *forget,
++static int send_hiprio_request(struct virtio_fs_vq *fsvq,
++			       struct virtio_fs_hiprio *forget,
+ 			       bool in_flight)
+ {
+-	struct scatterlist sg;
++	struct scatterlist sg[2], *sgs[] = { &sg[0], &sg[1] };
+ 	struct virtqueue *vq;
+ 	int ret = 0;
+-	bool notify;
+-	struct virtio_fs_forget_req *req = &forget->req;
++	bool notify, discard = false, abort = false;
++	struct virtio_fs_hiprio_req *req = &forget->req;
+ 
+ 	spin_lock(&fsvq->lock);
+ 	if (!fsvq->connected) {
+ 		if (in_flight)
+ 			dec_in_flight_req(fsvq);
+-		kfree(forget);
++		discard = true;
+ 		goto out;
+ 	}
+ 
+-	sg_init_one(&sg, req, sizeof(*req));
++	sg_init_one(&sg[0], req, req->ih.len);
++	if (forget->original) {
++		memset(&forget->oh, 0, sizeof(forget->oh));
++		sg_init_one(&sg[1], &forget->oh, sizeof(forget->oh));
++	}
+ 	vq = fsvq->vq;
+ 	dev_dbg(&vq->vdev->dev, "%s\n", __func__);
+ 
+-	ret = virtqueue_add_outbuf(vq, &sg, 1, forget, GFP_ATOMIC);
++	ret = virtqueue_add_sgs(vq, sgs, 1, forget->original ? 1 : 0,
++				forget, GFP_ATOMIC);
+ 	if (ret < 0) {
+ 		if (ret == -ENOSPC) {
+ 			pr_debug("virtio-fs: Could not queue FORGET: err=%d. Will try later\n",
+@@ -650,7 +685,8 @@
+ 		} else {
+ 			pr_debug("virtio-fs: Could not queue FORGET: err=%d. Dropping it.\n",
+ 				 ret);
+-			kfree(forget);
++			discard = true;
++			abort = forget->original != NULL;
+ 			if (in_flight)
+ 				dec_in_flight_req(fsvq);
+ 		}
+@@ -667,19 +703,23 @@
+ 	return ret;
+ out:
+ 	spin_unlock(&fsvq->lock);
++	if (abort)
++		fuse_chan_abort(forget->original->chan, false);
++	if (discard)
++		virtio_fs_free_hiprio(forget);
+ 	return ret;
+ }
+ 
+ static void virtio_fs_hiprio_dispatch_work(struct work_struct *work)
+ {
+-	struct virtio_fs_forget *forget;
++	struct virtio_fs_hiprio *forget;
+ 	struct virtio_fs_vq *fsvq = container_of(work, struct virtio_fs_vq,
+ 						 dispatch_work);
+ 	pr_debug("virtio-fs: worker %s called.\n", __func__);
+ 	while (1) {
+ 		spin_lock(&fsvq->lock);
+ 		forget = list_first_entry_or_null(&fsvq->queued_reqs,
+-					struct virtio_fs_forget, list);
++					struct virtio_fs_hiprio, list);
+ 		if (!forget) {
+ 			spin_unlock(&fsvq->lock);
+ 			return;
+@@ -687,7 +727,7 @@
+ 
+ 		list_del(&forget->list);
+ 		spin_unlock(&fsvq->lock);
+-		if (send_forget_request(fsvq, forget, true))
++		if (send_hiprio_request(fsvq, forget, true))
+ 			return;
+ 	}
+ }
+@@ -1257,14 +1297,14 @@
+ 
+ static void virtio_fs_send_forget(struct fuse_iqueue *fiq, struct fuse_forget_link *link)
+ {
+-	struct virtio_fs_forget *forget;
+-	struct virtio_fs_forget_req *req;
++	struct virtio_fs_hiprio *forget;
++	struct virtio_fs_hiprio_req *req;
+ 	struct virtio_fs *fs = fiq->priv;
+ 	struct virtio_fs_vq *fsvq = &fs->vqs[VQ_HIPRIO];
+ 	u64 unique = fuse_get_unique(fiq);
+ 
+ 	/* Allocate a buffer for the request */
+-	forget = kmalloc_obj(*forget, GFP_NOFS | __GFP_NOFAIL);
++	forget = kzalloc_obj(*forget, GFP_NOFS | __GFP_NOFAIL);
+ 	req = &forget->req;
+ 
+ 	req->ih = (struct fuse_in_header){
+@@ -1273,23 +1313,60 @@
+ 		.unique = unique,
+ 		.len = sizeof(*req),
+ 	};
+-	req->arg = (struct fuse_forget_in){
++	req->arg.forget = (struct fuse_forget_in){
+ 		.nlookup = link->forget_one.nlookup,
+ 	};
+ 
+-	send_forget_request(fsvq, forget, false);
++	send_hiprio_request(fsvq, forget, false);
+ 	kfree(link);
+ }
+ 
++static void virtio_fs_interrupt_work(struct work_struct *work)
++{
++	struct fuse_req *original = container_of(work, struct fuse_req, intr_work);
++	struct virtio_fs *fs = original->chan->iq.priv;
++	struct virtio_fs_vq *fsvq = &fs->vqs[VQ_HIPRIO];
++	struct virtio_fs_hiprio *msg;
++
++	/* Submission can hold a spinlock. Allocate here without losing a signal
++	 * on allocation failure. The in-flight count protects the transport.
++	 */
++	msg = kzalloc_obj(*msg, GFP_NOFS | __GFP_NOFAIL);
++	msg->original = original;
++	msg->req.ih = (struct fuse_in_header) {
++		.opcode = FUSE_INTERRUPT,
++		.unique = original->in.h.unique | FUSE_INT_REQ_BIT,
++		.len = sizeof(struct virtio_fs_hiprio_req),
++	};
++	msg->req.arg.interrupt.unique = original->in.h.unique;
++	if (test_bit(FR_FINISHED, &original->flags)) {
++		virtio_fs_free_hiprio(msg);
++		spin_lock(&fsvq->lock);
++		dec_in_flight_req(fsvq);
++		spin_unlock(&fsvq->lock);
++		return;
++	}
++	send_hiprio_request(fsvq, msg, true);
++}
++
+ static void virtio_fs_send_interrupt(struct fuse_iqueue *fiq, struct fuse_req *req)
+ {
+-	/*
+-	 * TODO interrupts.
+-	 *
+-	 * Normal fs operations on a local filesystems aren't interruptible.
+-	 * Exceptions are blocking lock operations; for example fcntl(F_SETLKW)
+-	 * with shared lock between host and guest.
++	struct virtio_fs *fs = fiq->priv;
++	struct virtio_fs_vq *fsvq = &fs->vqs[VQ_HIPRIO];
++
++	if (!test_bit(FR_SENT, &req->flags) || test_bit(FR_FINISHED, &req->flags))
++		return;
++	/* One work item for the whole lifetime. EAGAIN retries reuse its message,
++	 * so the embedded work item can never be initialized while still running.
+ 	 */
++	if (test_and_set_bit(FR_VIRTIO_INTR, &req->flags))
++		return;
++	fuse_request_get(req);
++	INIT_WORK(&req->intr_work, virtio_fs_interrupt_work);
++	spin_lock(&fsvq->lock);
++	inc_in_flight_req(fsvq);
++	spin_unlock(&fsvq->lock);
++	schedule_work(&req->intr_work);
+ }
+ 
+ /* Count number of scatter-gather elements required */
+@@ -1473,6 +1550,11 @@
+ 	set_bit(FR_SENT, &req->flags);
+ 	/* matches barrier in request_wait_answer() */
+ 	smp_mb__after_atomic();
++	/* Cover a signal observed before FR_SENT became visible. The queue lock
++	 * keeps the request alive until its asynchronous reference is taken.
++	 */
++	if (test_bit(FR_INTERRUPTED, &req->flags))
++		virtio_fs_send_interrupt(&req->chan->iq, req);
+ 
+ 	if (!in_flight)
+ 		inc_in_flight_req(fsvq);

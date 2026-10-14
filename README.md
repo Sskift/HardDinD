@@ -43,6 +43,8 @@
 
 [后续候选审查](results/starpub-2026-10-15-candidate-review/README.md) 又发现 CPU shares 校验器在四类关键证据缺失时仍误判通过，以及浮点引用修复中的空指针释放和锁顺序问题。两项远端模型测试挂起后已保留现场并清理；相关候选仍未合入，修复和实际运行验证继续进行。
 
+[浮点候选 v4 的真实对照](results/starpub-2026-10-15-candidate-review/fp-matrix-v1/README.md) 已通过原生 15 项及 12 组 guest 配置各 15 项检查，无跳过，全部进程组正常退出。该记录保留已撤回的两条审查意见、原生与 guest 的短 XSTATE 写入差异，以及尚缺的继承值、唤醒值和 core note 检查；候选仍未合入，也未证明性能收益。
+
 新的 `defer_ipi=1` 实验保留宿主 IPI 信号投递，在 guest 关闭中断期间原子登记待处理向量，恢复时处理，减少反复调用宿主信号屏蔽。构建使用 `make kernel-ipi-experiment`，运行器使用 `--defer-ipi`；开关默认关闭。`scripts/compare-ipi.py` 对原生、上一版内核以及同一新内核的开关两种状态做交错对照，`scripts/run-ipi-probes.py` 使用实际补丁内的协议头进行异步信号压力测试。
 
 该实验必须同时应用 `0009` 空闲等待修正：软件屏蔽不会把 IPI 留在宿主信号队列里，原来的 `signalfd` 等待因此可能漏唤醒。空闲路径现在在检查与睡眠期间屏蔽宿主 IPI，并检查软件 pending 位。原函数体的确定性复现与真实 guest 的零轮询回归见 [IPI 优化和故障定位](results/starpub-2026-10-14-ipi/)。单独应用 `0008` 的早期性能结果不能代表可用版本。

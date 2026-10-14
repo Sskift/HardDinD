@@ -1,0 +1,15 @@
+{"test":"fp_probe","case":"gp-syscall","ok":true,"status":"pass","detail":"rbx,rbp,r12-r15 across syscalls"}
+{"test":"fp_probe","case":"fp-preserve","ok":true,"status":"pass","detail":"x87+sse across mixed/blocking syscalls"}
+{"test":"fp_probe","case":"fp-signal-preserve","ok":true,"status":"pass","detail":"100 self-directed handlers"}
+{"test":"fp_probe","case":"fp-signal-edit","ok":true,"status":"pass","detail":"ucontext mxcsr+xmm0 edit"}
+{"test":"fp_probe","case":"gp-signal-edit","ok":true,"status":"pass","detail":"ucontext rbx,rbp,r12-r15 edit"}
+{"test":"fp_probe","case":"fp-nested","ok":true,"status":"pass","detail":"SA_NODEFER nested handler frames"}
+{"test":"fp_probe","case":"fp-threads-1","ok":true,"status":"pass","detail":"1 workers x 200 rounds affinity-rotate"}
+{"test":"fp_probe","case":"fp-threads-4","ok":true,"status":"pass","detail":"4 workers x 200 rounds affinity-rotate"}
+{"test":"fp_probe","case":"frame-churn","ok":true,"status":"pass","detail":"8 blocked owners + 200k syscalls, fds closed"}
+{"test":"fp_probe","case":"thread-exit-churn","ok":true,"status":"pass","detail":"400 exited threads, rss delta 0 KB"}
+{"test":"fp_probe","case":"runner-lifetime","ok":true,"status":"pass","detail":"200 short-lived mm lifecycles"}
+{"test":"fp_probe","case":"fork-fp","ok":true,"status":"pass","detail":"raw clone inheritance/independence"}
+{"test":"fp_probe","case":"exec-reset","ok":true,"status":"pass","detail":"mxcsr 0x1f80, fcw 0x37f after execve"}
+{"test":"fp_probe","case":"ptrace-prefix-semantics","ok":true,"status":"pass","detail":"FX short SET rejected-atomic, XSTATE short SET rejected-atomic (reject=atomic full-only)"}
+{"test":"fp_probe","case":"ptrace-gp-fp","ok":true,"status":"pass","detail":"full SETREGSET gpr/fx/xs + prefix-partial retained bytes (gpr=216 fx=512 xs=2696), edited+restored samples exact"}
