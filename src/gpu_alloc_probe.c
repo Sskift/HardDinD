@@ -82,6 +82,8 @@ static void one(int fd, uint32_t a, uint32_t b, int wide, const char *name)
     uint32_t child_value = a, mask = 0, declared = 0, flags = 0;
     uint32_t root = a, parent = a, object = 0x42000000u + ++serial;
     int child_readable = 1, rights_readable = 0, hprot = PROT_READ | PROT_WRITE;
+    const char *reported_name = name;
+    if (!strncmp(name, "finn_", 5)) { flags = 1; name += 5; }
     if (!strcmp(name, "auto_handle")) object = 0;
     if (!strcmp(name, "size_4")) declared = 4;
     if (!strcmp(name, "size_1")) declared = 1;
@@ -140,7 +142,7 @@ static void one(int fd, uint32_t a, uint32_t b, int wide, const char *name)
            "\"header_before\":\"%s\",\"header_after\":\"%s\","
            "\"child_before\":\"%s\",\"child_after\":\"%s\","
            "\"rights_before\":\"%s\",\"rights_after\":\"%s\"}\n",
-           wide ? "v64" : "v21", name, wide ? 64 : 21, rc, err, before, after, cb, ca, rb, ra);
+           wide ? "v64" : "v21", reported_name, wide ? 64 : 21, rc, err, before, after, cb, ca, rb, ra);
     if (!strcmp(name, "normal") || !strcmp(name, "auto_handle")) {
         char cn[64]; snprintf(cn, sizeof(cn), "%s_%s", wide ? "v64" : "v21", name);
         check(cn, rc == 0 && (wide ? h.b.status : h.a.status) == 0 && h.b.object != 0);
@@ -168,6 +170,7 @@ int main(int argc, char **argv)
     prefix = argv[1]; int count = atoi(argv[2]);
     if (count < 1 || count > 1000) return 2;
     setvbuf(stdout, NULL, _IOLBF, 0); page_size = (size_t)sysconf(_SC_PAGESIZE);
+    puts("GPU_ALLOC_SCHEMA 2");
     int fd = open_ctl(); check("open_control", fd >= 0); if (fd < 0) return 1;
     uint32_t a = client(fd), b = client(fd);
     check("clients", a != 0 && b != 0 && a != b); if (!a || !b) return 1;
@@ -177,7 +180,11 @@ int main(int argc, char **argv)
         "child_null", "child_low", "child_noncanonical", "child_wrap", "child_readonly", "child_none",
         "cross_rw", "cross_ro", "cross_none", "header_readonly", "header_none", "root_zero_bad_pointer"};
     static const char *extra[] = {"rights_zero", "rights_all", "rights_debug", "rights_low",
-        "rights_noncanonical", "rights_readonly", "rights_none", "rights_cross", "flags_2", "flags_high", "flags_finn"};
+        "rights_noncanonical", "rights_readonly", "rights_none", "rights_cross", "flags_2", "flags_high", "flags_finn",
+        "finn_size_4", "finn_size_1", "finn_size_max", "finn_child_null", "finn_child_low",
+        "finn_child_noncanonical", "finn_child_wrap", "finn_child_readonly", "finn_child_none",
+        "finn_cross_none", "finn_header_readonly", "finn_header_none", "finn_root_zero",
+        "finn_root_zero_bad_pointer", "finn_rights_low", "finn_rights_noncanonical", "finn_rights_readonly"};
     for (int wide = 0; wide <= 1; wide++) {
         for (size_t i = 0; i < sizeof(cases)/sizeof(*cases); i++) one(fd, a, b, wide, cases[i]);
         if (wide) for (size_t i = 0; i < sizeof(extra)/sizeof(*extra); i++) one(fd, a, b, 1, extra[i]);

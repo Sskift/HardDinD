@@ -15,6 +15,7 @@ import tarfile
 import harddind
 import gpu_policy_checks
 import gpu_alloc_checks
+import gpu_feature_checks
 from gpu_probe_checks import FD_CHECKS, RM_CHECKS, CTRL_CHECKS, BUILD_CHECKS
 from result_checks import memfd_backing_evidence
 
@@ -39,6 +40,7 @@ def main():
     mode.add_argument('--build-version', action='store_true')
     mode.add_argument('--share-policy', action='store_true')
     mode.add_argument('--alloc-object', action='store_true')
+    mode.add_argument('--system-features', action='store_true')
     p.add_argument('--native-baseline', type=pathlib.Path)
     p.add_argument('--gpu-count', type=int, default=4)
     p.add_argument('--async-wait', action='store_true')
@@ -48,16 +50,17 @@ def main():
     if not 1 <= a.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
     fd_mode, rm_mode, ctrl_mode, bv_mode = a.fd_registration, a.rm_client, a.rm_control, a.build_version
+    feature_mode = a.system_features
     alloc_mode = a.alloc_object
-    contract_mode = a.share_policy or alloc_mode
-    contract_checks = gpu_alloc_checks if alloc_mode else gpu_policy_checks
-    contract_key = 'alloc_observations' if alloc_mode else 'policy_observations'
-    contract_kind = 'gpu_fixed_alloc' if alloc_mode else 'gpu_share_policy'
+    contract_mode = a.share_policy or alloc_mode or feature_mode
+    contract_checks = gpu_feature_checks if feature_mode else gpu_alloc_checks if alloc_mode else gpu_policy_checks
+    contract_key = 'feature_observations' if feature_mode else 'alloc_observations' if alloc_mode else 'policy_observations'
+    contract_kind = 'gpu_system_features' if feature_mode else 'gpu_fixed_alloc' if alloc_mode else 'gpu_share_policy'
     if (ctrl_mode and a.gpu_count > 32) or ((ctrl_mode or bv_mode or contract_mode) and not a.native_baseline):
-        p.error('rm-control/build-version/share-policy/alloc-object require --native-baseline; rm-control requires gpu-count <= 32')
+        p.error('rm-control/build-version/share-policy/alloc-object/system-features require --native-baseline; rm-control requires gpu-count <= 32')
     if a.native_baseline and not (ctrl_mode or bv_mode or contract_mode):
-        p.error('--native-baseline requires --rm-control, --build-version or --share-policy/--alloc-object')
-    marker = 'GPU_ALLOC' if alloc_mode else 'GPU_SHARE' if contract_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+        p.error('--native-baseline requires --rm-control, --build-version or --share-policy/--alloc-object/--system-features')
+    marker = 'GPU_FEATURE' if feature_mode else 'GPU_ALLOC' if alloc_mode else 'GPU_SHARE' if contract_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
     expected_checks = contract_checks.EXPECTED_CHECKS if contract_mode else BUILD_CHECKS if bv_mode else (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(a.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
     devices = ['--device=/dev/harddind-nvidiactl']
     if fd_mode or rm_mode:
@@ -73,7 +76,7 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     inputs = [a.kernel.resolve(), a.disk.resolve(), a.probe.resolve(),
               repo / 'scripts/harddind.py', pathlib.Path(__file__).resolve(),
-              repo / 'scripts/gpu_probe_checks.py', repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/gpu_alloc_checks.py', repo / 'scripts/result_checks.py']
+              repo / 'scripts/gpu_probe_checks.py', repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/gpu_alloc_checks.py', repo / 'scripts/gpu_feature_checks.py', repo / 'scripts/result_checks.py']
     if ctrl_mode or bv_mode or contract_mode:
         inputs.append(a.native_baseline.resolve())
     report = {'kind': ('docker_' + contract_kind) if contract_mode else 'docker_gpu_build_version' if bv_mode else 'docker_gpu_rm_control' if ctrl_mode else 'docker_gpu_rm_client' if rm_mode else 'docker_gpu_fd_registration' if fd_mode else 'docker_gpu_control_transport', 'full_acceptance': False,
@@ -122,13 +125,13 @@ def main():
         recorded_probe = str(a.native_baseline.resolve().parent / 'gpu-guest-probe')
         if not (baseline_report.get('kind') == ('uml_' + contract_kind)
                 and baseline_report.get('diagnostic_finished')
-                and baseline_report.get('policy_iterations') == 50
+                and baseline_report.get('probe_iterations', baseline_report.get('policy_iterations')) == 50
                 and baseline_report.get('driver_version') == version_text
                 and baseline_report.get('sha256', {}).get(recorded_probe) == harddind.sha(a.probe)
                 and baseline.get('status') == after.get('status') == 'pass'
                 and contract_checks.compare(baseline.get(contract_key, {}),
                                               after.get(contract_key, {}))['matches']):
-            p.error('policy baseline must contain matching passing native phases for this exact probe and driver')
+            p.error('baseline must contain matching passing native phases for this exact probe and driver')
         report['native_baseline'] = str(a.native_baseline.resolve())
     os.sched_setaffinity(0, [0, 1, 2, 3])
     report['cpu_affinity'] = sorted(os.sched_getaffinity(0))

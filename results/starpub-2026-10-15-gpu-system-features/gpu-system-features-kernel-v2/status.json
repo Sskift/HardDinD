@@ -1,0 +1,10 @@
+{
+  "status": "finished",
+  "pid": 4146000,
+  "started_at": "2026-10-14T18:02:07.773904+00:00",
+  "build_pid": 4146047,
+  "exit_code": 0,
+  "kernel": "/root/harddind-rebuild/gpu-system-features-kernel-v2",
+  "kernel_sha256": "9192f196143242aab3dfacc2966d7bcc605db9cc0caadfe68b09a76cb42b557e",
+  "finished_at": "2026-10-14T18:04:06.754887+00:00"
+}

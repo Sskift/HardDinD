@@ -19,6 +19,7 @@ from gpu_probe_checks import FD_CHECKS, RM_CHECKS, CTRL_CHECKS, BUILD_CHECKS
 from result_checks import memfd_backing_evidence
 import gpu_policy_checks
 import gpu_alloc_checks
+import gpu_feature_checks
 
 
 def sha(path):
@@ -43,6 +44,7 @@ def main():
     mode.add_argument('--build-version', action='store_true')
     mode.add_argument('--share-policy', action='store_true')
     mode.add_argument('--alloc-object', action='store_true')
+    mode.add_argument('--system-features', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
     p.add_argument('--async-wait', action='store_true')
     p.add_argument('--async-debug', type=int, choices=range(8), default=0)
@@ -52,15 +54,16 @@ def main():
     if not 1 <= args.gpu_count <= 255:
         p.error('gpu-count must be between 1 and 255')
     fd_mode, rm_mode, ctrl_mode, bv_mode = args.fd_registration, args.rm_client, args.rm_control, args.build_version
+    feature_mode = args.system_features
     alloc_mode = args.alloc_object
-    contract_mode = args.share_policy or alloc_mode
-    contract_checks = gpu_alloc_checks if alloc_mode else gpu_policy_checks
-    contract_key = 'alloc_observations' if alloc_mode else 'policy_observations'
-    contract_kind = 'gpu_fixed_alloc' if alloc_mode else 'gpu_share_policy'
+    contract_mode = args.share_policy or alloc_mode or feature_mode
+    contract_checks = gpu_feature_checks if feature_mode else gpu_alloc_checks if alloc_mode else gpu_policy_checks
+    contract_key = 'feature_observations' if feature_mode else 'alloc_observations' if alloc_mode else 'policy_observations'
+    contract_kind = 'gpu_system_features' if feature_mode else 'gpu_fixed_alloc' if alloc_mode else 'gpu_share_policy'
     if ctrl_mode and args.gpu_count > 32: p.error('RM control supports at most 32 GPU IDs')
-    marker = 'GPU_ALLOC' if alloc_mode else 'GPU_SHARE' if contract_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
+    marker = 'GPU_FEATURE' if feature_mode else 'GPU_ALLOC' if alloc_mode else 'GPU_SHARE' if contract_mode else 'GPU_BUILD' if bv_mode else 'GPU_CTRL' if ctrl_mode else 'GPU_RM' if rm_mode else 'GPU_FD' if fd_mode else 'GPU_CONTROL'
     expected_checks = BUILD_CHECKS if bv_mode else (CTRL_CHECKS | {f'gpu_{i}_details' for i in range(args.gpu_count)}) if ctrl_mode else RM_CHECKS if rm_mode else FD_CHECKS if fd_mode else CHECKS
-    probe_source = 'gpu_alloc_probe.c' if alloc_mode else 'gpu_share_policy_probe.c' if contract_mode else 'gpu_build_version_probe.c' if bv_mode else 'gpu_rm_control_probe.c' if ctrl_mode else 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
+    probe_source = 'gpu_system_features_probe.c' if feature_mode else 'gpu_alloc_probe.c' if alloc_mode else 'gpu_share_policy_probe.c' if contract_mode else 'gpu_build_version_probe.c' if bv_mode else 'gpu_rm_control_probe.c' if ctrl_mode else 'gpu_rm_probe.c' if rm_mode else 'gpu_fd_probe.c' if fd_mode else 'gpu_guest_probe.c'
     argument_suffix = '' if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else 'ctl'
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,40}', args.name):
         p.error('invalid evidence name')
@@ -92,7 +95,7 @@ def main():
             sources = output / 'sources'; sources.mkdir()
             for path in [repo / 'src' / probe_source, pathlib.Path(__file__).resolve(),
                          repo / 'scripts/gpu_probe_checks.py',
-                         repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/gpu_alloc_checks.py',
+                         repo / 'scripts/gpu_policy_checks.py', repo / 'scripts/gpu_alloc_checks.py', repo / 'scripts/gpu_feature_checks.py',
                          repo / 'sources.lock.json',
                          repo / 'kernel/experiments/0012-um-gpu-control-transport.patch',
                          repo / 'kernel/experiments/0013-um-gpu-register-fd.patch',
@@ -116,6 +119,8 @@ def main():
                 shutil.copy2(repo / 'kernel/experiments/0025-um-gpu-policy-driver-validation.patch', sources / '0025-um-gpu-policy-driver-validation.patch')
             if '0026-um-gpu-fixed-alloc.patch' in stamp['patches']:
                 shutil.copy2(repo / 'kernel/experiments/0026-um-gpu-fixed-alloc.patch', sources / '0026-um-gpu-fixed-alloc.patch')
+            if '0027-um-gpu-system-features.patch' in stamp['patches']:
+                shutil.copy2(repo / 'kernel/experiments/0027-um-gpu-system-features.patch', sources / '0027-um-gpu-system-features.patch')
             if '0017-um-gpu-async-wait.patch' in stamp['patches']:
                 shutil.copy2(repo / 'kernel/experiments/0017-um-gpu-async-wait.patch', sources / '0017-um-gpu-async-wait.patch')
             program = output / 'gpu-guest-probe'
@@ -137,7 +142,8 @@ def main():
             shutil.copy2(program, root / 'gpu-guest-probe')
             init = root / 'sbin/harddind-gpu-control-init'
             argument = '50' if contract_mode else str(args.gpu_count) if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else version
-            report['policy_iterations'] = 50 if contract_mode else None
+            report['probe_iterations'] = 50 if contract_mode else None
+            report['policy_iterations'] = 50 if args.share_policy else None
             report['gpu_count'] = args.gpu_count if fd_mode or rm_mode or ctrl_mode or bv_mode or contract_mode else None
             init.write_text('''#!/bin/sh
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin

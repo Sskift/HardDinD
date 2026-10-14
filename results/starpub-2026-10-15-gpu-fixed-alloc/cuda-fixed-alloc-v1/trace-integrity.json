@@ -1,0 +1,6 @@
+{
+  "artifact": "docker.strace.gz",
+  "sha256_uncompressed": "e039da13a7b2a59dd4ce8272739e0e5cb94fe2beeef5bad1d5efe82523e5042b",
+  "matches_recorded_trace": true,
+  "note": "Backfilled the original CUDA strace omitted by the prior archive extension filter; no new runtime run."
+}

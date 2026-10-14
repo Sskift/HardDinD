@@ -59,6 +59,16 @@ class AllocationEvidenceTests(unittest.TestCase):
     def test_empty_baselines_cannot_pass_even_with_completion_flag(self):
         self.assertFalse(checks.compare({'observation_complete': True}, {'observation_complete': True})['matches'])
 
+    def test_extended_finn_matrix_is_complete_and_not_interchangeable(self):
+        text = gzip.decompress((pathlib.Path(__file__).parent / 'fixtures/gpu-alloc-native-v2.log.gz').read_bytes()).decode()
+        extended = checks.parse(text)
+        self.assertTrue(extended['probe_checks_pass'])
+        self.assertEqual(checks.compare(extended, extended)['matched'], 74)
+        self.assertFalse(checks.compare(self.native, extended)['matches'])
+        self.assertFalse(checks.compare(extended, self.native)['matches'])
+        self.assertFalse(checks.parse(text.replace('GPU_ALLOC_SCHEMA 2', 'GPU_ALLOC_SCHEMA 3'))['observation_complete'])
+        self.assertFalse(checks.parse(text + 'GPU_ALLOC_SCHEMA 2\n')['observation_complete'])
+
 
 if __name__ == '__main__':
     unittest.main()

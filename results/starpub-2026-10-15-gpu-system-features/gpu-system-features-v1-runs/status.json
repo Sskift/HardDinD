@@ -1,0 +1,104 @@
+{
+  "status": "finished",
+  "pid": 3888303,
+  "started_at": "2026-10-14T17:50:48.829332+00:00",
+  "runs": {
+    "gpu-system-features-v1": {
+      "pid": 3888314,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-control.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-system-features-kernel-v1",
+        "--name",
+        "gpu-system-features-v1",
+        "--system-features",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    },
+    "gpu-alloc-finn-v2": {
+      "pid": 3899688,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-control.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-system-features-kernel-v1",
+        "--name",
+        "gpu-alloc-finn-v2",
+        "--alloc-object",
+        "--async-wait"
+      ],
+      "exit_code": 0
+    },
+    "gpu-features-docker-v1": {
+      "pid": 3904794,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-control-docker.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-system-features-kernel-v1",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--probe",
+        "/root/harddind-rebuild/results/gpu-system-features-v1/gpu-guest-probe",
+        "--native-baseline",
+        "/root/harddind-rebuild/results/gpu-system-features-v1/report.json",
+        "--name",
+        "gpu-features-docker-v1",
+        "--system-features",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    },
+    "gpu-alloc-finn-docker-v2": {
+      "pid": 3930795,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-control-docker.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-system-features-kernel-v1",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--probe",
+        "/root/harddind-rebuild/results/gpu-alloc-finn-v2/gpu-guest-probe",
+        "--native-baseline",
+        "/root/harddind-rebuild/results/gpu-alloc-finn-v2/report.json",
+        "--name",
+        "gpu-alloc-finn-docker-v2",
+        "--alloc-object",
+        "--async-wait"
+      ],
+      "exit_code": 0
+    },
+    "cuda-system-features-v1": {
+      "pid": 4051488,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-cuda.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-system-features-kernel-v1",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "cuda-system-features-v1",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    },
+    "checks": {
+      "pid": 4143650,
+      "command": [
+        "make",
+        "check"
+      ],
+      "exit_code": 0
+    }
+  },
+  "finished_at": "2026-10-14T18:02:03.049163+00:00"
+}

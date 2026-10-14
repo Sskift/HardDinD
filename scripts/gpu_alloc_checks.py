@@ -14,6 +14,11 @@ _EXTRA = ['rights_zero', 'rights_all', 'rights_debug', 'rights_low',
           'rights_noncanonical', 'rights_readonly', 'rights_none', 'rights_cross',
           'flags_2', 'flags_high', 'flags_finn']
 EXPECTED_CASES = [f'v{n}_{c}' for n in (21, 64) for c in _CASES] + ['v64_' + c for c in _EXTRA]
+EXTENDED_CASES = EXPECTED_CASES + ['v64_finn_' + c for c in (
+    'size_4', 'size_1', 'size_max', 'child_null', 'child_low', 'child_noncanonical',
+    'child_wrap', 'child_readonly', 'child_none', 'cross_none', 'header_readonly',
+    'header_none', 'root_zero', 'root_zero_bad_pointer', 'rights_low',
+    'rights_noncanonical', 'rights_readonly')]
 EXPECTED_CHECKS = ['open_control', 'clients', 'v21_normal', 'v21_auto_handle',
                    'v64_normal', 'v64_auto_handle', 'four_threads_alloc_free',
                    'free_client_b', 'free_client_a'] + [f'independent_process_{i}' for i in range(4)]
@@ -25,15 +30,18 @@ def _complete(value):
             and 0 < ids[0].get('client_b', 0) < 2**32
             and ids[0]['client_a'] != ids[0]['client_b']
             and collections.Counter(n for n, _ in value.get('checks', [])) == collections.Counter(EXPECTED_CHECKS)
-            and [r.get('case') for r in value.get('results', [])] == EXPECTED_CASES
+            and value.get('schema', '1') in ('1', '2')
+            and [r.get('case') for r in value.get('results', [])] == (EXTENDED_CASES if value.get('schema') == '2' else EXPECTED_CASES)
             and value.get('ends') in (['0'], ['1']))
 
 
 def parse(content):
+    schemas = re.findall(r'^GPU_ALLOC_SCHEMA (\d+)$', content, re.M)
     value = {'checks': re.findall(r'^GPU_ALLOC_CHECK (\w+) (pass|fail)$', content, re.M),
              'results': [json.loads(x) for x in re.findall(r'^GPU_ALLOC_RESULT (.+)$', content, re.M)],
              'identities': [json.loads(x) for x in re.findall(r'^GPU_ALLOC_IDENTITIES (.+)$', content, re.M)],
-             'ends': re.findall(r'^GPU_ALLOC_END status=([01]) internal_cuda_verified=0$', content, re.M)}
+             'ends': re.findall(r'^GPU_ALLOC_END status=([01]) internal_cuda_verified=0$', content, re.M),
+             'schema': '1' if not schemas else schemas[0] if len(schemas) == 1 else 'invalid'}
     valid = _complete(value)
     try:
         if valid:
@@ -79,7 +87,7 @@ def contract(record, identities):
 
 def compare(baseline, observed):
     total = len(baseline.get('results', []))
-    if not (_complete(baseline) and _complete(observed)
+    if not (_complete(baseline) and _complete(observed) and baseline.get('schema', '1') == observed.get('schema', '1')
             and baseline.get('observation_complete') and observed.get('observation_complete')):
         return {'matches': False, 'matched': 0, 'total': total,
                 'differences': [{'error': 'missing, extra, or malformed observations'}]}
