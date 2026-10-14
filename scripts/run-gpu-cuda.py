@@ -38,7 +38,7 @@ def main():
             'internal_cuda_verified':False,'diagnostic_complete':False,'async_wait':a.async_wait,
             'started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'sha256':{str(f):harddind.sha(f) for f in inputs},'gpu_count':a.gpu_count,
-            'phases':{},'limitations':['manual device aliases; not Docker --gpus integration',
+            'phases':{},'limitations':['manual guest device selection; not Docker --gpus integration',
             'one process, sequential cards; concurrency and memory lifecycle stress remain',
             'ioctl tracing changes timing; not GPU performance acceptance']}
     (out/'sources').mkdir()
@@ -118,17 +118,27 @@ def main():
             with (out/'rootfs.tar').open('rb') as archive:require('import',base+['docker','import','-',image],stdin=archive)
             devices=['--device=/dev/harddind-nvidiactl:/dev/nvidiactl']
             devices += [f'--device=/dev/harddind-nvidia{i}:/dev/nvidia{i}' for i in range(a.gpu_count)]
-            # Add the UVM node when the tested backend actually provides it.
-            # A missing node is recorded, not replaced by an outer host device.
-            probe=run('uvm-node',base+['docker','run','--rm','--device=/dev/harddind-nvidia-uvm:/dev/nvidia-uvm',image,'/bin/true'])
-            probe['stderr']=(out/'uvm-node.stderr').read_text(errors='replace')
-            report['uvm_node_probe']=probe
-            missing=(probe['exit_code']>0 and 'error gathering device information' in probe['stderr']
-                     and '/dev/harddind-nvidia-uvm' in probe['stderr'] and 'no such file' in probe['stderr'])
-            if probe['timed_out'] or not probe['cleanup']['clean_shutdown'] or (probe['exit_code']!=0 and not missing):
-                raise RuntimeError('UVM node probe failed without a missing device')
-            report['uvm_node_available']=probe['exit_code']==0
-            if report['uvm_node_available']:devices+=['--device=/dev/harddind-nvidia-uvm:/dev/nvidia-uvm']
+            # Both paths belong to the guest daemon's filesystem. A backend
+            # can expose its standard UVM node without a HardDinD alias.
+            report['uvm_node_probes']=[]
+            report['uvm_node_available']=False
+            report['uvm_device_source']=None
+            for label,node in [('uvm-node','/dev/harddind-nvidia-uvm'),
+                               ('uvm-node-standard','/dev/nvidia-uvm')]:
+                probe=run(label,base+['docker','run','--rm',f'--device={node}:/dev/nvidia-uvm',image,'/bin/true'])
+                probe['guest_source']=node
+                probe['stderr']=(out/(label+'.stderr')).read_text(errors='replace')
+                report['uvm_node_probes'].append(probe)
+                report['uvm_node_probe']=probe
+                missing=(probe['exit_code']>0 and 'error gathering device information' in probe['stderr']
+                         and node in probe['stderr'] and 'no such file' in probe['stderr'])
+                if probe['timed_out'] or not probe['cleanup']['clean_shutdown'] or (probe['exit_code']!=0 and not missing):
+                    raise RuntimeError('UVM node probe failed without a missing device: '+node)
+                if probe['exit_code']==0:
+                    report['uvm_node_available']=True
+                    report['uvm_device_source']=node
+                    devices.append(f'--device={node}:/dev/nvidia-uvm')
+                    break
             trace_args=['/usr/bin/strace','-f','-qq','-yy','-s','128','-o','/tmp/cuda-syscalls.strace',
                         '-e','trace=%file,ioctl,mmap,munmap,clone,clone3']
             cmd=base+['docker','run','--name',container,*devices,'--env=LD_PRELOAD=/cuda-ioctl-trace.so',

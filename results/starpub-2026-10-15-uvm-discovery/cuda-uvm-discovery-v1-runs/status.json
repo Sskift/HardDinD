@@ -1,0 +1,32 @@
+{
+  "status": "finished",
+  "supervisor_pid": 813727,
+  "started_at": "2026-10-14T18:45:01.928873+00:00",
+  "runs": {
+    "checks": {
+      "pid": 813736,
+      "command": [
+        "make",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    "cuda-uvm-discovery-v1": {
+      "pid": 813944,
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/scripts/run-gpu-cuda.py",
+        "/root/harddind-rebuild",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-system-features-kernel-v2",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "cuda-uvm-discovery-v1",
+        "--async-wait"
+      ],
+      "exit_code": 1
+    }
+  },
+  "finished_at": "2026-10-14T18:46:01.028708+00:00"
+}

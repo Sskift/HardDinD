@@ -16,9 +16,11 @@
 | 管理 | events、context、system df、container/volume prune；外层原版 CLI 连接持久 daemon，stdin/TTY 和 buildx 入口 | 完整 system/builder 管理、多客户端与生命周期压力 |
 | Swarm | 单管理节点、service 副本、secret/config、scale/cleanup、overlay 上实际 VIP HTTP 请求 | 多节点、ingress 路由网格、stack、滚动更新和故障恢复 |
 | GPU | 保留真实 CUDA 计算失败检查；独立控制通道的 `--device`、查询和权限检查通过 | 完整 NVIDIA ABI 后端、内部计算/传输校验、多 GPU、内存生命周期与性能 |
-| 扩展 | 尚未专门验证 | Compose、plugin、checkpoint/restore 及其他上游兼容项 |
+| 扩展 | 固定 Compose 5.6.0 多服务配置、构建、健康依赖、exec、服务 DNS/HTTP、卷重建、三副本、日志与清理，独立实验 16/16 | Compose secrets/configs/profiles/watch、plugin、checkpoint/restore 及其他上游兼容项 |
 
 每个结果文件记录各项 pass/fail/not_tested；是否实际通过，应以对应内核和 fixture 的原始报告为准。这个表描述测试范围，不把未运行的场景声明为可用。
+
+后续独立证据还包括 [Compose 多服务](../results/starpub-2026-10-14-compose/README.md)、[GPU 系统能力与分配边界](../results/starpub-2026-10-15-gpu-system-features/README.md) 和 [POSIX 锁候选](../results/starpub-2026-10-15-posix-candidate-v1/README.md)。GPU 控制接口通过不代表内部计算可用；锁候选实际为 Docker 35/37，仍未合入正式补丁目录。这些运行使用各自记录的内核和输入，不能合并成当前版本的一次完整验收。
 
 最新内存权限实验的 56 个检查返回 53 pass、1 GPU fail、2 not_tested，guest 正常退出。新增项目是容器内真实内存映射语义；没有增加 GPU、出站网络或完整兼容性覆盖。证据见 `results/starpub-2026-10-14-protect/docker-protect-v3.json`。
 
