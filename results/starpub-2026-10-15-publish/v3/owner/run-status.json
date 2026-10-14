@@ -1,0 +1,244 @@
+{
+  "status": "finished",
+  "pid": 2660932,
+  "started_at": "2026-10-14T20:29:35.955839+00:00",
+  "steps": [
+    {
+      "name": "python-syntax",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "python3",
+        "-m",
+        "py_compile",
+        "/root/harddind-rebuild/publish-owner-v3/repo/scripts/run-published-ports.py",
+        "/root/harddind-rebuild/publish-owner-v3/repo/scripts/port_driver.py"
+      ],
+      "started_at": "2026-10-14T20:29:35.955898+00:00",
+      "expected": 0,
+      "pid": 2660949,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2660949,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:36.036907+00:00"
+    },
+    {
+      "name": "network-addresses",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "/root/harddind-rebuild/publish-owner-v3/build/network-probe",
+        "addresses",
+        "lo"
+      ],
+      "started_at": "2026-10-14T20:29:36.037292+00:00",
+      "expected": 0,
+      "pid": 2660951,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2660951,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:36.057696+00:00"
+    },
+    {
+      "name": "moby-script-syntax",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "bash",
+        "-n",
+        "/root/harddind-rebuild/publish-owner-v3/repo/scripts/build-moby.sh"
+      ],
+      "started_at": "2026-10-14T20:29:36.058145+00:00",
+      "expected": 0,
+      "pid": 2660953,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2660953,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:36.077723+00:00"
+    },
+    {
+      "name": "moby-jobs-invalid",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "bash",
+        "/root/harddind-rebuild/publish-owner-v3/repo/scripts/build-moby.sh",
+        "/root/harddind-rebuild/publish-owner-v3/build"
+      ],
+      "started_at": "2026-10-14T20:29:36.078114+00:00",
+      "expected": 1,
+      "pid": 2660955,
+      "exit_code": 1,
+      "cleanup": {
+        "process_group": 2660955,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:36.113986+00:00"
+    },
+    {
+      "name": "port-driver-tests",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_port_driver.py"
+      ],
+      "started_at": "2026-10-14T20:29:36.114474+00:00",
+      "expected": 0,
+      "pid": 2660976,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2660976,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:36.255128+00:00"
+    },
+    {
+      "name": "native-backend-tests",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/publish",
+        "-p",
+        "test_*.py"
+      ],
+      "started_at": "2026-10-14T20:29:36.255782+00:00",
+      "expected": 0,
+      "pid": 2661012,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2661012,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:36.669343+00:00"
+    },
+    {
+      "name": "moby-alias-tests",
+      "command": [
+        "flock",
+        "-x",
+        "/root/harddind-rebuild/publish-owner-v3/build/kernel-build.lock",
+        "/root/harddind-rebuild/publish-owner-v3/build/go-build-toolchain/bin/go",
+        "test",
+        "-timeout",
+        "90s",
+        "./daemon/libnetwork/internal/rlkclient",
+        "./daemon/libnetwork/portmappers/nat"
+      ],
+      "started_at": "2026-10-14T20:29:36.671061+00:00",
+      "expected": 0,
+      "pid": 2661106,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2661106,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:29:42.741982+00:00"
+    },
+    {
+      "name": "docker-runtime",
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/publish-owner-v3/repo/scripts/run-published-ports.py",
+        "/root/harddind-rebuild/publish-owner-v3/build",
+        "--name",
+        "publish-v3",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-cpuset-kernel-v1",
+        "--disk",
+        "/root/harddind-rebuild/publish-owner-v3/build/runtime-publish-v3.ext4"
+      ],
+      "started_at": "2026-10-14T20:29:42.750926+00:00",
+      "expected": 0,
+      "pid": 2663810,
+      "exit_code": 1,
+      "cleanup": {
+        "process_group": 2663810,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "finished_at": "2026-10-14T20:31:47.385692+00:00"
+    }
+  ],
+  "exit_code": 1,
+  "error": "RuntimeError('failed docker-runtime')",
+  "finished_at": "2026-10-14T20:31:47.386573+00:00"
+}

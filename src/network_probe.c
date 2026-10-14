@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <errno.h>
+#include <ifaddrs.h>
 #include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
@@ -13,6 +14,27 @@
 
 static void die(const char *s) { perror(s); exit(1); }
 int main(int argc, char **argv) {
+    if (argc == 3 && !strcmp(argv[1], "addresses")) {
+        struct ifaddrs *addresses;
+        if (getifaddrs(&addresses)) die("getifaddrs");
+        int found = 0;
+        for (struct ifaddrs *a = addresses; a; a = a->ifa_next) {
+            if (!a->ifa_addr || strcmp(a->ifa_name, argv[2])) continue;
+            int family = a->ifa_addr->sa_family;
+            const void *address;
+            if (family == AF_INET)
+                address = &((struct sockaddr_in *)a->ifa_addr)->sin_addr;
+            else if (family == AF_INET6)
+                address = &((struct sockaddr_in6 *)a->ifa_addr)->sin6_addr;
+            else continue;
+            char text[INET6_ADDRSTRLEN];
+            if (!inet_ntop(family, address, text, sizeof(text))) die("inet_ntop");
+            printf("%d %s\n", family == AF_INET ? 4 : 6, text);
+            found = 1;
+        }
+        freeifaddrs(addresses);
+        return found ? 0 : 1;
+    }
     if (argc == 3 && !strcmp(argv[1], "mtu")) {
         struct ifreq request = {0};
         if (strlen(argv[2]) >= sizeof(request.ifr_name)) return 2;
