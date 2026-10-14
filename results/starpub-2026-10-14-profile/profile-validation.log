@@ -1,0 +1,27 @@
+python3 -m unittest discover -s tests -v
+test_boot_and_outer_gpu_are_not_product_acceptance (test_acceptance.AcceptanceTests) ... ok
+test_missing_comparable_baseline_does_not_pass (test_acceptance.AcceptanceTests) ... ok
+test_missing_results_do_not_pass (test_acceptance.AcceptanceTests) ... ok
+test_skip_cannot_replace_gpu (test_acceptance.AcceptanceTests) ... ok
+test_overlapping_series_reapply_and_preserve_edits (test_patch_series.PatchSeriesTests) ... ok
+test_incomplete_or_mismatched_phases_are_rejected (test_profile_analysis.TraceTests) ... ok
+test_trapped_calls_resumed_calls_and_console_duplicates (test_profile_analysis.TraceTests) ... ok
+test_duplicate_cannot_replace_missing_gpu_evidence (test_result_checks.DockerEvidenceTests) ... ok
+test_missing_unused_or_duplicate_cache_is_not_verified (test_result_checks.DockerEvidenceTests) ... ok
+test_partial_success_followed_by_aborted_suite_is_not_pass (test_result_checks.DockerEvidenceTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.037s
+
+OK
+python3 -m py_compile scripts/*.py
+empty {'native': 0.0021, 'guest-0': 0.094, 'guest-256': 0.037, 'guest-4096': 0.039}
+getpid {'native': 0.7057, 'trap': 2.0988, 'guest-0': 13.1484, 'guest-256': 3.9983, 'guest-4096': 4.1471}
+map_none {'native': 2.3535, 'guest-0': 32.963, 'guest-256': 16.061, 'guest-4096': 14.01}
+map_1page {'native': 5.9179, 'guest-0': 140.355, 'guest-256': 100.28, 'guest-4096': 74.708}
+map_16pages {'native': 34.6148, 'guest-0': 806.518, 'guest-256': 583.651, 'guest-4096': 481.236}
+map_protect {'native': 36.9324, 'guest-0': 903.578, 'guest-256': 689.812, 'guest-4096': 510.484}
+reuse_16pages {'native': 0.0651, 'guest-0': 0.169, 'guest-256': 0.115, 'guest-4096': 0.098}
+protect_pair {'native': 5.0246, 'guest-0': 134.177, 'guest-256': 125.535, 'guest-4096': 105.502}
+fork {'native': 94.8904, 'guest-0': 1295.2928, 'guest-256': 1021.0016, 'guest-4096': 1809.4016}
+exec {'native': 253.4043, 'guest-0': 3427.4304, 'guest-256': 3016.7136, 'guest-4096': 3610.1184}

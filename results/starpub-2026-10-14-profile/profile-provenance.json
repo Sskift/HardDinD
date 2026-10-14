@@ -1,0 +1,67 @@
+{
+  "groups": {
+    "2241720": [
+      [],
+      []
+    ],
+    "2245840": [
+      [],
+      []
+    ],
+    "2244265": [
+      [],
+      []
+    ],
+    "2241341": [
+      [],
+      []
+    ],
+    "2241179": [
+      [],
+      []
+    ],
+    "2242183": [
+      [],
+      []
+    ],
+    "2243272": [
+      [],
+      []
+    ],
+    "2245902": [
+      [],
+      []
+    ],
+    "2244674": [
+      [],
+      []
+    ],
+    "2242734": [
+      [],
+      []
+    ],
+    "2243805": [
+      [],
+      []
+    ]
+  },
+  "profile_cow_files": [],
+  "original_service": {
+    "exit_code": 0,
+    "output": "server=29.8.2 running=0 images=6"
+  },
+  "kernel_sha256": "e85dfb9e289557753e4eb797c95482741a90f8ae4eb71afcd56ad3a09ed04c19",
+  "irqcost_sha256": "14240c6f7103cc2c8623e000f3faab8e4fdee5d9a7972c417b5e5a232eb23a79",
+  "source_sha256": {
+    "arch/um/os-Linux/signal.c": "0f9b5169ce39c77c1f16629b946aefd85724a81b08284c12b619634f2133c227",
+    "arch/um/os-Linux/smp.c": "0d29703afc02a3515068fda0442ba6934963695d75d21fdfddad9471b83ab15c",
+    "arch/um/os-Linux/skas/process.c": "f4968db4db36b7a3256be09df4b613af4a883983b722b32d08df25ecddee8614",
+    "arch/um/kernel/tlb.c": "bf769b37a223578c8aa72f68af60763ec7032dec764b216daee3f656397098c4",
+    "arch/um/kernel/skas/stub.c": "f6aa006a1f69a45b87d439ecea7902d84d99a22931ca1afd40a78522e4d89330",
+    "arch/x86/um/os-Linux/mcontext.c": "bc5268a292dcea6e50f38be236ab22d1203543207c730bf8d99f88e2c5f086a4"
+  },
+  "host_kernel": "5.15.0-177-generic",
+  "cpu_max": "3599999 100000",
+  "perf_event_paranoid": "4",
+  "clean": true
+}

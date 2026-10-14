@@ -5,7 +5,7 @@ check:
 	python3 -m unittest discover -s tests -v
 	python3 -m py_compile scripts/*.py
 	@for f in scripts/*.sh; do bash -n "$$f"; done
-	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh tests/thread-init tests/dispatch-init; do sh -n "$$f"; done
+	@for f in tests/guest-init tests/docker-init tests/docker-suite.sh tests/thread-init tests/dispatch-init tests/profile-init; do sh -n "$$f"; done
 
 kernel:
 	bash scripts/build-kernel.sh "$(WORK)"

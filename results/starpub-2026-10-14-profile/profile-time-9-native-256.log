@@ -1,0 +1,61 @@
+PROFILE_BEGIN case=empty repeat=0 iterations=128
+PROFILE_END {"case":"empty","repeat":0,"iterations":128,"seconds":0.000000300,"verified":true}
+PROFILE_BEGIN case=getpid repeat=0 iterations=100000
+PROFILE_END {"case":"getpid","repeat":0,"iterations":100000,"seconds":0.053116905,"verified":true}
+PROFILE_BEGIN case=map_none repeat=0 iterations=128
+PROFILE_END {"case":"map_none","repeat":0,"iterations":128,"seconds":0.000224076,"verified":true}
+PROFILE_BEGIN case=map_1page repeat=0 iterations=128
+PROFILE_END {"case":"map_1page","repeat":0,"iterations":128,"seconds":0.000648856,"verified":true}
+PROFILE_BEGIN case=map_16pages repeat=0 iterations=128
+PROFILE_END {"case":"map_16pages","repeat":0,"iterations":128,"seconds":0.003841097,"verified":true}
+PROFILE_BEGIN case=map_protect repeat=0 iterations=128
+PROFILE_END {"case":"map_protect","repeat":0,"iterations":128,"seconds":0.004110312,"verified":true}
+PROFILE_BEGIN case=reuse_16pages repeat=0 iterations=128
+PROFILE_END {"case":"reuse_16pages","repeat":0,"iterations":128,"seconds":0.000007965,"verified":true}
+PROFILE_BEGIN case=protect_pair repeat=0 iterations=128
+PROFILE_END {"case":"protect_pair","repeat":0,"iterations":128,"seconds":0.000544740,"verified":true}
+PROFILE_BEGIN case=fork repeat=0 iterations=40
+PROFILE_END {"case":"fork","repeat":0,"iterations":40,"seconds":0.003442070,"verified":true}
+PROFILE_BEGIN case=exec repeat=0 iterations=40
+PROFILE_END {"case":"exec","repeat":0,"iterations":40,"seconds":0.010107726,"verified":true}
+PROFILE_BEGIN case=empty repeat=1 iterations=128
+PROFILE_END {"case":"empty","repeat":1,"iterations":128,"seconds":0.000000272,"verified":true}
+PROFILE_BEGIN case=getpid repeat=1 iterations=100000
+PROFILE_END {"case":"getpid","repeat":1,"iterations":100000,"seconds":0.079219753,"verified":true}
+PROFILE_BEGIN case=map_none repeat=1 iterations=128
+PROFILE_END {"case":"map_none","repeat":1,"iterations":128,"seconds":0.000363508,"verified":true}
+PROFILE_BEGIN case=map_1page repeat=1 iterations=128
+PROFILE_END {"case":"map_1page","repeat":1,"iterations":128,"seconds":0.000866117,"verified":true}
+PROFILE_BEGIN case=map_16pages repeat=1 iterations=128
+PROFILE_END {"case":"map_16pages","repeat":1,"iterations":128,"seconds":0.005020181,"verified":true}
+PROFILE_BEGIN case=map_protect repeat=1 iterations=128
+PROFILE_END {"case":"map_protect","repeat":1,"iterations":128,"seconds":0.005320167,"verified":true}
+PROFILE_BEGIN case=reuse_16pages repeat=1 iterations=128
+PROFILE_END {"case":"reuse_16pages","repeat":1,"iterations":128,"seconds":0.000008438,"verified":true}
+PROFILE_BEGIN case=protect_pair repeat=1 iterations=128
+PROFILE_END {"case":"protect_pair","repeat":1,"iterations":128,"seconds":0.000712575,"verified":true}
+PROFILE_BEGIN case=fork repeat=1 iterations=40
+PROFILE_END {"case":"fork","repeat":1,"iterations":40,"seconds":0.003822312,"verified":true}
+PROFILE_BEGIN case=exec repeat=1 iterations=40
+PROFILE_END {"case":"exec","repeat":1,"iterations":40,"seconds":0.010381917,"verified":true}
+PROFILE_BEGIN case=empty repeat=2 iterations=128
+PROFILE_END {"case":"empty","repeat":2,"iterations":128,"seconds":0.000000194,"verified":true}
+PROFILE_BEGIN case=getpid repeat=2 iterations=100000
+PROFILE_END {"case":"getpid","repeat":2,"iterations":100000,"seconds":0.067476967,"verified":true}
+PROFILE_BEGIN case=map_none repeat=2 iterations=128
+PROFILE_END {"case":"map_none","repeat":2,"iterations":128,"seconds":0.000218144,"verified":true}
+PROFILE_BEGIN case=map_1page repeat=2 iterations=128
+PROFILE_END {"case":"map_1page","repeat":2,"iterations":128,"seconds":0.000630656,"verified":true}
+PROFILE_BEGIN case=map_16pages repeat=2 iterations=128
+PROFILE_END {"case":"map_16pages","repeat":2,"iterations":128,"seconds":0.003841219,"verified":true}
+PROFILE_BEGIN case=map_protect repeat=2 iterations=128
+PROFILE_END {"case":"map_protect","repeat":2,"iterations":128,"seconds":0.004134525,"verified":true}
+PROFILE_BEGIN case=reuse_16pages repeat=2 iterations=128
+PROFILE_END {"case":"reuse_16pages","repeat":2,"iterations":128,"seconds":0.000008220,"verified":true}
+PROFILE_BEGIN case=protect_pair repeat=2 iterations=128
+PROFILE_END {"case":"protect_pair","repeat":2,"iterations":128,"seconds":0.000561934,"verified":true}
+PROFILE_BEGIN case=fork repeat=2 iterations=40
+PROFILE_END {"case":"fork","repeat":2,"iterations":40,"seconds":0.003245898,"verified":true}
+PROFILE_BEGIN case=exec repeat=2 iterations=40
+PROFILE_END {"case":"exec","repeat":2,"iterations":40,"seconds":0.010164618,"verified":true}
+PROFILE_COMPLETE

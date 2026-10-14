@@ -1,0 +1,6 @@
+{"test":"host_irq_mask_pair","repeat":0,"iterations":100000,"seconds":0.147276234,"verified":true}
+{"test":"host_irq_mask_pair","repeat":1,"iterations":100000,"seconds":0.152950443,"verified":true}
+{"test":"host_irq_mask_pair","repeat":2,"iterations":100000,"seconds":0.156840205,"verified":true}
+{"test":"host_irq_mask_pair","repeat":3,"iterations":100000,"seconds":0.157867331,"verified":true}
+{"test":"host_irq_mask_pair","repeat":4,"iterations":100000,"seconds":0.157916704,"verified":true}
+{"test":"host_irq_mask_pair","repeat":5,"iterations":100000,"seconds":0.147978801,"verified":true}

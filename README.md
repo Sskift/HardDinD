@@ -35,6 +35,8 @@
 
 后续的 [系统调用与进程创建优化](results/starpub-2026-10-14-performance/) 重新测量了原生和各版内核。在最后一轮相同 CPU 的交错对照中，10 万次系统调用从 0.557 秒降到 0.481 秒，100 次 fork/exec 从 0.783 秒降到 0.460 秒。四线程计算本轮接近原生，但系统调用、fork/exec、映射分别仍约为原生的 8.45、15.44、29.47 倍。早期对照中出现的崩溃和中间版本的性能回退均保留，不以重测覆盖。
 
+进一步的 [执行开销定位](results/starpub-2026-10-14-profile/) 用独立计时和宿主追踪确认了逐页缺页、频繁信号屏蔽、权限变更重做 mmap，以及 fork/exec 重建执行进程的成本。报告给出具体函数、调用次数和优化顺序；本轮增加诊断能力，没有把候选优化或微基准结果计为完整性能验收。
+
 ## 开发与复现
 
 内核构建和运行要求 Linux x86_64；需要 Python 3.9+、GCC、make、flex、bison、bc、libelf 开发文件、e2fsprogs、util-linux（flock）、patch 和 tar。准备 Docker rootfs 需要容器内 root，以设置文件所有权和执行 chroot，不要求外层特权容器。GPU 测试镜像使用外层已安装的 NVIDIA `libcuda`、PTX JIT 库及其 glibc 依赖，另行记录哈希；这些库不纳入 Git，也不能代替 GPU 设备后端。
