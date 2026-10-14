@@ -276,12 +276,12 @@ def main():
                     time.sleep(0.05)
                 upd = cli('update-' + str(i), 'update', '--cpus', target, name, timeout=20)
                 require(upd, 'docker update ' + target)
-                snap = checked_cli('snapshot-' + str(i), 'exec', name, PROBE_PATH, 'snapshot', timeout=20)
                 cfg = parse_inspect(checked_cli('postupdate-' + str(i), 'inspect', '-f', INSPECT_TEMPLATE, name, timeout=20)['stdout'])
                 identities.append(cfg.get('id'))
-                snap_event = checks.parse_events(snap['stdout'])
-                snapshots.append({'target_cpus': target, 'snapshot': snap_event[0] if snap_event else None,
-                                  'inspect': cfg, 'update_exit': upd['exit_code']})
+                # The running probe already samples cpu.max. A docker exec
+                # observer would itself consume the measured cgroup's quota.
+                snapshots.append({'target_cpus': target, 'inspect': cfg,
+                                  'update_exit': upd['exit_code']})
             waited = checked_cli('wait-' + name, 'wait', name, timeout=40)
             final = parse_inspect(checked_cli('final-' + name, 'inspect', '-f', INSPECT_TEMPLATE, name, timeout=20)['stdout'])
             identities.append(final.get('id'))
@@ -393,15 +393,13 @@ def main():
                 for label, result in zip(labels, window_results):
                     report['checks'][label] = result
             timeline = report['phases']['live_update']
-            expected_raws = ['200000 100000', '50000 100000', '200000 100000']
-            observed_raws = []
-            for s in timeline['snapshots']:
-                raw = (s.get('snapshot') or {}).get('cgroup', {}).get('cpu.max', {}).get('raw')
-                observed_raws.append(raw)
+            expected_keys = [(0, 200000, 100000), (0, 50000, 100000), (0, 200000, 100000)]
+            observed_keys = [s['key'] for s in checks.quota_segments(
+                [e for e in timeline['events'] if e.get('event') == 'sample'])]
             report['checks']['update_timeline'] = {
-                'status': checks.PASS if observed_raws == expected_raws[1:] else checks.FAIL,
-                'reason': 'docker exec snapshots bracket each docker update',
-                'evidence': {'expected_after_update': expected_raws[1:], 'observed': observed_raws}}
+                'status': checks.PASS if observed_keys == expected_keys else checks.FAIL,
+                'reason': 'running probe observes each docker update through its own cpu.max',
+                'evidence': {'expected': expected_keys, 'observed': observed_keys}}
             report['checks']['same_container_identity'] = {
                 'status': checks.PASS if timeline['same_container'] else checks.FAIL,
                 'reason': 'updates and snapshots all target the container created at run -d',

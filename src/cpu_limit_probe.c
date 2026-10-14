@@ -249,9 +249,12 @@ static int cmd_spin(int argc, char **argv) {
     if (!ids) { perror("calloc"); return 1; }
 
     struct cg_reading cg0 = read_cg();
+    uint64_t sampler0 = now_ns(CLOCK_THREAD_CPUTIME_ID);
     uint64_t proc0 = now_ns(CLOCK_PROCESS_CPUTIME_ID);
-    printf("{\"event\":\"start\",\"wall_ns\":%llu,\"proc_cpu_ns\":%llu,\"threads\":%d,\"nproc\":%ld,\"clk_tck\":%ld,",
-           (unsigned long long)t0, (unsigned long long)proc0, threads,
+    printf("{\"event\":\"start\",\"wall_ns\":%llu,\"proc_cpu_ns\":%llu,"
+           "\"sampler_cpu_ns\":%llu,\"load_deadline_ns\":%llu,\"threads\":%d,\"nproc\":%ld,\"clk_tck\":%ld,",
+           (unsigned long long)t0, (unsigned long long)proc0,
+           (unsigned long long)sampler0, (unsigned long long)spin_deadline, threads,
            (long)sysconf(_SC_NPROCESSORS_ONLN), (long)sysconf(_SC_CLK_TCK));
     json_affinity("affinity", &own);
     json_cg("cgroup", &cg0);
@@ -286,12 +289,13 @@ static int cmd_spin(int argc, char **argv) {
 
     uint64_t t1 = now_ns(CLOCK_MONOTONIC);
     uint64_t proc1 = now_ns(CLOCK_PROCESS_CPUTIME_ID);
+    uint64_t sampler1 = now_ns(CLOCK_THREAD_CPUTIME_ID);
     struct cg_reading cg1 = read_cg();
     uint64_t total = 0;
     fputs("{\"event\":\"end\",\"wall_ns\":", stdout);
     printf("%llu", (unsigned long long)t1);
-    printf(",\"duration_ns\":%llu,\"proc_cpu_ns\":%llu,\"workers\":[",
-           (unsigned long long)(t1 - t0), (unsigned long long)proc1);
+    printf(",\"duration_ns\":%llu,\"proc_cpu_ns\":%llu,\"sampler_cpu_ns\":%llu,\"workers\":[",
+           (unsigned long long)(t1 - t0), (unsigned long long)proc1, (unsigned long long)sampler1);
     for (int i = 0; i < threads; i++) {
         uint64_t used = workers[i].cpu_end - workers[i].cpu_start;
         total += used;

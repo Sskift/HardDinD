@@ -1,0 +1,18 @@
+{
+  "reparsed_phase_verdicts": {
+    "unthrottled_reference": "indeterminate",
+    "cpus_flag_quota": "pass",
+    "explicit_period_quota": "pass",
+    "cpuset_single": "indeterminate",
+    "cpuset_range": "pass",
+    "cpuset_with_quota": "pass",
+    "update_window_initial_2": "pass",
+    "update_window_half": "indeterminate",
+    "update_window_recovered_2": "pass"
+  },
+  "raw_commands": 69,
+  "process_groups_empty": 71,
+  "source_hashes_match": true,
+  "kernel_patch_series_unchanged": true,
+  "runtime_verdict": "indeterminate"
+}

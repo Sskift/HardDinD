@@ -1,0 +1,23 @@
+{
+  "status": "finished",
+  "phase": "running_docker_checks",
+  "started_at": "2026-10-14T19:42:50.792935+00:00",
+  "supervisor_pid": 1894924,
+  "kernel_sha256": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+  "pid": 1944706,
+  "command": [
+    "python3",
+    "/root/harddind-rebuild/cpu-limits-owner-v2/repo/scripts/run-cpu-limits.py",
+    "/root/harddind-rebuild/cpu-limits-owner-v2/run",
+    "--kernel",
+    "/root/harddind-rebuild/cpu-cpuset-kernel-v1",
+    "--disk",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "--name",
+    "cpu-limits-v2",
+    "--cpus",
+    "4"
+  ],
+  "exit_code": 2,
+  "finished_at": "2026-10-14T19:48:34.951524+00:00"
+}

@@ -69,8 +69,14 @@ def spin_summary(events):
         if (any(w.get(k) != 0 for k in ('getcpu_errors', 'getcpu_oor', 'affinity_start_errno', 'affinity_end_errno'))
                 or not w['cpus_seen'] or not w['affinity_start'] or not w['affinity_end'] or w['cpu_ns'] <= 0):
             raise ValueError('missing or failed worker CPU observations')
+    active_wall_s = (min(start['load_deadline_ns'], end['wall_ns']) - start['wall_ns']) / 1e9
+    sampler_ns = end['sampler_cpu_ns'] - start['sampler_cpu_ns']
+    if active_wall_s <= 0 or sampler_ns < 0:
+        raise ValueError('invalid busy interval or sampler counter')
     rates = {}
-    rates['thread'] = (end['worker_cpu_ns'] / 1e9) / wall_s if wall_s else 0.0
+    # Sum every thread, including the observer, before comparing with process
+    # accounting. Preserve worker-only and sampler rates separately below.
+    rates['thread'] = ((end['worker_cpu_ns'] + sampler_ns) / 1e9) / wall_s
     rates['proc'] = ((end['proc_cpu_ns'] - start['proc_cpu_ns']) / 1e9) / wall_s if wall_s else 0.0
     d0, d1 = end['stat_start'], end['stat_end']
     if d0.get('present') != 1 or d1.get('present') != 1:
@@ -82,6 +88,10 @@ def spin_summary(events):
         raise ValueError('CPU counters moved backwards')
     rates['stat'] = (stat_delta['usage_usec'] / 1e6) / wall_s if wall_s else 0.0
     return {'start': start, 'end': end, 'samples': samples, 'wall_s': wall_s,
+            'active_wall_s': active_wall_s,
+            'thread_basis': 'workers_plus_sampler',
+            'worker_cpu_cores': end['worker_cpu_ns'] / 1e9 / wall_s,
+            'sampler_cpu_cores': sampler_ns / 1e9 / wall_s,
             'rates': rates, 'stat_delta': stat_delta, 'workers': end['workers']}
 
 
@@ -119,7 +129,9 @@ def classify_reference(summary, ncpu):
     if not controller_present(summary):
         return _result(FAIL, 'cpu.stat controller absent in container')
     threads = summary['start']['threads']
-    expected = min(threads, ncpu)
+    # The final sleeping sampler can wake after busy workers' deadline. That
+    # known idle tail is not an offered-load failure or extra usable capacity.
+    expected = min(threads, ncpu) * summary['active_wall_s'] / summary['wall_s']
     rates = summary['rates']
     delta = summary['stat_delta']
     if quota_setting(summary) is not None:
@@ -155,7 +167,9 @@ def classify_quota(summary, expected, period_s, reference=None):
     common = {'expected': expected, 'period_s': period_s, 'wall_s': wall,
               'lower': lower, 'upper': upper, 'rates': rates, 'tolerance': tol,
               'stat_delta': delta,
-              'nonworker_cpu_cores': rates['proc'] - rates['thread'],
+              'unaccounted_thread_cpu_cores': rates['proc'] - rates['thread'],
+              'worker_cpu_cores': summary['worker_cpu_cores'],
+              'sampler_cpu_cores': summary['sampler_cpu_cores'],
               'other_process_cpu_cores': rates['stat'] - rates['proc']}
     if max(rates.values()) > upper:
         return _result(FAIL, 'consumption exceeds the CFS quota+period bound', **common)
@@ -218,7 +232,7 @@ def classify_cpuset(summary, expected_cpus, expected_quota=None, period_s=0.1, r
     if quota_setting(summary) is not None:
         return _result(FAIL, 'cpuset-only run unexpectedly has a CPU quota')
     threads = summary['start']['threads']
-    expected = min(threads, len(expected_set))
+    expected = min(threads, len(expected_set)) * summary['active_wall_s'] / summary['wall_s']
     rates = summary['rates']
     agree, tol = rates_agree(rates, expected)
     delta = summary['stat_delta']

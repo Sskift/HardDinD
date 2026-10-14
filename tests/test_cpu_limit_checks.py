@@ -34,7 +34,7 @@ def cgroup(quota=None, period=100000, throttled=0, throttled_usec=0,
 def spin_event_stream(*, threads=4, wall_s=6.0, consumed_cores=None, quota=None,
                       period_us=100000, throttled=0, throttled_usec=0,
                       stat_cores=None, proc_cores=None, cpuset_eff="0-3",
-                      worker_cpus=None, affinity_cpus=None):
+                      worker_cpus=None, affinity_cpus=None, sampler_cores=0):
     """Build a probe JSONL text blob with controllable consumption rates."""
     if consumed_cores is None:
         consumed_cores = threads
@@ -44,9 +44,10 @@ def spin_event_stream(*, threads=4, wall_s=6.0, consumed_cores=None, quota=None,
         affinity_cpus = sorted(checks.parse_cpu_list(cpuset_eff))
     wall_ns = int(wall_s * 1e9)
     worker_cpu = int(consumed_cores * wall_s * 1e9) // threads
-    proc_used = int((proc_cores if proc_cores is not None else consumed_cores) * wall_s * 1e9)
-    stat_used = int((stat_cores if stat_cores is not None else consumed_cores) * wall_s * 1e6)
+    proc_used = int((proc_cores if proc_cores is not None else consumed_cores + sampler_cores) * wall_s * 1e9)
+    stat_used = int((stat_cores if stat_cores is not None else consumed_cores + sampler_cores) * wall_s * 1e6)
     start = {"event": "start", "wall_ns": 0, "proc_cpu_ns": 0, "threads": threads,
+             "sampler_cpu_ns": 0, "load_deadline_ns": wall_ns,
              "nproc": 4, "clk_tck": 100, "affinity": affinity_cpus,
              "cgroup": cgroup(quota, period_us, 0, 0, 0.0, cpuset_eff, 0)}
     workers = [{"idx": i, "cpu_ns": worker_cpu, "cpus_seen": worker_cpus,
@@ -55,6 +56,7 @@ def spin_event_stream(*, threads=4, wall_s=6.0, consumed_cores=None, quota=None,
                 "affinity_start": affinity_cpus, "affinity_end": affinity_cpus,
                 "sink": 1} for i in range(threads)]
     end = {"event": "end", "wall_ns": wall_ns, "duration_ns": wall_ns,
+           "sampler_cpu_ns": int(sampler_cores * wall_s * 1e9),
            "proc_cpu_ns": proc_used, "workers": workers,
            "worker_cpu_ns": worker_cpu * threads,
            "stat_start": stat(0, 0, 0, 0),
@@ -93,6 +95,13 @@ class BandTests(unittest.TestCase):
 
 
 class ReferenceTests(unittest.TestCase):
+    def test_idle_tail_after_worker_deadline_is_accounted(self):
+        events = spin_event_stream(consumed_cores=4)
+        events[-1]['wall_ns'] += 100000000
+        events[-1]['duration_ns'] += 100000000
+        r, _ = classify(events, checks.classify_reference, 4)
+        self.assertEqual(r['status'], checks.PASS, r)
+
     def test_full_consumption_passes(self):
         events = spin_event_stream(consumed_cores=4)
         r, _ = classify(events, checks.classify_reference, 4)
@@ -185,6 +194,14 @@ class QuotaTests(unittest.TestCase):
 
 
 class CpusetTests(unittest.TestCase):
+    def test_sampler_thread_accounted_separately_on_one_cpu(self):
+        events = spin_event_stream(consumed_cores=.92, sampler_cores=.08,
+                                   cpuset_eff='0', worker_cpus=[0], affinity_cpus=[0])
+        r, summary = classify(events, checks.classify_cpuset, {0})
+        self.assertEqual(r['status'], checks.PASS, r)
+        self.assertAlmostEqual(summary['sampler_cpu_cores'], .08)
+        self.assertAlmostEqual(summary['rates']['thread'], 1.0)
+
     def test_single_cpu_pinning(self):
         events = spin_event_stream(consumed_cores=1.0, cpuset_eff="0",
                                    worker_cpus=[0], affinity_cpus=[0])

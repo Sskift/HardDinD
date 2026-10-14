@@ -11,7 +11,7 @@
 | 镜像与构建 | import/save/load、commit/diff/history、export/import、tag/rmi、多阶段 BuildKit 与 cache mount；ECR 固定摘要冷拉取、联网 RUN 下载与 SHA 校验 | push、登录与凭据隔离、registry/manifest、更多 buildx/bake 场景；Docker Hub 外层直连超时尚未解决 |
 | 存储 | 容器间共享命名卷、guest bind mount、tmpfs、只读文件系统、docker cp、按标签清理；镜像、容器与命名卷跨 guest 正常重启保留 | 外层路径的正确映射、异常恢复、I/O 性能 |
 | 应用内存语义 | 容器内执行权限读写检查、MADV_DONTNEED、同地址文件替换、COW、fork、文件截断触发 SIGBUS | 更广应用、多线程并发撤销映射、长期压力与内部隔离 |
-| 资源与权限 | memory OOM、pids 限制、动态写入 CPU/memory/pids 配置、guest seccomp、特权挂载、NET_ADMIN、user namespace | CPU 限制首轮实测：`--cpus` 节流通过，cpuset 因缺少内核控制器被丢弃；已补配置，重建验收待完成。CPU shares、更多 device/cgroup 控制、内部隔离审计 |
+| 资源与权限 | memory OOM、pids 限制、动态写入 CPU/memory/pids 配置、guest seccomp、特权挂载、NET_ADMIN、user namespace | CPU 限制实测：`--cpus` 节流有效；补齐内核控制器后 cpuset 已实际限制线程亲和性与运行 CPU，整组验收仍有计量开销造成的无法判定项。CPU shares、更多 device/cgroup 控制、内部隔离审计 |
 | 单机网络 | bridge/DNS、网络连接断开、IPv6 地址、guest 内 published port/port inspect；IPv4 HTTPS、显式外层 TCP/UDP 转发与删除；MTU 配置及用户覆盖；可选补丁的 IPv4 自动发布、冲突回滚、并发发布与正常重启恢复 | IPv6 流量、不同外层地址复用同一端口、多种网络驱动、异常恢复；已测负载仍明显慢于原生 |
 | 管理 | events、context、system df、container/volume prune；外层原版 CLI 连接持久 daemon，stdin/TTY 和 buildx 入口 | 完整 system/builder 管理、多客户端与生命周期压力 |
 | Swarm | 单管理节点、service 副本、secret/config、scale/cleanup、overlay 上实际 VIP HTTP 请求 | 多节点、ingress 路由网格、stack、滚动更新和故障恢复 |
