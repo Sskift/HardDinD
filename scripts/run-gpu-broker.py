@@ -19,10 +19,32 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def clone_records(content):
+    pending, records = {}, []
+    for line in content.splitlines():
+        start = re.match(r'(\d+) +\d+:\d+:\d+\.\d+ clone\(', line)
+        resumed = re.match(r'(\d+) +\d+:\d+:\d+\.\d+ <\.\.\. clone resumed>', line)
+        if start and '<unfinished ...>' in line:
+            if start[1] in pending:
+                raise ValueError('overlapping clone entries')
+            pending[start[1]] = line.split('<unfinished ...>', 1)[0]
+        elif resumed:
+            if resumed[1] not in pending:
+                raise ValueError('unmatched clone resume')
+            records.append(pending.pop(resumed[1]) + line[resumed.end():])
+        elif start:
+            records.append(line)
+    if pending:
+        raise ValueError('incomplete clone trace')
+    return records
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('work', type=pathlib.Path)
     p.add_argument('--name', required=True)
+    p.add_argument('--brokers', type=int, choices=[1, 2, 3, 4], default=1)
+    p.add_argument('--threads', action='store_true', help='share TGID as well as mm/files; raw syscall workers only')
     p.add_argument('--modes', nargs='+', choices=['native', 'ioctl', 'mmap', 'alias'],
                    default=['native', 'ioctl', 'mmap', 'alias'])
     args = p.parse_args()
@@ -38,12 +60,15 @@ def main():
     inputs = [repo / 'src/cuda_probe.c', repo / 'src/gpu_broker_probe.c', pathlib.Path(__file__).resolve()]
     report = {'kind': 'outer_shared_mm_gpu_broker', 'full_acceptance': False,
               'internal_gpu_verified': False, 'diagnostic_complete': False,
+              'broker_count': args.brokers,
+              'thread_workers': args.threads,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'modes': {mode: {'status': 'not_tested'} for mode in args.modes},
               'limitations': ['outer process experiment, not an implemented UML or Docker GPU backend',
                               'helper shares CLONE_FILES; UML fd translation is not tested',
                               'strace and syscall proxy change timing; no GPU performance acceptance',
                               'one CUDA process, sequential cards; fork and concurrent client lifecycle unverified',
+                              'multiple brokers alternate serially; simultaneous syscalls are not tested',
                               'device alias test maps and unmaps only; it does not read or write MMIO',
                               'guest page faults, pinned pages, UVM migration and guest cgroup accounting are unverified']}
     with (work / 'kernel-build.lock').open('a') as lock:
@@ -72,9 +97,13 @@ def main():
                 command = ['strace', '-f', '-qq', '-yy', '-tt', '-T', '-s', '32', '-o', str(trace),
                            '-e', 'trace=openat,ioctl,mmap,munmap,close,clone,clone3,prctl,exit,exit_group']
                 if mode != 'native':
-                    command += ['-E', 'LD_PRELOAD=' + str(shim), '-E', 'HARDDIND_GPU_BROKER_MODE=' + mode]
+                    command += ['-E', 'LD_PRELOAD=' + str(shim), '-E', 'HARDDIND_GPU_BROKER_MODE=' + mode,
+                                '-E', 'HARDDIND_GPU_BROKER_COUNT=' + str(args.brokers)]
+                    if args.threads:
+                        command += ['-E', 'HARDDIND_GPU_BROKER_THREADS=1']
                 command.append(str(program))
-                env = {k: v for k, v in os.environ.items() if k not in ('LD_PRELOAD', 'HARDDIND_GPU_BROKER_MODE')}
+                env = {k: v for k, v in os.environ.items() if k not in
+                       ('LD_PRELOAD', 'HARDDIND_GPU_BROKER_MODE', 'HARDDIND_GPU_BROKER_COUNT', 'HARDDIND_GPU_BROKER_THREADS')}
                 env['CUDA_CACHE_PATH'] = str(phase / 'cuda-cache')
                 row = {'status': 'running', 'command': command}
                 report['modes'][mode] = row
@@ -114,16 +143,23 @@ def main():
                     row['broker_stats'] = [dict(zip(['kind', 'ioctls', 'mmaps', 'alias_ok', 'alias_failed'], map(int, values))) for values in stats]
                     row['alias_errors'] = [dict(zip(['kind', 'errno', 'count'], map(int, values))) for values in re.findall(
                         r'HARDDIND_GPU_ALIAS_ERROR kind=(\d+) errno=(\d+) count=(\d+)', stderr)]
-                    route_valid = (len(starts) == 1 and ends == ['0'] and len(stats) == 3
+                    route_valid = (len(starts) == args.brokers and ends == ['0'] and len(stats) == 3
                                    and {int(s[0]) for s in stats} == {0, 1, 2})
                     if route_valid:
-                        owner, broker, observed_mode = starts[0]
-                        row.update(owner_pid=int(owner), broker_pid=int(broker))
-                        route_valid = (owner != broker and observed_mode == mode
-                            and set(row['gpu_ioctl_pids']) == {broker}
+                        owners, brokers = {s[0] for s in starts}, {s[1] for s in starts}
+                        row.update(owner_pids=sorted(map(int, owners)), broker_pids=sorted(map(int, brokers)))
+                        row['worker_clone_records'] = [line for line in clone_records(content)
+                            if any(re.search(r'= ' + pid + r'\b', line) for pid in brokers)]
+                        route_valid = (len(owners) == 1 and not owners.intersection(brokers)
+                            and len(brokers) == args.brokers and all(s[2] == mode for s in starts)
+                            and set(row['gpu_ioctl_pids']) == brokers
                             and sum(s['ioctls'] for s in row['broker_stats']) == sum(row['gpu_ioctl_pids'].values()))
+                        if args.threads:
+                            route_valid = route_valid and len(row['worker_clone_records']) == args.brokers and all(
+                                'CLONE_THREAD' in line and 'CLONE_VM' in line and 'CLONE_CHILD_CLEARTID' in line
+                                for line in row['worker_clone_records'])
                         if mode in ('mmap', 'alias'):
-                            route_valid = (route_valid and set(row['gpu_mmap_pids']) == {broker}
+                            route_valid = (route_valid and set(row['gpu_mmap_pids']) == brokers
                                 and sum(s['mmaps'] + s['alias_ok'] + s['alias_failed'] for s in row['broker_stats'])
                                     == sum(row['gpu_mmap_pids'].values()))
                 row['routing_verified'] = route_valid

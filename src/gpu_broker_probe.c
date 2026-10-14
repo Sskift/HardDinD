@@ -42,34 +42,42 @@ static long raw6(long nr, long a, long b, long c, long d, long e, long f) {
 struct request {
     atomic_int state; /* 0 idle, 1 request, 2 response, 3 exit */
     long nr, args[6], result;
+    pid_t pid;
+    atomic_int tid_alive;
+    void *stack;
 };
-static struct request request;
+static struct request requests[4];
+static unsigned broker_count = 1, next_broker;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pid_t owner, broker = -1;
-static void *stack;
+static pid_t owner;
 static const size_t stack_size = 1024 * 1024;
-static int enabled, forward_mmap, alias_maps, failed;
+static int enabled, forward_mmap, alias_maps, failed, thread_workers;
 static struct { dev_t device; int kind; } devices[40];
 static unsigned device_count;
 static unsigned long calls[3], maps[3], alias_ok[3], alias_failed[3];
 static unsigned long alias_errno[3][256];
 
-static int worker(void *unused) {
-    (void)unused;
-    raw6(SYS_prctl, PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0, 0);
-    if (raw6(SYS_getppid, 0, 0, 0, 0, 0, 0) != owner)
-        raw6(SYS_exit, 122, 0, 0, 0, 0, 0);
+static int worker(void *argument) {
+    struct request *request = argument;
+    /* No libc TLS belongs to this raw worker, including signal handlers. */
+    unsigned long blocked_signals = ~0UL;
+    raw6(SYS_rt_sigprocmask, SIG_SETMASK, (long)&blocked_signals, 0, sizeof(blocked_signals), 0, 0);
+    if (!thread_workers) {
+        raw6(SYS_prctl, PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0, 0);
+        if (raw6(SYS_getppid, 0, 0, 0, 0, 0, 0) != owner)
+            raw6(SYS_exit, 122, 0, 0, 0, 0, 0);
+    }
     for (;;) {
-        int state = atomic_load_explicit(&request.state, memory_order_acquire);
+        int state = atomic_load_explicit(&request->state, memory_order_acquire);
         if (state == 3) raw6(SYS_exit, 0, 0, 0, 0, 0, 0);
         if (state != 1) {
-            raw6(SYS_futex, (long)&request.state, FUTEX_WAIT, state, 0, 0, 0);
+            raw6(SYS_futex, (long)&request->state, FUTEX_WAIT, state, 0, 0, 0);
             continue;
         }
-        request.result = raw6(request.nr, request.args[0], request.args[1],
-                              request.args[2], request.args[3], request.args[4], request.args[5]);
-        atomic_store_explicit(&request.state, 2, memory_order_release);
-        raw6(SYS_futex, (long)&request.state, FUTEX_WAKE, 1, 0, 0, 0);
+        request->result = raw6(request->nr, request->args[0], request->args[1],
+                              request->args[2], request->args[3], request->args[4], request->args[5]);
+        atomic_store_explicit(&request->state, 2, memory_order_release);
+        raw6(SYS_futex, (long)&request->state, FUTEX_WAKE, 1, 0, 0, 0);
     }
     return 0;
 }
@@ -82,29 +90,38 @@ static double now(void) {
 
 /* Caller holds mutex. A dead or stuck helper makes the experiment fail. */
 static long invoke(long nr, long a, long b, long c, long d, long e, long f) {
-    if (failed || broker < 2 || getpid() != owner) return -EIO;
-    request.nr = nr;
-    request.args[0] = a; request.args[1] = b; request.args[2] = c;
-    request.args[3] = d; request.args[4] = e; request.args[5] = f;
-    atomic_store_explicit(&request.state, 1, memory_order_release);
-    raw6(SYS_futex, (long)&request.state, FUTEX_WAKE, 1, 0, 0, 0);
+    struct request *request = &requests[next_broker++ % broker_count];
+    if (failed || request->pid < 2 || getpid() != owner) return -EIO;
+    request->nr = nr;
+    request->args[0] = a; request->args[1] = b; request->args[2] = c;
+    request->args[3] = d; request->args[4] = e; request->args[5] = f;
+    atomic_store_explicit(&request->state, 1, memory_order_release);
+    raw6(SYS_futex, (long)&request->state, FUTEX_WAKE, 1, 0, 0, 0);
     double deadline = now() + 30;
-    while (atomic_load_explicit(&request.state, memory_order_acquire) != 2) {
+    while (atomic_load_explicit(&request->state, memory_order_acquire) != 2) {
         struct timespec pause = { .tv_nsec = 100000000 };
-        raw6(SYS_futex, (long)&request.state, FUTEX_WAIT, 1, (long)&pause, 0, 0);
-        int status;
-        pid_t reaped = waitpid(broker, &status, WNOHANG);
-        if (reaped == broker || (reaped < 0 && errno == ECHILD)) {
-            broker = -1; failed = 1; return -EIO;
+        raw6(SYS_futex, (long)&request->state, FUTEX_WAIT, 1, (long)&pause, 0, 0);
+        int status, dead;
+        if (thread_workers) {
+            dead = !atomic_load_explicit(&request->tid_alive, memory_order_acquire);
+        } else {
+            pid_t reaped = waitpid(request->pid, &status, WNOHANG);
+            dead = reaped == request->pid || (reaped < 0 && errno == ECHILD);
+        }
+        if (dead) {
+            request->pid = -1; failed = 1; return -EIO;
         }
         if (now() > deadline) {
-            failed = 1; kill(broker, SIGKILL);
-            while (waitpid(broker, NULL, 0) < 0 && errno == EINTR) {}
-            broker = -1; return -ETIMEDOUT;
+            /* A fatal signal to one CLONE_THREAD worker kills the entire
+             * process. Exit as a failure instead of pretending to recover. */
+            if (thread_workers) _exit(124);
+            failed = 1; kill(request->pid, SIGKILL);
+            while (waitpid(request->pid, NULL, 0) < 0 && errno == EINTR) {}
+            request->pid = -1; return -ETIMEDOUT;
         }
     }
-    long result = request.result;
-    atomic_store_explicit(&request.state, 0, memory_order_release);
+    long result = request->result;
+    atomic_store_explicit(&request->state, 0, memory_order_release);
     return result;
 }
 
@@ -133,6 +150,7 @@ __attribute__((constructor)) static void initialize(void) {
         fprintf(stderr, "invalid GPU broker mode\n"); _exit(120);
     }
     owner = getpid();
+    thread_workers = getenv("HARDDIND_GPU_BROKER_THREADS") != NULL;
     forward_mmap = strcmp(mode, "ioctl") != 0;
     alias_maps = !strcmp(mode, "alias");
     add_device("/dev/nvidiactl", 0); add_device("/dev/nvidia-uvm", 2);
@@ -140,13 +158,33 @@ __attribute__((constructor)) static void initialize(void) {
         char path[64]; snprintf(path, sizeof(path), "/dev/nvidia%u", i);
         add_device(path, 1);
     }
-    stack = (void *)raw6(SYS_mmap, 0, stack_size, PROT_READ | PROT_WRITE,
-                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if ((long)stack < 0 && (long)stack >= -4095) { failed = 1; return; }
-    broker = clone(worker, (char *)stack + stack_size, CLONE_VM | CLONE_FILES | SIGCHLD, NULL);
-    if (broker < 0) { failed = 1; return; }
+    const char *count = getenv("HARDDIND_GPU_BROKER_COUNT");
+    if (count) {
+        if (strlen(count) != 1 || count[0] < '1' || count[0] > '4') {
+            fprintf(stderr, "invalid GPU broker count\n"); _exit(120);
+        }
+        broker_count = count[0] - '0';
+    }
     enabled = 1;
-    fprintf(stderr, "HARDDIND_GPU_BROKER_START owner=%d broker=%d mode=%s\n", owner, broker, mode);
+    for (unsigned i = 0; i < broker_count; i++) {
+        struct request *request = &requests[i];
+        request->stack = (void *)raw6(SYS_mmap, 0, stack_size, PROT_READ | PROT_WRITE,
+                                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if ((long)request->stack < 0 && (long)request->stack >= -4095) {
+            request->stack = NULL; failed = 1; break;
+        }
+        if (thread_workers)
+            request->pid = clone(worker, (char *)request->stack + stack_size,
+                CLONE_VM | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD |
+                CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID, request,
+                &request->tid_alive, NULL, &request->tid_alive);
+        else
+            request->pid = clone(worker, (char *)request->stack + stack_size,
+                                 CLONE_VM | CLONE_FILES | SIGCHLD, request);
+        if (request->pid < 0) { failed = 1; break; }
+        fprintf(stderr, "HARDDIND_GPU_BROKER_START owner=%d broker=%d mode=%s slot=%u threads=%d\n",
+                owner, request->pid, mode, i, thread_workers);
+    }
 }
 
 int ioctl(int fd, unsigned long command, ...) {
@@ -197,15 +235,27 @@ void *mmap64(void *address, size_t length, int prot, int flags, int fd, off64_t 
 __attribute__((destructor)) static void finish(void) {
     if (!enabled || getpid() != owner) return;
     pthread_mutex_lock(&mutex);
-    if (broker > 1) {
-        atomic_store_explicit(&request.state, 3, memory_order_release);
-        raw6(SYS_futex, (long)&request.state, FUTEX_WAKE, 1, 0, 0, 0);
-        int status = 0; pid_t result;
-        do { result = waitpid(broker, &status, 0); } while (result < 0 && errno == EINTR);
-        if (result != broker || !WIFEXITED(status) || WEXITSTATUS(status)) failed = 1;
+    for (unsigned i = 0; i < broker_count; i++) {
+        struct request *request = &requests[i];
+        if (request->pid > 1) {
+            atomic_store_explicit(&request->state, 3, memory_order_release);
+            raw6(SYS_futex, (long)&request->state, FUTEX_WAKE, 1, 0, 0, 0);
+            if (thread_workers) {
+                double deadline = now() + 30;
+                int tid;
+                while ((tid = atomic_load_explicit(&request->tid_alive, memory_order_acquire))) {
+                    struct timespec pause = { .tv_nsec = 100000000 };
+                    raw6(SYS_futex, (long)&request->tid_alive, FUTEX_WAIT, tid, (long)&pause, 0, 0);
+                    if (now() > deadline) _exit(124);
+                }
+            } else {
+                int status = 0; pid_t result;
+                do { result = waitpid(request->pid, &status, 0); } while (result < 0 && errno == EINTR);
+                if (result != request->pid || !WIFEXITED(status) || WEXITSTATUS(status)) failed = 1;
+            }
+        }
+        if (request->stack) raw6(SYS_munmap, (long)request->stack, stack_size, 0, 0, 0, 0);
     }
-    if (stack && !((long)stack < 0 && (long)stack >= -4095))
-        raw6(SYS_munmap, (long)stack, stack_size, 0, 0, 0, 0);
     for (int k = 0; k < 3; k++) {
         fprintf(stderr, "HARDDIND_GPU_BROKER kind=%d ioctls=%lu mmaps=%lu alias_ok=%lu alias_failed=%lu\n",
                 k, calls[k], maps[k], alias_ok[k], alias_failed[k]);

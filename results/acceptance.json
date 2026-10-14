@@ -87,7 +87,10 @@
         "starpub-2026-10-14-protect/docker-protect-v3.json",
         "starpub-2026-10-14-ipi/docker-ipi-idle.json",
         "starpub-2026-10-14-gpu-abi/gpu-abi-v1-report.json",
-        "starpub-2026-10-14-gpu-broker/gpu-broker-v2/report.json"
+        "starpub-2026-10-14-gpu-broker/gpu-broker-v2/report.json",
+        "starpub-2026-10-14-gpu-broker/gpu-broker-v3/report.json",
+        "starpub-2026-10-14-gpu-broker/gpu-broker-v4/report.json",
+        "starpub-2026-10-14-gpu-broker/gpu-broker-v5/report.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",

@@ -26,6 +26,8 @@ UML 能在自己的内核中实现 Linux namespace、cgroup、overlayfs 和网�
 
 GPU 是另一项尚未实现的工程工作，不是因为外层没有显卡。外层四张 A100 已执行过真实 CUDA 计算；内层 `docker run --gpus all` 仍然失败。后端需要处理 NVIDIA ioctl 的内嵌指针和文件描述符、设备 mmap、UVM 与进程地址空间、锁页内存和退出清理。复制设备节点、导入驱动库镜像、在外层代跑测试都不能替代这些语义。
 
+新的[共享地址空间 GPU 原型](../results/starpub-2026-10-14-gpu-broker/) 验证了实现接入所需的两项约束：单个独立进程或同 TGID 的两个线程处理全部 NVIDIA ioctl/mmap 时，外层真实四卡计算通过；同一份二进制切换到两个不同 TGID 的进程后，CUDA 上下文创建返回 800。普通 NVIDIA 设备的第二映射成功，UVM 第二映射均返回 EINVAL。当前证据支持继续实现保留应用线程组身份的 GPU 调用通道，以及区别处理 UVM 的映射路径；没有实现 guest FD 转接、缺页、设备 VMA 或内部 GPU 计算，GPU 验收仍失败。
+
 评估过的现成替代也不能直接声明达标：gVisor 提供 nvproxy，但它支持的驱动版本和设备接口有明确范围；其 Docker-in-gVisor 文档还要求关闭 dockerd 的 iptables/ip6tables 并调整网络配置。它可作为实现参考，不能直接替换完整 Docker 的目标。参见 [gVisor GPU 支持](https://gvisor.dev/docs/user_guide/gpu/) 和 [Docker in gVisor](https://gvisor.dev/docs/tutorials/docker-in-gvisor/)。
 
 验收保持失败。当前资料支持的结论是：这些补丁可以继续研究和测量，但没有可交付的“完整功能、原生相同性能、GPU”实现。原生容器路线需要宿主实际允许所需的 namespace、挂载和资源控制；这超出当前固定运行条件。用户没有授权放宽目标，仓库也不把尚未实现或已失败的条件改成通过。
