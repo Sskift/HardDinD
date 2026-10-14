@@ -1,0 +1,58 @@
+[
+  {
+    "command": [
+      "python3",
+      "/root/harddind-rebuild/scripts/run-gpu-control.py",
+      "/root/harddind-rebuild",
+      "--kernel",
+      "/root/harddind-rebuild/gpu-root-control-kernel-v1",
+      "--name",
+      "gpu-root-control-fd-v1",
+      "--fd-registration",
+      "--memfd-ram",
+      "--memfd-stub"
+    ],
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "python3",
+      "/root/harddind-rebuild/scripts/run-gpu-control.py",
+      "/root/harddind-rebuild",
+      "--kernel",
+      "/root/harddind-rebuild/gpu-root-control-kernel-v1",
+      "--name",
+      "gpu-root-control-rm-v1",
+      "--rm-client",
+      "--memfd-ram",
+      "--memfd-stub"
+    ],
+    "exit_code": 1
+  },
+  {
+    "command": [
+      "python3",
+      "/root/harddind-rebuild/scripts/run-core.py",
+      "/root/harddind-rebuild",
+      "--kernel",
+      "/root/harddind-rebuild/gpu-root-control-kernel-v1",
+      "--disk",
+      "/root/harddind-rebuild/mapping.ext4",
+      "--result-name",
+      "gpu-root-control-core-v1",
+      "--cpus",
+      "4",
+      "--spin",
+      "256",
+      "--threads-experiment",
+      "--broker-cache",
+      "--defer-ipi",
+      "--memfd-ram",
+      "--memfd-stub",
+      "--thread-semantics",
+      "--dispatch-bench",
+      "--mapping-semantics"
+    ],
+    "exit_code": 0
+  }
+]

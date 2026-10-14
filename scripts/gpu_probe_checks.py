@@ -32,3 +32,10 @@ RM_CHECKS = {
     'reopen_lifecycle', 'close_releases_client',
     'independent_process_lifecycle',
 }
+
+CTRL_CHECKS = {
+    'open_control', 'allocate_client', 'attached_ids', 'invalid_gpu_rejected',
+    'invalid_client_rejected', 'nested_cross_page', 'nested_unreadable_rejected',
+    'nested_readonly_rejected', 'header_readonly_rejected', 'recovery_after_faults',
+    'four_threads_same_client', 'independent_process_queries', 'release_client',
+}
