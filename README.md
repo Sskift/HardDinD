@@ -51,7 +51,7 @@
 
 Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交与导出、事件流、网络连接切换、清理和单机 Swarm。Swarm 同时验证服务 VIP 的实际 HTTP 请求；所需 IPVS 与连接跟踪接口已加入内核配置。命令测试依然不等于完整产品验收，网络与目录集成、GPU 和持续运行管理仍须继续完成。
 
-CPU 限制另用 `scripts/run-cpu-limits.py WORK --kernel KERNEL --disk DISK --name NAME --cpus 4` 检查实际执行：包含不限额对照、`--cpus`、显式 quota/period、单核与范围 cpuset、cpuset 与 quota 组合，以及同一容器内的实时 `docker update`。探针记录线程与进程 CPU 时间、cgroup 使用量和节流计数、完整 CPU 亲和性及实际运行 CPU；配置写入成功不能代替执行结果。缺失、失败和负载不足分别保留，未测项不能计为通过。判定中的时间容差仅用于 CFS 配额记账，不能作为接近原生性能的验收阈值。[首轮内部 Docker 实测](results/starpub-2026-10-15-cpu-limits/) 已证实 `--cpus` 节流，并发现 cpuset 因内核未启用控制器而被 Docker 丢弃。补上 `CONFIG_CPUSETS` 并重建后，实际线程亲和性与运行 CPU 已正确受限；后续记录采样起止时间的候选仍遇到动态更新供给不足及稳定窗口不足，整组验收尚未通过，CPU shares 竞争也尚未覆盖。
+CPU 限制另用 `scripts/run-cpu-limits.py WORK --kernel KERNEL --disk DISK --name NAME --cpus 4` 检查实际执行：包含不限额对照、`--cpus`、显式 quota/period、单核与范围 cpuset、cpuset 与 quota 组合，以及同一容器内的实时 `docker update`。探针记录线程与进程 CPU 时间、cgroup 使用量和节流计数、完整 CPU 亲和性及实际运行 CPU；配置写入成功不能代替执行结果。缺失、失败和负载不足分别保留，未测项不能计为通过。判定中的时间容差仅用于 CFS 配额记账，不能作为接近原生性能的验收阈值。[首轮内部 Docker 实测](results/starpub-2026-10-15-cpu-limits/) 已证实 `--cpus` 节流，并发现 cpuset 因内核未启用控制器而被 Docker 丢弃。补上 `CONFIG_CPUSETS` 并重建后，实际线程亲和性与运行 CPU 已正确受限；记录采样起止时间的候选曾遇到动态更新供给不足及稳定窗口不足；随后关闭并恢复延后 IPI 的两轮完整限制矩阵均通过，但关闭轮仍出现长采样，尚不能确定原因。CPU shares 竞争仍未覆盖，也没有性能验收结论。
 
 新的 [内存权限同步实验](results/starpub-2026-10-14-protect/) 区分已存在映射的权限变化与物理页替换，前者用宿主 `mprotect`，后者保留 `mmap`。构建使用 `make kernel-protect-experiment`，运行器使用 `--mprotect-sync`，默认关闭。真实读写保护、丢弃页、固定地址替换、COW、fork 与文件截断回归通过；Docker 测试为 53 pass、1 GPU fail、2 not_tested。专项权限切换中位耗时下降约 24%，但第一次综合对照有严重慢样本，追加对照中的四线程系统调用仍有回退；完整性能没有达标，全部结果与失败版本均保留。
 
