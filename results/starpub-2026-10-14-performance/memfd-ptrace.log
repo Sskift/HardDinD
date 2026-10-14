@@ -1,0 +1,117 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Adding 122855424 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #11 SMP Wed Oct 14 03:25:20 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x00000000e7529fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000087529fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000087529fff]
+On node 0, zone Normal: 726 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/core-10af6be021e0495d9e59a7313e68b44e.cow,/root/harddind-rebuild/probe.ext4 root=/dev/ubda rw init=/sbin/harddind-init con=null con0=null,fd:1 ssl=null panic=1 console=tty0
+printk: log buffer data + meta data: 16384 + 57344 = 73728 bytes
+Dentry cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 554282
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=1.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=1
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 6859.98 BogoMIPS (lpj=34299904)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Mountpoint-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 1 CPU
+Memory: 2046204K/2217128K available (5816K kernel code, 1337K rwdata, 1800K rodata, 208K init, 1260K bss, 168284K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 512 (order: 1, 8192 bytes, linear)
+futex hash table entries: 256 (16384 bytes on 1 NUMA nodes, total 16 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 32768 (order: 6, 262144 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 1024 (order: 2, 16384 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes, linear)
+TCP bind hash table entries: 16384 (order: 7, 524288 bytes, linear)
+TCP: Hash tables configured (established 16384 bind 16384)
+UDP hash table entries: 1024 (order: 4, 65536 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-c5ccc68015aa/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=19 bucket_order=0 (anon: 0)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/core-10af6be021e0495d9e59a7313e68b44e.cow" as COW file for "/root/harddind-rebuild/probe.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 11, Operation not permitted
+EXT4-fs (ubda): recovery complete
+EXT4-fs (ubda): mounted filesystem 7d29eddd-d3cf-4444-9b80-6a41c811adca r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-init as init process
+HARDDIND_PROBE_BEGIN
+Linux (none) 7.2.10 #11 SMP Wed Oct 14 03:25:20 UTC 2026 x86_64 Linux
+0
+{"test":"syscall","workers":1,"seconds":1.660212992}
+{"test":"syscall","workers":1,"seconds":1.912561920}
+{"test":"syscall","workers":1,"seconds":1.687522304}
+{"test":"exec","workers":1,"seconds":0.441022464}
+{"test":"exec","workers":1,"seconds":0.448812800}
+{"test":"exec","workers":1,"seconds":0.464030720}
+{"test":"threads","workers":1,"seconds":0.350927616}
+{"test":"threads","workers":1,"seconds":0.343863296}
+{"test":"threads","workers":1,"seconds":0.345635328}
+{"test":"threads","workers":4,"seconds":1.414096384}
+{"test":"threads","workers":4,"seconds":1.397208832}
+{"test":"threads","workers":4,"seconds":1.392070400}
+{"test":"processes","workers":1,"seconds":0.350212096}
+{"test":"processes","workers":1,"seconds":0.349234176}
+{"test":"processes","workers":1,"seconds":0.352873472}
+{"test":"processes","workers":4,"seconds":1.485809408}
+{"test":"processes","workers":4,"seconds":1.390490368}
+{"test":"processes","workers":4,"seconds":1.494542336}
+HARDDIND_PROBE_END status=0
+reboot: Power down
+HARDDIND_BROKER_CACHE hits=0 stores=0
+

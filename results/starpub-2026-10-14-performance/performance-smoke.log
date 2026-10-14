@@ -1,0 +1,673 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that seccomp filters can be installed...OK
+Adding 990203904 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #9 SMP Wed Oct 14 03:11:34 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x000000011b054fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x00000000bb054fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x00000000bb054fff]
+On node 0, zone Normal: 939 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/core-f4134f5f102a4df7a851717126cc3d5f.cow,/root/harddind-rebuild/dispatch.ext4 root=/dev/ubda rw init=/sbin/harddind-dispatch-init con=null con0=null,fd:1 ssl=null panic=1 console=tty0
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 15200(92%)
+Dentry cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 766037
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 6646.16 BogoMIPS (lpj=33230848)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Mountpoint-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 2032032K/3064148K available (5815K kernel code, 1337K rwdata, 1800K rodata, 208K init, 1260K bss, 1028924K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 32768 (order: 6, 262144 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 1024 (order: 2, 16384 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes, linear)
+TCP bind hash table entries: 16384 (order: 7, 524288 bytes, linear)
+TCP: Hash tables configured (established 16384 bind 16384)
+UDP hash table entries: 1024 (order: 4, 65536 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-09420e8f6f61/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=19 bucket_order=0 (anon: 0)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/core-f4134f5f102a4df7a851717126cc3d5f.cow" as COW file for "/root/harddind-rebuild/dispatch.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 15, Operation not permitted
+EXT4-fs (ubda): mounted filesystem db268a07-b393-45dc-b88f-eff25aa1827c r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-dispatch-init as init process
+HARDDIND_CHILD_EXIT pid=1974786 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974788 host_status=0x9
+HARDDIND_PROBE_BEGIN
+HARDDIND_CHILD_EXIT pid=1974805 host_status=0x9
+HARDDIND_THREAD_SHA256=17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3
+HARDDIND_CHILD_EXIT pid=1974801 host_status=0x9
+HARDDIND_CORE_SHA256=f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e
+HARDDIND_DISPATCH_SHA256=de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758
+THREAD_CHECK shared_memory_tls_futex_migration pass
+THREAD_CHECK mprotect_munmap_remap pass
+HARDDIND_CHILD_EXIT pid=1974825 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974828 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974829 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974832 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974836 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974839 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974842 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974850 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974848 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974849 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974855 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974860 host_status=0x9
+THREAD_CHECK concurrent_fork_cow pass
+HARDDIND_CHILD_EXIT pid=1974861 host_status=0x9
+THREAD_CHECK thread_lifecycle pass
+THREAD_CHECK concurrent_page_table_teardown pass
+THREAD_SEMANTICS_END status=0
+{"test":"syscall","workers":1,"seconds":0.418098688}
+{"test":"syscall","workers":1,"seconds":0.440317440}
+{"test":"syscall","workers":1,"seconds":0.449537536}
+HARDDIND_CHILD_EXIT pid=1974865 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974818 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974821 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974872 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974873 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974877 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974884 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974887 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974892 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974893 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974905 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974897 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974908 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974910 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974911 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974916 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974922 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974919 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974921 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974923 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974933 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974927 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974935 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974937 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974939 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974943 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974945 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974952 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974957 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974958 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974960 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974955 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974964 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974967 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974969 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974971 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974976 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974975 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974977 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974980 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974982 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974992 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974989 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1974996 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975003 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975006 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975008 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975016 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975013 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975018 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975017 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975019 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975026 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975031 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975034 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975033 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975042 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975048 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975047 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975052 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975054 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975051 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975055 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975061 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975063 host_status=0x9
+{"test":"exec","workers":1,"seconds":0.394645504}
+HARDDIND_CHILD_EXIT pid=1974869 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975073 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975080 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975077 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975084 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975081 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975085 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975089 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975093 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975097 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975099 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975105 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975107 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975112 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975111 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975118 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975121 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975124 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975117 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975123 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975125 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975133 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975135 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975140 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975137 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975145 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975150 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975149 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975151 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975156 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975160 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975159 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975161 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975164 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975166 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975165 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975169 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975171 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975173 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975180 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975183 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975185 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975189 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975191 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975193 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975195 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975199 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975201 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975204 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975197 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975205 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975210 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975211 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975216 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975222 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975224 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975227 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975229 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975235 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975237 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975241 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975254 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975251 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975258 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975255 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975257 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975263 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975265 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975261 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975270 host_status=0x9
+{"test":"exec","workers":1,"seconds":0.818456064}
+HARDDIND_CHILD_EXIT pid=1975269 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975279 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975302 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975306 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975318 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975310 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975317 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975321 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975326 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975330 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975334 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975328 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975348 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975355 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975356 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975361 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975360 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975366 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975368 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975373 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975378 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975376 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975383 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975390 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975393 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975395 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975397 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975396 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975404 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975410 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975408 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975414 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975417 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975418 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975416 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975424 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975442 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975443 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975433 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975450 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975451 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975498 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975502 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975497 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975503 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975501 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975506 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975508 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975510 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975512 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975527 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975529 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975534 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975537 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975540 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975548 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975550 host_status=0x9
+{"test":"exec","workers":1,"seconds":0.433980672}
+{"test":"threads","workers":1,"seconds":0.345742336}
+HARDDIND_CHILD_EXIT pid=1975273 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975547 host_status=0x9
+{"test":"threads","workers":1,"seconds":0.358685952}
+HARDDIND_CHILD_EXIT pid=1975635 host_status=0x9
+{"test":"threads","workers":1,"seconds":0.347414784}
+HARDDIND_CHILD_EXIT pid=1975639 host_status=0x9
+{"test":"threads","workers":4,"seconds":0.358082816}
+HARDDIND_CHILD_EXIT pid=1975640 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975642 host_status=0x9
+{"test":"threads","workers":4,"seconds":0.368216064}
+HARDDIND_CHILD_EXIT pid=1975664 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975665 host_status=0x9
+{"test":"threads","workers":4,"seconds":0.349357824}
+{"test":"processes","workers":1,"seconds":0.338573312}
+HARDDIND_CHILD_EXIT pid=1975748 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975670 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975671 host_status=0x9
+{"test":"processes","workers":1,"seconds":0.385529344}
+{"test":"processes","workers":1,"seconds":0.336190464}
+HARDDIND_CHILD_EXIT pid=1975830 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975833 host_status=0x9
+{"test":"processes","workers":4,"seconds":0.364405248}
+HARDDIND_CHILD_EXIT pid=1975831 host_status=0x9
+{"test":"processes","workers":4,"seconds":0.353101056}
+HARDDIND_CHILD_EXIT pid=1975903 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975906 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1975902 host_status=0x9
+{"test":"processes","workers":4,"seconds":0.371695872}
+HARDDIND_CHILD_EXIT pid=1975959 host_status=0x9
+{"test":"identity","workers":1,"seconds":0.381965568,"verified":true}
+{"test":"identity","workers":1,"seconds":0.432904192,"verified":true}
+{"test":"identity","workers":1,"seconds":0.407624448,"verified":true}
+{"test":"fdio","workers":1,"seconds":0.093899008,"verified":true}
+HARDDIND_CHILD_EXIT pid=1975977 host_status=0x9
+{"test":"fdio","workers":1,"seconds":0.103909632,"verified":true}
+{"test":"fdio","workers":1,"seconds":0.094503680,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976020 host_status=0x9
+{"test":"mapping","workers":1,"seconds":0.467697920,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976016 host_status=0x9
+{"test":"mapping","workers":1,"seconds":0.465495296,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976049 host_status=0x9
+{"test":"mapping","workers":1,"seconds":0.508337152,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976019 host_status=0x9
+{"test":"thread_syscalls","workers":4,"seconds":0.358959616,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976113 host_status=0x9
+{"test":"thread_syscalls","workers":4,"seconds":0.205004800,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976152 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976153 host_status=0x9
+{"test":"thread_syscalls","workers":4,"seconds":0.192201984,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976182 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976207 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976217 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976211 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976220 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976226 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976231 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976229 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976233 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976235 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976243 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976249 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976256 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976255 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976257 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976263 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976269 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976274 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976271 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976279 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976285 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976281 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976292 host_status=0x9
+{"test":"isolation","workers":1,"seconds":0.204340736,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976296 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976298 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976304 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976309 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976307 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976311 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976316 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976325 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976337 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976343 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976348 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976353 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976349 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976347 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976365 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976354 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976367 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976369 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976376 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976381 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976389 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976391 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976398 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976409 host_status=0x9
+{"test":"isolation","workers":1,"seconds":0.176539392,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976422 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976295 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976423 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976427 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976430 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976445 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976448 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976449 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976457 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976460 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976455 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976461 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976463 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976466 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976468 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976459 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976472 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976469 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976475 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976482 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976479 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976490 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976489 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976495 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976491 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976499 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976501 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976500 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976503 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976498 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976504 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976507 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976509 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976512 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976515 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976519 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976520 host_status=0x9
+{"test":"isolation","workers":1,"seconds":0.233840640,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976527 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976524 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976417 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976534 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976533 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976546 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976550 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976553 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976555 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976556 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976558 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976567 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976566 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976570 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976577 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976582 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976583 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976588 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976587 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976590 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976593 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976594 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976597 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976596 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976595 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976598 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976603 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976608 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976612 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976610 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976614 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976615 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976617 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976619 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976621 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976625 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976623 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976630 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976626 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976631 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976629 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976635 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976637 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976638 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976654 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976655 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976656 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976657 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976658 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976660 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976663 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976666 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976670 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976667 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976673 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976675 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976688 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976682 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976694 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976695 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976698 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976697 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976700 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976704 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976705 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976707 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976710 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976709 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976711 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976715 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976716 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976717 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976722 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976727 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976728 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976730 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976731 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976735 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976737 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976740 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976742 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976744 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976741 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976755 host_status=0x9
+{"test":"parallel_exec","workers":4,"seconds":0.519274752,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976760 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976761 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976528 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976764 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976765 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976768 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976778 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976780 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976781 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976785 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976796 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976798 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976807 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976806 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976810 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976813 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976817 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976823 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976830 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976833 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976834 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976837 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976841 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976843 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976851 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976854 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976858 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976856 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976857 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976863 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976871 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976870 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976872 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976880 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976883 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976886 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976884 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976885 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976891 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976897 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976900 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976909 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976910 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976916 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976920 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976921 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976931 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976939 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976935 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976937 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976946 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976949 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976951 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976950 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976956 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976955 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976954 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976959 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976961 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976962 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976964 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976966 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976969 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976970 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976967 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976973 host_status=0x9
+{"test":"parallel_exec","workers":4,"seconds":0.570951680,"verified":true}
+HARDDIND_CHILD_EXIT pid=1976982 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976985 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976988 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976987 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976993 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976998 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976995 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977002 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977005 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977003 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977013 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977028 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977029 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977030 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977036 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977034 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977041 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977058 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977059 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977060 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1976539 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977061 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977062 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977065 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977082 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977088 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977090 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977093 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977096 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977098 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977099 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977107 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977109 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977112 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977116 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977118 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977123 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977121 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977124 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977129 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977131 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977130 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977141 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977145 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977155 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977166 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977168 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977167 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977170 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977172 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977185 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977186 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977188 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977189 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977192 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977180 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977193 host_status=0x9
+{"test":"parallel_exec","workers":4,"seconds":0.612102144,"verified":true}
+HARDDIND_PROBE_END status=0
+HARDDIND_CHILD_EXIT pid=1976977 host_status=0x9
+HARDDIND_CHILD_EXIT pid=1977200 host_status=0x9
+reboot: Power down
+HARDDIND_BROKER_CACHE hits=1607 stores=1610
+

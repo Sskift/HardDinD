@@ -1,0 +1,57 @@
+make: Entering directory '/root/harddind-rebuild'
+python3 -m unittest discover -s tests -v
+test_boot_and_outer_gpu_are_not_product_acceptance (test_acceptance.AcceptanceTests) ... ok
+test_missing_comparable_baseline_does_not_pass (test_acceptance.AcceptanceTests) ... ok
+test_missing_results_do_not_pass (test_acceptance.AcceptanceTests) ... ok
+test_skip_cannot_replace_gpu (test_acceptance.AcceptanceTests) ... ok
+test_overlapping_series_reapply_and_preserve_edits (test_patch_series.PatchSeriesTests) ... ok
+test_duplicate_cannot_replace_missing_gpu_evidence (test_result_checks.DockerEvidenceTests) ... ok
+test_missing_unused_or_duplicate_cache_is_not_verified (test_result_checks.DockerEvidenceTests) ... ok
+test_partial_success_followed_by_aborted_suite_is_not_pass (test_result_checks.DockerEvidenceTests) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.044s
+
+OK
+python3 -m py_compile scripts/*.py
+make: Leaving directory '/root/harddind-rebuild'
+{
+  "source_roundtrip": true,
+  "host_probe": true,
+  "checks": true,
+  "cleanup": {
+    "utc": "2026-10-14T03:37:01Z",
+    "kernel_release": "5.15.0-177-generic",
+    "security_status": {
+      "CapEff": "00000000a80425fb",
+      "CapBnd": "00000000a80425fb",
+      "Seccomp": "2",
+      "Seccomp_filters": "1"
+    },
+    "apparmor": "docker-default (enforce)",
+    "cpu_max": "3599999 100000",
+    "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0",
+    "test_cpu_topology": {
+      "0": {
+        "physical_package_id": "0",
+        "core_id": "0"
+      },
+      "1": {
+        "physical_package_id": "0",
+        "core_id": "1"
+      },
+      "2": {
+        "physical_package_id": "0",
+        "core_id": "2"
+      },
+      "3": {
+        "physical_package_id": "0",
+        "core_id": "3"
+      }
+    },
+    "live_experiment_executables": [],
+    "cow_files": [],
+    "original_service": "server=29.8.2 running=0 images=6",
+    "clean": true
+  }
+}

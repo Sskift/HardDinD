@@ -1,0 +1,211 @@
+{
+  "kind": "native_microbench",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.049693339
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.049365325
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.050069531
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.026565343
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.026360022
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.035126098
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.348968601
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.343830271
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.348045573
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.366233945
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.376724092
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.528274881
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.358973321
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.358340789
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.342848817
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.468025245
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.36880419
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.404842773
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.053826941,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.049625473,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.066693002,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.021772668,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.022660255,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.022999406,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.025237693,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.024049496,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.02416308,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.024213204,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.024263158,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.016700229,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.015590098,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.014695261,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.015906759,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.012392493,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.011728356,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.01211313,
+      "verified": true
+    }
+  ]
+}

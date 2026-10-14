@@ -1,0 +1,1 @@
+34a096bb175ebe0f2bec2ec622a41d1a49feb0b4386de91cf23875c163f0121f  /root/harddind-rebuild/thread-build/.config

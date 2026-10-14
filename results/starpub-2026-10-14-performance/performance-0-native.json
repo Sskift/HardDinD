@@ -1,0 +1,211 @@
+{
+  "kind": "native_microbench",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.068874866
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.086174265
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.062401196
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.148602283
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.097509785
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.07338945
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.385501796
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.371294646
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.368764421
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.535614295
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.465515984
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.362250073
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.368033659
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.365864731
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.363778099
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.426353455
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.417072972
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.43375537
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.071554501,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.059049852,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.062025087,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.02246266,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.029082619,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.02663549,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.020645197,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.023958271,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.019239295,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.036711061,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.022319384,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.02532734,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.012985842,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.019751297,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.017139034,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.024962574,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.058792196,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.022567347,
+      "verified": true
+    }
+  ]
+}

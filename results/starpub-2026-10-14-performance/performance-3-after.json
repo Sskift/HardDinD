@@ -1,0 +1,232 @@
+{
+  "kind": "kernel_microbench_only",
+  "mode": "seccomp",
+  "cpus": 4,
+  "spin": 256,
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 1608,
+    "stores": 1612
+  },
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "thread_semantics": true,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "kernel_sha256": "fcea59d5b6ddbd14e666d3d88e3cfe6557bf9b0f5687b7942a197a0582ca1854",
+  "kernel_unchanged": true,
+  "benchmark_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 18.732650822028518,
+  "measurements": [
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.417303552
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.401483264
+    },
+    {
+      "test": "syscall",
+      "workers": 1,
+      "seconds": 0.468455168
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.701479168
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.422028032
+    },
+    {
+      "test": "exec",
+      "workers": 1,
+      "seconds": 0.45331712
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.352395264
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.354142208
+    },
+    {
+      "test": "threads",
+      "workers": 1,
+      "seconds": 0.352065792
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.385868032
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.38799104
+    },
+    {
+      "test": "threads",
+      "workers": 4,
+      "seconds": 0.374349568
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.395634432
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.382648832
+    },
+    {
+      "test": "processes",
+      "workers": 1,
+      "seconds": 0.35779584
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.376693504
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.360797696
+    },
+    {
+      "test": "processes",
+      "workers": 4,
+      "seconds": 0.374387968
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.431266048,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.428141824,
+      "verified": true
+    },
+    {
+      "test": "identity",
+      "workers": 1,
+      "seconds": 0.4420864,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.112603136,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.113562112,
+      "verified": true
+    },
+    {
+      "test": "fdio",
+      "workers": 1,
+      "seconds": 0.104424448,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.740727808,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.7052608,
+      "verified": true
+    },
+    {
+      "test": "mapping",
+      "workers": 1,
+      "seconds": 0.752072704,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.478780928,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.234479616,
+      "verified": true
+    },
+    {
+      "test": "thread_syscalls",
+      "workers": 4,
+      "seconds": 0.22750208,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.224393216,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.243824896,
+      "verified": true
+    },
+    {
+      "test": "isolation",
+      "workers": 1,
+      "seconds": 0.192420608,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.415432192,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.403648256,
+      "verified": true
+    },
+    {
+      "test": "parallel_exec",
+      "workers": 4,
+      "seconds": 0.368023296,
+      "verified": true
+    }
+  ],
+  "host_cpu_seconds": 35.459023,
+  "docker_acceptance": "not_tested",
+  "gpu_acceptance": "not_tested"
+}

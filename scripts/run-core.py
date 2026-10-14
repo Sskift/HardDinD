@@ -12,6 +12,8 @@ import subprocess
 import sys
 import time
 import uuid
+from result_checks import broker_cache_evidence
+from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
 p.add_argument("work", type=pathlib.Path)
@@ -21,10 +23,14 @@ p.add_argument("--timeout", type=int, default=180)
 p.add_argument("--spin", type=int, default=0)
 p.add_argument("--kernel", type=pathlib.Path)
 p.add_argument("--threads-experiment", action="store_true")
+p.add_argument("--broker-cache", action="store_true")
 p.add_argument("--thread-semantics", action="store_true")
+p.add_argument("--dispatch-bench", action="store_true")
 p.add_argument("--disk", type=pathlib.Path)
 p.add_argument("--result-name", help="Distinct name for controlled comparisons")
 a = p.parse_args()
+if a.broker_cache and not a.threads_experiment:
+    p.error("broker cache requires parallel runners")
 if not 1 <= a.cpus <= 64 or (a.mode == "ptrace" and a.cpus != 1):
     p.error("ptrace requires one CPU; seccomp supports 1..64 configured CPUs")
 if not 0 <= a.spin <= 10000:
@@ -53,12 +59,16 @@ cmd = [str(kernel), "umid=harddind-" + uuid.uuid4().hex[:12], "mem=2G", f"ncpus=
        "con=null", "con0=null,fd:1", "ssl=null", "panic=1"]
 if a.thread_semantics:
     cmd[cmd.index("init=/sbin/harddind-init")] = "init=/sbin/harddind-thread-init"
+if a.dispatch_bench:
+    cmd = ["init=/sbin/harddind-dispatch-init" if arg.startswith("init=") else arg for arg in cmd]
 if a.threads_experiment:
     if a.mode != "seccomp":
         p.error("parallel runners require seccomp")
     cmd.append("seccomp_threads=1")
 if a.spin:
     cmd.append(f"seccomp_spin={a.spin}")
+if a.broker_cache:
+    cmd.append("seccomp_broker_cache=1")
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 started = time.monotonic()
 usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -76,6 +86,7 @@ with log.open("w") as output:
         if proc.poll() is None:
             os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()
+        cleanup = cleanup_group(proc.pid)
         cow.unlink(missing_ok=True)
 text = log.read_text(errors="replace")
 kernel_unchanged = hashlib.sha256(kernel.read_bytes()).hexdigest() == kernel_sha256
@@ -86,22 +97,42 @@ for line in text.splitlines():
         rows.append(json.loads(line))
 expected = {(test, workers) for test, workers in
             [("syscall", 1), ("exec", 1), ("threads", 1), ("threads", 4), ("processes", 1), ("processes", 4)]}
+dispatch_cases = {("identity", 1), ("fdio", 1), ("mapping", 1), ("thread_syscalls", 4), ("isolation", 1), ("parallel_exec", 4)}
+if a.dispatch_bench:
+    expected |= dispatch_cases
 counts = {key: sum((r["test"], r["workers"]) == key for r in rows) for key in expected}
-passed = kernel_unchanged and not timed_out and rc == 0 and "HARDDIND_PROBE_END status=0" in text and len(rows) == 18 and all(n == 3 for n in counts.values())
+passed = kernel_unchanged and not timed_out and rc == 0 and "HARDDIND_PROBE_END status=0" in text and len(rows) == 3 * len(expected) and all(n == 3 for n in counts.values())
+passed = passed and cleanup["clean_shutdown"]
 semantics_expected = {"shared_memory_tls_futex_migration", "mprotect_munmap_remap", "concurrent_fork_cow", "thread_lifecycle", "concurrent_page_table_teardown"}
 semantics_lines = [line.split() for line in text.splitlines() if line.startswith("THREAD_CHECK ")]
 semantics_passed = (len(semantics_lines) == len(semantics_expected) and
                     {row[1] for row in semantics_lines if len(row) == 3 and row[2] == "pass"} == semantics_expected and
                     "THREAD_SEMANTICS_END status=0" in text)
-if a.thread_semantics:
+dispatch_hash = next((line.split("=", 1)[1] for line in text.splitlines()
+                      if line.startswith("HARDDIND_DISPATCH_SHA256=")), None)
+if a.thread_semantics or a.dispatch_bench:
     passed = passed and semantics_passed
+if a.dispatch_bench:
+    expected_hash = hashlib.sha256((work / "dispatch-root/dispatchbench").read_bytes()).hexdigest()
+    core_hash = hashlib.sha256((work / "probe-root/corebench").read_bytes()).hexdigest()
+    passed = passed and f"HARDDIND_CORE_SHA256={core_hash}" in text.splitlines()
+    passed = passed and dispatch_hash == expected_hash and all(
+        r.get("verified") is True for r in rows if (r["test"], r["workers"]) in dispatch_cases)
+cache_stats = broker_cache_evidence(text)
+if a.broker_cache:
+    # A kernel that ignores the boot option must not count as cache evidence.
+    passed = passed and cache_stats["verified"]
 report = {"kind": "kernel_microbench_only", "mode": a.mode, "cpus": a.cpus,
           "spin": a.spin, "threads_experiment": a.threads_experiment,
-          "thread_semantics": semantics_passed if a.thread_semantics else "not_tested",
+          "broker_cache": a.broker_cache,
+          "broker_cache_stats": cache_stats,
+          "dispatch_benchmark_sha256": dispatch_hash,
+          "thread_semantics": semantics_passed if a.thread_semantics or a.dispatch_bench else "not_tested",
           "thread_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()
                                            if line.startswith("HARDDIND_THREAD_SHA256=")), None),
           "host_cpu_affinity": sorted(os.sched_getaffinity(0)),
           "kernel_sha256": kernel_sha256, "kernel_unchanged": kernel_unchanged,
+          "cleanup": cleanup,
           "benchmark_sha256": hashlib.sha256((work / "probe-root/corebench").read_bytes()).hexdigest(),
           "passed": passed, "exit_code": rc, "timed_out": timed_out,
           "wall_seconds": time.monotonic() - started, "measurements": rows,

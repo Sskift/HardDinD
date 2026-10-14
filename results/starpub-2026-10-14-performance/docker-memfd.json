@@ -1,0 +1,170 @@
+{
+  "kind": "docker_subset_in_candidate",
+  "checks": [
+    {
+      "name": "image_import",
+      "status": "pass"
+    },
+    {
+      "name": "run",
+      "status": "pass"
+    },
+    {
+      "name": "exit_code",
+      "status": "pass"
+    },
+    {
+      "name": "stdin",
+      "status": "pass"
+    },
+    {
+      "name": "tty",
+      "status": "pass"
+    },
+    {
+      "name": "lifecycle",
+      "status": "pass"
+    },
+    {
+      "name": "mount_tmpfs",
+      "status": "pass"
+    },
+    {
+      "name": "privileged_mount",
+      "status": "pass"
+    },
+    {
+      "name": "net_admin",
+      "status": "pass"
+    },
+    {
+      "name": "guest_user_namespace",
+      "status": "pass"
+    },
+    {
+      "name": "read_only",
+      "status": "pass"
+    },
+    {
+      "name": "bind_mount",
+      "status": "pass"
+    },
+    {
+      "name": "volume",
+      "status": "pass"
+    },
+    {
+      "name": "memory_oom",
+      "status": "pass"
+    },
+    {
+      "name": "pids_limit",
+      "status": "pass"
+    },
+    {
+      "name": "default_seccomp",
+      "status": "pass"
+    },
+    {
+      "name": "container_threads",
+      "status": "pass"
+    },
+    {
+      "name": "container_thread_semantics",
+      "status": "pass"
+    },
+    {
+      "name": "container_dispatch_semantics",
+      "status": "pass"
+    },
+    {
+      "name": "container_compute",
+      "status": "pass"
+    },
+    {
+      "name": "bridge_dns",
+      "status": "pass"
+    },
+    {
+      "name": "published_port_guest",
+      "status": "pass"
+    },
+    {
+      "name": "docker_cp",
+      "status": "pass"
+    },
+    {
+      "name": "save_load",
+      "status": "pass"
+    },
+    {
+      "name": "buildkit_multistage",
+      "status": "pass"
+    },
+    {
+      "name": "restart_policy",
+      "status": "pass"
+    },
+    {
+      "name": "healthcheck",
+      "status": "pass"
+    },
+    {
+      "name": "ipv6",
+      "status": "pass"
+    },
+    {
+      "name": "signals",
+      "status": "pass"
+    },
+    {
+      "name": "gpu_fixture_import",
+      "status": "pass"
+    },
+    {
+      "name": "gpu_compute",
+      "status": "fail"
+    },
+    {
+      "name": "external_network",
+      "status": "not_tested"
+    },
+    {
+      "name": "full_docker_compatibility",
+      "status": "not_tested"
+    }
+  ],
+  "finished": true,
+  "checks_complete": true,
+  "suite_status": 1,
+  "subset_passed": false,
+  "exit_code": 0,
+  "timed_out": false,
+  "wall_seconds": 172.51982587762177,
+  "disk_mode": "isolated_cow",
+  "threads_experiment": true,
+  "broker_cache": true,
+  "broker_cache_stats": {
+    "verified": true,
+    "hits": 1472,
+    "stores": 1475
+  },
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "dispatch_benchmark_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "full_acceptance": false,
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "kernel_sha256": "e85dfb9e289557753e4eb797c95482741a90f8ae4eb71afcd56ad3a09ed04c19",
+  "kernel_unchanged": true,
+  "cleanup": {
+    "process_group": 2183630,
+    "forced_cleanup": false,
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  }
+}

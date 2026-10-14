@@ -11,7 +11,8 @@ import subprocess
 import sys
 import time
 import uuid
-from result_checks import docker_evidence
+from result_checks import docker_evidence, broker_cache_evidence
+from guest_cleanup import cleanup_group
 
 p = argparse.ArgumentParser()
 p.add_argument("work", type=pathlib.Path)
@@ -19,8 +20,11 @@ p.add_argument("--timeout", type=int, default=240)
 p.add_argument("--disk", type=pathlib.Path, help="Pristine Docker rootfs; it is opened as a COW backing file")
 p.add_argument("--kernel", type=pathlib.Path)
 p.add_argument("--threads-experiment", action="store_true")
+p.add_argument("--broker-cache", action="store_true")
 p.add_argument("--result-name", default="docker")
 a = p.parse_args()
+if a.broker_cache and not a.threads_experiment:
+    p.error("broker cache requires parallel runners")
 if not a.result_name or not all(c.isalnum() or c in "-_" for c in a.result_name):
     p.error("invalid result-name")
 work = a.work.resolve()
@@ -42,6 +46,8 @@ cmd = [str(kernel), "umid=harddind-" + uuid.uuid4().hex[:12],
        "con=null", "con0=null,fd:1", "ssl=null", "panic=1"]
 if a.threads_experiment:
     cmd.append("seccomp_threads=1")
+if a.broker_cache:
+    cmd.append("seccomp_broker_cache=1")
 timed_out = False
 kernel_sha256 = hashlib.sha256(kernel.read_bytes()).hexdigest()
 start = time.monotonic()
@@ -58,20 +64,31 @@ with log.open("w") as f:
         if proc.poll() is None:
             os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()
+        cleanup = cleanup_group(proc.pid)
         cow.unlink(missing_ok=True)
 text = log.read_text(errors="replace")
 kernel_unchanged = hashlib.sha256(kernel.read_bytes()).hexdigest() == kernel_sha256
 evidence = docker_evidence(text, rc, timed_out)
-if not kernel_unchanged:
+cache_stats = broker_cache_evidence(text)
+if a.broker_cache and not cache_stats["verified"]:
+    evidence["subset_passed"] = False
+    evidence["finished"] = False
+if not kernel_unchanged or not cleanup["clean_shutdown"]:
     evidence["subset_passed"] = False
     evidence["finished"] = False
 report = {"kind": "docker_subset_in_candidate", **evidence, "exit_code": rc,
           "timed_out": timed_out, "wall_seconds": time.monotonic() - start,
           "disk_mode": "isolated_cow", "threads_experiment": a.threads_experiment,
+          "broker_cache": a.broker_cache,
+          "broker_cache_stats": cache_stats,
+          "host_cpu_affinity": sorted(os.sched_getaffinity(0)),
+          "dispatch_benchmark_sha256": next((line.split("=", 1)[1] for line in text.splitlines()
+                                              if line.startswith("HARDDIND_DISPATCH_SHA256=")), None),
           "full_acceptance": False,
           "thread_semantics_sha256": next((line.split("=", 1)[1] for line in text.splitlines()
                                            if line.startswith("HARDDIND_THREAD_SHA256=")), None),
           "kernel_sha256": kernel_sha256, "kernel_unchanged": kernel_unchanged}
+report["cleanup"] = cleanup
 (out / (a.result_name + ".json")).write_text(json.dumps(report, indent=2) + "\n")
 print(json.dumps(report, indent=2))
 if not evidence["finished"]:

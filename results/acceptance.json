@@ -4,36 +4,38 @@
     "docker_functionality": {
       "status": "incomplete",
       "evidence": [
-        "starpub-2026-10-14-threads/docker-threads-reviewed.json",
-        "starpub-2026-10-14-threads/evidence-validation.json"
+        "starpub-2026-10-14-performance/docker-memfd.json",
+        "starpub-2026-10-14-performance/evidence-validation.json"
       ],
       "remaining": [
         "external networking",
         "outer bind-mount semantics",
         "complete upstream compatibility coverage",
         "production lifecycle",
-        "shared-mm runner failure paths and internal isolation"
+        "shared-mm runner failure paths and internal isolation",
+        "intermittent host-child loss under parallel fork/exec observed in prior kernel"
       ]
     },
     "native_performance": {
       "status": "fail",
       "evidence": [
-        "starpub-2026-10-14-threads/threads-comparison.json",
-        "starpub-2026-10-14-threads/threads-reviewed-semantics-1.json",
-        "starpub-2026-10-14-threads/threads-reviewed-semantics-2.json"
+        "starpub-2026-10-14-performance/memfd-comparison.json",
+        "starpub-2026-10-14-performance/memfd-3-after.json",
+        "starpub-2026-10-14-performance/memfd-4-after.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
         "syscall overhead",
         "fork/exec overhead",
-        "storage and networking workload comparison",
-        "parallel-thread workload parity under controlled host load"
+        "memory mapping overhead",
+        "storage and networking application comparison",
+        "performance parity with controlled host load"
       ]
     },
     "gpu_in_container": {
       "status": "fail",
       "evidence": [
-        "starpub-2026-10-14-threads/docker-threads-reviewed.json"
+        "starpub-2026-10-14-performance/docker-memfd.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",

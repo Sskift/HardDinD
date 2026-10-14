@@ -1,0 +1,40 @@
+{
+  "roundtrip_source_exact": true,
+  "source_patches": {
+    "0001-um-bounded-seccomp-polling.patch": "b06fb9363b303f71a3d7d34d71c3c6b58143f555cd01ade51690ba6439b728cd",
+    "0003-um-shared-vm-runners.patch": "1c73e686efb62f5aeef55a2026c6731e0019ee4564a1639ab9332537be703aeb",
+    "0004-um-parallel-waiter-handoff.patch": "244a3769e655dd7d4e104aecb393122b8a9f5ba80efbabba76fd11b51fada1bb",
+    "0005-um-cache-clean-mapping-brokers.patch": "1426e52745a1a2258428a627c73adebc2d5eebd3aa53050ff940efbfa0398eb2",
+    "0006-um-skip-idle-mapping-sync.patch": "e87cd17ebe104fa72f73631976568b203bf30a6e6ad63b840a9890c380760559",
+    "0007-um-retain-broker-memory-fd.patch": "7957e719582f65ddcaa8228f4aa38554e4bf339f50a1346672bdaafbc84c5fc5"
+  },
+  "source_files": {
+    "arch/um/include/asm/mmu.h": "449207df45848e6bb149a1a4c4605a6c37ec5b4d878fc0dcd659ef6718905904",
+    "arch/um/include/asm/pgtable.h": "9dd52225f55f946ed91eb4e2fd9da81cdea0f989a8ff6186e605607e8ea9e839",
+    "arch/um/include/asm/tlbflush.h": "97a895cd976f99fb8c4c48edfae8305a6ef79f6bf4753df4b8890608edf1d02c",
+    "arch/um/include/shared/as-layout.h": "3b0ce3355f9360de3d47abe88c55b97d1be5837cb0e744639fa6835755d7eb54",
+    "arch/um/include/shared/os.h": "4c406837e92c4e6ecb08791e547dbbf5aa82853c107c20d256b0ea67245852e7",
+    "arch/um/include/shared/skas/mm_id.h": "a7072f9eda73e8a2f2ad7bbeaa4d13747121d11462d2b88c99a6c71c4509f848",
+    "arch/um/include/shared/skas/skas.h": "fc6840cc9cdb0c1fc2b78a415def7063e499748285f6583ff84281c89163f09f",
+    "arch/um/include/shared/skas/stub-data.h": "ea60c2ca16312055dd95c54a42f5b4ee97fafdf86f2c9d736c4d7d8d977d99c2",
+    "arch/um/include/shared/skas/stub-futex.h": "6cdf28bed888bb0a7c3fa04c165787b0f825ad3bb5047df77d5156612560dd7a",
+    "arch/um/kernel/reboot.c": "a8af29df9ac03b2249cdcb0309207973fabb80ddad706cee607f0972294a03ae",
+    "arch/um/kernel/skas/mmu.c": "9670f5e83a9788b970ff905b4b2b2d071cd34bd9b13f55f325e7309ef705a129",
+    "arch/um/kernel/skas/process.c": "f967b9ecb091c262450ffd70e7def0578e75e7fa904c703357fc56529d5e34cc",
+    "arch/um/kernel/skas/stub.c": "f6aa006a1f69a45b87d439ecea7902d84d99a22931ca1afd40a78522e4d89330",
+    "arch/um/kernel/skas/stub_exe.c": "10cb0b007dd5a65936ec957c94b570e83bab2da9d6ed420848333f9d3f2f1b84",
+    "arch/um/kernel/smp.c": "c098256dcf1ffb3f9e49e5acba8e5ed032247614c08ff681af4a80b2e20ab581",
+    "arch/um/kernel/time.c": "ac7951ea6591501ca3b2777bc9a172cc27ba7eb676332a6067181e8d30957f9c",
+    "arch/um/kernel/tlb.c": "bf769b37a223578c8aa72f68af60763ec7032dec764b216daee3f656397098c4",
+    "arch/um/os-Linux/process.c": "a830db041cfc22b249513bac7f2a94af9a287fca972b940873c5198d2d0f5c3b",
+    "arch/um/os-Linux/skas/mem.c": "1251d39011747ff86edc7d87465bc51a23909b1f3b7646315c58f0fdfa34b896",
+    "arch/um/os-Linux/skas/process.c": "f4968db4db36b7a3256be09df4b613af4a883983b722b32d08df25ecddee8614",
+    "arch/um/os-Linux/start_up.c": "7c5af274de4627b1f948f09c2b533e2d4c9915217bddb119b78ce98ddeae93e8"
+  },
+  "kernel_sha256": "e85dfb9e289557753e4eb797c95482741a90f8ae4eb71afcd56ad3a09ed04c19",
+  "config_sha256": "34a096bb175ebe0f2bec2ec622a41d1a49feb0b4386de91cf23875c163f0121f",
+  "core_sha256": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+  "dispatch_sha256": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+  "thread_semantics_sha256": "17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3",
+  "compiler": "11.4.0"
+}

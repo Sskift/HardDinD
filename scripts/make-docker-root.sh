@@ -30,6 +30,7 @@ if expected != actual:
 PY
 gcc -O2 -Wall -Wextra -Werror -static -pthread "$repo/src/corebench.c" -o "$root/corebench"
 gcc -O2 -Wall -Wextra -Werror -static -pthread "$repo/src/thread_semantics.c" -o "$root/thread-semantics"
+gcc -O2 -Wall -Wextra -Werror -static -pthread "$repo/src/dispatchbench.c" -o "$root/dispatchbench"
 gcc -O2 -Wall -Wextra -Werror "$repo/src/cuda_probe.c" -ldl -o "$root/cuda-probe"
 python3 "$repo/scripts/make-gpu-fixture.py" "$work"
 install -m 755 "$repo/tests/docker-init" "$root/sbin/harddind-docker-init"

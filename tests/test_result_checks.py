@@ -9,6 +9,13 @@ spec.loader.exec_module(checks)
 
 
 class DockerEvidenceTests(unittest.TestCase):
+    def test_missing_unused_or_duplicate_cache_is_not_verified(self):
+        for log in ["", "HARDDIND_BROKER_CACHE hits=0 stores=2\n",
+                    "HARDDIND_BROKER_CACHE hits=3 stores=2\n",
+                    "HARDDIND_BROKER_CACHE hits=1 stores=2\n" * 2]:
+            self.assertFalse(checks.broker_cache_evidence(log)["verified"])
+        self.assertTrue(checks.broker_cache_evidence("HARDDIND_BROKER_CACHE hits=3 stores=4\n")["verified"])
+
     def test_partial_success_followed_by_aborted_suite_is_not_pass(self):
         log = 'HARDDIND_RESULT {"name":"run","status":"pass"}\nHARDDIND_DOCKER_END status=1\n'
         result = checks.docker_evidence(log, 0, False)

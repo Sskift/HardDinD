@@ -9,7 +9,16 @@ DOCKER_CHECKS = {
     "bridge_dns", "published_port_guest", "docker_cp", "save_load", "buildkit_multistage",
     "restart_policy", "healthcheck", "ipv6", "signals", "gpu_fixture_import", "gpu_compute",
     "external_network", "full_docker_compatibility", "container_threads", "container_thread_semantics",
+    "container_dispatch_semantics",
 }
+
+
+def broker_cache_evidence(log):
+    rows = re.findall(r"^HARDDIND_BROKER_CACHE hits=(\d+) stores=(\d+)$", log, flags=re.MULTILINE)
+    if len(rows) != 1:
+        return {"verified": False, "hits": None, "stores": None}
+    hits, stores = map(int, rows[0])
+    return {"verified": 0 < hits <= stores, "hits": hits, "stores": stores}
 
 
 def docker_evidence(log, exit_code, timed_out):

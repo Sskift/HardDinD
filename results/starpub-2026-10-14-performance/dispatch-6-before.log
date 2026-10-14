@@ -1,0 +1,196 @@
+Core dump limits :
+	soft - 0
+	hard - 0
+Checking environment variables for a tempdir.../root/harddind-rebuild/tmp
+Checking if /root/harddind-rebuild/tmp is on tmpfs...no
+Warning: tempdir /root/harddind-rebuild/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /root/harddind-rebuild/tmp...OK
+Checking that seccomp filters can be installed...OK
+Adding 649482240 bytes to physical memory to account for exec-shield gap
+Linux version 7.2.10 (root@liushiao) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #5 SMP Wed Oct 14 01:53:46 UTC 2026
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000106b64fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x00000000a6b64fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x00000000a6b64fff]
+On node 0, zone Normal: 155 pages in unavailable ranges
+percpu: Embedded 19 pages/cpu s38552 r8192 d31080 u77824
+Kernel command line: ubd0=/root/harddind-rebuild/tmp/core-b29a32dde09a4e6ab7361d2d1fee2669.cow,/root/harddind-rebuild/dispatch.ext4 root=/dev/ubda rw init=/sbin/harddind-dispatch-init con=null con0=null,fd:1 ssl=null panic=1 console=tty0
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 15200(92%)
+Dentry cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 682853
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 4788.22 BogoMIPS (lpj=23941120)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Mountpoint-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 2037296K/2731412K available (5811K kernel code, 1341K rwdata, 1800K rodata, 207K init, 1244K bss, 690924K reserved, 0K cma-reserved)
+devtmpfs: initialized
+Could not create executable memfd, using temporary file!
+posixtimers hash table entries: 2048 (order: 3, 32768 bytes, linear)
+futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 32768 (order: 6, 262144 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 1024 (order: 2, 16384 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes, linear)
+TCP bind hash table entries: 16384 (order: 7, 524288 bytes, linear)
+TCP: Hash tables configured (established 16384 bind 16384)
+UDP hash table entries: 1024 (order: 4, 65536 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /root/.uml/harddind-45900d28fcb5/mconsole
+Checking host MADV_REMOVE support...OK
+workingset: timestamp_bits=46 (anon: 41) max_order=19 bucket_order=0 (anon: 0)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Bridge firewalling registered
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Creating "/root/harddind-rebuild/tmp/core-b29a32dde09a4e6ab7361d2d1fee2669.cow" as COW file for "/root/harddind-rebuild/dispatch.ext4"
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 15, Operation not permitted
+EXT4-fs (ubda): mounted filesystem db268a07-b393-45dc-b88f-eff25aa1827c r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /sbin/harddind-dispatch-init as init process
+HARDDIND_PROBE_BEGIN
+HARDDIND_THREAD_SHA256=17cb6ffbeeaaece0420d3bc5e8a94ff5926abfa3481e310b1db0e5afe0eb05b3
+HARDDIND_CORE_SHA256=f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e
+HARDDIND_DISPATCH_SHA256=de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758
+THREAD_CHECK shared_memory_tls_futex_migration pass
+THREAD_CHECK mprotect_munmap_remap pass
+THREAD_CHECK concurrent_fork_cow pass
+THREAD_CHECK thread_lifecycle pass
+THREAD_CHECK concurrent_page_table_teardown pass
+THREAD_SEMANTICS_END status=0
+{"test":"syscall","workers":1,"seconds":0.568521984}
+{"test":"syscall","workers":1,"seconds":0.581049856}
+{"test":"syscall","workers":1,"seconds":0.586714880}
+{"test":"exec","workers":1,"seconds":0.917166848}
+{"test":"exec","workers":1,"seconds":0.514868224}
+{"test":"exec","workers":1,"seconds":0.483535104}
+{"test":"threads","workers":1,"seconds":0.344247552}
+{"test":"threads","workers":1,"seconds":0.343843328}
+{"test":"threads","workers":1,"seconds":0.349241600}
+{"test":"threads","workers":4,"seconds":0.424317184}
+{"test":"threads","workers":4,"seconds":0.417189120}
+{"test":"threads","workers":4,"seconds":0.350834176}
+{"test":"processes","workers":1,"seconds":0.359233280}
+{"test":"processes","workers":1,"seconds":0.368981248}
+{"test":"processes","workers":1,"seconds":0.355611904}
+{"test":"processes","workers":4,"seconds":0.375017216}
+{"test":"processes","workers":4,"seconds":0.389434624}
+{"test":"processes","workers":4,"seconds":0.364967168}
+{"test":"identity","workers":1,"seconds":0.585733120,"verified":true}
+{"test":"identity","workers":1,"seconds":0.578310400,"verified":true}
+{"test":"identity","workers":1,"seconds":0.603864576,"verified":true}
+{"test":"fdio","workers":1,"seconds":0.135479040,"verified":true}
+{"test":"fdio","workers":1,"seconds":0.118135296,"verified":true}
+{"test":"fdio","workers":1,"seconds":0.107697408,"verified":true}
+{"test":"mapping","workers":1,"seconds":0.647147008,"verified":true}
+{"test":"mapping","workers":1,"seconds":0.756952576,"verified":true}
+{"test":"mapping","workers":1,"seconds":0.492649728,"verified":true}
+{"test":"thread_syscalls","workers":4,"seconds":0.384496896,"verified":true}
+{"test":"thread_syscalls","workers":4,"seconds":0.491367680,"verified":true}
+{"test":"thread_syscalls","workers":4,"seconds":0.245987584,"verified":true}
+{"test":"isolation","workers":1,"seconds":0.185363712,"verified":true}
+{"test":"isolation","workers":1,"seconds":0.199270400,"verified":true}
+{"test":"isolation","workers":1,"seconds":0.274431232,"verified":true}
+Unexpectedly lost MM child! Affected tasks will segfault.
+wait_stub_done_seccomp : failed to wait for stub, pid = -1, errno = 0
+wait_stub_done_seccomp : failed to wait for stub, pid = -1, errno = 0
+syscall_stub_dump_error : length = 18, last offset = 18
+syscall_stub_dump_error : stub syscall type 0 failed, return value = 0xfffffffffffffff6
+    syscall data: 00000000 00000000 00000000 00000000
+    syscall data: 00000000 00000000 00000000 00000000
+    syscall data: 00000000 00000000
+syscall_stub_dump_error: FD map num: 1
+    FD map: 00000003 00000000 00000000 00000000
+Kernel panic - not syncing: Unable to synchronize shared host mappings
+CPU: 2 UID: 0 PID: 834 Comm: dispatchbench Not tainted 7.2.10 #5 VOLUNTARY 
+Stack:
+ 88753080 606f0092 108547ab0 00000001
+ 60a10760 606f0092 6002d4d5 601790c1
+ 108547b10 6003643c 607d9138 884cfa00
+Call Trace:
+ [<6002d4d5>] ? _printk+0x0/0x49
+ [<60050478>] ? uml_curr_cpu+0x0/0xd
+ [<6003962f>] show_stack+0x130/0x13f
+ [<6002d4d5>] ? _printk+0x0/0x49
+ [<601790c1>] ? folio_unlock+0x0/0x1f
+ [<6003643c>] dump_stack_lvl+0x8c/0xb7
+ [<6002d4d5>] ? _printk+0x0/0x49
+ [<601790c1>] ? folio_unlock+0x0/0x1f
+ [<60036485>] dump_stack+0x1e/0x20
+ [<6002bc3d>] vpanic+0x14d/0x3b2
+ [<6004ebec>] ? unmap+0x0/0x5f
+ [<601790c1>] ? folio_unlock+0x0/0x1f
+ [<6002bee9>] abort+0x0/0x52
+ [<6002bea2>] ? panic+0x0/0x47
+ [<605d72c5>] ? _raw_spin_unlock_irqrestore+0x20/0x22
+ [<60039e85>] um_tlb_sync_if_parallel+0x5d/0x60
+ [<601b672c>] flush_tlb_page+0x34/0x38
+ [<601b66f8>] ? flush_tlb_page+0x0/0x38
+ [<601b678d>] ptep_set_access_flags+0x5d/0x68
+ [<601a6631>] wp_page_reuse.constprop.0+0x4e/0x73
+ [<601a65e3>] ? wp_page_reuse.constprop.0+0x0/0x73
+ [<601a89fd>] do_wp_page+0x1ca/0x7fc
+ [<6005045d>] ? __local_ipi_set+0x60/0x7b
+ [<60037f84>] ? do_IRQ+0x0/0x5c
+ [<601ac7db>] __handle_mm_fault+0x829/0x8c7
+ [<60050478>] ? uml_curr_cpu+0x0/0xd
+ [<601ac9c0>] handle_mm_fault+0x147/0x1d6
+ [<6003a324>] handle_page_fault+0x23a/0x3ab
+ [<6003b97b>] ? virt_to_pte+0x0/0x9b
+ [<60050478>] ? uml_curr_cpu+0x0/0xd
+ [<6003ba9d>] maybe_map+0x87/0xb7
+ [<6003b833>] ? copy_chunk_to_user+0x0/0x2d
+ [<6003bafc>] do_op_one_page+0x2f/0xb7
+ [<60053332>] ? __mmdrop+0x237/0x246
+ [<6003b833>] ? copy_chunk_to_user+0x0/0x2d
+ [<6003bbd1>] buffer_op+0x4d/0xe5
+ [<60050478>] ? uml_curr_cpu+0x0/0xd
+ [<6003bcd5>] raw_copy_to_user+0x35/0x37
+ [<60085871>] schedule_tail+0xa7/0xbe
+ [<60050478>] ? uml_curr_cpu+0x0/0xd
+ [<600385c1>] fork_handler+0x3b/0x85
