@@ -29,10 +29,12 @@ def main():
     p.add_argument('--name',required=True)
     p.add_argument('--virtiofsd',type=pathlib.Path)
     p.add_argument('--inline-flock',action='store_true')
+    p.add_argument('--functional-only',action='store_true',help='functional regression without timing samples')
     p.add_argument('--benchmark-only',action='store_true',help='diagnostic timings only; functional checks remain not_tested')
     p.add_argument('--profile',action='store_true',help='diagnostic virtiofs timing; not an uninstrumented performance run')
     p.add_argument('--cancel-race-iterations',type=int,default=0,help='additional timer/unlock races per mode; default disabled')
     a=p.parse_args()
+    if a.functional_only and a.benchmark_only:p.error('functional-only conflicts with benchmark-only')
     if not 0<=a.cancel_race_iterations<=1000:p.error('cancel-race-iterations must be between 0 and 1000')
     if a.cancel_race_iterations and a.benchmark_only:p.error('cancellation races require functional checks')
     if not a.name or len(a.name)>28 or not all(c.isalnum() or c in '-_' for c in a.name):p.error('invalid name')
@@ -52,7 +54,7 @@ def main():
             'loadavg':'/proc/loadavg','cpu_pressure':'/sys/fs/cgroup/cpu.pressure',
             'cpu_stat':'/sys/fs/cgroup/cpu.stat','memory_events':'/sys/fs/cgroup/memory.events'}.items()}
     report={'kind':'shared_flock_lifecycle','full_acceptance':False,'instrumented':a.profile,
-            'inline_flock':a.inline_flock,'benchmark_only':a.benchmark_only,'host_before':host_state(),
+            'inline_flock':a.inline_flock,'benchmark_only':a.benchmark_only,'functional_only':a.functional_only,'host_before':host_state(),
             'cancel_race_iterations':a.cancel_race_iterations,'cancel_races':{},
             'checks':{mode:dict.fromkeys(names,'not_tested') for mode in ('native','docker')},'errors':{},'samples':[],
             'peers':[],'cpu_affinity':sorted(os.sched_getaffinity(0)),'cpu_exclusive':False,
@@ -251,7 +253,7 @@ def main():
             for sample in range(3):report['samples'].append({'mode':mode,'phase':phase,'sample':sample,**peer.ask('bench-lock 1000')})
     try:
         if not a.benchmark_only: suite('native')
-        bench('native','before')
+        if not a.functional_only:bench('native','before')
         run(base+['start','--kernel',str(a.kernel.resolve()),'--disk',str(a.disk.resolve()),'--dns','1.1.1.1',
                   '--publish-ports','--share',str(share),'--share-cache','never','--virtiofsd',str(a.virtiofsd)]
                   +(['--share-profile'] if a.profile else [])+(['--share-inline-flock'] if a.inline_flock else []),timeout=180)
@@ -260,8 +262,9 @@ def main():
             info=tarfile.TarInfo('share-probe');info.mode=0o755;info.size=len(binary);tar.addfile(info,io.BytesIO(binary))
         report['image_id']=cli('import',str(archive),image).strip();report['server']=json.loads(cli('version','--format','{{json .Server}}'))
         if not a.benchmark_only: suite('docker')
-        bench('docker','first');bench('docker','second')
-        run(base+['stop'],timeout=70);bench('native','after')
+        if not a.functional_only:bench('docker','first');bench('docker','second')
+        run(base+['stop'],timeout=70)
+        if not a.functional_only:bench('native','after')
     except BaseException as e:report['error']=f'{type(e).__name__}: {e}';print(report['error'],flush=True)
     finally:
         if harddind.live(harddind.read_state(instance)):
@@ -277,7 +280,7 @@ def main():
                 for match in re.finditer(r'HARDDIND_INLINE_FLOCK completed=(\d+) queued=(\d+) busy_fallback=(\d+)',file.read_text()):
                     stats.append(dict(zip(('completed','queued','busy_fallback'),map(int,match.groups()))))
             report['inline_stats']=stats
-            if len(stats)!=1 or stats[0]['completed']==0 or sum(stats[0].values())<12000:
+            if len(stats)!=1 or stats[0]['completed']==0 or (not a.functional_only and sum(stats[0].values())<12000):
                 report['error']='missing inline execution evidence'
         clean=(report['runtime'].get('phase')=='stopped' and not report['runtime'].get('forced_shutdown',True)
                and report['runtime'].get('guest_cleanup',{}).get('clean_shutdown',False)
@@ -288,12 +291,15 @@ def main():
         report['benchmark_complete']=(clean and report['inputs_unchanged'] and not report.get('error')
             and len(report['samples'])==12 and all(x['rc']==0 and x['iterations']==1000 for x in report['samples'])
             and all(sum(x['mode']==m for x in report['samples'])==6 for m in ('native','docker')))
+        report['functional_complete']=(clean and report['inputs_unchanged'] and not report.get('error') and not a.benchmark_only)
 
         report['median_seconds']={mode:statistics.median(x['seconds'] for x in report['samples'] if x['mode']==mode)
                                   for mode in ('native','docker') if any(x['mode']==mode for x in report['samples'])}
         report['all_checks_passed']=all(v=='pass' for group in report['checks'].values() for v in group.values())
         result.write_text(json.dumps(report,indent=2)+'\n');log.close()
     print(json.dumps({'result':str(result),'checks':report['checks'],'median_seconds':report['median_seconds']},indent=2))
+    if a.functional_only:
+        return 0 if report['functional_complete'] and report['all_checks_passed'] else 1
     return 0 if report['benchmark_complete'] and (a.benchmark_only or report['all_checks_passed']) else 1
 
 
