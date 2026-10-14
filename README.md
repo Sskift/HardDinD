@@ -51,6 +51,8 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 ## 开发与复现
 
+共享目录后端正在实验：UML 内核增加 `VIRTIO_UML`、`FUSE_FS` 和 `VIRTIO_FS`，通过 vhost-user 连接外层独立的 virtiofsd，不依赖 KVM 或外层 `/dev/fuse`。源码固定 virtiofsd 1.13.2，`make virtiofs WORK=... RUST_TOOLCHAIN=...` 校验 Rust 1.98.1 的提交与架构，Cargo 使用上游锁文件，原生依赖解包到实验工作目录。现阶段内核已构建；共享目录的语义、运行集成和性能仍在实测准备中，不能据此声明外层 bind mount 已达标。
+
 `make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。第二个补丁修复实测发现的失败回滚问题：端口冲突后的网络配置被删除，导致再次启动没有端口映射。
 
 [自动端口发布实测](results/starpub-2026-10-14-published-ports/) 的 15 项检查通过，覆盖外层回环 TCP/UDP 数据校验、停止与删除后的释放、默认和自定义 bridge 冲突重试、多端口回滚、临时端口、范围、`-P`、四个并发发布与整个实例重启恢复。第一版冲突失败记录保留。控制请求经实例专用的串口通道传递，数据仍走原有 libslirp 路径；此次没有宣称性能提升。IPv6、不同外层地址复用同一端口、Swarm ingress 和异常恢复尚未通过验收。

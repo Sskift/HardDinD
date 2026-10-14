@@ -1,0 +1,15 @@
+{
+  "status": "build_verified_only",
+  "kernel": "Linux 7.2.10 UML",
+  "build_exit_code": 0,
+  "kernel_sha256": "bedfe12f0d12960de45aa6e2718679dcb919841e4cfb9d9bc697bf84c8d5fb4b",
+  "new_options": [
+    "CONFIG_VIRTIO_UML=y",
+    "CONFIG_FUSE_FS=y",
+    "CONFIG_VIRTIO_FS=y"
+  ],
+  "patch_series": "IPI_EXPERIMENT=1: 0001, 0003 through 0009",
+  "runtime_config_sha256": "2a892583a09457915200b3035455c29cbf3d368a031e400fef260d50bc5b0a5d",
+  "shared_files_tested": false,
+  "full_acceptance": false
+}

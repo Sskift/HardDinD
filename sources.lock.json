@@ -69,5 +69,40 @@
     "version": "go1.26.8",
     "url": "https://go.dev/dl/go1.26.8.linux-amd64.tar.gz",
     "sha256": "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b"
+  },
+  "virtiofsd": {
+    "version": "1.13.2",
+    "commit": "720245d0857e9837484488ff69c2f8c577466851",
+    "url": "https://gitlab.com/virtio-fs/virtiofsd/-/archive/720245d0857e9837484488ff69c2f8c577466851/virtiofsd-720245d0857e9837484488ff69c2f8c577466851.tar.gz",
+    "sha256": "952c0c7c9b9182a3ea66cd2140e8d6d8860d17612cbada0501ac2a184d8abd25"
+  },
+  "rust_build": {
+    "version": "1.98.1",
+    "commit": "48a229ceaefd4985c50990b14116b6d856af0985",
+    "host": "x86_64-unknown-linux-gnu"
+  },
+  "virtiofs_libcapng": {
+    "package": "libcap-ng0",
+    "version": "0.7.9-2.2build3",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/libc/libcap-ng/libcap-ng0_0.7.9-2.2build3_amd64.deb",
+    "sha256": "124d0c8748a841f279e996298ef8aac69a249e294792f4b5e16dc00496f1d3ac"
+  },
+  "virtiofs_libcapng_dev": {
+    "package": "libcap-ng-dev",
+    "version": "0.7.9-2.2build3",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/libc/libcap-ng/libcap-ng-dev_0.7.9-2.2build3_amd64.deb",
+    "sha256": "390be8946978ca2c1cd88a454a8f9bc34d9859cd82d352abe05eb46d42c0c574"
+  },
+  "virtiofs_libseccomp": {
+    "package": "libseccomp2",
+    "version": "2.5.3-2ubuntu2",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/libs/libseccomp/libseccomp2_2.5.3-2ubuntu2_amd64.deb",
+    "sha256": "684ebb02924935f6c176eea7d42ac367fcd8f019450e4782c79e5abb349d6aab"
+  },
+  "virtiofs_libseccomp_dev": {
+    "package": "libseccomp-dev",
+    "version": "2.5.3-2ubuntu2",
+    "url": "https://archive.ubuntu.com/ubuntu/pool/main/libs/libseccomp/libseccomp-dev_2.5.3-2ubuntu2_amd64.deb",
+    "sha256": "d6b68f73a9e30cb6a7c1b7cd3a6326c4291d4d4a4e763591b0f731cbc9b273cc"
   }
 }

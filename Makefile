@@ -19,6 +19,10 @@ moby:
 port-agent:
 	bash scripts/build-port-agent.sh "$(WORK)"
 
+.PHONY: virtiofs
+virtiofs:
+	bash scripts/build-virtiofs.sh "$(WORK)" "$(RUST_TOOLCHAIN)"
+
 runtime-root:
 	bash scripts/make-runtime-root.sh "$(WORK)"
 
