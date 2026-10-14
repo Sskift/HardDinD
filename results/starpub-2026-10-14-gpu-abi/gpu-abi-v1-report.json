@@ -1,0 +1,104 @@
+{
+  "kind": "outer_gpu_abi_trace",
+  "full_acceptance": false,
+  "internal_gpu_verified": false,
+  "started_at": "2026-10-14T10:18:26.560140+00:00",
+  "limitations": [
+    "outer execution only; no guest NVIDIA backend is implemented here",
+    "strace changes scheduling and timing; CUDA timings are diagnostic only",
+    "one process, sequential devices; no concurrency or lifecycle acceptance",
+    "ioctl entry counts do not decode nested pointer or object semantics"
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "cpu_exclusive": false,
+  "host_load_before": "105.09 122.84 90.65 69/52094 3144930\n",
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "strace_version": "strace -- version 5.16",
+  "sha256": {
+    "source": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "binary": "ce39d7bb3d6b5f0e6a14f08d78f6ad1330e75b58e6e356e30bf97a94948946a6",
+    "runner": "9af42d6caa9903dac4b1c5decb88a783f8d665388bb28758b3123d3bd9686846"
+  },
+  "command": [
+    "strace",
+    "-f",
+    "-qq",
+    "-yy",
+    "-tt",
+    "-T",
+    "-s",
+    "32",
+    "-o",
+    "/root/harddind-rebuild/results/gpu-abi-trace-v1/syscalls.strace",
+    "-e",
+    "trace=openat,ioctl,mmap,munmap,mprotect,close,clone,clone3,poll,ppoll,eventfd2",
+    "/root/harddind-rebuild/results/gpu-abi-trace-v1/cuda-probe"
+  ],
+  "exit_code": 0,
+  "timed_out": false,
+  "cleanup": {
+    "process_group": 3145119,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "wall_seconds": 5.595572132617235,
+  "host_load_after": "106.18 122.49 90.88 99/52118 3146849\n",
+  "compute_results": [
+    {
+      "gpu": 0,
+      "elements": 1048576,
+      "seconds": 0.031947259,
+      "verified": true
+    },
+    {
+      "gpu": 1,
+      "elements": 1048576,
+      "seconds": 0.013659053,
+      "verified": true
+    },
+    {
+      "gpu": 2,
+      "elements": 1048576,
+      "seconds": 0.00548302,
+      "verified": true
+    },
+    {
+      "gpu": 3,
+      "elements": 1048576,
+      "seconds": 0.003642466,
+      "verified": true
+    }
+  ],
+  "four_outer_gpus_verified": true,
+  "trace_sha256": "751017b90df9b9bd8067ed28b3c2ff284fd42210b13aeb470eee9be572ff2c64",
+  "syscall_entries": {
+    "mmap": 363,
+    "openat": 256,
+    "close": 277,
+    "mprotect": 15,
+    "munmap": 63,
+    "eventfd2": 9,
+    "clone3": 5,
+    "clone": 5,
+    "poll": 170,
+    "ioctl": 2725
+  },
+  "nvidia_ioctl_entries": 2725,
+  "loaded_gpu_libraries": {
+    "/usr/lib/x86_64-linux-gnu/libcuda.so.550.120": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+    "/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.550.120": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d"
+  },
+  "binary_unchanged": true,
+  "diagnostic_complete": true
+}

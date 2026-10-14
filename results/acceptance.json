@@ -23,7 +23,8 @@
         "starpub-2026-10-14-published-ports/results/docker-moby-context-v1.json",
         "starpub-2026-10-14-shares/shared-never-v1.json",
         "starpub-2026-10-14-shared-locks/shared-flock-v1.json",
-        "starpub-2026-10-14-shared-locks/shared-flock-v2.json"
+        "starpub-2026-10-14-shared-locks/shared-flock-v2.json",
+        "starpub-2026-10-14-shared-locks/shared-profile-v1.json"
       ],
       "remaining": [
         "published ports: IPv6, multiple outer addresses sharing a port, Swarm ingress and abnormal recovery; IPv4 subset passed",
@@ -54,7 +55,8 @@
         "starpub-2026-10-14-network-mtu/net-mtu-v2-analysis.json",
         "starpub-2026-10-14-shares/shared-never-v1.json",
         "starpub-2026-10-14-shared-locks/shared-flock-v1.json",
-        "starpub-2026-10-14-shared-locks/shared-flock-v2.json"
+        "starpub-2026-10-14-shared-locks/shared-flock-v2.json",
+        "starpub-2026-10-14-shared-locks/profile-v1-analysis.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
@@ -77,7 +79,8 @@
       "status": "fail",
       "evidence": [
         "starpub-2026-10-14-protect/docker-protect-v3.json",
-        "starpub-2026-10-14-ipi/docker-ipi-idle.json"
+        "starpub-2026-10-14-ipi/docker-ipi-idle.json",
+        "starpub-2026-10-14-gpu-abi/gpu-abi-v1-report.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",

@@ -1,0 +1,254 @@
+{
+  "kind": "virtiofs_request_diagnostic",
+  "full_acceptance": false,
+  "limitations": [
+    "instrumentation changes scheduling and adds overhead",
+    "timestamps begin after descriptor decoding; exclude guest and transport latency",
+    "service includes server logic, not just the host syscall",
+    "interrupt control messages are excluded",
+    "retry time after the first attempt is included in total, not initial queue time",
+    "profile aggregation and logging overhead are outside the measured intervals"
+  ],
+  "profiles": [
+    {
+      "path": "results/starpub-2026-10-14-shared-locks/shared-profile-v1-harddind0-5bb0807e9ac4.log",
+      "sha256": "2cc6c61b1d576188b840152186adcc13eaf2f52732cf5268f7347aee88e499d1",
+      "rows": [
+        {
+          "opcode": 1,
+          "lock_type": 4294967295,
+          "count": 31,
+          "attempts": 31,
+          "queue_ns": 657364,
+          "service_ns": 33637209,
+          "reply_ns": 390600,
+          "total_ns": 34688798,
+          "max_total_ns": 32458852,
+          "operation": "1",
+          "average_us": {
+            "queue": 21.205290322580645,
+            "service": 1085.071258064516,
+            "reply": 12.6,
+            "total": 1118.9934838709678
+          }
+        },
+        {
+          "opcode": 2,
+          "lock_type": 4294967295,
+          "count": 23,
+          "attempts": 23,
+          "queue_ns": 1587815,
+          "service_ns": 236421,
+          "reply_ns": 245304,
+          "total_ns": 2071887,
+          "max_total_ns": 1077698,
+          "operation": "2",
+          "average_us": {
+            "queue": 69.03543478260869,
+            "service": 10.279173913043477,
+            "reply": 10.665391304347827,
+            "total": 90.08204347826087
+          }
+        },
+        {
+          "opcode": 3,
+          "lock_type": 4294967295,
+          "count": 212,
+          "attempts": 212,
+          "queue_ns": 6902340,
+          "service_ns": 5056604,
+          "reply_ns": 3291363,
+          "total_ns": 15284806,
+          "max_total_ns": 1621602,
+          "operation": "3",
+          "average_us": {
+            "queue": 32.558207547169815,
+            "service": 23.85190566037736,
+            "reply": 15.52529716981132,
+            "total": 72.09814150943396
+          }
+        },
+        {
+          "opcode": 14,
+          "lock_type": 4294967295,
+          "count": 31,
+          "attempts": 31,
+          "queue_ns": 566687,
+          "service_ns": 998288,
+          "reply_ns": 355940,
+          "total_ns": 1924295,
+          "max_total_ns": 115154,
+          "operation": "14",
+          "average_us": {
+            "queue": 18.280225806451615,
+            "service": 32.20283870967742,
+            "reply": 11.481935483870968,
+            "total": 62.07403225806451
+          }
+        },
+        {
+          "opcode": 15,
+          "lock_type": 4294967295,
+          "count": 1,
+          "attempts": 1,
+          "queue_ns": 19784,
+          "service_ns": 35798,
+          "reply_ns": 21092,
+          "total_ns": 76881,
+          "max_total_ns": 76881,
+          "operation": "15",
+          "average_us": {
+            "queue": 19.784,
+            "service": 35.798,
+            "reply": 21.092,
+            "total": 76.881
+          }
+        },
+        {
+          "opcode": 18,
+          "lock_type": 4294967295,
+          "count": 31,
+          "attempts": 31,
+          "queue_ns": 720484,
+          "service_ns": 453742,
+          "reply_ns": 336823,
+          "total_ns": 1514703,
+          "max_total_ns": 147416,
+          "operation": "18",
+          "average_us": {
+            "queue": 23.24141935483871,
+            "service": 14.636838709677418,
+            "reply": 10.865258064516128,
+            "total": 48.861387096774195
+          }
+        },
+        {
+          "opcode": 25,
+          "lock_type": 4294967295,
+          "count": 34,
+          "attempts": 34,
+          "queue_ns": 856305,
+          "service_ns": 348718,
+          "reply_ns": 471236,
+          "total_ns": 1681722,
+          "max_total_ns": 88275,
+          "operation": "25",
+          "average_us": {
+            "queue": 25.185441176470587,
+            "service": 10.256411764705883,
+            "reply": 13.859882352941177,
+            "total": 49.462411764705884
+          }
+        },
+        {
+          "opcode": 26,
+          "lock_type": 4294967295,
+          "count": 1,
+          "attempts": 1,
+          "queue_ns": 33234,
+          "service_ns": 47792,
+          "reply_ns": 10251,
+          "total_ns": 91345,
+          "max_total_ns": 91345,
+          "operation": "26",
+          "average_us": {
+            "queue": 33.234,
+            "service": 47.792,
+            "reply": 10.251,
+            "total": 91.345
+          }
+        },
+        {
+          "opcode": 32,
+          "lock_type": 0,
+          "count": 4,
+          "attempts": 4,
+          "queue_ns": 83724,
+          "service_ns": 54925,
+          "reply_ns": 54555,
+          "total_ns": 193830,
+          "max_total_ns": 57726,
+          "operation": "SETLK",
+          "average_us": {
+            "queue": 20.931,
+            "service": 13.73125,
+            "reply": 13.63875,
+            "total": 48.4575
+          }
+        },
+        {
+          "opcode": 32,
+          "lock_type": 1,
+          "count": 6020,
+          "attempts": 6020,
+          "queue_ns": 85857900,
+          "service_ns": 26277356,
+          "reply_ns": 58456654,
+          "total_ns": 170978138,
+          "max_total_ns": 11760409,
+          "operation": "SETLK",
+          "average_us": {
+            "queue": 14.262109634551495,
+            "service": 4.365009302325581,
+            "reply": 9.710407641196014,
+            "total": 28.401684053156146
+          }
+        },
+        {
+          "opcode": 33,
+          "lock_type": 1,
+          "count": 9,
+          "attempts": 28344,
+          "queue_ns": 164249,
+          "service_ns": 66552680,
+          "reply_ns": 173737,
+          "total_ns": 66395225312,
+          "max_total_ns": 20344802792,
+          "operation": "SETLKW",
+          "average_us": {
+            "queue": 18.24988888888889,
+            "service": 7394.742222222222,
+            "reply": 19.30411111111111,
+            "total": 7377247.25688889
+          }
+        },
+        {
+          "opcode": 33,
+          "lock_type": 2,
+          "count": 6012,
+          "attempts": 6012,
+          "queue_ns": 50218375,
+          "service_ns": 11730008,
+          "reply_ns": 60604732,
+          "total_ns": 122967941,
+          "max_total_ns": 1560649,
+          "operation": "SETLKW",
+          "average_us": {
+            "queue": 8.353023120425814,
+            "service": 1.9510991350632068,
+            "reply": 10.08062741184298,
+            "total": 20.453749334664003
+          }
+        },
+        {
+          "opcode": 50,
+          "lock_type": 4294967295,
+          "count": 2,
+          "attempts": 2,
+          "queue_ns": 52278,
+          "service_ns": 21211014830,
+          "reply_ns": 80253,
+          "total_ns": 21211147920,
+          "max_total_ns": 18603807812,
+          "operation": "50",
+          "average_us": {
+            "queue": 26.139,
+            "service": 10605507.415,
+            "reply": 40.1265,
+            "total": 10605573.96
+          }
+        }
+      ]
+    }
+  ]
+}
