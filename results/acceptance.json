@@ -26,11 +26,12 @@
         "starpub-2026-10-14-shared-locks/shared-flock-v2.json",
         "starpub-2026-10-14-shared-locks/shared-profile-v1.json",
         "starpub-2026-10-14-shared-inline/shared-inline-v1.json",
-        "starpub-2026-10-14-shared-inline/shared-inline-v2.json"
+        "starpub-2026-10-14-shared-inline/shared-inline-v2.json",
+        "starpub-2026-10-14-shared-inline/shared-cancel-race-v1.json"
       ],
       "remaining": [
         "published ports: IPv6, multiple outer addresses sharing a port, Swarm ingress and abnormal recovery; IPv4 subset passed",
-        "outer bind mounts: mmap, incoming notifications, POSIX range locks and cancellation race stress; flock and SIGUSR1/SIGKILL cancellation subset passed with new kernel",
+        "outer bind mounts: mmap, incoming notifications, POSIX range locks and multi-client cancellation/reset stress; flock, SIGUSR1/SIGKILL cancellation and 200 single-waiter cancel/unlock races passed with new kernel",
         "complete upstream compatibility coverage",
         "crash recovery and production lifecycle stress; orderly restart subset passed",
         "shared-mm runner failure paths and internal isolation",

@@ -31,7 +31,10 @@ def main():
     p.add_argument('--inline-flock',action='store_true')
     p.add_argument('--benchmark-only',action='store_true',help='diagnostic timings only; functional checks remain not_tested')
     p.add_argument('--profile',action='store_true',help='diagnostic virtiofs timing; not an uninstrumented performance run')
+    p.add_argument('--cancel-race-iterations',type=int,default=0,help='additional timer/unlock races per mode; default disabled')
     a=p.parse_args()
+    if not 0<=a.cancel_race_iterations<=1000:p.error('cancel-race-iterations must be between 0 and 1000')
+    if a.cancel_race_iterations and a.benchmark_only:p.error('cancellation races require functional checks')
     if not a.name or len(a.name)>28 or not all(c.isalnum() or c in '-_' for c in a.name):p.error('invalid name')
     work=a.work.resolve();repo=pathlib.Path(__file__).resolve().parents[1];out=work/'results';out.mkdir(exist_ok=True)
     share=work/'shares'/a.name;instance=work/'instances'/a.name;result=out/(a.name+'.json');logfile=out/(a.name+'.log')
@@ -43,12 +46,14 @@ def main():
            'close_dup_keeps_lock','fork_last_close','close_releases','kill_releases','blocking_inner','blocking_outer',
            'signal_cancels_wait','kill_cancels_wait','six_waiters_no_starvation','rename_keeps_lock','unlink_keeps_lock',
            'downgrade','upgrade_failure_drops_shared','readonly_bind_flock','posix_outer_excludes_inner','posix_inner_excludes_outer']
+    if a.cancel_race_iterations:names.append('cancel_release_races')
     def host_state():
         return {name:pathlib.Path(path).read_text() for name,path in {
             'loadavg':'/proc/loadavg','cpu_pressure':'/sys/fs/cgroup/cpu.pressure',
             'cpu_stat':'/sys/fs/cgroup/cpu.stat','memory_events':'/sys/fs/cgroup/memory.events'}.items()}
     report={'kind':'shared_flock_lifecycle','full_acceptance':False,'instrumented':a.profile,
             'inline_flock':a.inline_flock,'benchmark_only':a.benchmark_only,'host_before':host_state(),
+            'cancel_race_iterations':a.cancel_race_iterations,'cancel_races':{},
             'checks':{mode:dict.fromkeys(names,'not_tested') for mode in ('native','docker')},'errors':{},'samples':[],
             'peers':[],'cpu_affinity':sorted(os.sched_getaffinity(0)),'cpu_exclusive':False,
             'sha256':{str(f):harddind.sha(f) for f in [a.kernel,a.disk,a.virtiofsd,work/'share-probe',
@@ -206,6 +211,34 @@ def main():
                 fcntl.lockf(outer,fcntl.LOCK_EX|fcntl.LOCK_NB,64,0);blocked(peer,'posix-lock')
             elif name=='posix_inner_excludes_outer':
                 peer.ask('posix-lock');outer_lock(outer,True,posix=True)
+            elif name=='cancel_release_races':
+                rows=[];report['cancel_races'][mode]=rows
+                # None holds the outer lock until EINTR is observed. The other
+                # offsets exercise grant/cancel races around the 2 ms timer.
+                delays=[None,0,.001,.002,.004]
+                for iteration in range(a.cancel_race_iterations):
+                    fcntl.flock(outer,fcntl.LOCK_EX)
+                    peer.send('timed-wait 2000')
+                    armed=peer.receive();assert armed.get('armed'),armed
+                    delay=delays[iteration%len(delays)]
+                    if delay is not None:
+                        if delay:time.sleep(delay)
+                        fcntl.flock(outer,fcntl.LOCK_UN)
+                    row=peer.receive()
+                    assert row.get('op')=='timed-wait',row
+                    rows.append({'iteration':iteration,'unlock_delay_seconds':delay,**row})
+                    if delay is None:
+                        assert row['rc']==-1 and row['errno']==errno.EINTR,row
+                        fcntl.flock(outer,fcntl.LOCK_UN)
+                    assert row['rc']==0 or (row['rc']==-1 and row['errno']==errno.EINTR),row
+                    if row['rc']==0:
+                        outer_lock(outer,True);peer.ask('unlock')
+                    # On EINTR do NOT send unlock: that would mask a leaked
+                    # successful acquisition whose reply lost the race.
+                    outer_lock(outer,False)
+                    assert peer.ask('read')['byte']==65
+                assert any(r['rc']==0 for r in rows),'lock-grant race outcome not covered'
+                assert any(r['rc']==-1 for r in rows),'lock-cancel race outcome not covered'
     def suite(mode):
         for name in names:
             try:case(mode,name);report['checks'][mode][name]='pass'

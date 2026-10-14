@@ -11,6 +11,7 @@
 #include <sys/inotify.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
@@ -28,6 +29,46 @@ static void result(const char *op, int rc, int error) {
 }
 
 static void interrupted(int signo) { (void)signo; }
+
+/* A guest timer races a real blocking flock with the outer unlock.
+ * Block and drain SIGALRM before returning to the command loop so a late timer
+ * cannot terminate the probe or interrupt its next stdin read. Repetition also
+ * handles a signal delivered before flock is entered on a loaded machine. */
+static void timed_wait(int fd, unsigned delay_us) {
+    const char *op = "timed-wait";
+    sigset_t alarm_set, old_mask;
+    struct sigaction action = { .sa_handler = interrupted }, old_action;
+    struct itimerval timer = {0}, stopped = {0};
+    if (!delay_us || delay_us > 1000000) { result(op, -1, EINVAL); return; }
+    sigemptyset(&alarm_set); sigaddset(&alarm_set, SIGALRM);
+    sigemptyset(&action.sa_mask);
+    if (sigprocmask(SIG_BLOCK, &alarm_set, &old_mask)) { result(op, -1, errno); return; }
+    if (sigismember(&old_mask, SIGALRM)) {
+        sigprocmask(SIG_SETMASK, &old_mask, NULL);
+        result(op, -1, EINVAL); return;
+    }
+    if (sigaction(SIGALRM, &action, &old_action)) {
+        int error = errno;
+        sigprocmask(SIG_SETMASK, &old_mask, NULL);
+        result(op, -1, error); return;
+    }
+    printf("{\"op\":\"timed-wait\",\"armed\":true}\n");
+    timer.it_value.tv_sec = delay_us / 1000000;
+    timer.it_value.tv_usec = delay_us % 1000000;
+    timer.it_interval = timer.it_value;
+    int rc = setitimer(ITIMER_REAL, &timer, NULL), error = errno;
+    if (!rc) {
+        rc = sigprocmask(SIG_SETMASK, &old_mask, NULL); error = errno;
+        if (!rc) { rc = flock(fd, LOCK_EX); error = errno; }
+        if (sigprocmask(SIG_BLOCK, &alarm_set, NULL)) { rc = -1; error = errno; }
+    }
+    if (setitimer(ITIMER_REAL, &stopped, NULL)) { rc = -1; error = errno; }
+    struct timespec now = {0};
+    while (sigtimedwait(&alarm_set, NULL, &now) >= 0) {}
+    if (sigaction(SIGALRM, &old_action, NULL)) { rc = -1; error = errno; }
+    if (sigprocmask(SIG_SETMASK, &old_mask, NULL)) { rc = -1; error = errno; }
+    result(op, rc, rc < 0 ? error : 0);
+}
 
 static int parallel_create(const char *path) {
     pid_t children[8];
@@ -155,6 +196,9 @@ int main(int argc, char **argv) {
             int operation = !strcmp(op, "lock-shared") ? LOCK_SH : LOCK_EX;
             if (strcmp(op, "wait")) operation |= LOCK_NB;
             rc = flock(!strcmp(op, "lock-second") ? second : fd, operation);
+        } else if (!strcmp(op, "timed-wait")) {
+            timed_wait(fd, value);
+            continue;
         } else if (!strcmp(op, "unlock")) {
             rc = flock(fd, LOCK_UN);
         } else if (!strcmp(op, "posix-lock") || !strcmp(op, "posix-unlock")) {
