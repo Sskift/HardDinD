@@ -110,5 +110,12 @@
     "commit": "5e52edb2034de7db4d8ae368dbc7c26b416bfa16",
     "repository": "https://github.com/NVIDIA/open-gpu-kernel-modules.git",
     "purpose": "ABI source reference only; does not replace the installed host driver"
+  },
+  "docker_compose": {
+    "version": "5.6.0",
+    "commit": "42f48072bbf92ee9b0e43f9fdf2008d03546e7ca",
+    "url": "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64",
+    "sha256": "40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a",
+    "purpose": "Official Linux x86_64 client plugin; talks only to the selected HardDinD instance"
   }
 }

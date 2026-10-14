@@ -90,3 +90,7 @@ docker-test:
 
 acceptance:
 	python3 scripts/acceptance.py results/acceptance.json
+
+.PHONY: compose-client
+compose-client:
+	bash scripts/install-compose-client.sh "$(WORK)"
