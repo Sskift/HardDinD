@@ -65,7 +65,8 @@ def control(root, name, module_name, key, count):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     obs = {}
-    prefix = '/root/harddind-rebuild/gpu-mapping-owner-v7/run/results/' + name + '/sources/'
+    version = root.name.rsplit('-v', 1)[1]
+    prefix = '/root/harddind-rebuild/gpu-mapping-owner-v' + version + '/run/results/' + name + '/sources/'
     for path, digest in report['sha256'].items():
         if path.startswith(prefix):
             check(sha(read(folder, 'sources/' + path[len(prefix):])) == digest, 'control source changed')
