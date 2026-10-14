@@ -1,0 +1,298 @@
+{
+  "status": "finished",
+  "stage": "native_gpu_lifecycle",
+  "pid": 4078574,
+  "started_at": "2026-10-14T21:50:05.891678+00:00",
+  "full_acceptance": false,
+  "internal_gpu_acceptance": "not_tested",
+  "performance_acceptance": false,
+  "commands": [
+    {
+      "label": "build-original-protocol",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=gnu11",
+        "-pthread",
+        "original_protocol_regression.c",
+        "-lm",
+        "-ldl",
+        "-o",
+        "original-protocol"
+      ],
+      "pid": 4086462,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4086462,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "original-protocol",
+      "command": [
+        "/root/harddind-rebuild/gpu-lifecycle-owner-v3/original-protocol"
+      ],
+      "pid": 4086602,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4086602,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "build-fixed-protocol",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=gnu11",
+        "-pthread",
+        "tests/owner_protocol_regression.c",
+        "-lm",
+        "-ldl",
+        "-o",
+        "fixed-protocol"
+      ],
+      "pid": 4086611,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4086611,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "fixed-protocol",
+      "command": [
+        "/root/harddind-rebuild/gpu-lifecycle-owner-v3/fixed-protocol",
+        "--expect-fixed"
+      ],
+      "pid": 4086736,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4086736,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "build-probe",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=gnu11",
+        "-pthread",
+        "src/cuda_lifecycle_probe.c",
+        "-lm",
+        "-ldl",
+        "-o",
+        "cuda-lifecycle-probe"
+      ],
+      "pid": 4086737,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4086737,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "build-sanitizer-fixture",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=gnu11",
+        "-pthread",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=all",
+        "tests/cuda_lifecycle_host_fixture.c",
+        "-lm",
+        "-ldl",
+        "-o",
+        "host-fixture"
+      ],
+      "pid": 4086862,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4086862,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "sanitizer-fixture",
+      "command": [
+        "/root/harddind-rebuild/gpu-lifecycle-owner-v3/host-fixture"
+      ],
+      "pid": 4087498,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4087498,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "checker-tests",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_gpu_lifecycle_checks.py",
+        "-v"
+      ],
+      "pid": 4087500,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4087500,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "inventory-before",
+      "command": [
+        "nvidia-smi",
+        "--query-gpu=uuid,name,memory.total,driver_version",
+        "--format=csv,noheader,nounits"
+      ],
+      "pid": 4087655,
+      "exit_code": 0,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4087655,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native",
+      "command": [
+        "/root/harddind-rebuild/gpu-lifecycle-owner-v3/cuda-lifecycle-probe"
+      ],
+      "pid": 4087656,
+      "exit_code": 1,
+      "timed_out": false,
+      "cleanup": {
+        "process_group": 4087656,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "source_sha256": {
+    "supervisor.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "original_protocol_regression.c": "ed06e4c168f59081a149953ab3e59902206992f93eafb603428b2050f3860a5c",
+    "launch.json": "abc7edd2fb6f12d4debbd02985d10886c74bfef80e65eedcedca80253887f83b",
+    "REPORT.md": "b876f706aeaad40421b1c0df48fdf20f174f0204021ed8fc5ea063f7ed0ddd22",
+    "author-v2-source-manifest.json": "14fd7b8dbf8c7f39c875cc9b79da69db324204abcef4daf5364ea3a7ccbcd4fc",
+    "supervisor.py": "ddaa6b459bd5832534eee379bb00c2404c147fff8021c0dfed218ab76c98b140",
+    "tests/test_gpu_lifecycle_checks.py": "1c1f025667f70d8633a9225bf2e67d1e37ff242e415265c3de9117c382f94f90",
+    "tests/owner_protocol_regression.c": "cc5b6b0c6be0b466a738a3f76a12306ae769ec124b80f034343161fb7f108a3b",
+    "tests/cuda_lifecycle_host_fixture.c": "a98bdab68a25b4bcf29438cd0b108770bfb79e99828e24bc2339b236c6ceb2e2",
+    "tests/run_host_fixtures.sh": "b594ad604387d0ce888446619ed1ba03b99a5d5df2058b778e4795a0d6095e29",
+    "src/cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "src/cuda_lifecycle_probe.c": "1d03ae86467dd30a7ea14a4dec6aae9bf551ded5df768745d7ff589a49217804",
+    "src/cuda_ioctl_trace.c": "5e669aa21f5dd0ad0e41496177fc0989bd4227a4b24ac495ac2c70ad9e454246",
+    "docs/cuda-12.4-driver-api-signatures.txt": "3423fd773e37c772bf5579d0bb4d9663e7d0a2aa2c3f860ffe30d14f891262c7",
+    "scripts/run-gpu-cuda.py": "3440d5b9bd2dc1fd1d795e48f2a540a8e493ffe9da0b770b25621e3d6ec27350",
+    "scripts/gpu_lifecycle_checks.py": "7416a767020248c35f0ffa99664d61af77a915388cd7002dc0ab93f5f40a04ec",
+    "scripts/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "scripts/__pycache__/guest_cleanup.cpython-310.pyc": "99c6715529151c1d91196edb65d3b299aaeefe9b1b421f849e518c256243499c"
+  },
+  "binary_sha256": "2a6f4e73ebabb8a580ffbca09fc64d35a9c0e104fec93418e883ffc060e9f3c8",
+  "driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.120  Fri Sep 13 10:10:01 UTC 2024\nGCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3) \n",
+  "library_sha256": {
+    "/lib/x86_64-linux-gnu/libcuda.so.1": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+    "/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.1": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d"
+  },
+  "error": "Traceback (most recent call last):\n  File \"/root/harddind-rebuild/gpu-lifecycle-owner-v3/supervisor.py\", line 69, in <module>\n    content = call('native', [str(b / 'cuda-lifecycle-probe')], timeout=120,\n  File \"/root/harddind-rebuild/gpu-lifecycle-owner-v3/supervisor.py\", line 38, in call\n    raise RuntimeError('failed command: ' + label)\nRuntimeError: failed command: native\n",
+  "exit_code": 1,
+  "finished_at": "2026-10-14T21:50:52.131990+00:00"
+}
