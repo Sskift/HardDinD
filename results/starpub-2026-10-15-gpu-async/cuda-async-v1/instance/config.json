@@ -1,0 +1,18 @@
+{
+  "kernel": "/root/harddind-rebuild/gpu-async-kernel-v1",
+  "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+  "cpus": 4,
+  "memory": "4G",
+  "dns": "10.0.2.3",
+  "network_batch": 1,
+  "mtu": 1500,
+  "kernel_sha256": "ec7c521783615a20a070c319765aca81a2b4e610f43b80865d9ee932cd555f8f",
+  "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+  "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+  "publish_ports": false,
+  "gpu_control_experiment": true,
+  "gpu_async_wait": true,
+  "memfd_ram": true,
+  "memfd_stub": true,
+  "shares": []
+}

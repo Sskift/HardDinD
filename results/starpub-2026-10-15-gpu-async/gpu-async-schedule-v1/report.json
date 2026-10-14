@@ -1,0 +1,313 @@
+{
+  "kind": "gpu_async_schedulability",
+  "full_acceptance": false,
+  "internal_cuda_verified": false,
+  "diagnostic_complete": true,
+  "started_at": "2026-10-14T15:52:03.209862+00:00",
+  "guest_cpus": 1,
+  "kill_worker": false,
+  "purpose": "Single-vCPU diagnostic only; full Docker target remains multicore.",
+  "phases": {
+    "sync-1": {
+      "command": [
+        "/root/harddind-rebuild/gpu-async-kernel-v1",
+        "umid=harddind-c87aa2a72473",
+        "mem=2G",
+        "ncpus=1",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-async-schedule-v1/sync-1/root.cow,/root/harddind-rebuild/results/gpu-async-schedule-v1/async.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-async-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "gpu_bridge=1",
+        "gpu_async_debug=2"
+      ],
+      "async_wait": false,
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1661700,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "rm_alloc_free_roundtrips",
+          "pass"
+        ],
+        [
+          "scheduler_tick_steady",
+          "fail"
+        ]
+      ],
+      "metrics": {
+        "iterations": 10,
+        "ioctl_roundtrips": 20,
+        "ticks": 1333,
+        "max_tick_gap_us": 147792,
+        "ioctl_phase_ms": 2666
+      },
+      "workers": [
+        "1661845"
+      ],
+      "async_workers": [],
+      "expected_checks": {
+        "open_control": "pass",
+        "rm_alloc_free_roundtrips": "pass",
+        "scheduler_tick_steady": "fail"
+      },
+      "inputs_unchanged": true,
+      "matched_expectation": true,
+      "status": "expected_scheduler_failure"
+    },
+    "async-1": {
+      "command": [
+        "/root/harddind-rebuild/gpu-async-kernel-v1",
+        "umid=harddind-576878b9df0e",
+        "mem=2G",
+        "ncpus=1",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-async-schedule-v1/async-1/root.cow,/root/harddind-rebuild/results/gpu-async-schedule-v1/async.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-async-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "gpu_bridge=1",
+        "gpu_async_debug=2",
+        "gpu_async_wait=1"
+      ],
+      "async_wait": true,
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1663498,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "rm_alloc_free_roundtrips",
+          "pass"
+        ],
+        [
+          "scheduler_tick_steady",
+          "pass"
+        ]
+      ],
+      "metrics": {
+        "iterations": 10,
+        "ioctl_roundtrips": 20,
+        "ticks": 1180,
+        "max_tick_gap_us": 44802,
+        "ioctl_phase_ms": 2360
+      },
+      "workers": [
+        "1663724"
+      ],
+      "async_workers": [
+        "1663724"
+      ],
+      "expected_checks": {
+        "open_control": "pass",
+        "rm_alloc_free_roundtrips": "pass",
+        "scheduler_tick_steady": "pass"
+      },
+      "inputs_unchanged": true,
+      "matched_expectation": true,
+      "status": "pass"
+    },
+    "sync-2": {
+      "command": [
+        "/root/harddind-rebuild/gpu-async-kernel-v1",
+        "umid=harddind-549952803f29",
+        "mem=2G",
+        "ncpus=1",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-async-schedule-v1/sync-2/root.cow,/root/harddind-rebuild/results/gpu-async-schedule-v1/async.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-async-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "gpu_bridge=1",
+        "gpu_async_debug=2"
+      ],
+      "async_wait": false,
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1665431,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "rm_alloc_free_roundtrips",
+          "pass"
+        ],
+        [
+          "scheduler_tick_steady",
+          "fail"
+        ]
+      ],
+      "metrics": {
+        "iterations": 10,
+        "ioctl_roundtrips": 20,
+        "ticks": 1191,
+        "max_tick_gap_us": 125526,
+        "ioctl_phase_ms": 2382
+      },
+      "workers": [
+        "1665527"
+      ],
+      "async_workers": [],
+      "expected_checks": {
+        "open_control": "pass",
+        "rm_alloc_free_roundtrips": "pass",
+        "scheduler_tick_steady": "fail"
+      },
+      "inputs_unchanged": true,
+      "matched_expectation": true,
+      "status": "expected_scheduler_failure"
+    },
+    "async-2": {
+      "command": [
+        "/root/harddind-rebuild/gpu-async-kernel-v1",
+        "umid=harddind-964dd81b17b3",
+        "mem=2G",
+        "ncpus=1",
+        "seccomp=on",
+        "seccomp_threads=1",
+        "seccomp_broker_cache=1",
+        "defer_ipi=1",
+        "ubd0=/root/harddind-rebuild/results/gpu-async-schedule-v1/async-2/root.cow,/root/harddind-rebuild/results/gpu-async-schedule-v1/async.ext4",
+        "root=/dev/ubda",
+        "rw",
+        "init=/sbin/harddind-async-init",
+        "con=null",
+        "con0=null,fd:1",
+        "ssl=null",
+        "panic=1",
+        "gpu_bridge=1",
+        "gpu_async_debug=2",
+        "gpu_async_wait=1"
+      ],
+      "async_wait": true,
+      "timed_out": false,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 1667477,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      },
+      "checks": [
+        [
+          "open_control",
+          "pass"
+        ],
+        [
+          "rm_alloc_free_roundtrips",
+          "pass"
+        ],
+        [
+          "scheduler_tick_steady",
+          "pass"
+        ]
+      ],
+      "metrics": {
+        "iterations": 10,
+        "ioctl_roundtrips": 20,
+        "ticks": 1161,
+        "max_tick_gap_us": 21275,
+        "ioctl_phase_ms": 2322
+      },
+      "workers": [
+        "1667562"
+      ],
+      "async_workers": [
+        "1667562"
+      ],
+      "expected_checks": {
+        "open_control": "pass",
+        "rm_alloc_free_roundtrips": "pass",
+        "scheduler_tick_steady": "pass"
+      },
+      "inputs_unchanged": true,
+      "matched_expectation": true,
+      "status": "pass"
+    }
+  },
+  "limitations": [
+    "Artificial worker delay, not GPU workload performance.",
+    "Not interruptible cancellation; worker-death behavior is tested separately."
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "sha256": {
+    "/root/harddind-rebuild/gpu-async-kernel-v1": "ec7c521783615a20a070c319765aca81a2b4e610f43b80865d9ee932cd555f8f",
+    "/root/harddind-rebuild/results/gpu-async-schedule-v1/gpu-async-probe": "d54dcdacd3beb0665156de0676e98de90607fea7e71923c167b2c318b5021d46",
+    "/root/harddind-rebuild/results/gpu-async-schedule-v1/async.ext4": "a66301ec8d69e475b5a2e9fa6d4eaecb1c1e0c3fc3a2cdf7d22805e3b41b8253",
+    "/root/harddind-rebuild/results/gpu-async-schedule-v1/sources/gpu_async_probe.c": "d95be1a80a20abf9ae0a0437cf4d030aec56e22018616b59d4750e171a579ede",
+    "/root/harddind-rebuild/results/gpu-async-schedule-v1/sources/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "/root/harddind-rebuild/results/gpu-async-schedule-v1/sources/run-gpu-async.py": "feb2b2327628a34ba2ea03ab7e537ce635f67970086844109d633a784d1145e0",
+    "/root/harddind-rebuild/results/gpu-async-schedule-v1/sources/0017-um-gpu-async-wait.patch": "6422d2e1915782261a4f24b1060a2eec8fab4173a93b0ee4d22970aebfb7008e"
+  }
+}

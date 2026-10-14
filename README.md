@@ -193,3 +193,5 @@ GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、
 [真实 CUDA 设备发现实测](results/starpub-2026-10-14-gpu-device-numbers/) 发现用户态库会把动态杂项节点重建为 `195:255`，随后被容器设备权限拒绝。新增补丁 `0021` 在 guest 内注册 NVIDIA 兼容设备号，真实 CUDA 因而能打开控制节点、读取卡信息并分配根客户端；设备权限和生命周期回归通过。内部计算仍在带二级指针的驱动版本查询 `RM_CONTROL 0x101` 失败，原始轨迹及未完成状态保留。
 
 [驱动版本二级指针实测](results/starpub-2026-10-14-gpu-build-version/) 用补丁 `0022` 接入该查询，30 项探针及 24 组原始结果在原生、guest 和五次内部 Docker 运行中一致，原有根查询与线程回归通过。完整 CUDA 实际通过 `0x101` 后，在下一条客户端继承共享策略 `0xd04` 失败；内部 GPU 计算、UVM、设备映射和接近原生性能仍未完成。
+
+[GPU 可调度等待实测](results/starpub-2026-10-15-gpu-async/) 新增默认关闭的 `0017` 实验：通过完成 IRQ 让等待 ioctl 的任务进入 guest 调度器。相同人工延迟的同步／异步对照、worker 死亡唤醒、四 CPU 查询与内部 Docker 并发重启通过；真实 CUDA 仍在 `0xd04` 失败。使用 `make kernel-gpu-async-experiment` 构建，实例须显式传入 `--gpu-control-experiment --gpu-async-wait`。这不代表完整 GPU 或近原生性能达标。

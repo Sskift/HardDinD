@@ -40,6 +40,8 @@ def main():
     mode.add_argument('--rm-control', action='store_true')
     mode.add_argument('--build-version', action='store_true')
     p.add_argument('--gpu-count', type=int, default=4)
+    p.add_argument('--async-wait', action='store_true')
+    p.add_argument('--async-debug', type=int, choices=range(8), default=0)
     p.add_argument('--memfd-ram', action='store_true')
     p.add_argument('--memfd-stub', action='store_true')
     args = p.parse_args()
@@ -59,12 +61,14 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     report = {'kind': 'uml_gpu_build_version' if bv_mode else 'uml_gpu_rm_control' if ctrl_mode else 'uml_gpu_rm_client' if rm_mode else 'uml_gpu_fd_registration' if fd_mode else 'uml_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False,
+              'async_wait': args.async_wait, 'async_debug': args.async_debug,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'phases': {name: {'status': 'not_tested'} for name in
                          ['native-before', 'disabled', 'guest', 'native-after']},
               'limitations': ['NVIDIA control, REGISTER_FD and optional RM root-client subset; no device mmap or CUDA',
                               'one GPU identity per guest mm; cross-group fd use fails EXDEV',
-                              'device waits disable one guest CPU interrupts; blocking GPU commands unavailable',
+                              ('GPU waits are schedulable but not cancellable' if args.async_wait else
+                               'device waits disable one guest CPU interrupts; blocking GPU commands unavailable'),
                               'traced functional test, not a performance comparison',
                               'UML stub internal isolation is still incomplete']}
     with (work / 'kernel-build.lock').open('a') as lock:
@@ -94,6 +98,9 @@ def main():
             if bv_mode:
                 for filename in ['0021-um-gpu-device-numbers.patch', '0022-um-gpu-build-version.patch']:
                     shutil.copy2(repo / 'kernel/experiments' / filename, sources / filename)
+            stamp = json.loads((output / 'kernel-patches.json').read_text())
+            if '0017-um-gpu-async-wait.patch' in stamp['patches']:
+                shutil.copy2(repo / 'kernel/experiments/0017-um-gpu-async-wait.patch', sources / '0017-um-gpu-async-wait.patch')
             program = output / 'gpu-guest-probe'
             with (output / 'build.log').open('x') as log:
                 subprocess.run(['gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread',
@@ -156,6 +163,8 @@ poweroff -f
                     if args.memfd_stub: command.append('memfd_stub=1')
                     if name == 'guest':
                         command.append('gpu_bridge=1')
+                        if args.async_wait: command.append('gpu_async_wait=1')
+                        if args.async_debug: command.append(f'gpu_async_debug={args.async_debug}')
                 traced = ['strace', '-f', '-qq', '-yy', '-tt', '-T', '-s', '80',
                           '-e', 'trace=ioctl,dup,close,openat,recvmsg,clone,exit,exit_group',
                           '-o', str(trace), *command]
@@ -180,6 +189,7 @@ poweroff -f
                 checks = re.findall(r'^' + marker + r'_CHECK (\w+) (pass|fail)$', content, re.M)
                 row['checks'] = checks
                 row['worker_pids'] = re.findall(r'HARDDIND_GPU_WORKER guest_tgid=\d+ host_pid=(\d+)', content)
+                row['async_worker_pids'] = re.findall(r'HARDDIND_GPU_ASYNC guest_tgid=\d+ host_pid=(\d+) irq=\d+', content)
                 trace_content = trace.read_text(errors='replace')
                 ioctl_lines = [line for line in trace_content.splitlines()
                                if re.search(r'ioctl\(\d+</dev/nvidia(?:ctl|\d+)(?:<|>)', line)]
@@ -201,6 +211,10 @@ poweroff -f
                              and row['device_ioctl_count'] == (70 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 201 if rm_mode else 36 + args.gpu_count if fd_mode else 153))
                 else:
                     valid = valid and row['device_ioctl_count'] == (71 if bv_mode else 92 + 3 * args.gpu_count if ctrl_mode else 205 if rm_mode else 37 + args.gpu_count if fd_mode else 154)
+                if name == 'guest':
+                    row['async_wait_verified'] = (set(row['async_worker_pids']) == set(row['worker_pids'])
+                        and len(row['async_worker_pids']) == 5) if args.async_wait else not row['async_worker_pids']
+                    valid = valid and row['async_wait_verified']
                 if name in ('guest', 'disabled'):
                     row['memory_backing'] = memfd_backing_evidence(content, args.memfd_ram, args.memfd_stub)
                     if args.memfd_ram or args.memfd_stub:

@@ -81,28 +81,32 @@ def apply_series(source, archive, patches):
 if __name__ == "__main__":
     repo = pathlib.Path(__file__).resolve().parents[1]
     src = pathlib.Path(sys.argv[1]).resolve()
+    options = sys.argv[3:]
+    async_mode = options == ["--gpu-async-experiment"]
+    if async_mode:
+        options = ["--gpu-experiment"]
     patches = sorted((repo / "kernel/patches").glob("[0-9]*.patch"))
-    if sys.argv[3:] == ["--handoff-experiment"]:
+    if options == ["--handoff-experiment"]:
         patches += [repo / "kernel/experiments/0002-um-wake-only-sleeping-peer.patch"]
-    elif sys.argv[3:] == ["--threads-experiment"]:
+    elif options == ["--threads-experiment"]:
         patches += [repo / "kernel/experiments/0003-um-shared-vm-runners.patch"]
-    elif sys.argv[3:] == ["--dispatch-experiment"]:
+    elif options == ["--dispatch-experiment"]:
         patches += [repo / "kernel/experiments/0003-um-shared-vm-runners.patch",
                     repo / "kernel/experiments/0004-um-parallel-waiter-handoff.patch"]
-    elif sys.argv[3:] in (["--cache-experiment"], ["--sync-experiment"], ["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
+    elif options in (["--cache-experiment"], ["--sync-experiment"], ["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
         patches += [repo / "kernel/experiments/0003-um-shared-vm-runners.patch",
                     repo / "kernel/experiments/0004-um-parallel-waiter-handoff.patch",
                     repo / "kernel/experiments/0005-um-cache-clean-mapping-brokers.patch"]
-        if sys.argv[3:] != ["--cache-experiment"]:
+        if options != ["--cache-experiment"]:
             patches += [repo / "kernel/experiments/0006-um-skip-idle-mapping-sync.patch"]
-        if sys.argv[3:] in (["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
+        if options in (["--performance-experiment"], ["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
             patches += [repo / "kernel/experiments/0007-um-retain-broker-memory-fd.patch"]
-        if sys.argv[3:] in (["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
+        if options in (["--ipi-experiment"], ["--protect-experiment"], ["--gpu-experiment"]):
             patches += [repo / "kernel/experiments/0008-um-defer-ipi-masking.patch",
                         repo / "kernel/experiments/0009-um-synchronize-deferred-ipi-idle.patch"]
-        if sys.argv[3:] == ["--protect-experiment"]:
+        if options == ["--protect-experiment"]:
             patches += [repo / "kernel/experiments/0010-um-update-mapping-protection.patch"]
-        if sys.argv[3:] == ["--gpu-experiment"]:
+        if options == ["--gpu-experiment"]:
             patches += [repo / "kernel/experiments/0012-um-gpu-control-transport.patch",
                         repo / "kernel/experiments/0013-um-gpu-register-fd.patch",
                         repo / "kernel/experiments/0016-um-gpu-rm-client.patch",
@@ -110,6 +114,8 @@ if __name__ == "__main__":
                         repo / "kernel/experiments/0020-um-gpu-control-pointer-errors.patch",
                         repo / "kernel/experiments/0021-um-gpu-device-numbers.patch",
                         repo / "kernel/experiments/0022-um-gpu-build-version.patch"]
-    elif sys.argv[3:]:
+    elif options:
         raise SystemExit("unknown patch-series option")
+    if async_mode:
+        patches += [repo / "kernel/experiments/0017-um-gpu-async-wait.patch"]
     apply_series(src, pathlib.Path(sys.argv[2]), patches)

@@ -24,6 +24,7 @@ def main():
     p.add_argument('--disk',type=pathlib.Path,required=True)
     p.add_argument('--name',required=True)
     p.add_argument('--gpu-count',type=int,default=4)
+    p.add_argument('--async-wait',action='store_true')
     a=p.parse_args()
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,28}',a.name) or not 1<=a.gpu_count<=32:
         p.error('invalid name or GPU count')
@@ -34,7 +35,7 @@ def main():
     inputs=[a.kernel.resolve(),a.disk.resolve(),repo/'src/cuda_probe.c',repo/'src/cuda_ioctl_trace.c',
             pathlib.Path(__file__).resolve(),repo/'scripts/harddind.py',repo/'scripts/guest_cleanup.py']
     report={'kind':'nested_cuda_compute_diagnostic','full_acceptance':False,
-            'internal_cuda_verified':False,'diagnostic_complete':False,
+            'internal_cuda_verified':False,'diagnostic_complete':False,'async_wait':a.async_wait,
             'started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'sha256':{str(f):harddind.sha(f) for f in inputs},'gpu_count':a.gpu_count,
             'phases':{},'limitations':['manual device aliases; not Docker --gpus integration',
@@ -111,7 +112,8 @@ def main():
                 fcntl.flock(lock,fcntl.LOCK_EX)
                 compute('native-before',[str(program)],native_env)
             require('start',base+['start','--kernel',str(a.kernel.resolve()),'--disk',str(a.disk.resolve()),
-                        '--gpu-control-experiment','--memfd-ram','--memfd-stub'])
+                        '--gpu-control-experiment','--memfd-ram','--memfd-stub',
+                        *(['--gpu-async-wait'] if a.async_wait else [])])
             report['ready_state']=harddind.read_state(instance)
             with (out/'rootfs.tar').open('rb') as archive:require('import',base+['docker','import','-',image],stdin=archive)
             devices=['--device=/dev/harddind-nvidiactl:/dev/nvidiactl']
@@ -135,6 +137,9 @@ def main():
             require('copy-trace',base+['docker','cp',container+':/tmp/cuda-syscalls.strace',str(out/'docker.strace')])
             report['phases']['docker']['trace_sha256']=harddind.sha(out/'docker.strace')
             require('remove',base+['docker','rm',container])
+            if a.async_wait:
+                require('kernel-log',base+['docker','run','--rm','--cap-add=SYSLOG',
+                    '-v','/bin:/bin:ro','-v','/lib:/lib:ro',image,'/bin/busybox','dmesg'])
             require('stop',base+['stop'],timeout=90)
             report['stopped_state']=harddind.read_state(instance)
             with (work/'kernel-build.lock').open('a') as lock:
@@ -158,9 +163,14 @@ def main():
             saved=out/'instance';saved.mkdir()
             for f in instance.glob('*'):
                 if f.is_file() and f.suffix in ('.json','.log'):shutil.copy2(f,saved/f.name)
+            console=(out/'kernel-log.stdout').read_text(errors='replace') if (out/'kernel-log.stdout').exists() else ''
+            workers=re.findall(r'HARDDIND_GPU_WORKER guest_tgid=\d+ host_pid=(\d+)',console)
+            async_workers=re.findall(r'HARDDIND_GPU_ASYNC guest_tgid=\d+ host_pid=(\d+) irq=\d+',console)
+            report['gpu_workers']=workers;report['async_workers']=async_workers
+            report['async_wait_verified']=(bool(workers) and async_workers==workers) if a.async_wait else not async_workers
             report['diagnostic_complete']=(not report.get('error') and not report.get('cleanup_error')
                 and len(report['phases'])==3 and report.get('normal_shutdown')
-                and report.get('inputs_unchanged') and report.get('libraries_unchanged')
+                and report.get('inputs_unchanged') and report.get('libraries_unchanged') and report['async_wait_verified']
                 and all(v['cleanup']['clean_shutdown'] and not v['timed_out'] for v in report['phases'].values()))
             (out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({k:report.get(k) for k in ['diagnostic_complete','internal_cuda_verified','error','cleanup_error','normal_shutdown']},indent=2))

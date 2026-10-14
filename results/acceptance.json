@@ -146,7 +146,19 @@
         "starpub-2026-10-14-gpu-build-version/gpu-build-root-regression-v1/report.json",
         "starpub-2026-10-14-gpu-build-version/gpu-build-core-v1.json",
         "starpub-2026-10-14-gpu-build-version/gpu-build-cleanup-audit.json",
-        "starpub-2026-10-14-gpu-build-version/evidence-validation.json"
+        "starpub-2026-10-14-gpu-build-version/evidence-validation.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-build-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-schedule-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-death-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-death-v2/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-docker-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-docker-v2/report.json",
+        "starpub-2026-10-15-gpu-async/cuda-async-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-fd-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-off-v1/report.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-core-v1.json",
+        "starpub-2026-10-15-gpu-async/gpu-async-cleanup-audit.json",
+        "starpub-2026-10-15-gpu-async/evidence-validation.json"
       ],
       "remaining": [
         "NVIDIA device ABI backend",
@@ -155,10 +167,11 @@
         "multi-GPU and process lifecycle",
         "GPU performance comparison",
         "RM root-client allocation/free: native 29/29, guest and five nested Docker lifecycle runs 28/29; unsupported allocation class error semantics differ; device objects, UVM/mmap and CUDA remain absent",
-        "Four RM root queries passed native/guest/real Docker parity (17 checks per probe), but arbitrary controls, device objects, concurrent remap, schedulable/cancellable waits, mmap/UVM and CUDA remain incomplete",
+        "Four RM root queries passed native/guest/real Docker parity (17 checks per probe), but arbitrary controls, device objects, concurrent remap, cancellable waits, mmap/UVM and CUDA remain incomplete",
         "Root control pointer faults extended to 23-check native/guest/Docker parity; generic ABI, device mappings and actual CUDA remain incomplete",
         "Earlier real CUDA device-number fix reached RM_CONTROL 0x101; the subsequent 0022 bridge now passes that query with 30-check native/guest/Docker parity, but actual cuInit fails at client inherited share policy 0xd04 (CUDA error 304); no internal GPU computation has run",
-        "Legacy build-version coverage is limited to zero flags and bounded output ranges; concurrent remap and user-address-boundary behavior remain unverified"
+        "Legacy build-version coverage is limited to zero flags and bounded output ranges; concurrent remap and user-address-boundary behavior remain unverified",
+        "Opt-in IRQ-based GPU waits now pass controlled schedulability, worker-death, four-vCPU and Docker lifecycle diagnostics; CUDA still fails at 0xd04, real blocking workload cancellation and GPU performance parity remain unverified"
       ]
     }
   }

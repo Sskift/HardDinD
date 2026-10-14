@@ -37,6 +37,7 @@ def main():
     mode.add_argument('--build-version', action='store_true')
     p.add_argument('--native-baseline', type=pathlib.Path)
     p.add_argument('--gpu-count', type=int, default=4)
+    p.add_argument('--async-wait', action='store_true')
     p.add_argument('--memfd-ram', action='store_true')
     p.add_argument('--memfd-stub', action='store_true')
     a = p.parse_args()
@@ -68,6 +69,7 @@ def main():
         inputs.append(a.native_baseline.resolve())
     report = {'kind': 'docker_gpu_build_version' if bv_mode else 'docker_gpu_rm_control' if ctrl_mode else 'docker_gpu_rm_client' if rm_mode else 'docker_gpu_fd_registration' if fd_mode else 'docker_gpu_control_transport', 'full_acceptance': False,
               'internal_cuda_verified': False, 'diagnostic_complete': False, 'probe_results': {},
+              'async_wait': a.async_wait,
               'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'sha256': {str(f): harddind.sha(f) for f in inputs},
               'checks': {n: 'not_tested' for n in ['no_device', 'device_control', 'nonroot_denied',
@@ -76,6 +78,7 @@ def main():
                                                  'concurrent_client_a', 'concurrent_client_b',
                                                  'instance_restart',
                                                  'inputs_unchanged', 'normal_shutdown']}}
+    if a.async_wait: report['checks']['async_wait_active'] = 'not_tested'
     if a.memfd_ram or a.memfd_stub:
         report['checks']['memory_backing'] = 'not_tested'
     sources = out / 'sources'; sources.mkdir()
@@ -139,17 +142,26 @@ def main():
             if not passed and not (rm_mode or ctrl_mode or bv_mode): raise RuntimeError(name + ' failed')
         def control_check(name, command):
             validate_control(name, *run(command))
+        def capture_kernel_log(name):
+            # Runtime init lowers the console log level. Read this guest's
+            # kernel ring buffer through an explicitly SYSLOG-capable helper.
+            text = require(base + ['docker', 'run', '--rm', '--cap-add=SYSLOG',
+                '-v', '/bin:/bin:ro', '-v', '/lib:/lib:ro', image, '/bin/busybox', 'dmesg'])
+            (out / (name + '.log')).write_text(text)
+
         try:
             start = base + ['start', '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
                             *(['--memfd-ram'] if a.memfd_ram else []),
-                            *(['--memfd-stub'] if a.memfd_stub else []), '--gpu-control-experiment']
+                            *(['--memfd-stub'] if a.memfd_stub else []),
+                            *(['--gpu-async-wait'] if a.async_wait else []), '--gpu-control-experiment']
             require(start)
             report['ready_state'] = harddind.read_state(instance)
             if a.memfd_ram or a.memfd_stub:
                 log_text = (instance / ('guest-' + report['ready_state']['run'] + '.log')).read_text(errors='replace')
                 report['memory_backing'] = memfd_backing_evidence(log_text, a.memfd_ram, a.memfd_stub)
                 report['checks']['memory_backing'] = 'pass' if report['memory_backing']['verified'] else 'fail'
-            rc, text = run(start[:-1])
+            mismatch_flag = '--gpu-async-wait' if a.async_wait else '--gpu-control-experiment'
+            rc, text = run([part for part in start if part != mismatch_flag])
             report['checks']['configuration_mismatch_rejected'] = 'pass' if (
                 rc != 0 and 'running instance uses different inputs' in text) else 'fail'
             bundle = io.BytesIO()
@@ -193,6 +205,7 @@ def main():
                         proc.terminate()
                         try: proc.wait(timeout=10)
                         except subprocess.TimeoutExpired: proc.kill(); proc.wait()
+            if a.async_wait: capture_kernel_log('kernel-before-restart')
             require(base + ['stop'])
             report['restart_shutdown'] = harddind.read_state(instance)
             if report['restart_shutdown'].get('phase') != 'stopped':
@@ -201,6 +214,7 @@ def main():
             report['restarted_state'] = harddind.read_state(instance)
             control_check('instance_restart', base + ['docker', 'run', '--rm',
                                                        *devices, *probe_args])
+            if a.async_wait: capture_kernel_log('kernel-after-restart')
             report['checks']['inputs_unchanged'] = 'pass' if all(
                 harddind.sha(f) == report['sha256'][str(f)] for f in inputs) else 'fail'
         except Exception as error:
@@ -223,6 +237,13 @@ def main():
             for f in instance.glob('*'):
                 if f.is_file() and f.suffix in ('.log', '.json'):
                     shutil.copy2(f, saved / f.name)
+            if a.async_wait:
+                console = '\n'.join(f.read_text(errors='replace') for f in out.glob('kernel-*.log'))
+                workers = re.findall(r'HARDDIND_GPU_WORKER guest_tgid=\d+ host_pid=(\d+)', console)
+                async_workers = re.findall(r'HARDDIND_GPU_ASYNC guest_tgid=\d+ host_pid=(\d+) irq=\d+', console)
+                report['async_workers'] = async_workers
+                report['gpu_workers'] = workers
+                report['checks']['async_wait_active'] = 'pass' if len(workers) == 25 and len(async_workers) == 25 and set(workers) == set(async_workers) else 'fail'
             report['diagnostic_complete'] = (not report.get('error') and not report.get('shutdown_error')
                                              and all(v == 'pass' for v in report['checks'].values()))
             (out / 'report.json').write_text(json.dumps(report, indent=2) + '\n')

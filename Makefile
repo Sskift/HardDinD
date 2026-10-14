@@ -94,3 +94,7 @@ acceptance:
 .PHONY: compose-client
 compose-client:
 	bash scripts/install-compose-client.sh "$(WORK)"
+
+.PHONY: kernel-gpu-async-experiment
+kernel-gpu-async-experiment:
+	GPU_ASYNC_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"

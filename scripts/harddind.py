@@ -156,7 +156,7 @@ def serve(a, work, instance):
     disk = a.disk.resolve()
     config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu,
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend'),
-              'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment,
+              'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment, 'gpu_async_wait': a.gpu_async_wait,
               'memfd_ram': a.memfd_ram, 'memfd_stub': a.memfd_stub,
               'shares': share_specs(a.share)}
     if config['shares']:
@@ -172,6 +172,7 @@ def serve(a, work, instance):
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
         previous.setdefault('gpu_control_experiment', False)
+        previous.setdefault('gpu_async_wait', False)
         previous.setdefault('memfd_ram', False)
         previous.setdefault('memfd_stub', False)
         if previous.get('shares'):
@@ -263,6 +264,7 @@ def serve(a, work, instance):
                f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={a.mtu},mac=02:00:00:00:02:15']
         if a.gpu_control_experiment:
             cmd.append('gpu_bridge=1')
+        if a.gpu_async_wait: cmd.append('gpu_async_wait=1')
         if a.memfd_ram: cmd.append('memfd_ram=1')
         if a.memfd_stub: cmd.append('memfd_stub=1')
         for _, path, share, _ in filesystems:
@@ -404,6 +406,7 @@ def main():
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
         s.add_argument('--memfd-ram', action='store_true', help='use experimental memfd RAM backing')
         s.add_argument('--memfd-stub', action='store_true', help='require sealed memfd userspace executable')
+        s.add_argument('--gpu-async-wait', action='store_true', help='use experimental schedulable GPU waits; requires --gpu-control-experiment')
         s.add_argument('--gpu-control-experiment', action='store_true', help='enable experimental NVIDIA control queries; no CUDA or GPU mmap support yet')
         s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
         s.add_argument('--virtiofsd', type=pathlib.Path, help='immutable filesystem backend binary for controlled comparisons')
@@ -423,6 +426,8 @@ def main():
     instance.mkdir(parents=True, exist_ok=True, mode=0o700)
     state = read_state(instance)
     if a.action in ('start', 'serve'):
+        if a.gpu_async_wait and not a.gpu_control_experiment:
+            p.error('--gpu-async-wait requires --gpu-control-experiment')
         if not 1 <= a.cpus <= 64 or not a.memory[:-1].isdigit() or a.memory[-1:] not in ('M', 'G'):
             p.error('invalid resources')
         if not 576 <= a.mtu <= 65520: p.error('mtu must be between 576 and 65520')
@@ -437,11 +442,11 @@ def main():
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment,
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'gpu_control_experiment': a.gpu_control_experiment, 'gpu_async_wait': a.gpu_async_wait,
               'memfd_ram': a.memfd_ram, 'memfd_stub': a.memfd_stub, 'shares': shares}
             if shares: requested.update(share_cache=a.share_cache, share_profile=a.share_profile,
                                         share_inline_flock=a.share_inline_flock, virtiofsd=str(a.virtiofsd))
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'memfd_ram': False, 'memfd_stub': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'gpu_control_experiment': False, 'gpu_async_wait': False, 'memfd_ram': False, 'memfd_stub': False, 'shares': [], 'share_profile': False, 'share_inline_flock': False, 'virtiofsd': str((work / 'virtiofsd').resolve())}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
@@ -449,6 +454,7 @@ def main():
                '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch), '--mtu', str(a.mtu)]
         if a.publish_ports: cmd.append('--publish-ports')
         if a.gpu_control_experiment: cmd.append('--gpu-control-experiment')
+        if a.gpu_async_wait: cmd.append('--gpu-async-wait')
         if a.memfd_ram: cmd.append('--memfd-ram')
         if a.memfd_stub: cmd.append('--memfd-stub')
         for share in shares: cmd += ['--share', share['target']]
