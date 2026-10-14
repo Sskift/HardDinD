@@ -178,7 +178,7 @@ def serve(a, work, instance):
             path.unlink(missing_ok=True)
             cmd = [str(work/'virtiofsd'), '--socket-path', str(path), '--shared-dir', share['source'],
                    '--tag', share['tag'], '--sandbox', 'chroot', '--cache', a.share_cache,
-                   '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts',
+                   '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts', '--shared-flock',
                    '--thread-pool-size', '4']
             with (instance/f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,

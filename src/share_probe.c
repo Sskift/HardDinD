@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,8 @@ static double seconds(void) {
 static void result(const char *op, int rc, int error) {
     printf("{\"op\":\"%s\",\"rc\":%d,\"errno\":%d}\n", op, rc, error);
 }
+
+static void interrupted(int signo) { (void)signo; }
 
 static int parallel_create(const char *path) {
     pid_t children[8];
@@ -70,10 +73,11 @@ int main(int argc, char **argv) {
     }
     setbuf(stdout, NULL);
     const char *path = argv[1];
-    int fd = -1, notify = -1;
+    int fd = -1, second = -1, notify = -1, child_pipe = -1;
+    pid_t child = -1;
     unsigned char *map = MAP_FAILED;
     char line[256], op[32];
-    printf("{\"ready\":true,\"uid\":%u,\"gid\":%u}\n", getuid(), getgid());
+    printf("{\"ready\":true,\"uid\":%u,\"gid\":%u,\"pid\":%d}\n", getuid(), getgid(), getpid());
     while (fgets(line, sizeof(line), stdin)) {
         unsigned value = 0;
         if (sscanf(line, "%31s %u", op, &value) < 1) continue;
@@ -115,10 +119,48 @@ int main(int argc, char **argv) {
             else { map[0] = value; rc = msync(map, 4096, MS_SYNC); }
         } else if (!strcmp(op, "unmap")) {
             rc = map == MAP_FAILED ? 0 : munmap(map, 4096); map = MAP_FAILED;
-        } else if (!strcmp(op, "lock")) {
-            rc = flock(fd, LOCK_EX | LOCK_NB);
+        } else if (!strcmp(op, "signal-ready")) {
+            struct sigaction action = { .sa_handler = interrupted };
+            sigemptyset(&action.sa_mask);
+            rc = sigaction(SIGUSR1, &action, NULL);
+        } else if (!strcmp(op, "dup") || !strcmp(op, "open-second")) {
+            if (second >= 0) close(second);
+            second = !strcmp(op, "dup") ? dup(fd) : open(path, O_RDWR | O_CLOEXEC);
+            rc = second < 0 ? -1 : 0;
+        } else if (!strcmp(op, "close-second")) {
+            rc = close(second); second = -1;
+        } else if (!strcmp(op, "fork-hold")) {
+            int pipes[2];
+            if (child > 0) { rc = -1; errno = EBUSY; }
+            else if (pipe(pipes)) rc = -1;
+            else {
+                child = fork();
+                if (child < 0) { close(pipes[0]); close(pipes[1]); rc = -1; }
+                else if (!child) {
+                    close(pipes[1]);
+                    char byte;
+                    while (read(pipes[0], &byte, 1) < 0 && errno == EINTR) {}
+                    _exit(0);
+                } else { close(pipes[0]); child_pipe = pipes[1]; }
+            }
+        } else if (!strcmp(op, "release-child")) {
+            if (child <= 0) { rc = -1; errno = ECHILD; }
+            else {
+                close(child_pipe); child_pipe = -1;
+                int status;
+                rc = waitpid(child, &status, 0) == child && WIFEXITED(status) && !WEXITSTATUS(status) ? 0 : -1;
+                child = -1;
+            }
+        } else if (!strcmp(op, "lock") || !strcmp(op, "lock-shared") || !strcmp(op, "wait") || !strcmp(op, "lock-second")) {
+            int operation = !strcmp(op, "lock-shared") ? LOCK_SH : LOCK_EX;
+            if (strcmp(op, "wait")) operation |= LOCK_NB;
+            rc = flock(!strcmp(op, "lock-second") ? second : fd, operation);
         } else if (!strcmp(op, "unlock")) {
             rc = flock(fd, LOCK_UN);
+        } else if (!strcmp(op, "posix-lock") || !strcmp(op, "posix-unlock")) {
+            struct flock lock = { .l_type = !strcmp(op, "posix-lock") ? F_WRLCK : F_UNLCK,
+                                  .l_whence = SEEK_SET, .l_start = 0, .l_len = 64 };
+            rc = fcntl(fd, F_SETLK, &lock);
         } else if (!strcmp(op, "setxattr")) {
             rc = fsetxattr(fd, "user.harddind", "verified", 8, 0);
         } else if (!strcmp(op, "getxattr")) {
@@ -142,6 +184,15 @@ int main(int argc, char **argv) {
             continue;
         } else if (!strcmp(op, "parallel-create")) {
             rc = parallel_create(path);
+        } else if (!strcmp(op, "bench-lock")) {
+            double start = seconds(); unsigned done = 0;
+            for (; done < value; done++) {
+                if (flock(fd, LOCK_EX | LOCK_NB) || flock(fd, LOCK_UN)) { rc = -1; break; }
+            }
+            double elapsed = seconds() - start;
+            printf("{\"op\":\"bench-lock\",\"rc\":%d,\"errno\":%d,\"iterations\":%u,\"seconds\":%.9f}\n",
+                   rc, rc < 0 ? errno : 0, done, elapsed);
+            continue;
         } else if (!strcmp(op, "bench-read") || !strcmp(op, "bench-write")) {
             const size_t chunk = 65536;
             unsigned char data[65536]; memset(data, 0x5a, sizeof(data));
@@ -164,6 +215,9 @@ int main(int argc, char **argv) {
         result(op, rc, rc < 0 ? errno : 0);
     }
     if (map != MAP_FAILED) munmap(map, 4096);
+    if (child_pipe >= 0) close(child_pipe);
+    if (child > 0) waitpid(child, NULL, 0);
+    if (second >= 0) close(second);
     if (fd >= 0) close(fd);
     if (notify >= 0) close(notify);
     return 0;

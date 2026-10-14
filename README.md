@@ -57,6 +57,8 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 共享目录实验默认 `--share-cache never`，以避免普通读写静默使用陈旧数据。需要 `MAP_SHARED` 的应用在当前导出目录上仍不能正常工作，后续必须补齐；`--share-cache auto` 仅保留为显式对照选项。未启用 `--share` 的实例不受这个选项影响。
 
+`virtiofs/patches/0002` 增加外层共享 `flock`：锁绑定到对应的宿主打开文件描述，阻塞请求由独立等待队列重试，处理 FUSE interrupt，避免等待者占满普通文件工作线程。运行入口传入 `--shared-flock`，服务拒绝与零线程池组合；锁状态迁移尚未实现，因此显式返回不支持。POSIX 字节范围锁尚未接入，未声明支持。`scripts/run-shared-locks.py` 使用同一程序在原生与真实 Docker 中检查所有权、dup/fork、关闭、强杀、信号取消和超过工作线程数量的等待者，完整机器结果正在生成；构建和队列检查记录在 `results/starpub-2026-10-14-shared-locks`。
+
 `make moby WORK=/root/harddind-rebuild` 构建固定提交 `8af9fe3a36bab3e039862a2ab1cef1880c9b4d03` 的 Docker 29.8.2，补丁保存在 `moby/patches/`，Go 1.26.8 工具链与源码均校验锁定的 SHA256，依赖仅使用上游 vendor。补丁增加独立的 `HARDDIND_PORT_DRIVER_STATE` 入口，复用上游同步端口分配协议，不开启 rootless 模式或改变 cgroup 行为。第二个补丁修复实测发现的失败回滚问题：端口冲突后的网络配置被删除，导致再次启动没有端口映射。
 
 [自动端口发布实测](results/starpub-2026-10-14-published-ports/) 的 15 项检查通过，覆盖外层回环 TCP/UDP 数据校验、停止与删除后的释放、默认和自定义 bridge 冲突重试、多端口回滚、临时端口、范围、`-P`、四个并发发布与整个实例重启恢复。第一版冲突失败记录保留。控制请求经实例专用的串口通道传递，数据仍走原有 libslirp 路径；此次没有宣称性能提升。IPv6、不同外层地址复用同一端口、Swarm ingress 和异常恢复尚未通过验收。
