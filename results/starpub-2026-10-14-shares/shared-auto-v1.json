@@ -1,0 +1,295 @@
+{
+  "kind": "shared_file_semantics_and_io",
+  "cache": "auto",
+  "full_acceptance": false,
+  "checks": {
+    "native": {
+      "read_initial": "pass",
+      "outer_write_open_fd": "pass",
+      "outer_write_reopen": "pass",
+      "outer_truncate_fstat": "pass",
+      "outer_chmod_fstat": "pass",
+      "guest_write_outer_read": "pass",
+      "mmap_outer_to_guest": "pass",
+      "mmap_guest_to_outer": "pass",
+      "replace_open_inode": "pass",
+      "unlink_open_inode": "pass",
+      "xattr_both_directions": "pass",
+      "outer_lock_blocks_guest": "pass",
+      "guest_lock_blocks_outer": "pass",
+      "outer_inotify_to_guest": "fail",
+      "guest_inotify_to_outer": "fail",
+      "user_permission_denied": "pass",
+      "user_create_owner": "pass",
+      "read_only_bind": "pass"
+    },
+    "docker": {
+      "read_initial": "not_tested",
+      "outer_write_open_fd": "not_tested",
+      "outer_write_reopen": "not_tested",
+      "outer_truncate_fstat": "not_tested",
+      "outer_chmod_fstat": "not_tested",
+      "guest_write_outer_read": "not_tested",
+      "mmap_outer_to_guest": "not_tested",
+      "mmap_guest_to_outer": "not_tested",
+      "replace_open_inode": "not_tested",
+      "unlink_open_inode": "not_tested",
+      "xattr_both_directions": "not_tested",
+      "outer_lock_blocks_guest": "not_tested",
+      "guest_lock_blocks_outer": "not_tested",
+      "outer_inotify_to_guest": "not_tested",
+      "guest_inotify_to_outer": "not_tested",
+      "user_permission_denied": "not_tested",
+      "user_create_owner": "not_tested",
+      "read_only_bind": "not_tested"
+    }
+  },
+  "errors": {
+    "native/outer_inotify_to_guest": "RuntimeError: {'op': 'watch', 'rc': -1, 'errno': 24}",
+    "native/guest_inotify_to_outer": "OSError: [Errno 24] inotify_init1"
+  },
+  "samples": [
+    {
+      "mode": "native",
+      "phase": "before",
+      "sample": 0,
+      "op": "bench-write",
+      "rc": 0,
+      "errno": 0,
+      "bytes": 33554432,
+      "seconds": 0.185244562,
+      "MiB_per_second": 172.745
+    },
+    {
+      "mode": "native",
+      "phase": "before",
+      "sample": 0,
+      "op": "bench-read",
+      "rc": 0,
+      "errno": 0,
+      "bytes": 33554432,
+      "seconds": 0.023139704,
+      "MiB_per_second": 1382.904
+    },
+    {
+      "mode": "native",
+      "phase": "before",
+      "sample": 1,
+      "op": "bench-write",
+      "rc": 0,
+      "errno": 0,
+      "bytes": 33554432,
+      "seconds": 0.176135648,
+      "MiB_per_second": 181.678
+    },
+    {
+      "mode": "native",
+      "phase": "before",
+      "sample": 1,
+      "op": "bench-read",
+      "rc": 0,
+      "errno": 0,
+      "bytes": 33554432,
+      "seconds": 0.021335792,
+      "MiB_per_second": 1499.827
+    },
+    {
+      "mode": "native",
+      "phase": "before",
+      "sample": 2,
+      "op": "bench-write",
+      "rc": 0,
+      "errno": 0,
+      "bytes": 33554432,
+      "seconds": 0.194818644,
+      "MiB_per_second": 164.255
+    },
+    {
+      "mode": "native",
+      "phase": "before",
+      "sample": 2,
+      "op": "bench-read",
+      "rc": 0,
+      "errno": 0,
+      "bytes": 33554432,
+      "seconds": 0.023083054,
+      "MiB_per_second": 1386.298
+    }
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "cpu_exclusive": false,
+  "sha256": {
+    "/root/harddind-rebuild/virtiofs-kernel-v1": "bedfe12f0d12960de45aa6e2718679dcb919841e4cfb9d9bc697bf84c8d5fb4b",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/virtiofsd": "db7fe0ffc99730dd99c87cc6a85b23bdb7279cfba4409d9acd2bef051ca9b956",
+    "/root/harddind-rebuild/share-probe": "778a09712a8247e1a558ed05960a4619ac2d01cc681269b78202afdf56879bd9",
+    "/root/harddind-rebuild/scripts/harddind.py": "c07ed8a9a0390849830a4b724905e549074c4957dcdced6ce1f576821e21b750",
+    "/root/harddind-rebuild/guest/runtime-init": "1b293435e388ed77b057cf26c256f89e2d09b80814dc22de6c43b172074ef01b",
+    "/root/harddind-rebuild/scripts/run-shared-files.py": "af9f64580798208200ba5a29bf82baa7ec3c033c654a05456fe08fa30c631c7f"
+  },
+  "not_tested": [
+    "cross-layer Unix sockets/FIFOs",
+    "bind propagation",
+    "crash recovery",
+    "ACL enforcement",
+    "overlay upperdir on shared filesystem",
+    "large directory and multi-client stress",
+    "GPU"
+  ],
+  "error": "RuntimeError: command failed: /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-auto-v1 start --kernel /root/harddind-rebuild/virtiofs-kernel-v1 --disk /root/harddind-rebuild/runtime-shares-v1.ext4 --dns 1.1.1.1 --publish-ports --share /root/harddind-rebuild/shares/shared-auto-v1 --share-cache auto",
+  "runtime": {
+    "phase": "failed",
+    "run": "27efab899b14",
+    "supervisor_pid": 1921190,
+    "supervisor_start": "1385128135",
+    "config": {
+      "kernel": "/root/harddind-rebuild/virtiofs-kernel-v1",
+      "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "cpus": 4,
+      "memory": "4G",
+      "dns": "1.1.1.1",
+      "network_batch": 1,
+      "mtu": 1500,
+      "kernel_sha256": "bedfe12f0d12960de45aa6e2718679dcb919841e4cfb9d9bc697bf84c8d5fb4b",
+      "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+      "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+      "publish_ports": true,
+      "shares": [
+        {
+          "source": "/root/harddind-rebuild/shares/shared-auto-v1",
+          "target": "/root/harddind-rebuild/shares/shared-auto-v1",
+          "tag": "harddind0"
+        }
+      ],
+      "virtiofsd_sha256": "db7fe0ffc99730dd99c87cc6a85b23bdb7279cfba4409d9acd2bef051ca9b956",
+      "share_cache": "auto",
+      "port_driver_sha256": "9383724216fcc46105f089ab91cf6f66dfdf77b67eeca32b30c49465882658f2"
+    },
+    "runtime_sha256": "c07ed8a9a0390849830a4b724905e549074c4957dcdced6ce1f576821e21b750",
+    "filesystems": [
+      {
+        "pid": 1925734,
+        "share": {
+          "source": "/root/harddind-rebuild/shares/shared-auto-v1",
+          "target": "/root/harddind-rebuild/shares/shared-auto-v1",
+          "tag": "harddind0"
+        },
+        "command": [
+          "/root/harddind-rebuild/virtiofsd",
+          "--socket-path",
+          "/root/harddind-rebuild/instances/shared-auto-v1/harddind0.sock",
+          "--shared-dir",
+          "/root/harddind-rebuild/shares/shared-auto-v1",
+          "--tag",
+          "harddind0",
+          "--sandbox",
+          "chroot",
+          "--cache",
+          "auto",
+          "--inode-file-handles=never",
+          "--xattr",
+          "--posix-acl",
+          "--announce-submounts",
+          "--thread-pool-size",
+          "4"
+        ]
+      }
+    ],
+    "guest_pid": 1925776,
+    "network_pid": 1925744,
+    "api_port": 45785,
+    "mconsole": "/root/harddind-rebuild/instances/shared-auto-v1/uml/27efab899b14/mconsole",
+    "command": [
+      "/root/harddind-rebuild/virtiofs-kernel-v1",
+      "umid=27efab899b14",
+      "uml_dir=/root/harddind-rebuild/instances/shared-auto-v1/uml/",
+      "mem=4G",
+      "ncpus=4",
+      "seccomp=on",
+      "seccomp_threads=1",
+      "seccomp_broker_cache=1",
+      "seccomp_spin=256",
+      "defer_ipi=1",
+      "ubd0=/root/harddind-rebuild/instances/shared-auto-v1/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+      "root=/dev/ubda",
+      "rw",
+      "init=/sbin/harddind-runtime-init",
+      "con=null",
+      "con0=null,fd:1",
+      "ssl=null",
+      "panic=1",
+      "harddind_dns=1.1.1.1",
+      "harddind_mtu=1500",
+      "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+      "virtio_uml.device=/root/harddind-rebuild/instances/shared-auto-v1/harddind0.sock:26",
+      "harddind_share=harddind0:L3Jvb3QvaGFyZGRpbmQtcmVidWlsZC9zaGFyZXMvc2hhcmVkLWF1dG8tdjE=",
+      "ssl0=fd:7",
+      "harddind_ports=1"
+    ],
+    "error": "RuntimeError: shared filesystem backend exited unexpectedly",
+    "shutdown_error": "[Errno 2] No such file or directory",
+    "guest_exit_code": -9,
+    "guest_cleanup": {
+      "process_group": 1925776,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "forced_shutdown": true,
+    "port_driver": {
+      "info_seen": false,
+      "error": null,
+      "remaining_ports": []
+    },
+    "network_exit_code": 0,
+    "network_cleanup": {
+      "process_group": 1925744,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    },
+    "filesystem_cleanup": [
+      {
+        "share": {
+          "source": "/root/harddind-rebuild/shares/shared-auto-v1",
+          "target": "/root/harddind-rebuild/shares/shared-auto-v1",
+          "tag": "harddind0"
+        },
+        "exit_code": 1,
+        "process_group": 1925734,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    ],
+    "stopped_at": 1791969204.2008655
+  },
+  "median_MiB_per_second": {
+    "native": {
+      "bench-read": 1386.298,
+      "bench-write": 172.745
+    },
+    "docker": {}
+  },
+  "all_checked_semantics_passed": false
+}

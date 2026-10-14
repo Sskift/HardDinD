@@ -1,0 +1,95 @@
+patching file src/vhost_user.rs
+patching file src/passthrough/mod.rs
+patching file src/oslib.rs
+   Compiling virtiofsd v1.13.2 (/root/harddind-rebuild/virtiofsd-source-kv93Gu)
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/filesystem.rs:214:13
+    |
+214 |     fn next(&mut self) -> Option<DirEntry>;
+    |             ^^^^^^^^^            ^^^^^^^^ the same lifetime is hidden here
+    |             |
+    |             the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+    |
+214 |     fn next(&mut self) -> Option<DirEntry<'_>>;
+    |                                          ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/read_dir.rs:79:13
+   |
+79 |     fn next(&mut self) -> Option<DirEntry> {
+   |             ^^^^^^^^^            ^^^^^^^^ the same lifetime is hidden here
+   |             |
+   |             the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+79 |     fn next(&mut self) -> Option<DirEntry<'_>> {
+   |                                          ++++
+
+warning: `virtiofsd` (lib) generated 2 warnings (run `cargo fix --lib -p virtiofsd` to apply 2 suggestions)
+warning: `virtiofsd` (lib test) generated 2 warnings (2 duplicates)
+    Finished `release` profile [optimized] target(s) in 14.90s
+     Running unittests src/lib.rs (/root/harddind-rebuild/virtiofsd-build/release/deps/virtiofsd-f1ee34ec78d05707)
+
+running 2 tests
+test oslib::harddind_tests::harddind_concurrent_creation_masks ... ok
+test passthrough::harddind_tests::harddind_concurrent_working_directories ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.18s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/root/harddind-rebuild/virtiofsd-build/release/deps/virtiofsd-b9b911233e77c43c)
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/filesystem.rs:214:13
+    |
+214 |     fn next(&mut self) -> Option<DirEntry>;
+    |             ^^^^^^^^^            ^^^^^^^^ the same lifetime is hidden here
+    |             |
+    |             the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+    |
+214 |     fn next(&mut self) -> Option<DirEntry<'_>>;
+    |                                          ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/read_dir.rs:79:13
+   |
+79 |     fn next(&mut self) -> Option<DirEntry> {
+   |             ^^^^^^^^^            ^^^^^^^^ the same lifetime is hidden here
+   |             |
+   |             the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+79 |     fn next(&mut self) -> Option<DirEntry<'_>> {
+   |                                          ++++
+
+warning: `virtiofsd` (lib) generated 2 warnings (run `cargo fix --lib -p virtiofsd` to apply 2 suggestions)
+   Compiling virtiofsd v1.13.2 (/root/harddind-rebuild/virtiofsd-source-kv93Gu)
+    Finished `release` profile [optimized] target(s) in 31.35s
+virtiofsd 1.13.2
+952c0c7c9b9182a3ea66cd2140e8d6d8860d17612cbada0501ac2a184d8abd25  /root/harddind-rebuild/cache/virtiofsd-720245d0857e9837484488ff69c2f8c577466851.tar.gz
+55cdb1e4d4cc1dbfcda85e40facb08faad7a5e7de18bcebe6399bf26726a89f8  /root/harddind-rebuild/virtiofsd-source-kv93Gu/Cargo.lock
+e5072542fcbf84836df14ff1371a8d1c2b07f33e9bd6765af35e93dbd2f7d3aa  /root/harddind-rebuild/virtiofsd
+859254978c0a0402c32f949f6de0d99aee73be8d15f45aac00ae1448aac51e74  /home/skift/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc
+da77c8b33849312255ccde3179198ada4c8deb370488d050286146b1d1b27e14  /home/skift/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo
+patch_series_sha256=c097f621ead55c316450791d5180719854df102e4c6d7d06aa52642ea1ba55c2
+	linux-vdso.so.1 (0x00007ffc58fba000)
+	libseccomp.so.2 => /root/harddind-rebuild/virtiofs-native/usr/lib/x86_64-linux-gnu/libseccomp.so.2 (0x00007fbc852fd000)
+	libcap-ng.so.0 => /root/harddind-rebuild/virtiofs-native/lib/x86_64-linux-gnu/libcap-ng.so.0 (0x00007fbc852f5000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fbc852cf000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbc850a7000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007fbc85583000)

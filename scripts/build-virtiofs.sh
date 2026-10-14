@@ -15,12 +15,14 @@ if any(actual.get(k)!=v for k,v in {'release':expected['version'],'commit-hash':
     raise SystemExit('Rust toolchain does not match sources.lock.json')
 PY
 archive=$(python3 "$repo/scripts/fetch-artifact.py" virtiofsd "$work/cache")
-src="$work/virtiofsd-1.13.2"
-if [ ! -d "$src" ]; then
-    stage=$(mktemp -d "$work/virtiofsd-source-XXXXXX")
-    tar -xf "$archive" -C "$stage" --strip-components=1
-    mv "$stage" "$src"
-fi
+patch_sha=$(cat "$repo"/virtiofs/patches/[0-9]*.patch | sha256sum | cut -d' ' -f1)
+# Always unpack verified input so cached local edits cannot change the build.
+src=$(mktemp -d "$work/virtiofsd-source-XXXXXX")
+trap 'rm -rf "$src"' EXIT
+tar -xf "$archive" -C "$src" --strip-components=1
+for patch_file in "$repo"/virtiofs/patches/[0-9]*.patch; do
+    patch --batch --fuzz=0 -d "$src" -p1 < "$patch_file"
+done
 native="$work/virtiofs-native"
 mkdir -p "$native"
 for key in virtiofs_libcapng virtiofs_libcapng_dev virtiofs_libseccomp virtiofs_libseccomp_dev; do
@@ -32,9 +34,11 @@ export CARGO_BUILD_JOBS=8 CARGO_NET_RETRY=2
 export PKG_CONFIG_SYSROOT_DIR="$native" PKG_CONFIG_LIBDIR="$native/usr/lib/x86_64-linux-gnu/pkgconfig"
 export RUSTFLAGS="-Lnative=$native/usr/lib/x86_64-linux-gnu -Lnative=$native/lib/x86_64-linux-gnu -C link-arg=-Wl,-rpath,$native/usr/lib/x86_64-linux-gnu -C link-arg=-Wl,-rpath,$native/lib/x86_64-linux-gnu"
 # Cargo.lock includes exact registry versions and source checksums. Never update it.
+(cd "$src" && "$toolchain/bin/cargo" test --release --locked harddind_ -- --test-threads=1)
 (cd "$src" && "$toolchain/bin/cargo" build --release --locked)
 install -m 755 "$CARGO_TARGET_DIR/release/virtiofsd" "$work/virtiofsd.new"
 "$work/virtiofsd.new" --version
 mv "$work/virtiofsd.new" "$work/virtiofsd"
 sha256sum "$archive" "$src/Cargo.lock" "$work/virtiofsd" "$toolchain/bin/rustc" "$toolchain/bin/cargo"
+printf 'patch_series_sha256=%s\n' "$patch_sha"
 ldd "$work/virtiofsd"

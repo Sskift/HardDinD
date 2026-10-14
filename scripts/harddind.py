@@ -5,6 +5,7 @@ The ordinary Docker CLI talks to the real daemon. The optional published-port
 driver requires the patched Moby fixture. Outer bind paths and GPU remain gaps.
 """
 import argparse
+import base64
 import ctypes
 import fcntl
 import hashlib
@@ -30,6 +31,27 @@ def sha(path):
         for b in iter(lambda: f.read(1024 * 1024), b''):
             h.update(b)
     return h.hexdigest()
+
+
+def share_specs(paths):
+    result = []
+    protected = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
+    for path in paths:
+        target = pathlib.Path(os.path.abspath(path))
+        if '\n' in str(target) or '\r' in str(target):
+            raise ValueError('shared path cannot contain a newline')
+        if any(target == pathlib.Path(p) or pathlib.Path(p).is_relative_to(target) for p in protected):
+            raise ValueError('share would cover a required guest system path')
+        source = target.resolve(strict=True)
+        if not source.is_dir(): raise ValueError('shared source must be a directory')
+        if any(s['target'] == str(target) for s in result): raise ValueError('duplicate shared path')
+        result.append({'source': str(source), 'target': str(target), 'tag': 'harddind'+str(len(result))})
+    if len(result) > 8: raise ValueError('at most 8 shared directories per experimental instance')
+    return result
+
+
+def share_argument(share):
+    return share['tag'] + ':' + base64.b64encode(os.fsencode(share['target'])).decode()
 
 
 def write_state(instance, state):
@@ -111,7 +133,10 @@ def serve(a, work, instance):
     disk = a.disk.resolve()
     config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu,
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend'),
-              'publish_ports': a.publish_ports}
+              'publish_ports': a.publish_ports, 'shares': share_specs(a.share)}
+    if config['shares']:
+        config['virtiofsd_sha256'] = sha(work / 'virtiofsd')
+        config['share_cache'] = a.share_cache
     if a.publish_ports:
         config['port_driver_sha256'] = sha(pathlib.Path(__file__).with_name('port_driver.py'))
     config_file = instance / 'config.json'
@@ -121,6 +146,7 @@ def serve(a, work, instance):
         previous.setdefault('network_batch', 1)
         previous.setdefault('mtu', 1500)
         previous.setdefault('publish_ports', False)
+        previous.setdefault('shares', [])
         if previous != config:
             raise RuntimeError('instance input changed; use a new instance name')
     config_file.write_text(json.dumps(config, indent=2) + '\n')
@@ -138,6 +164,7 @@ def serve(a, work, instance):
     helper = guest = None
     guest_end = helper_end = None
     port_parent = port_guest = relay = None
+    filesystems = []
     libc = ctypes.CDLL(None, use_errno=True)
     parent = os.getpid()
     def parent_death():
@@ -146,6 +173,24 @@ def serve(a, work, instance):
     ctl = instance / 'network.ctl'
     ctl.unlink(missing_ok=True)  # The exclusive instance lock is held.
     try:
+        for share in config['shares']:
+            path = instance / (share['tag']+'.sock')
+            path.unlink(missing_ok=True)
+            cmd = [str(work/'virtiofsd'), '--socket-path', str(path), '--shared-dir', share['source'],
+                   '--tag', share['tag'], '--sandbox', 'chroot', '--cache', a.share_cache,
+                   '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts',
+                   '--thread-pool-size', '4']
+            with (instance/f"{share['tag']}-{run}.log").open('x') as log:
+                fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                                      start_new_session=True, preexec_fn=parent_death)
+            filesystems.append((fs, path, share, cmd))
+            until = time.monotonic()+5
+            while not path.exists():
+                if fs.poll() is not None or time.monotonic() > until:
+                    raise RuntimeError('virtiofsd did not start: '+share['target'])
+                time.sleep(.05)
+        state['filesystems'] = [{'pid': fs.pid, 'share': share, 'command': cmd} for fs, _, share, cmd in filesystems]
+        write_state(instance, state)
         guest_end, helper_end = socket.socketpair(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         for s in (guest_end, helper_end):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024 * 1024)
@@ -179,11 +224,15 @@ def serve(a, work, instance):
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
                f'harddind_dns={a.dns}', f'harddind_mtu={a.mtu}',
                f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={a.mtu},mac=02:00:00:00:02:15']
+        for _, path, share, _ in filesystems:
+            cmd += [f'virtio_uml.device={path}:26', 'harddind_share='+share_argument(share)]
         inherited = [guest_end.fileno()]
         if a.publish_ports:
             port_parent, port_guest = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
             inherited.append(port_guest.fileno())
             cmd += [f'ssl0=fd:{port_guest.fileno()}', 'harddind_ports=1']
+        if sum(len(os.fsencode(s))+1 for s in cmd[1:]) >= 4096:
+            raise RuntimeError('UML kernel command line exceeds 4095 bytes')
         with (instance / f'guest-{run}.log').open('x') as log:
             guest = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                      pass_fds=tuple(inherited), env={**os.environ, 'TMPDIR': str(tmp)},
@@ -203,9 +252,16 @@ def serve(a, work, instance):
                 raise RuntimeError('guest or network backend exited unexpectedly')
             if relay is not None and relay.error:
                 raise RuntimeError('port driver failed: ' + relay.error)
+            if any(fs.poll() is not None for fs, _, _, _ in filesystems):
+                raise RuntimeError('shared filesystem backend exited unexpectedly')
             if state['phase'] == 'starting':
                 try:
                     if api(port, '/_ping') == b'OK':
+                        if config['shares']:
+                            console = (instance/f'guest-{run}.log').read_text(errors='replace')
+                            if any('HARDDIND_SHARE='+share_argument(s) not in console for s in config['shares']):
+                                state['fixture_error'] = 'guest fixture did not confirm requested shared mounts'
+                                break
                         if relay is not None and not relay.info_seen:
                             state['fixture_error'] = 'Docker did not connect to the requested port driver'
                             break
@@ -252,12 +308,23 @@ def serve(a, work, instance):
                     os.killpg(helper.pid, signal.SIGKILL); helper.wait()
             state['network_exit_code'] = helper.returncode
             state['network_cleanup'] = cleanup_group(helper.pid)
+        state['filesystem_cleanup'] = []
+        for fs, path, share, _ in filesystems:
+            if fs.poll() is None:
+                fs.terminate()
+                try: fs.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(fs.pid, signal.SIGKILL); fs.wait()
+            item = {'share': share, 'exit_code': fs.returncode, **cleanup_group(fs.pid)}
+            state['filesystem_cleanup'].append(item)
+            path.unlink(missing_ok=True)
         for s in (guest_end, helper_end, port_parent, port_guest):
             if s is not None: s.close()
         ctl.unlink(missing_ok=True)
         clean = (guest is not None and state.get('guest_exit_code') == 0 and
                  state.get('guest_cleanup', {}).get('clean_shutdown') and
-                 state.get('network_exit_code') == 0 and state.get('network_cleanup', {}).get('clean_shutdown'))
+                 state.get('network_exit_code') == 0 and state.get('network_cleanup', {}).get('clean_shutdown') and
+                 all(s['clean_shutdown'] and s['exit_code'] in (0, -signal.SIGTERM) for s in state['filesystem_cleanup']))
         state['phase'] = 'stopped' if clean and not state.get('error') and not state.get('forced_shutdown') else 'failed'
         state['stopped_at'] = time.time()
         write_state(instance, state)
@@ -280,6 +347,8 @@ def main():
         s.add_argument('--network-batch', type=int, choices=range(1, 65), default=1, metavar='1..64', help='experimental link batch size (default 1)')
         s.add_argument('--mtu', type=int, default=1500, help='IPv4 link and bridge MTU, 576..65520 (default 1500)')
         s.add_argument('--publish-ports', action='store_true', help='experimental automatic IPv4 publishing; requires patched Moby fixture')
+        s.add_argument('--share', type=pathlib.Path, action='append', default=[], help='export this outer directory at the same guest path using virtiofs')
+        s.add_argument('--share-cache', choices=('auto', 'never'), default='auto', help='virtiofs cache policy; never currently disallows MAP_SHARED')
     for name in ('status', 'stop'):
         subs.add_parser(name)
     subs.add_parser('docker').add_argument('args', nargs=argparse.REMAINDER)
@@ -299,17 +368,22 @@ def main():
         try: a.dns = str(ipaddress.IPv4Address(a.dns))
         except ipaddress.AddressValueError: p.error('dns must be an IPv4 resolver address')
         a.disk = a.disk or work / 'runtime.ext4'
+        try: shares = share_specs(a.share)
+        except (OSError, ValueError) as error: p.error(str(error))
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports}
-            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False}.get(key)) != value for key, value in requested.items()):
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch, 'mtu': a.mtu, 'publish_ports': a.publish_ports, 'shares': shares}
+            if shares: requested['share_cache'] = a.share_cache
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1, 'mtu': 1500, 'publish_ports': False, 'shares': []}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
                '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
                '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch), '--mtu', str(a.mtu)]
         if a.publish_ports: cmd.append('--publish-ports')
+        for share in shares: cmd += ['--share', share['target']]
+        cmd += ['--share-cache', a.share_cache]
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         until = time.monotonic() + 150

@@ -1,0 +1,170 @@
+$ /root/harddind-rebuild/share-probe native-read_initial
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":65}
+$ /root/harddind-rebuild/share-probe native-outer_write_open_fd
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":65}
+> read
+{"op":"read","rc":0,"byte":66}
+$ /root/harddind-rebuild/share-probe native-outer_write_reopen
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":65}
+> close
+{"op":"close","rc":0,"errno":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":66}
+$ /root/harddind-rebuild/share-probe native-outer_truncate_fstat
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> stat
+{"op":"stat","rc":0,"size":8192,"mode":438,"uid":0,"gid":0,"nlink":1}
+> stat
+{"op":"stat","rc":0,"size":16384,"mode":438,"uid":0,"gid":0,"nlink":1}
+$ /root/harddind-rebuild/share-probe native-outer_chmod_fstat
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> stat
+{"op":"stat","rc":0,"size":8192,"mode":438,"uid":0,"gid":0,"nlink":1}
+> stat
+{"op":"stat","rc":0,"size":8192,"mode":416,"uid":0,"gid":0,"nlink":1}
+$ /root/harddind-rebuild/share-probe native-guest_write_outer_read
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> write 66
+{"op":"write","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-mmap_outer_to_guest
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> map
+{"op":"map","rc":0,"errno":0}
+> mapped
+{"op":"mapped","rc":0,"byte":65}
+> mapped
+{"op":"mapped","rc":0,"byte":66}
+> unmap
+{"op":"unmap","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-mmap_guest_to_outer
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> map
+{"op":"map","rc":0,"errno":0}
+> mapped
+{"op":"mapped","rc":0,"byte":65}
+> mwrite 66
+{"op":"mwrite","rc":0,"errno":0}
+> unmap
+{"op":"unmap","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-replace_open_inode
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":65}
+> close
+{"op":"close","rc":0,"errno":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":66}
+$ /root/harddind-rebuild/share-probe native-unlink_open_inode
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> write 66
+{"op":"write","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":66}
+> close
+{"op":"close","rc":0,"errno":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> read
+{"op":"read","rc":0,"byte":67}
+$ /root/harddind-rebuild/share-probe native-xattr_both_directions
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> setxattr
+{"op":"setxattr","rc":0,"errno":0}
+> getxattr
+{"op":"getxattr","rc":0,"expected_value":false,"outer_value":true}
+$ /root/harddind-rebuild/share-probe native-outer_lock_blocks_guest
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> lock
+{"op":"lock","rc":-1,"errno":11}
+> unlock
+{"op":"unlock","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-guest_lock_blocks_outer
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> lock
+{"op":"lock","rc":0,"errno":0}
+> unlock
+{"op":"unlock","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-outer_inotify_to_guest
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> watch
+{"op":"watch","rc":-1,"errno":24}
+$ /root/harddind-rebuild/share-probe native-guest_inotify_to_outer
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-user_permission_denied 1001
+{"ready":true,"uid":1001,"gid":1001}
+> open
+{"op":"open","rc":-1,"errno":13}
+$ /root/harddind-rebuild/share-probe native-user_create_owner 1001
+{"ready":true,"uid":1001,"gid":1001}
+> create
+{"op":"create","rc":0,"errno":0}
+> write 66
+{"op":"write","rc":0,"errno":0}
+$ /root/harddind-rebuild/share-probe native-read_only_bind
+{"ready":true,"uid":0,"gid":0}
+> open-read
+{"op":"open-read","rc":0,"errno":0}
+> write 66
+{"op":"write","rc":-1,"errno":9}
+> read
+{"op":"read","rc":0,"byte":65}
+$ /root/harddind-rebuild/share-probe native-bench-before
+{"ready":true,"uid":0,"gid":0}
+> open
+{"op":"open","rc":0,"errno":0}
+> bench-write 32
+{"op":"bench-write","rc":0,"errno":0,"bytes":33554432,"seconds":0.185244562,"MiB_per_second":172.745}
+> bench-read 32
+{"op":"bench-read","rc":0,"errno":0,"bytes":33554432,"seconds":0.023139704,"MiB_per_second":1382.904}
+> bench-write 32
+{"op":"bench-write","rc":0,"errno":0,"bytes":33554432,"seconds":0.176135648,"MiB_per_second":181.678}
+> bench-read 32
+{"op":"bench-read","rc":0,"errno":0,"bytes":33554432,"seconds":0.021335792,"MiB_per_second":1499.827}
+> bench-write 32
+{"op":"bench-write","rc":0,"errno":0,"bytes":33554432,"seconds":0.194818644,"MiB_per_second":164.255}
+> bench-read 32
+{"op":"bench-read","rc":0,"errno":0,"bytes":33554432,"seconds":0.023083054,"MiB_per_second":1386.298}
+$ /usr/bin/python3 /root/harddind-rebuild/scripts/harddind.py /root/harddind-rebuild shared-auto-v1 start --kernel /root/harddind-rebuild/virtiofs-kernel-v1 --disk /root/harddind-rebuild/runtime-shares-v1.ext4 --dns 1.1.1.1 --publish-ports --share /root/harddind-rebuild/shares/shared-auto-v1 --share-cache auto
+startup failed; see instance logs
+
+[exit=1]

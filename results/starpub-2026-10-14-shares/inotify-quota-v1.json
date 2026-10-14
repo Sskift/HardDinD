@@ -1,0 +1,31 @@
+{
+  "probe": "independent_inotify_init1",
+  "limits": {
+    "max_user_instances": "128",
+    "max_user_watches": "1048576",
+    "max_queued_events": "16384"
+  },
+  "results": [
+    {
+      "uid": 0,
+      "fd": -1,
+      "errno": 24,
+      "open_fds": 4,
+      "nofile": [
+        1024,
+        1048576
+      ]
+    },
+    {
+      "uid": 1001,
+      "fd": 3,
+      "errno": 0,
+      "open_fds": 4,
+      "nofile": [
+        1024,
+        1048576
+      ]
+    }
+  ],
+  "sysctl_changes": false
+}
