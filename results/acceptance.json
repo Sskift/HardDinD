@@ -32,7 +32,10 @@
         "starpub-2026-10-14-gpu-fd/gpu-fd-swarm-focused-v1.json",
         "starpub-2026-10-14-memfd/memfd-docker-suite-v1.json",
         "starpub-2026-10-14-memfd/memfd-cleanup-audit-v1.json",
-        "starpub-2026-10-14-memfd/evidence-validation.json"
+        "starpub-2026-10-14-memfd/evidence-validation.json",
+        "starpub-2026-10-14-compose/compose-v1/compose-v1.json",
+        "starpub-2026-10-14-compose/compose-v2/compose-v2.json",
+        "starpub-2026-10-14-compose/compose-v3/compose-v3.json"
       ],
       "remaining": [
         "published ports: IPv6, multiple outer addresses sharing a port, Swarm ingress and abnormal recovery; IPv4 subset passed",
@@ -43,7 +46,7 @@
         "intermittent host-child loss under parallel fork/exec observed in prior kernel",
         "intermittent forced host-process cleanup in pre-idle-fix build; identity was not recorded",
         "Swarm leave timeout observed once; not causally attributed or closed",
-        "Compose and broader upstream command scenarios",
+        "Broader Compose and upstream scenarios; 16-check Compose build/health/DNS/volume/scale/cleanup subset passed, secrets/configs/profiles/watch/stacks and recovery remain untested",
         "intermittent forced cleanup also observed in ipi-idle MTU1500 baseline; initial process identity incomplete; cause unresolved",
         "shared-inline-v1 shutdown exceeded 45 seconds after guest STOPPED marker; forced termination, cause unresolved",
         "gpu-fd kernel full suite: Swarm assignment cleanup timed out; 56 results returned but entire run exceeded 360 seconds and was killed",

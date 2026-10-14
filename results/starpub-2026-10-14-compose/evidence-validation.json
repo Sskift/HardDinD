@@ -1,0 +1,32 @@
+{
+  "checks": {
+    "compose-v1/scripts/run-compose.py": true,
+    "compose-v1/scripts/harddind.py": true,
+    "compose-v1/sources.lock.json": true,
+    "compose-v1/tests/compose/compose.yaml": true,
+    "compose-v1/tests/compose/builder/Dockerfile": true,
+    "compose-v1/inputs_unchanged": true,
+    "compose-v1/clean_shutdown": true,
+    "compose-v1/commands_clean": true,
+    "compose-v2/scripts/run-compose.py": true,
+    "compose-v2/scripts/harddind.py": true,
+    "compose-v2/sources.lock.json": true,
+    "compose-v2/tests/compose/compose.yaml": true,
+    "compose-v2/tests/compose/builder/Dockerfile": true,
+    "compose-v2/inputs_unchanged": true,
+    "compose-v2/clean_shutdown": true,
+    "compose-v2/commands_clean": true,
+    "compose-v3/scripts/run-compose.py": true,
+    "compose-v3/scripts/harddind.py": true,
+    "compose-v3/sources.lock.json": true,
+    "compose-v3/tests/compose/compose.yaml": true,
+    "compose-v3/tests/compose/builder/Dockerfile": true,
+    "compose-v3/inputs_unchanged": true,
+    "compose-v3/clean_shutdown": true,
+    "compose-v3/commands_clean": true,
+    "main_runner_matches_v3": true,
+    "v3_all_16_pass": true
+  },
+  "all_passed": true,
+  "full_acceptance": false
+}

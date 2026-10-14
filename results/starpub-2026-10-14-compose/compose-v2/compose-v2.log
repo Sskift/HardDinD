@@ -1,0 +1,786 @@
+$ /usr/bin/python3 /root/harddind-rebuild/integration/compose-v2/scripts/harddind.py /root/harddind-rebuild compose-v2 start --kernel /root/harddind-rebuild/memfd-kernel-v1 --disk /root/harddind-rebuild/runtime-shares-v1.ext4 --dns 1.1.1.1 --mtu 1500 --memfd-ram --memfd-stub
+{
+  "phase": "ready",
+  "run": "afd09af7ad6c",
+  "supervisor_pid": 3379260,
+  "supervisor_start": "1386781574",
+  "config": {
+    "kernel": "/root/harddind-rebuild/memfd-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "d872149b71ff0026201bebe5a8f482bb883a3c6c47c56d02d4411e444766bc5a",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": false,
+    "gpu_control_experiment": false,
+    "memfd_ram": true,
+    "memfd_stub": true,
+    "shares": []
+  },
+  "runtime_sha256": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+  "filesystems": [],
+  "guest_pid": 3385675,
+  "network_pid": 3385637,
+  "api_port": 42501,
+  "mconsole": "/root/harddind-rebuild/instances/compose-v2/uml/afd09af7ad6c/mconsole",
+  "command": [
+    "/root/harddind-rebuild/memfd-kernel-v1",
+    "umid=afd09af7ad6c",
+    "uml_dir=/root/harddind-rebuild/instances/compose-v2/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/compose-v2/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "memfd_ram=1",
+    "memfd_stub=1"
+  ],
+  "memory_backing": {
+    "verified": true,
+    "ram_requested": true,
+    "stub_requested": true,
+    "ram_allocations": [
+      {
+        "backend": "memfd",
+        "bytes": 4096
+      },
+      {
+        "backend": "memfd",
+        "bytes": 4405383168
+      },
+      {
+        "backend": "memfd",
+        "bytes": 4096
+      }
+    ],
+    "stub_backend": "memfd"
+  },
+  "ready_at": 1791985757.1712973
+}
+
+[exit=0 seconds=31.195]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker ps -aq --filter label=com.docker.compose.project=harddind-compose
+
+[exit=0 seconds=0.156]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker network ls --filter 'name=^harddind-compose_default$' --format '{{.Name}}'
+
+[exit=0 seconds=0.102]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker volume ls --filter 'name=^harddind-compose_data$' --format '{{.Name}}'
+
+[exit=0 seconds=0.071]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker version --format '{{json .Server}}'
+{"Platform":{"Name":""},"Version":"29.8.2-harddind.1","ApiVersion":"1.56","MinAPIVersion":"1.40","Os":"linux","Arch":"amd64","Components":[{"Name":"Engine","Version":"29.8.2-harddind.1","Details":{"ApiVersion":"1.56","Arch":"amd64","BuildTime":"Wed Sep 30 19:11:51 2026","Experimental":"false","GitCommit":"8af9fe3a36bab3e039862a2ab1cef1880c9b4d03-harddind-port-7f3ab1e0a1fa","GoVersion":"go1.26.8","KernelVersion":"7.2.10","MinAPIVersion":"1.40","Module":"github.com/moby/moby/v2","ModuleVersion":"v2.0.0+unknown","Os":"linux"}},{"Name":"containerd","Version":"v2.3.6","Details":{"GitCommit":"ee2735368117d2eb259779949d5e75cdafec9761"}},{"Name":"runc","Version":"1.4.3","Details":{"GitCommit":"bb14dabeb7185bb72c8c86735d090dcb20f36587"}},{"Name":"docker-init","Version":"0.19.0","Details":{"GitCommit":""}}],"GitCommit":"8af9fe3a36bab3e039862a2ab1cef1880c9b4d03-harddind-port-7f3ab1e0a1fa","GoVersion":"go1.26.8","KernelVersion":"7.2.10","BuildTime":"2026-09-30T19:11:51.000000000+00:00"}
+
+[exit=0 seconds=0.303]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker ps -aq
+
+[exit=0 seconds=0.058]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker network ls --format '{{.Name}}'
+bridge
+host
+none
+
+[exit=0 seconds=0.096]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker volume ls --format '{{.Name}}'
+
+[exit=0 seconds=0.107]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker image ls -q --no-trunc
+
+[exit=0 seconds=0.105]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker pull public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395: Pulling from docker/library/alpine
+e2de96513ba9: Pulling fs layer
+e2de96513ba9: Download complete
+e2de96513ba9: Pull complete
+Digest: sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+Status: Downloaded newer image for public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+
+[exit=0 seconds=6.336]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker image inspect --format '{{.Id}}' public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+
+[exit=0 seconds=0.311]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker run --rm public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395 busybox --list
+[
+[[
+acpid
+add-shell
+addgroup
+adduser
+adjtimex
+arch
+arp
+arping
+ash
+awk
+base64
+basename
+bbconfig
+bc
+beep
+blkdiscard
+blkid
+blockdev
+brctl
+bunzip2
+bzcat
+bzip2
+cal
+cat
+chattr
+chgrp
+chmod
+chown
+chpasswd
+chroot
+chvt
+cksum
+clear
+cmp
+comm
+cp
+cpio
+crond
+crontab
+cryptpw
+cut
+date
+dc
+dd
+deallocvt
+delgroup
+deluser
+depmod
+df
+diff
+dirname
+dmesg
+dnsdomainname
+dos2unix
+du
+dumpkmap
+echo
+egrep
+eject
+env
+ether-wake
+expand
+expr
+factor
+fallocate
+false
+fatattr
+fbset
+fbsplash
+fdflush
+fdisk
+fgrep
+find
+findfs
+flock
+fold
+free
+fsck
+fstrim
+fsync
+fuser
+getopt
+getty
+grep
+groups
+gunzip
+gzip
+halt
+hd
+head
+hexdump
+hostid
+hostname
+hwclock
+id
+ifconfig
+ifdown
+ifenslave
+ifup
+init
+inotifyd
+insmod
+install
+ionice
+iostat
+ip
+ipaddr
+ipcalc
+ipcrm
+ipcs
+iplink
+ipneigh
+iproute
+iprule
+iptunnel
+kbd_mode
+kill
+killall
+killall5
+klogd
+last
+less
+link
+linux32
+linux64
+ln
+loadfont
+loadkmap
+logger
+login
+logread
+losetup
+ls
+lsattr
+lsmod
+lsof
+lsusb
+lzcat
+lzma
+lzop
+lzopcat
+makemime
+md5sum
+mdev
+mesg
+microcom
+mkdir
+mkdosfs
+mkfifo
+mkfs.vfat
+mknod
+mkpasswd
+mkswap
+mktemp
+modinfo
+modprobe
+more
+mount
+mountpoint
+mpstat
+mv
+nameif
+nanddump
+nandwrite
+nbd-client
+nc
+netstat
+nice
+nl
+nmeter
+nohup
+nologin
+nproc
+nsenter
+nslookup
+ntpd
+od
+openvt
+partprobe
+passwd
+paste
+pgrep
+pidof
+ping
+ping6
+pipe_progress
+pivot_root
+pkill
+pmap
+poweroff
+printenv
+printf
+ps
+pscan
+pstree
+pwd
+pwdx
+raidautorun
+rdate
+rdev
+readahead
+readlink
+realpath
+reboot
+reformime
+remove-shell
+renice
+reset
+resize
+rev
+rfkill
+rm
+rmdir
+rmmod
+route
+run-parts
+sed
+sendmail
+seq
+setconsole
+setfont
+setkeycodes
+setlogcons
+setpriv
+setserial
+setsid
+sh
+sha1sum
+sha256sum
+sha3sum
+sha512sum
+showkey
+shred
+shuf
+slattach
+sleep
+sort
+split
+stat
+strings
+stty
+su
+sum
+swapoff
+swapon
+switch_root
+sync
+sysctl
+syslogd
+tac
+tail
+tar
+tee
+test
+time
+timeout
+top
+touch
+tr
+traceroute
+traceroute6
+tree
+true
+truncate
+tty
+ttysize
+tunctl
+udhcpc
+udhcpc6
+umount
+uname
+unexpand
+uniq
+unix2dos
+unlink
+unlzma
+unlzop
+unshare
+unxz
+unzip
+uptime
+usleep
+uudecode
+uuencode
+vconfig
+vi
+vlock
+volname
+watch
+watchdog
+wc
+wget
+which
+who
+whoami
+whois
+xargs
+xxd
+xzcat
+yes
+zcat
+zcip
+
+[exit=0 seconds=5.694]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml config --format json
+{
+  "name": "harddind-compose",
+  "networks": {
+    "default": {
+      "name": "harddind-compose_default",
+      "ipam": {}
+    }
+  },
+  "services": {
+    "builder": {
+      "command": [
+        "cat",
+        "/built"
+      ],
+      "entrypoint": null,
+      "image": "harddind-compose-built:local",
+      "networks": {
+        "default": null
+      },
+      "pull_policy": "never",
+      "build": {
+        "context": "/root/harddind-rebuild/integration/compose-v2/tests/compose/builder",
+        "dockerfile": "Dockerfile",
+        "args": {
+          "BASE_IMAGE": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395"
+        }
+      }
+    },
+    "db": {
+      "command": [
+        "sh",
+        "-ec",
+        "mkdir -p /data /www\nprintf 'harddind-db-marker\\n' \u003e /www/index.html\necho harddind-compose-db\n# Delay readiness so the service_healthy gate in \"web\" has work to do.\nsleep 6\ntouch /ready\ntouch /data/db-started\nbytes=$$(wc -c \u003c /www/index.html)\n{ printf 'HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\nConnection: close\\r\\n\\r\\n' \"$$bytes\"; cat /www/index.html; } \u003e /www/response\nexec nc -lk -p 8080 -e cat /www/response\n"
+      ],
+      "entrypoint": null,
+      "image": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+      "networks": {
+        "default": null
+      },
+      "pull_policy": "never",
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "data",
+          "target": "/data",
+          "volume": {}
+        }
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "test -f /ready"
+        ],
+        "timeout": "1s",
+        "interval": "1s",
+        "retries": 30,
+        "start_period": "0s"
+      }
+    },
+    "web": {
+      "command": [
+        "sh",
+        "-ec",
+        "mkdir -p /www\nprintf 'harddind-web-marker\\n' \u003e /www/index.html\necho harddind-compose-web\nbytes=$$(wc -c \u003c /www/index.html)\n{ printf 'HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\nConnection: close\\r\\n\\r\\n' \"$$bytes\"; cat /www/index.html; } \u003e /www/response\nexec nc -lk -p 8080 -e cat /www/response\n"
+      ],
+      "entrypoint": null,
+      "image": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+      "networks": {
+        "default": null
+      },
+      "pull_policy": "never",
+      "depends_on": {
+        "db": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      }
+    },
+    "worker": {
+      "command": [
+        "sh",
+        "-ec",
+        "mkdir -p /www\n# Each replica serves its container hostname, used to prove that the\n# scaled service name resolves to different task containers.\nhostname \u003e /www/index.html\necho harddind-compose-worker\nbytes=$$(wc -c \u003c /www/index.html)\n{ printf 'HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\nConnection: close\\r\\n\\r\\n' \"$$bytes\"; cat /www/index.html; } \u003e /www/response\nexec nc -lk -p 8080 -e cat /www/response\n"
+      ],
+      "entrypoint": null,
+      "image": "public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395",
+      "networks": {
+        "default": null
+      },
+      "pull_policy": "never"
+    }
+  },
+  "volumes": {
+    "data": {
+      "name": "harddind-compose_data"
+    }
+  }
+}
+[exit=0 seconds=0.289]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml build --no-cache builder
+#1 [internal] load local bake definitions
+#1 reading from stdin 794B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 273B 0.0s done
+#2 DONE 0.4s
+
+#3 [internal] load metadata for public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+#3 DONE 10.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 0.0s
+#4 transferring context: 2B 0.0s done
+#4 DONE 0.1s
+
+#5 [1/2] FROM public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+#5 resolve public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395 0.1s done
+#5 DONE 0.2s
+
+#5 [1/2] FROM public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+#5 DONE 0.3s
+
+#5 [1/2] FROM public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+#5 extracting sha256:e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5
+#5 extracting sha256:e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5 0.9s done
+#5 DONE 1.2s
+
+#6 [2/2] RUN printf 'harddind-compose-built\n' > /built
+#6 DONE 1.9s
+
+#7 exporting to image
+#7 exporting layers
+#7 exporting layers 0.4s done
+#7 exporting manifest sha256:93fede91a9369e3208936b4cbd797c8b6fa49127900d171fb9fdb8097f08eb29 0.0s done
+#7 exporting config sha256:30cfcdd89de358fa50d508790f1eee8f0a0c19ebaee3417de8511391b2f0a886 0.0s done
+#7 exporting attestation manifest sha256:168a8ca6b32d252317bbb643de7c651d29ba439067b09f16d25fe79680afa60a 0.0s done
+#7 exporting manifest list sha256:d33504c9ac34258a2956a1dac728d9264ca16cd55eae19763c19a616bd6ca7f4 0.1s done
+#7 naming to docker.io/library/harddind-compose-built:local
+#7 naming to docker.io/library/harddind-compose-built:local done
+#7 unpacking to docker.io/library/harddind-compose-built:local 0.0s done
+#7 DONE 0.7s
+
+#8 resolving provenance for metadata file
+#8 DONE 0.0s
+
+[stderr]
+ Image harddind-compose-built:local Building 
+ Image harddind-compose-built:local Built 
+
+[exit=0 seconds=18.248]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml run --rm -T builder
+harddind-compose-built
+
+[stderr]
+ Network harddind-compose_default Creating 
+ Network harddind-compose_default Creating 
+ Network harddind-compose_default Created 
+ Network harddind-compose_default Created 
+ Container harddind-compose-builder-run-1a86e962d0ab Creating 
+ Container harddind-compose-builder-run-1a86e962d0ab Created 
+
+[exit=0 seconds=5.495]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml up -d --pull never db web worker
+
+[stderr]
+ Container harddind-compose-worker-1 Creating 
+ Volume harddind-compose_data Creating 
+ Volume harddind-compose_data Creating 
+ Volume harddind-compose_data Created 
+ Volume harddind-compose_data Created 
+ Container harddind-compose-db-1 Creating 
+ Container harddind-compose-worker-1 Created 
+ Container harddind-compose-db-1 Created 
+ Container harddind-compose-web-1 Creating 
+ Container harddind-compose-web-1 Created 
+ Container harddind-compose-worker-1 Starting 
+ Container harddind-compose-db-1 Starting 
+ Container harddind-compose-worker-1 Started 
+ Container harddind-compose-db-1 Started 
+ Container harddind-compose-db-1 Waiting 
+ Container harddind-compose-db-1 Healthy 
+ Container harddind-compose-web-1 Starting 
+ Container harddind-compose-web-1 Started 
+
+[exit=0 seconds=15.854]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml ps -a --format json db web worker
+{"Command":"\"sh -ec 'mkdir -p /d…\"","CreatedAt":"2026-10-14 13:49:55 +0000 UTC","Engine":"","ExitCode":0,"Health":"healthy","ID":"fecbad199210","Image":"public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395","Labels":"com.docker.compose.config-hash=80f6944b1402c6a85015fb80030ca5435521e22738d7a26470ea195e95d60bfb,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395,com.docker.compose.project.working_dir=/root/harddind-rebuild/integration/compose-v2/tests/compose,com.docker.compose.version=5.6.0,com.docker.compose.oneoff=False,com.docker.compose.project=harddind-compose,com.docker.compose.project.config_files=/root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml,com.docker.compose.service=db","LocalVolumes":"1","Mounts":"harddind-compo…","Name":"harddind-compose-db-1","Names":"harddind-compose-db-1","Networks":"harddind-compose_default","Ports":"","Project":"harddind-compose","Publishers":[],"RunningFor":"16 seconds ago","Service":"db","Size":"0B","State":"running","Status":"Up 11 seconds (healthy)"}
+{"Command":"\"sh -ec 'mkdir -p /w…\"","CreatedAt":"2026-10-14 13:49:56 +0000 UTC","Engine":"","ExitCode":0,"Health":"","ID":"58975bafd4d0","Image":"public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395","Labels":"com.docker.compose.config-hash=b49c9347ab66a64ea94ec8cc84c1262d3478acb1f39e602c8d836b61e961240a,com.docker.compose.container-number=1,com.docker.compose.depends_on=db:service_healthy:false,com.docker.compose.image=sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395,com.docker.compose.project.config_files=/root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml,com.docker.compose.project.working_dir=/root/harddind-rebuild/integration/compose-v2/tests/compose,com.docker.compose.version=5.6.0,com.docker.compose.oneoff=False,com.docker.compose.project=harddind-compose,com.docker.compose.service=web","LocalVolumes":"0","Mounts":"","Name":"harddind-compose-web-1","Names":"harddind-compose-web-1","Networks":"harddind-compose_default","Ports":"","Project":"harddind-compose","Publishers":[],"RunningFor":"15 seconds ago","Service":"web","Size":"0B","State":"running","Status":"Up 2 seconds"}
+{"Command":"\"sh -ec 'mkdir -p /w…\"","CreatedAt":"2026-10-14 13:49:55 +0000 UTC","Engine":"","ExitCode":0,"Health":"","ID":"24915589be33","Image":"public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395","Labels":"com.docker.compose.project.working_dir=/root/harddind-rebuild/integration/compose-v2/tests/compose,com.docker.compose.version=5.6.0,com.docker.compose.config-hash=58413724d72dcc7c694662b8ebb90b35197325be52ca22ae7dca97a5e69f6ccb,com.docker.compose.container-number=1,com.docker.compose.oneoff=False,com.docker.compose.project=harddind-compose,com.docker.compose.service=worker,com.docker.compose.depends_on=,com.docker.compose.image=sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395,com.docker.compose.project.config_files=/root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml","LocalVolumes":"0","Mounts":"","Name":"harddind-compose-worker-1","Names":"harddind-compose-worker-1","Networks":"harddind-compose_default","Ports":"","Project":"harddind-compose","Publishers":[],"RunningFor":"16 seconds ago","Service":"worker","Size":"0B","State":"running","Status":"Up 14 seconds"}
+
+[exit=0 seconds=0.159]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker inspect --format '{{json .State}}' fecbad199210
+{"Status":"running","Running":true,"Paused":false,"Restarting":false,"OOMKilled":false,"Dead":false,"Pid":671,"ExitCode":0,"Error":"","StartedAt":"2026-10-14T13:49:59.568465767Z","FinishedAt":"0001-01-01T00:00:00Z","Health":{"Status":"healthy","FailingStreak":0,"Log":[{"Start":"2026-10-14T13:50:04.300548711Z","End":"2026-10-14T13:50:04.637417831Z","ExitCode":1,"Output":""},{"Start":"2026-10-14T13:50:05.638687079Z","End":"2026-10-14T13:50:05.964310375Z","ExitCode":1,"Output":""},{"Start":"2026-10-14T13:50:06.965572711Z","End":"2026-10-14T13:50:07.267695207Z","ExitCode":1,"Output":""},{"Start":"2026-10-14T13:50:08.269604455Z","End":"2026-10-14T13:50:08.680156263Z","ExitCode":0,"Output":""},{"Start":"2026-10-14T13:50:09.759276903Z","End":"2026-10-14T13:50:10.673450599Z","ExitCode":0,"Output":""}]}}
+
+[exit=0 seconds=0.044]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker inspect --format '{{json .State}}' 58975bafd4d0
+{"Status":"running","Running":true,"Paused":false,"Restarting":false,"OOMKilled":false,"Dead":false,"Pid":839,"ExitCode":0,"Error":"","StartedAt":"2026-10-14T13:50:08.993836135Z","FinishedAt":"0001-01-01T00:00:00Z"}
+
+[exit=0 seconds=0.047]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker ps -a --no-trunc
+CONTAINER ID                                                       IMAGE                                                                                                          COMMAND                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATED          STATUS                    PORTS     NAMES
+58975bafd4d099e63274ad1278b3c0aa3cd902b47c06947afbb4cfef7ccdd942   public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395   "sh -ec 'mkdir -p /www\nprintf 'harddind-web-marker\\n' > /www/index.html\necho harddind-compose-web\nbytes=$(wc -c < /www/index.html)\n{ printf 'HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\nConnection: close\\r\\n\\r\\n' \"$bytes\"; cat /www/index.html; } > /www/response\nexec nc -lk -p 8080 -e cat /www/response\n'"                                                                                                                                15 seconds ago   Up 2 seconds                        harddind-compose-web-1
+24915589be338ba7c865270cb3989a452b7918e78d4aab5c7aa34d5bef00bd86   public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395   "sh -ec 'mkdir -p /www\n# Each replica serves its container hostname, used to prove that the\n# scaled service name resolves to different task containers.\nhostname > /www/index.html\necho harddind-compose-worker\nbytes=$(wc -c < /www/index.html)\n{ printf 'HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\nConnection: close\\r\\n\\r\\n' \"$bytes\"; cat /www/index.html; } > /www/response\nexec nc -lk -p 8080 -e cat /www/response\n'"                16 seconds ago   Up 14 seconds                       harddind-compose-worker-1
+fecbad199210d598b2300ef5c81bfe65caf14a8d0e35bac0b98b316d3403d4b2   public.ecr.aws/docker/library/alpine@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395   "sh -ec 'mkdir -p /data /www\nprintf 'harddind-db-marker\\n' > /www/index.html\necho harddind-compose-db\n# Delay readiness so the service_healthy gate in \"web\" has work to do.\nsleep 6\ntouch /ready\ntouch /data/db-started\nbytes=$(wc -c < /www/index.html)\n{ printf 'HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\nConnection: close\\r\\n\\r\\n' \"$bytes\"; cat /www/index.html; } > /www/response\nexec nc -lk -p 8080 -e cat /www/response\n'"   16 seconds ago   Up 11 seconds (healthy)             harddind-compose-db-1
+
+[exit=0 seconds=0.083]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml logs --no-color
+web-1  | harddind-compose-web
+worker-1  | harddind-compose-worker
+db-1      | harddind-compose-db
+
+[exit=0 seconds=0.246]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker compose --project-name harddind-compose -f /root/harddind-rebuild/integration/compose-v2/tests/compose/compose.yaml down --volumes --remove-orphans
+
+[stderr]
+ Container harddind-compose-web-1 Stopping 
+ Container harddind-compose-worker-1 Stopping 
+ Container harddind-compose-web-1 Stopped 
+ Container harddind-compose-web-1 Removing 
+ Container harddind-compose-web-1 Removed 
+ Container harddind-compose-db-1 Stopping 
+ Container harddind-compose-worker-1 Stopped 
+ Container harddind-compose-worker-1 Removing 
+ Container harddind-compose-worker-1 Removed 
+ Container harddind-compose-db-1 Stopped 
+ Container harddind-compose-db-1 Removing 
+ Container harddind-compose-db-1 Removed 
+ Volume harddind-compose_data Removing 
+ Network harddind-compose_default Removing 
+ Volume harddind-compose_data Removed 
+ Network harddind-compose_default Removed 
+
+[exit=0 seconds=2.784]
+$ /root/harddind-rebuild/client/ld-musl-x86_64.so.1 /root/harddind-rebuild/client/docker rmi harddind-compose-built:local
+Untagged: harddind-compose-built:local
+Deleted: sha256:d33504c9ac34258a2956a1dac728d9264ca16cd55eae19763c19a616bd6ca7f4
+
+[exit=0 seconds=0.082]
+$ /usr/bin/python3 /root/harddind-rebuild/integration/compose-v2/scripts/harddind.py /root/harddind-rebuild compose-v2 stop
+{
+  "phase": "stopped",
+  "run": "afd09af7ad6c",
+  "supervisor_pid": 3379260,
+  "supervisor_start": "1386781574",
+  "config": {
+    "kernel": "/root/harddind-rebuild/memfd-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "1.1.1.1",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "d872149b71ff0026201bebe5a8f482bb883a3c6c47c56d02d4411e444766bc5a",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": false,
+    "gpu_control_experiment": false,
+    "memfd_ram": true,
+    "memfd_stub": true,
+    "shares": []
+  },
+  "runtime_sha256": "7fa1851737472dc1ef46b92391f5f82035bf11e63c06d3ffffc419bf2d0cd992",
+  "filesystems": [],
+  "guest_pid": 3385675,
+  "network_pid": 3385637,
+  "api_port": 42501,
+  "mconsole": "/root/harddind-rebuild/instances/compose-v2/uml/afd09af7ad6c/mconsole",
+  "command": [
+    "/root/harddind-rebuild/memfd-kernel-v1",
+    "umid=afd09af7ad6c",
+    "uml_dir=/root/harddind-rebuild/instances/compose-v2/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/instances/compose-v2/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=1.1.1.1",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "memfd_ram=1",
+    "memfd_stub=1"
+  ],
+  "memory_backing": {
+    "verified": true,
+    "ram_requested": true,
+    "stub_requested": true,
+    "ram_allocations": [
+      {
+        "backend": "memfd",
+        "bytes": 4096
+      },
+      {
+        "backend": "memfd",
+        "bytes": 4405383168
+      },
+      {
+        "backend": "memfd",
+        "bytes": 4096
+      }
+    ],
+    "stub_backend": "memfd"
+  },
+  "ready_at": 1791985757.1712973,
+  "guest_exit_code": 0,
+  "guest_cleanup": {
+    "process_group": 3385675,
+    "forced_cleanup": false,
+    "initial_live_pids": [
+      3386289
+    ],
+    "initial_zombie_pids": [],
+    "initial_processes": [
+      {
+        "pid": 3386289,
+        "state": "R",
+        "ppid": 1,
+        "process_group": 3385675,
+        "start_time_ticks": "1386783564",
+        "comm": "uml-userspace",
+        "wchan": "0",
+        "exe_errno": 2
+      }
+    ],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "forced_shutdown": false,
+  "network_exit_code": 0,
+  "network_cleanup": {
+    "process_group": 3385637,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "filesystem_cleanup": [],
+  "stopped_at": 1791985816.0871089
+}
+
+[exit=0 seconds=1.722]

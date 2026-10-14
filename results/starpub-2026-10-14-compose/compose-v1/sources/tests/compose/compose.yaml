@@ -1,0 +1,84 @@
+# HardDinD Compose acceptance fixture.
+#
+# Repeatability rules:
+#  * COMPOSE_BASE_IMAGE must be supplied by the runner. It has to be a
+#    digest-pinned image that is already present in the daemon; the runner
+#    refuses mutable tags. There is deliberately no default tag.
+#  * Every service sets pull_policy: never and the runner also passes
+#    "--pull never" to up/build, so a missing image fails instead of causing a
+#    silent registry pull.
+#  * Only named volumes are used. Outer (Starpub) bind paths do not exist in
+#    the UML guest, so bind-mount semantics are covered by the separate share
+#    tests rather than by this fixture.
+#  * Services answer real HTTP on port 8080 with busybox httpd; service DNS,
+#    the health gate and scale round-robin are checked with actual requests,
+#    not container-list inspection alone.
+name: harddind-compose
+
+services:
+  db:
+    image: ${COMPOSE_BASE_IMAGE:?COMPOSE_BASE_IMAGE must be a locally present digest-pinned image}
+    pull_policy: never
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p /data /www
+        printf 'harddind-db-marker\n' > /www/index.html
+        echo harddind-compose-db
+        # Delay readiness so the service_healthy gate in "web" has work to do.
+        sleep 6
+        touch /ready
+        touch /data/db-started
+        exec httpd -f -p 8080 -h /www
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /ready"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+      start_period: 0s
+    volumes:
+      - data:/data
+
+  web:
+    image: ${COMPOSE_BASE_IMAGE:?COMPOSE_BASE_IMAGE must be a locally present digest-pinned image}
+    pull_policy: never
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p /www
+        printf 'harddind-web-marker\n' > /www/index.html
+        echo harddind-compose-web
+        exec httpd -f -p 8080 -h /www
+
+  worker:
+    image: ${COMPOSE_BASE_IMAGE:?COMPOSE_BASE_IMAGE must be a locally present digest-pinned image}
+    pull_policy: never
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p /www
+        # Each replica serves its container hostname, used to prove that the
+        # scaled service name resolves to different task containers.
+        hostname > /www/index.html
+        echo harddind-compose-worker
+        exec httpd -f -p 8080 -h /www
+
+  builder:
+    image: harddind-compose-built:local
+    pull_policy: never
+    build:
+      context: ./builder
+      dockerfile: Dockerfile
+      pull: false
+      args:
+        BASE_IMAGE: ${COMPOSE_BASE_IMAGE:?COMPOSE_BASE_IMAGE must be a locally present digest-pinned image}
+    command: ["cat", "/built"]
+
+volumes:
+  data:
