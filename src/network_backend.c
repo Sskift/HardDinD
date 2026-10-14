@@ -26,10 +26,13 @@
 #define MAX_FDS 16384
 #define MAX_FORWARDS 256
 #define MAX_QUEUE 256
+#define MAX_BATCH 64
 static int link_fd, ctl_fd, nfds;
+static unsigned batch_size = 1;
 static struct pollfd pfds[MAX_FDS];
 static volatile sig_atomic_t stopping;
 static uint64_t rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets;
+static uint64_t rx_syscalls, tx_syscalls, poll_calls;
 static bool trace_dns;
 static struct in_addr guest_addr;
 struct timer { bool used; int64_t expires; SlirpTimerCb cb; void *opaque; };
@@ -62,7 +65,8 @@ static void dns_trace(const void *buf, size_t len, const char *direction) {
 static ssize_t send_frame(const void *buf, size_t len, void *opaque) {
     (void)opaque;
     dns_trace(buf, len, "to_guest");
-    if (!head) {
+    if (!head && batch_size == 1) {
+        tx_syscalls++;
         ssize_t n = send(link_fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL);
         if (n == (ssize_t)len) { tx_packets++; tx_bytes += len; return n; }
         if (n >= 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
@@ -79,6 +83,32 @@ static ssize_t send_frame(const void *buf, size_t len, void *opaque) {
 }
 static void flush_frames(void) {
     while (head) {
+        if (batch_size > 1) {
+            struct mmsghdr messages[MAX_BATCH] = {0};
+            struct iovec vectors[MAX_BATCH];
+            unsigned count = 0;
+            for (struct packet *p = head; p && count < batch_size; p = p->next) {
+                vectors[count] = (struct iovec){p->data, p->len};
+                messages[count].msg_hdr.msg_iov = &vectors[count];
+                messages[count].msg_hdr.msg_iovlen = 1;
+                count++;
+            }
+            tx_syscalls++;
+            int sent = sendmmsg(link_fd, messages, count, MSG_DONTWAIT | MSG_NOSIGNAL);
+            if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
+            if (sent == 0) break;
+            /* A fatal error consumes only the first failed frame. Successfully
+             * sent datagrams are removed exactly once, including partial batches. */
+            unsigned consumed = sent < 0 ? 1 : (unsigned)sent;
+            for (unsigned i = 0; i < consumed; i++) {
+                struct packet *p = head;
+                if (sent > 0 && messages[i].msg_len == p->len) { tx_packets++; tx_bytes += p->len; }
+                else dropped_packets++;
+                head = p->next; free(p); queued--;
+            }
+            continue;
+        }
+        tx_syscalls++;
         ssize_t n = send(link_fd, head->data, head->len, MSG_DONTWAIT | MSG_NOSIGNAL);
         if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
         if (n == (ssize_t)head->len) { tx_packets++; tx_bytes += head->len; }
@@ -145,8 +175,11 @@ static int number(const char *s, int minimum, int maximum) {
 static int stats(char *buf, size_t len) {
     return snprintf(buf, len, "{\"rx_packets\":%" PRIu64 ",\"tx_packets\":%" PRIu64
         ",\"rx_bytes\":%" PRIu64 ",\"tx_bytes\":%" PRIu64
-        ",\"dropped_packets\":%" PRIu64 ",\"queued_packets\":%u,\"forwards\":%u}",
-        rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards);
+        ",\"dropped_packets\":%" PRIu64 ",\"queued_packets\":%u,\"forwards\":%u"
+        ",\"batch_size\":%u,\"rx_syscalls\":%" PRIu64 ",\"tx_syscalls\":%" PRIu64
+        ",\"poll_calls\":%" PRIu64 "}",
+        rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
+        batch_size, rx_syscalls, tx_syscalls, poll_calls);
 }
 static void control(Slirp *slirp) {
     char input[512], output[32768], *fields[7], *save;
@@ -204,10 +237,15 @@ reply:
 }
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--version")) { puts(slirp_version_string()); return 0; }
-    if (argc != 3 || (link_fd = number(argv[1], 0, INT_MAX)) < 0 || strlen(argv[2]) >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
-        fprintf(stderr, "usage: network-backend LINK_FD CONTROL_SOCKET\n"); return 2;
+    if ((argc != 3 && argc != 4) || (link_fd = number(argv[1], 0, INT_MAX)) < 0 || strlen(argv[2]) >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
+        fprintf(stderr, "usage: network-backend LINK_FD CONTROL_SOCKET [BATCH_SIZE]\n"); return 2;
     }
     if (strcmp(slirp_version_string(), "4.6.1")) { fprintf(stderr, "expected libslirp 4.6.1\n"); return 1; }
+    if (argc == 4) {
+        int value = number(argv[3], 1, MAX_BATCH);
+        if (value < 0) { fprintf(stderr, "invalid batch size\n"); return 2; }
+        batch_size = (unsigned)value;
+    }
     trace_dns = getenv("HARDDIND_NET_TRACE_DNS") != NULL;
     signal(SIGTERM, stop); signal(SIGINT, stop); signal(SIGPIPE, SIG_IGN);
     pid_t parent = getppid();
@@ -230,29 +268,63 @@ int main(int argc, char **argv) {
     Slirp *slirp = slirp_new(&cfg, &callbacks, NULL);
     if (!slirp) { unlink(argv[2]); return 1; }
     printf("HARDDIND_NETWORK_READY libslirp=%s\n", slirp_version_string()); fflush(stdout);
-    unsigned char frame[MAX_FRAME];
+    static unsigned char frames[MAX_BATCH][MAX_FRAME];
     while (!stopping) {
         uint32_t timeout = timers_run();
         nfds = 0;
         add_poll(link_fd, SLIRP_POLL_IN | (head ? SLIRP_POLL_OUT : 0), NULL);
         add_poll(ctl_fd, SLIRP_POLL_IN, NULL);
         slirp_pollfds_fill(slirp, &timeout, add_poll, NULL);
+        poll_calls++;
         int n = poll(pfds, nfds, (int)timeout);
         if (n < 0) { if (errno == EINTR) continue; die("poll"); }
         if (pfds[0].revents & POLLOUT) flush_frames();
         if (pfds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
-            for (int i = 0; i < 64; i++) {
-                ssize_t len = recv(link_fd, frame, sizeof(frame), MSG_DONTWAIT | MSG_TRUNC);
-                if (len == 0) { stopping = 1; break; }
-                if (len < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
-                if (len > MAX_FRAME || len < 14) { dropped_packets++; continue; }
-                rx_packets++; rx_bytes += len;
-                dns_trace(frame, (size_t)len, "from_guest");
-                slirp_input(slirp, frame, (int)len);
+            unsigned received = 0;
+            if (batch_size == 1) {
+                /* Keep the reference path as the original one-frame receive
+                 * loop, without constructing batch descriptor arrays. */
+                for (; received < MAX_BATCH; received++) {
+                    rx_syscalls++;
+                    ssize_t len = recv(link_fd, frames[0], MAX_FRAME, MSG_DONTWAIT | MSG_TRUNC);
+                    if (!len) { stopping = 1; break; }
+                    if (len < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
+                    if (len > MAX_FRAME || len < 14) { dropped_packets++; continue; }
+                    rx_packets++; rx_bytes += len;
+                    dns_trace(frames[0], (size_t)len, "from_guest");
+                    slirp_input(slirp, frames[0], (int)len);
+                }
+            }
+            while (batch_size > 1 && received < MAX_BATCH) {
+                struct mmsghdr messages[MAX_BATCH] = {0};
+                struct iovec vectors[MAX_BATCH];
+                unsigned count = batch_size < MAX_BATCH - received ? batch_size : MAX_BATCH - received;
+                for (unsigned i = 0; i < count; i++) {
+                    vectors[i] = (struct iovec){frames[i], MAX_FRAME};
+                    messages[i].msg_hdr.msg_iov = &vectors[i];
+                    messages[i].msg_hdr.msg_iovlen = 1;
+                }
+                rx_syscalls++;
+                int got = recvmmsg(link_fd, messages, count, MSG_DONTWAIT | MSG_TRUNC, NULL);
+                if (got < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
+                if (!got) break;
+                for (int i = 0; i < got; i++) {
+                    unsigned len = messages[i].msg_len;
+                    if (!len) { stopping = 1; break; }
+                    if (len > MAX_FRAME || len < 14) { dropped_packets++; continue; }
+                    rx_packets++; rx_bytes += len;
+                    dns_trace(frames[i], len, "from_guest");
+                    slirp_input(slirp, frames[i], (int)len);
+                    /* Bound memory even when one receive batch creates many replies. */
+                    if (queued >= MAX_BATCH) flush_frames();
+                }
+                received += (unsigned)got;
+                if (stopping) break;
             }
         }
         if (pfds[1].revents & POLLIN) control(slirp);
         slirp_pollfds_poll(slirp, 0, get_events, NULL);
+        if (batch_size > 1 && head) flush_frames();
     }
     slirp_cleanup(slirp);
     char report[512]; stats(report, sizeof(report));

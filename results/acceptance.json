@@ -37,7 +37,9 @@
         "starpub-2026-10-14-protect/protect-v3-trace-comparison.json",
         "starpub-2026-10-14-ipi/ipi-idle-comparison.json",
         "starpub-2026-10-14-ipi/ipi-idle-trace-comparison.json",
-        "starpub-2026-10-14-network/network-v3.json"
+        "starpub-2026-10-14-network/network-v3.json",
+        "starpub-2026-10-14-network-batch/net-batch-v2.json",
+        "starpub-2026-10-14-network-batch/net-batch-v2-analysis.json"
       ],
       "same_host_and_resources": false,
       "remaining": [
@@ -49,7 +51,8 @@
         "four-thread syscall regression in latest on/off microbenchmark comparison",
         "severe slow samples in first mprotect comparison; cause not established by later successful run",
         "four-thread syscall and parallel-exec regressions in mprotect recheck",
-        "64 KiB TCP request/reply median 421.68 Mb/s nested vs 9171.04 Mb/s native loopback; 21.75x gap on this workload"
+        "64 KiB TCP request/reply median 421.68 Mb/s nested vs 9171.04 Mb/s native loopback; 21.75x gap on this workload",
+        "link batching reduced calls but regressed request/reply and streaming throughput; default remains one-frame mode"
       ]
     },
     "gpu_in_container": {

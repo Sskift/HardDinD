@@ -108,12 +108,13 @@ def serve(a, work, instance):
     fcntl.flock(build, fcntl.LOCK_SH)
     kernel = a.kernel.resolve()
     disk = a.disk.resolve()
-    config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns,
+    config = {'kernel': str(kernel), 'disk': str(disk), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch,
               'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk), 'network_sha256': sha(work / 'network-backend')}
     config_file = instance / 'config.json'
     if config_file.exists():
         previous = json.loads(config_file.read_text())
         previous.setdefault('dns', '10.0.2.3')
+        previous.setdefault('network_batch', 1)
         if previous != config:
             raise RuntimeError('instance input changed; use a new instance name')
     config_file.write_text(json.dumps(config, indent=2) + '\n')
@@ -143,7 +144,7 @@ def serve(a, work, instance):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024 * 1024)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
         with (instance / f'network-{run}.log').open('x') as log:
-            helper = subprocess.Popen([str(work / 'network-backend'), str(helper_end.fileno()), str(ctl)],
+            helper = subprocess.Popen([str(work / 'network-backend'), str(helper_end.fileno()), str(ctl), str(a.network_batch)],
                                       pass_fds=(helper_end.fileno(),), stdout=log, stderr=subprocess.STDOUT,
                                       start_new_session=True, preexec_fn=parent_death)
         helper_end.close()
@@ -243,6 +244,7 @@ def main():
         s.add_argument('--cpus', type=int, default=4)
         s.add_argument('--memory', default='4G')
         s.add_argument('--dns', default='10.0.2.3', help='IPv4 DNS resolver; default forwards the outer resolver')
+        s.add_argument('--network-batch', type=int, choices=range(1, 65), default=1, metavar='1..64', help='experimental link batch size (default 1)')
     for name in ('status', 'stop'):
         subs.add_parser(name)
     subs.add_parser('docker').add_argument('args', nargs=argparse.REMAINDER)
@@ -264,13 +266,13 @@ def main():
         if a.action == 'serve': return serve(a, work, instance)
         if live(state):
             if state['phase'] != 'ready': raise RuntimeError('instance is still starting or stopping')
-            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns}
-            if any(state['config'].get(key, '10.0.2.3' if key == 'dns' else None) != value for key, value in requested.items()):
+            requested = {'kernel': str(a.kernel.resolve()), 'disk': str(a.disk.resolve()), 'cpus': a.cpus, 'memory': a.memory, 'dns': a.dns, 'network_batch': a.network_batch}
+            if any(state['config'].get(key, {'dns': '10.0.2.3', 'network_batch': 1}.get(key)) != value for key, value in requested.items()):
                 raise RuntimeError('running instance uses different inputs; stop it or use another name')
             print(json.dumps(state, indent=2)); return 0
         cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), str(work), a.name, 'serve',
                '--kernel', str(a.kernel.resolve()), '--disk', str(a.disk.resolve()),
-               '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns]
+               '--cpus', str(a.cpus), '--memory', a.memory, '--dns', a.dns, '--network-batch', str(a.network_batch)]
         with (instance / 'supervisor.log').open('a') as log:
             proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         until = time.monotonic() + 150

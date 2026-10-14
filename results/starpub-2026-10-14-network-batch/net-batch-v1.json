@@ -1,0 +1,1508 @@
+{
+  "kind": "network_batch_comparison",
+  "full_acceptance": false,
+  "order": [
+    1,
+    64,
+    64,
+    1
+  ],
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "cpu_exclusive": false,
+  "runs": [
+    {
+      "batch": 1,
+      "instance": "/root/harddind-rebuild/instances/net-batch-v1-0",
+      "checks": {
+        "udp_fragmentation": "pass",
+        "tcp_payload_and_eof": "pass",
+        "forward_delete": "pass",
+        "clean_shutdown": "pass"
+      },
+      "samples": [
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 1.097726996988058,
+          "mbps_each_direction": 244.53753687076372,
+          "link": {
+            "rx_packets": 23952,
+            "tx_packets": 45735,
+            "rx_bytes": 34847844,
+            "tx_bytes": 36024126,
+            "dropped_packets": 0,
+            "rx_syscalls": 25240,
+            "tx_syscalls": 45735,
+            "poll_calls": 1814
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.493832026,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.15528022,
+              "tasks": 59,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.8027413245290518,
+          "mbps_each_direction": 334.39845165251006,
+          "link": {
+            "rx_packets": 23895,
+            "tx_packets": 45825,
+            "rx_bytes": 34844766,
+            "tx_bytes": 36028986,
+            "dropped_packets": 0,
+            "rx_syscalls": 25217,
+            "tx_syscalls": 45825,
+            "poll_calls": 1845
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.509006913,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.110990656,
+              "tasks": 59,
+              "new_tasks": [
+                "4164513:1384482476"
+              ],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.696074828505516,
+          "mbps_each_direction": 385.6416652450072,
+          "link": {
+            "rx_packets": 23601,
+            "tx_packets": 45625,
+            "rx_bytes": 34828890,
+            "tx_bytes": 36018186,
+            "dropped_packets": 0,
+            "rx_syscalls": 25463,
+            "tx_syscalls": 45625,
+            "poll_calls": 2390
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.491314654,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.914479151,
+              "tasks": 60,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.5445453319698572,
+          "mbps_each_direction": 492.9533690591971,
+          "link": {
+            "rx_packets": 23559,
+            "tx_packets": 43452,
+            "rx_bytes": 34826622,
+            "tx_bytes": 35900844,
+            "dropped_packets": 0,
+            "rx_syscalls": 25034,
+            "tx_syscalls": 43452,
+            "poll_calls": 1884
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.446507857,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.703152099,
+              "tasks": 60,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.7945702187716961,
+          "mbps_each_direction": 337.8372982754965,
+          "link": {
+            "rx_packets": 23707,
+            "tx_packets": 44508,
+            "rx_bytes": 34943974,
+            "tx_bytes": 35959328,
+            "dropped_packets": 0,
+            "rx_syscalls": 24677,
+            "tx_syscalls": 44508,
+            "poll_calls": 1347
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.500218941,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.906777555,
+              "tasks": 60,
+              "new_tasks": [
+                "4164634:1384482669"
+              ],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 1.3216902669519186,
+          "mbps_each_direction": 203.10012316203682,
+          "link": {
+            "rx_packets": 23993,
+            "tx_packets": 45228,
+            "rx_bytes": 34914133,
+            "tx_bytes": 35999668,
+            "dropped_packets": 0,
+            "rx_syscalls": 24938,
+            "tx_syscalls": 45228,
+            "poll_calls": 1285
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.53176687,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.197253312,
+              "tasks": 61,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        }
+      ],
+      "start": {
+        "phase": "ready",
+        "run": "b07f8c97dfc4",
+        "supervisor_pid": 4146998,
+        "supervisor_start": "1384477909",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 1,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 4155616,
+        "network_pid": 4155586,
+        "api_port": 57889,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-0/uml/b07f8c97dfc4/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=b07f8c97dfc4",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-0/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-0/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962716.4371715
+      },
+      "stop": {
+        "phase": "stopped",
+        "run": "b07f8c97dfc4",
+        "supervisor_pid": 4146998,
+        "supervisor_start": "1384477909",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 1,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 4155616,
+        "network_pid": 4155586,
+        "api_port": 57889,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-0/uml/b07f8c97dfc4/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=b07f8c97dfc4",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-0/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-0/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962716.4371715,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 4155616,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 4155586,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "stopped_at": 1791962754.3276546
+      }
+    },
+    {
+      "batch": 64,
+      "instance": "/root/harddind-rebuild/instances/net-batch-v1-1",
+      "checks": {
+        "udp_fragmentation": "pass",
+        "tcp_payload_and_eof": "pass",
+        "forward_delete": "pass",
+        "clean_shutdown": "pass"
+      },
+      "samples": [
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 1.558329725638032,
+          "mbps_each_direction": 172.25844542630003,
+          "link": {
+            "rx_packets": 23747,
+            "tx_packets": 45708,
+            "rx_bytes": 34836774,
+            "tx_bytes": 36022668,
+            "dropped_packets": 0,
+            "rx_syscalls": 4021,
+            "tx_syscalls": 1880,
+            "poll_calls": 2229
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.412034335,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.973126045,
+              "tasks": 60,
+              "new_tasks": [
+                "4188589:1384492487"
+              ],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 1.0007236786186695,
+          "mbps_each_direction": 268.24133548086917,
+          "link": {
+            "rx_packets": 23667,
+            "tx_packets": 45694,
+            "rx_bytes": 34832454,
+            "tx_bytes": 36021912,
+            "dropped_packets": 0,
+            "rx_syscalls": 3862,
+            "tx_syscalls": 1752,
+            "poll_calls": 2168
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.379168386,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.828451023,
+              "tasks": 61,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.6809920892119408,
+          "mbps_each_direction": 394.1829284839997,
+          "link": {
+            "rx_packets": 23650,
+            "tx_packets": 45722,
+            "rx_bytes": 34831536,
+            "tx_bytes": 36023424,
+            "dropped_packets": 0,
+            "rx_syscalls": 3702,
+            "tx_syscalls": 1677,
+            "poll_calls": 2098
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.374023494,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.761087011,
+              "tasks": 61,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.5394020657986403,
+          "mbps_each_direction": 497.653741096734,
+          "link": {
+            "rx_packets": 24057,
+            "tx_packets": 44660,
+            "rx_bytes": 34999679,
+            "tx_bytes": 35971916,
+            "dropped_packets": 0,
+            "rx_syscalls": 3140,
+            "tx_syscalls": 1443,
+            "poll_calls": 1261
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.373657598,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.722594733,
+              "tasks": 61,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.652946550399065,
+          "mbps_each_direction": 411.1139814368248,
+          "link": {
+            "rx_packets": 24182,
+            "tx_packets": 45044,
+            "rx_bytes": 35020281,
+            "tx_bytes": 35995572,
+            "dropped_packets": 0,
+            "rx_syscalls": 3269,
+            "tx_syscalls": 1463,
+            "poll_calls": 1287
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.35021439,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.690492355,
+              "tasks": 61,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.4411127157509327,
+          "mbps_each_direction": 608.5416412062077,
+          "link": {
+            "rx_packets": 23640,
+            "tx_packets": 45556,
+            "rx_bytes": 34830996,
+            "tx_bytes": 36014460,
+            "dropped_packets": 0,
+            "rx_syscalls": 2225,
+            "tx_syscalls": 1103,
+            "poll_calls": 879
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.330516143,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.48299543,
+              "tasks": 61,
+              "new_tasks": [
+                "4190408:1384493003"
+              ],
+              "lost_tasks": []
+            }
+          }
+        }
+      ],
+      "start": {
+        "phase": "ready",
+        "run": "1da9a33f5b1c",
+        "supervisor_pid": 4171240,
+        "supervisor_start": "1384484421",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 64,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 4173965,
+        "network_pid": 4173936,
+        "api_port": 48939,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-1/uml/1da9a33f5b1c/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=1da9a33f5b1c",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-1/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-1/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962775.677599
+      },
+      "stop": {
+        "phase": "stopped",
+        "run": "1da9a33f5b1c",
+        "supervisor_pid": 4171240,
+        "supervisor_start": "1384484421",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 64,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 4173965,
+        "network_pid": 4173936,
+        "api_port": 48939,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-1/uml/1da9a33f5b1c/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=1da9a33f5b1c",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-1/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-1/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962775.677599,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 4173965,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 4173936,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "stopped_at": 1791962855.00795
+      }
+    },
+    {
+      "batch": 64,
+      "instance": "/root/harddind-rebuild/instances/net-batch-v1-2",
+      "checks": {
+        "udp_fragmentation": "pass",
+        "tcp_payload_and_eof": "pass",
+        "forward_delete": "pass",
+        "clean_shutdown": "pass"
+      },
+      "samples": [
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 1.1823484990745783,
+          "mbps_each_direction": 227.0358157599928,
+          "link": {
+            "rx_packets": 23733,
+            "tx_packets": 45711,
+            "rx_bytes": 34836018,
+            "tx_bytes": 36022830,
+            "dropped_packets": 0,
+            "rx_syscalls": 3929,
+            "tx_syscalls": 1838,
+            "poll_calls": 2174
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.386005357,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.873820456,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.6412793509662151,
+          "mbps_each_direction": 418.59363722775186,
+          "link": {
+            "rx_packets": 23644,
+            "tx_packets": 45665,
+            "rx_bytes": 34831212,
+            "tx_bytes": 36020346,
+            "dropped_packets": 0,
+            "rx_syscalls": 3762,
+            "tx_syscalls": 1701,
+            "poll_calls": 2103
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.360122487,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.725257065,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.7060246951878071,
+          "mbps_each_direction": 380.20689337020207,
+          "link": {
+            "rx_packets": 23672,
+            "tx_packets": 45698,
+            "rx_bytes": 34832724,
+            "tx_bytes": 36022128,
+            "dropped_packets": 0,
+            "rx_syscalls": 4413,
+            "tx_syscalls": 1944,
+            "poll_calls": 2381
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.370272879,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.771279752,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.6787166483700275,
+          "mbps_each_direction": 395.50445188675036,
+          "link": {
+            "rx_packets": 24380,
+            "tx_packets": 44273,
+            "rx_bytes": 35254532,
+            "tx_bytes": 35977298,
+            "dropped_packets": 0,
+            "rx_syscalls": 5087,
+            "tx_syscalls": 1994,
+            "poll_calls": 2092
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.374419203,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.816520283,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.6769972145557404,
+          "mbps_each_direction": 396.5089519255303,
+          "link": {
+            "rx_packets": 24097,
+            "tx_packets": 44734,
+            "rx_bytes": 35016469,
+            "tx_bytes": 35980292,
+            "dropped_packets": 0,
+            "rx_syscalls": 3565,
+            "tx_syscalls": 1376,
+            "poll_calls": 1409
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.380025012,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.766259371,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.5033005140721798,
+          "mbps_each_direction": 533.3502519759057,
+          "link": {
+            "rx_packets": 24001,
+            "tx_packets": 45283,
+            "rx_bytes": 34910490,
+            "tx_bytes": 36004098,
+            "dropped_packets": 0,
+            "rx_syscalls": 2956,
+            "tx_syscalls": 1401,
+            "poll_calls": 1189
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.348848988,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.70102807,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        }
+      ],
+      "start": {
+        "phase": "ready",
+        "run": "336d8d938518",
+        "supervisor_pid": 794,
+        "supervisor_start": "1384494473",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 64,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 2130,
+        "network_pid": 2129,
+        "api_port": 52295,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-2/uml/336d8d938518/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=336d8d938518",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-2/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-2/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962874.033801
+      },
+      "stop": {
+        "phase": "stopped",
+        "run": "336d8d938518",
+        "supervisor_pid": 794,
+        "supervisor_start": "1384494473",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 64,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 2130,
+        "network_pid": 2129,
+        "api_port": 52295,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-2/uml/336d8d938518/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=336d8d938518",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-2/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-2/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962874.033801,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2130,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2129,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "stopped_at": 1791962905.6969156
+      }
+    },
+    {
+      "batch": 1,
+      "instance": "/root/harddind-rebuild/instances/net-batch-v1-3",
+      "checks": {
+        "udp_fragmentation": "pass",
+        "tcp_payload_and_eof": "pass",
+        "forward_delete": "pass",
+        "clean_shutdown": "pass"
+      },
+      "samples": [
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.7807059697806835,
+          "mbps_each_direction": 343.83681743257205,
+          "link": {
+            "rx_packets": 23619,
+            "tx_packets": 45662,
+            "rx_bytes": 34829862,
+            "tx_bytes": 36020184,
+            "dropped_packets": 0,
+            "rx_syscalls": 25406,
+            "tx_syscalls": 45662,
+            "poll_calls": 2333
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.50843247,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.080873063,
+              "tasks": 60,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.7753101382404566,
+          "mbps_each_direction": 346.22977665325817,
+          "link": {
+            "rx_packets": 23658,
+            "tx_packets": 45714,
+            "rx_bytes": 34831968,
+            "tx_bytes": 36022992,
+            "dropped_packets": 0,
+            "rx_syscalls": 25193,
+            "tx_syscalls": 45714,
+            "poll_calls": 2096
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.550628789,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.081190731,
+              "tasks": 60,
+              "new_tasks": [
+                "28417:1384503367"
+              ],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "request_reply",
+          "bytes_each_direction": 33554432,
+          "seconds": 1.021511472761631,
+          "mbps_each_direction": 262.78261493656197,
+          "link": {
+            "rx_packets": 23953,
+            "tx_packets": 45778,
+            "rx_bytes": 34847898,
+            "tx_bytes": 36026448,
+            "dropped_packets": 0,
+            "rx_syscalls": 25189,
+            "tx_syscalls": 45778,
+            "poll_calls": 1791
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.586411121,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.228714298,
+              "tasks": 57,
+              "new_tasks": [
+                "28430:1384503490"
+              ],
+              "lost_tasks": [
+                "27940:1384503104",
+                "27941:1384503109",
+                "27942:1384503112",
+                "27943:1384503112"
+              ]
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.803396426141262,
+          "mbps_each_direction": 334.1257780910276,
+          "link": {
+            "rx_packets": 24279,
+            "tx_packets": 44726,
+            "rx_bytes": 35234204,
+            "tx_bytes": 35982780,
+            "dropped_packets": 0,
+            "rx_syscalls": 25299,
+            "tx_syscalls": 44726,
+            "poll_calls": 1402
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.504452279,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.114024711,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.6336816567927599,
+          "mbps_each_direction": 423.61247658426305,
+          "link": {
+            "rx_packets": 24214,
+            "tx_packets": 45080,
+            "rx_bytes": 35002134,
+            "tx_bytes": 35994596,
+            "dropped_packets": 0,
+            "rx_syscalls": 24959,
+            "tx_syscalls": 45080,
+            "poll_calls": 1082
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.529565175,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 1.101326126,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        },
+        {
+          "kind": "stream",
+          "bytes_each_direction": 33554432,
+          "seconds": 0.5006023738533258,
+          "mbps_each_direction": 536.22489628595,
+          "link": {
+            "rx_packets": 23527,
+            "tx_packets": 44893,
+            "rx_bytes": 34846794,
+            "tx_bytes": 35980118,
+            "dropped_packets": 0,
+            "rx_syscalls": 24514,
+            "tx_syscalls": 44893,
+            "poll_calls": 1384
+          },
+          "cpu": {
+            "helper": {
+              "cpu_seconds": 0.43262597,
+              "tasks": 1,
+              "new_tasks": [],
+              "lost_tasks": []
+            },
+            "guest": {
+              "cpu_seconds": 0.753038171,
+              "tasks": 58,
+              "new_tasks": [],
+              "lost_tasks": []
+            }
+          }
+        }
+      ],
+      "start": {
+        "phase": "ready",
+        "run": "d4d42d868058",
+        "supervisor_pid": 19575,
+        "supervisor_start": "1384499541",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 1,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 22166,
+        "network_pid": 22139,
+        "api_port": 42759,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-3/uml/d4d42d868058/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=d4d42d868058",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-3/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-3/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962927.4344769
+      },
+      "stop": {
+        "phase": "stopped",
+        "run": "d4d42d868058",
+        "supervisor_pid": 19575,
+        "supervisor_start": "1384499541",
+        "config": {
+          "kernel": "/root/harddind-rebuild/ipi-kernel-idle",
+          "disk": "/root/harddind-rebuild/runtime-dns.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "1.1.1.1",
+          "network_batch": 1,
+          "kernel_sha256": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+          "disk_sha256": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+          "network_sha256": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6"
+        },
+        "runtime_sha256": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+        "guest_pid": 22166,
+        "network_pid": 22139,
+        "api_port": 42759,
+        "mconsole": "/root/harddind-rebuild/instances/net-batch-v1-3/uml/d4d42d868058/mconsole",
+        "command": [
+          "/root/harddind-rebuild/ipi-kernel-idle",
+          "umid=d4d42d868058",
+          "uml_dir=/root/harddind-rebuild/instances/net-batch-v1-3/uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/instances/net-batch-v1-3/root.cow,/root/harddind-rebuild/runtime-dns.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=1.1.1.1",
+          "vec0:transport=fd,fd=5,gro=0,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1791962927.4344769,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 22166,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 22139,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "stopped_at": 1791962961.307912
+      }
+    }
+  ],
+  "native": [
+    {
+      "before_run": 0,
+      "samples": {
+        "request_reply": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.06369209848344326,
+            "mbps_each_direction": 4214.580181712488
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.03708630055189133,
+            "mbps_each_direction": 7238.129767740081
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.0580037459731102,
+            "mbps_each_direction": 4627.898620969123
+          }
+        ],
+        "stream": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.1020625438541174,
+            "mbps_each_direction": 2630.1074406266703
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.03573882393538952,
+            "mbps_each_direction": 7511.032161698756
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.031572120264172554,
+            "mbps_each_direction": 8502.29423155389
+          }
+        ]
+      }
+    },
+    {
+      "before_run": 1,
+      "samples": {
+        "request_reply": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.029684895649552345,
+            "mbps_each_direction": 9042.82969928675
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.028324022889137268,
+            "mbps_each_direction": 9477.306844817916
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.029650429263710976,
+            "mbps_each_direction": 9053.341306209582
+          }
+        ],
+        "stream": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.023228859528899193,
+            "mbps_each_direction": 11556.118614692965
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.020307082682847977,
+            "mbps_each_direction": 13218.809426857228
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.019262081012129784,
+            "mbps_each_direction": 13935.953017275751
+          }
+        ]
+      }
+    },
+    {
+      "before_run": 2,
+      "samples": {
+        "request_reply": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.03297226317226887,
+            "mbps_each_direction": 8141.250559523803
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.02950591966509819,
+            "mbps_each_direction": 9097.68138213721
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.028950510546565056,
+            "mbps_each_direction": 9272.21837999156
+          }
+        ],
+        "stream": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.02549499087035656,
+            "mbps_each_direction": 10528.948896864062
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.024258701130747795,
+            "mbps_each_direction": 11065.532921701206
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.019808119162917137,
+            "mbps_each_direction": 13551.789233100897
+          }
+        ]
+      }
+    },
+    {
+      "before_run": 3,
+      "samples": {
+        "request_reply": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.031068244948983192,
+            "mbps_each_direction": 8640.187317976757
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.030683230608701706,
+            "mbps_each_direction": 8748.6047158239
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.030301611870527267,
+            "mbps_each_direction": 8858.784712409724
+          }
+        ],
+        "stream": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.01966683194041252,
+            "mbps_each_direction": 13649.14577057038
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.02165517956018448,
+            "mbps_each_direction": 12395.900724533785
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.02111024595797062,
+            "mbps_each_direction": 12715.884814153314
+          }
+        ]
+      }
+    },
+    {
+      "after_all": true,
+      "samples": {
+        "request_reply": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.03946090303361416,
+            "mbps_each_direction": 6802.567487402339
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.037289150059223175,
+            "mbps_each_direction": 7198.75501516304
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.03420793451368809,
+            "mbps_each_direction": 7847.169372140469
+          }
+        ],
+        "stream": [
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.029274465516209602,
+            "mbps_each_direction": 9169.610828637136
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.03462117165327072,
+            "mbps_each_direction": 7753.505822632679
+          },
+          {
+            "bytes_each_direction": 33554432,
+            "seconds": 0.025076229125261307,
+            "mbps_each_direction": 10704.777606677048
+          }
+        ]
+      }
+    }
+  ],
+  "sha256": {
+    "/root/harddind-rebuild/ipi-kernel-idle": "5d408030c303ce705d9edda224c1bccf206429bb56dc59c4cc3b04f071155922",
+    "/root/harddind-rebuild/runtime-dns.ext4": "5446de9566819992791d6b71cf4b6691678564c71a42a7fe64a688078fe6ef40",
+    "/root/harddind-rebuild/network-backend": "d81d56d47e9e5633c96281958e03b440127f9233b37078dc853eb1f5f813d3a6",
+    "/root/harddind-rebuild/network-probe": "a47e9b05121419e5707669707fa96e78202663ff6690cc6ef409d1f0d74e0abc",
+    "/root/harddind-rebuild/src/network_backend.c": "2507628e33f022c7ec762ee72ea9e82c3de3fdb24ff9b85eadc862bee8281e31",
+    "/root/harddind-rebuild/scripts/harddind.py": "57b64808ba9ba4f44c11df777857268ae20e121f35cb0dd08f862e8e14750524",
+    "/root/harddind-rebuild/scripts/compare-network.py": "2bdc3fab6aa2ef2a98177c69b992c8b7fd04d4eb443e6e88dbdf7b2352d08e55"
+  },
+  "host_before": {
+    "load": "138.58 81.53 63.54 67/54012 4146600\n",
+    "cpu_stat": "usage_usec 14428588758384\nuser_usec 13970657517986\nsystem_usec 457931240397\nnr_periods 20472606\nnr_throttled 161649\nthrottled_usec 171283422248\n",
+    "pressure": "some avg10=77.12 avg60=41.48 avg300=17.30 total=14532364617\nfull avg10=32.23 avg60=17.22 avg300=7.46 total=4205469415\n"
+  },
+  "medians": {
+    "request_reply": {
+      "native": 8640.187317976757,
+      "batch_1": 339.11763454254105,
+      "batch_64": 324.2241144255356
+    },
+    "stream": {
+      "native": 11065.532921701206,
+      "batch_1": 380.7248874298798,
+      "batch_64": 454.3838612667794
+    }
+  },
+  "comparison_complete": true,
+  "native_cleanup": {
+    "process_group": 4146601,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "host_after": {
+    "load": "51.61 68.48 63.15 30/52958 29259\n",
+    "cpu_stat": "usage_usec 14434224890474\nuser_usec 13975605640673\nsystem_usec 458619249801\nnr_periods 20475339\nnr_throttled 161842\nthrottled_usec 171365307539\n",
+    "pressure": "some avg10=0.51 avg60=1.38 avg300=7.62 total=14537672359\nfull avg10=0.09 avg60=0.43 avg300=3.19 total=4207560599\n"
+  }
+}

@@ -55,6 +55,8 @@ Docker 命令测试增加了暂停恢复、资源更新、attach、镜像提交�
 
 新的持久运行实验使用 `scripts/harddind.py`。它保存独立 COW 磁盘，启动网络后端和真实 dockerd，外层使用同版本的原版 Docker CLI；`stop` 通过 UML 管理通道请求 guest 正常关机。网络后端固定 libslirp 4.6.1，目前支持 IPv4 TCP/UDP 和显式外层端口转发。这个入口仍属实验，GPU、自动同步 `docker -p`、外层 bind 路径和完整网络性能尚未完成。
 
+进一步的 [网络收发定位](results/starpub-2026-10-14-network-batch/) 增加调用计数、CPU 记录和连续传输对照。`--network-batch 64` 将 link 收发调用减少约 92%，但修正后的对照吞吐反而回退约 6%–12%，因此默认仍为单包模式。实验只降低了部分 CPU 成本，没有解决整体网络速度差距。
+
 ```sh
 make network WORK=/root/harddind-rebuild
 make runtime-root WORK=/root/harddind-rebuild

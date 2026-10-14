@@ -1,0 +1,101 @@
+{
+  "source": "net-batch-v1.json",
+  "full_acceptance": false,
+  "workloads": {
+    "request_reply": {
+      "native": {
+        "samples": 15,
+        "median_mbps_each_direction": 8640.187317976757,
+        "median_wall_seconds": 0.031068244948983192
+      },
+      "batch_1": {
+        "samples": 6,
+        "median_mbps_each_direction": 339.11763454254105,
+        "median_wall_seconds": 0.7917236471548676,
+        "median_link": {
+          "rx_packets": 23776.5,
+          "tx_packets": 45724.5,
+          "rx_bytes": 34838367.0,
+          "tx_bytes": 36023559.0,
+          "dropped_packets": 0.0,
+          "rx_syscalls": 25228.5,
+          "tx_syscalls": 45724.5,
+          "poll_calls": 1970.5
+        },
+        "median_link_syscalls_total": 71008.5,
+        "median_helper_cpu_seconds": 0.5087196915000001,
+        "median_common_guest_task_cpu_seconds": 1.0960906934999999,
+        "samples_with_changed_cpu_task_identity": 3,
+        "dropped_packets": 0
+      },
+      "batch_64": {
+        "samples": 6,
+        "median_mbps_each_direction": 324.2241144255356,
+        "median_wall_seconds": 0.8533741869032383,
+        "median_link": {
+          "rx_packets": 23669.5,
+          "tx_packets": 45703.0,
+          "rx_bytes": 34832589.0,
+          "tx_bytes": 36022398.0,
+          "dropped_packets": 0.0,
+          "rx_syscalls": 3895.5,
+          "tx_syscalls": 1795.0,
+          "poll_calls": 2171.0
+        },
+        "median_link_syscalls_total": 5690.5,
+        "median_helper_cpu_seconds": 0.37659594,
+        "median_common_guest_task_cpu_seconds": 0.7998653874999999,
+        "samples_with_changed_cpu_task_identity": 1,
+        "dropped_packets": 0
+      }
+    },
+    "stream": {
+      "native": {
+        "samples": 15,
+        "median_mbps_each_direction": 11065.532921701206,
+        "median_wall_seconds": 0.024258701130747795
+      },
+      "batch_1": {
+        "samples": 6,
+        "median_mbps_each_direction": 380.7248874298798,
+        "median_wall_seconds": 0.714125937782228,
+        "median_link": {
+          "rx_packets": 23850.0,
+          "tx_packets": 44809.5,
+          "rx_bytes": 34929053.5,
+          "tx_bytes": 35981449.0,
+          "dropped_packets": 0.0,
+          "rx_syscalls": 24948.5,
+          "tx_syscalls": 44809.5,
+          "poll_calls": 1365.5
+        },
+        "median_link_syscalls_total": 69716.0,
+        "median_helper_cpu_seconds": 0.50233561,
+        "median_common_guest_task_cpu_seconds": 1.0040518405,
+        "samples_with_changed_cpu_task_identity": 1,
+        "dropped_packets": 0
+      },
+      "batch_64": {
+        "samples": 6,
+        "median_mbps_each_direction": 454.3838612667794,
+        "median_wall_seconds": 0.5961743080988526,
+        "median_link": {
+          "rx_packets": 24077.0,
+          "tx_packets": 44889.0,
+          "rx_bytes": 35008074.0,
+          "tx_bytes": 35987932.0,
+          "dropped_packets": 0.0,
+          "rx_syscalls": 3204.5,
+          "tx_syscalls": 1422.0,
+          "poll_calls": 1274.0
+        },
+        "median_link_syscalls_total": 4657.5,
+        "median_helper_cpu_seconds": 0.361935994,
+        "median_common_guest_task_cpu_seconds": 0.7118114015,
+        "samples_with_changed_cpu_task_identity": 1,
+        "dropped_packets": 0
+      }
+    }
+  },
+  "cpu_note": "Scheduler CPU includes snapshot intervals; guest CPU covers only tasks present at both snapshots. Changed task identities are counted, not silently imputed."
+}
