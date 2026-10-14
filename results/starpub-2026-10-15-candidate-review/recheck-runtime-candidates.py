@@ -157,5 +157,27 @@ check(verdict == owner['native_verdict'] == load(root, 'native-verdict.json') an
       not verdict['ok'] and owner['internal_gpu_acceptance'] == 'not_tested' and
       next(c for c in owner['commands'] if c['label'] == 'native')['exit_code'] == -13,
       'native failure reparse differs')
+root = ROOT / 'gpu-lifecycle-v5'
+owner = load(root, 'owner-report.json')
+verify_archive(root, owner)
+audit = load(root, 'owner-cleanup-audit.json')
+check(set(audit) == groups_in(owner) and len(audit) == 11 and
+      all(value == [[], []] for value in audit.values()) and owner['groups_empty'] and
+      owner['libraries_unchanged'] and owner['inventory_unchanged'], 'v5 cleanup/input mismatch')
+uuids = [line.split(',')[0].strip() for line in
+         read(root, 'inventory-before.stdout').decode().splitlines()]
+checks = module(root / 'scripts/gpu_lifecycle_checks.py', 'gpu_lifecycle_v5')
+verdict = checks.analyze(read(root, 'native.stdout').decode(), {'uuids': uuids})
+check(verdict == owner['native_verdict'] == load(root, 'native-verdict.json') and
+      verdict['ok'] and verdict['gpu_count'] == 4 and
+      owner['internal_gpu_acceptance'] == 'not_tested' and owner['exit_code'] == 0 and
+      all(c['exit_code'] == 0 and not c['timed_out'] for c in owner['commands']),
+      'v5 native result boundary changed')
+for name in ('src/cuda_lifecycle_probe.c', 'scripts/gpu_lifecycle_checks.py'):
+    check(sha(read(ROOT.parents[1], name)) == owner['source_sha256'][name],
+          'integrated lifecycle implementation differs from the native-tested source')
+check('Ran 66 tests' in read(root, 'checker-tests.stderr').decode() and
+      'skipped=' not in read(root, 'checker-tests.stderr').decode(), 'v5 tests incomplete')
 print('Archive/source hashes, raw failures, CUDA reparse and all recorded cleanup groups verified.')
-print('CPU v3 fail; CPU v4 indeterminate; POSIX v5 fail; native CUDA v4 fail. No full/performance acceptance.')
+print('CPU v3 fail; CPU v4 indeterminate; POSIX v5 fail; native CUDA v4 fail, v5 pass.')
+print('Internal GPU and full/performance acceptance remain unverified.')

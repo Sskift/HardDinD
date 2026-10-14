@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "reasons": [],
+  "overlap_ns": {
+    "shared": 38519552,
+    "multicard": 26357708,
+    "child": 7588072
+  },
+  "gpu_count": 4
+}

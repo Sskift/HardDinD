@@ -25,7 +25,12 @@ def main():
     p.add_argument('--name',required=True)
     p.add_argument('--gpu-count',type=int,default=4)
     p.add_argument('--async-wait',action='store_true')
+    p.add_argument('--probe',choices=['compute','lifecycle'],default='compute',
+                   help='compute (default): src/cuda_probe.c unchanged; '
+                        'lifecycle: src/cuda_lifecycle_probe.c validated by '
+                        'gpu_lifecycle_checks.py')
     a=p.parse_args()
+    lifecycle=a.probe=='lifecycle'
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,28}',a.name) or not 1<=a.gpu_count<=32:
         p.error('invalid name or GPU count')
     work=a.work.resolve();repo=pathlib.Path(__file__).resolve().parents[1]
@@ -34,17 +39,32 @@ def main():
     out.mkdir(parents=True,exist_ok=False)
     inputs=[a.kernel.resolve(),a.disk.resolve(),repo/'src/cuda_probe.c',repo/'src/cuda_ioctl_trace.c',
             pathlib.Path(__file__).resolve(),repo/'scripts/harddind.py',repo/'scripts/guest_cleanup.py']
-    report={'kind':'nested_cuda_compute_diagnostic','full_acceptance':False,
+    if lifecycle:
+        inputs += [repo/'src/cuda_lifecycle_probe.c',repo/'scripts/gpu_lifecycle_checks.py']
+    if lifecycle:
+        limitations=['manual guest device selection; not Docker --gpus integration',
+            'lifecycle diagnostic only; the GPU goal is not complete: UVM, memory '
+            'pressure, IPC and async-copy suites still remain',
+            'global free-VRAM bytes on a shared GPU cannot prove physical-leak absence',
+            'ioctl/strace tracing changes timing; coexistence trace only, no performance threshold',
+            'stock Docker --gpus support still requires a separate final suite']
+        kind='nested_cuda_lifecycle_diagnostic'
+    else:
+        limitations=['manual guest device selection; not Docker --gpus integration',
+            'one process, sequential cards; concurrency and memory lifecycle stress remain',
+            'ioctl tracing changes timing; not GPU performance acceptance']
+        kind='nested_cuda_compute_diagnostic'
+    report={'kind':kind,'probe':a.probe,'full_acceptance':False,
             'internal_cuda_verified':False,'diagnostic_complete':False,'async_wait':a.async_wait,
             'started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'sha256':{str(f):harddind.sha(f) for f in inputs},'gpu_count':a.gpu_count,
-            'phases':{},'commands':[],'limitations':['manual guest device selection; not Docker --gpus integration',
-            'one process, sequential cards; concurrency and memory lifecycle stress remain',
-            'ioctl tracing changes timing; not GPU performance acceptance']}
+            'phases':{},'commands':[],'limitations':limitations}
     (out/'sources').mkdir()
     for f in inputs[2:]:shutil.copy2(f,out/'sources'/f.name)
     base=[sys.executable,str(repo/'scripts/harddind.py'),str(work),a.name]
-    container='cuda-compute';image='harddind-cuda:local'
+    container='cuda-lifecycle' if lifecycle else 'cuda-compute'
+    probe_name='cuda-lifecycle-probe' if lifecycle else 'cuda-probe'
+    image='harddind-cuda:local'
     report['driver_version']=pathlib.Path('/proc/driver/nvidia/version').read_text()
     os.sched_setaffinity(0,[0,1,2,3]);report['cpu_affinity']=sorted(os.sched_getaffinity(0))
     with (out/'commands.log').open('x') as commands:
@@ -70,25 +90,56 @@ def main():
             if row['exit_code'] or row['timed_out'] or not row['cleanup']['clean_shutdown']:
                 raise RuntimeError(label+' failed')
             return row
+        lifecycle_uuids=[]
         def compute(label,cmd,env=None):
             row=run(label,cmd,env=env)
             text=(out/(label+'.stdout')).read_text(errors='replace')
-            rows=[json.loads(line) for line in text.splitlines() if line.startswith('{"gpu":')]
             error=(out/(label+'.stderr')).read_text(errors='replace')
-            row['compute_results']=rows
             row['ioctl_records']=[line for line in error.splitlines() if line.startswith('CUDA_IOCTL ')]
             row['errors']=[line for line in error.splitlines() if not line.startswith('CUDA_IOCTL ')]
-            row['all_gpus_verified']=(row['exit_code']==0 and not row['timed_out']
-                and row['cleanup']['clean_shutdown'] and len(rows)==a.gpu_count
-                and {r['gpu'] for r in rows}==set(range(a.gpu_count))
-                and all(r.get('verified') is True and r.get('elements')==1<<20 for r in rows))
+            if lifecycle:
+                # Independent re-derivation; the probe's summary status is
+                # never trusted on its own.  The native-before inventory
+                # defines the canonical UUID set for docker/native-after.
+                import gpu_lifecycle_checks
+                phase_uuids=gpu_lifecycle_checks.inventory_uuids(text)
+                if label=='native-before':
+                    lifecycle_uuids.extend(phase_uuids)
+                request=dict(gpu_lifecycle_checks.DEFAULT_REQUEST)
+                request['uuids']=lifecycle_uuids
+                request['children']=max(4,a.gpu_count)
+                verdict=gpu_lifecycle_checks.analyze(text,request)
+                rows=[json.loads(line) for line in text.splitlines()
+                      if line.startswith('{"type":')]
+                row['compute_results']=[]
+                row['lifecycle_records']=len(rows)
+                row['lifecycle_inventory']=phase_uuids
+                row['lifecycle_verdict']={'ok':verdict['ok'],
+                    'reasons':verdict['reasons'],
+                    'overlap_ns':verdict['overlap_ns']}
+                row['all_gpus_verified']=(row['exit_code']==0 and not row['timed_out']
+                    and row['cleanup']['clean_shutdown']
+                    and len(lifecycle_uuids)==a.gpu_count
+                    and phase_uuids==lifecycle_uuids and verdict['ok'])
+            else:
+                rows=[json.loads(line) for line in text.splitlines() if line.startswith('{"gpu":')]
+                row['compute_results']=rows
+                row['all_gpus_verified']=(row['exit_code']==0 and not row['timed_out']
+                    and row['cleanup']['clean_shutdown'] and len(rows)==a.gpu_count
+                    and {r['gpu'] for r in rows}==set(range(a.gpu_count))
+                    and all(r.get('verified') is True and r.get('elements')==1<<20 for r in rows))
             report['phases'][label]=row
             return row
         try:
-            program=out/'cuda-probe';logger=out/'cuda-ioctl-trace.so'
+            program=out/probe_name;logger=out/'cuda-ioctl-trace.so'
+            probe_source=repo/('src/cuda_lifecycle_probe.c' if lifecycle else 'src/cuda_probe.c')
+            if lifecycle:
+                build_cmd=['gcc','-O2','-Wall','-Wextra','-Werror',str(probe_source),'-pthread','-lm','-ldl','-o',str(program)]
+            else:
+                build_cmd=['gcc','-O2','-Wall','-Wextra','-Werror',str(probe_source),'-ldl','-o',str(program)]
             with (work/'kernel-build.lock').open('a') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX)
-                require('build-probe',['gcc','-O2','-Wall','-Wextra','-Werror',str(repo/'src/cuda_probe.c'),'-ldl','-o',str(program)])
+                require('build-probe',build_cmd)
                 require('build-logger',['gcc','-O2','-Wall','-Wextra','-Werror','-shared','-fPIC',str(repo/'src/cuda_ioctl_trace.c'),'-o',str(logger)])
             inputs += [program,logger]
             report['sha256'].update({str(f):harddind.sha(f) for f in [program,logger]})
@@ -107,7 +158,7 @@ def main():
             report['library_sha256']={str(f):harddind.sha(f) for f in sorted(files)}
             root=out/'root';root.mkdir()
             for d in ['dev','proc','sys','tmp','etc','run']:(root/d).mkdir()
-            shutil.copy2(program,root/'cuda-probe');shutil.copy2(logger,root/'cuda-ioctl-trace.so')
+            shutil.copy2(program,root/probe_name);shutil.copy2(logger,root/'cuda-ioctl-trace.so')
             for f in sorted(files):
                 dst=root/f.relative_to('/');dst.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(f,dst,follow_symlinks=True)
             with tarfile.open(out/'rootfs.tar','w') as archive:
@@ -170,7 +221,7 @@ def main():
             trace_args=['/usr/bin/strace','-f','-qq','-yy','-s','128','-o','/tmp/cuda-syscalls.strace',
                         '-e','trace=%file,ioctl,mmap,munmap,clone,clone3']
             cmd=base+['docker','run','--name',container,*devices,'--env=LD_PRELOAD=/cuda-ioctl-trace.so',
-                      '--env=CUDA_CACHE_PATH=/tmp/cuda-cache',image,*trace_args,'/cuda-probe']
+                      '--env=CUDA_CACHE_PATH=/tmp/cuda-cache',image,*trace_args,'/'+probe_name]
             compute('docker',cmd)
             require('copy-trace',base+['docker','cp',container+':/tmp/cuda-syscalls.strace',str(out/'docker.strace')])
             report['phases']['docker']['trace_sha256']=harddind.sha(out/'docker.strace')

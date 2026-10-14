@@ -20,7 +20,7 @@
 
 每个结果文件记录各项 pass/fail/not_tested；是否实际通过，应以对应内核和 fixture 的原始报告为准。这个表描述测试范围，不把未运行的场景声明为可用。
 
-最新独立候选运行中，[CPU shares v4](../results/starpub-2026-10-15-candidate-review/cpu-shares-v4/README.md) 的首阶段实际分配符合 100/59 权重；反转阶段存在采样空档，等权阶段有效窗口不足，整轮仍无法判定。[共享 POSIX 锁 v5](../results/starpub-2026-10-15-candidate-review/posix-v5/README.md) 原生 46/46、内部 Docker 45/46，exec 测试依赖了镜像中不存在的程序，需修复后重测。[GPU 生命周期原生 v4](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v4/README.md) 暴露探针的 context 释放顺序、子进程参数及 SIGPIPE 错误，尚未形成可用于内部 GPU 对照的完整通过基线。这些失败和无法判定项均保留，不计入完成。
+最新独立候选运行中，[CPU shares v4](../results/starpub-2026-10-15-candidate-review/cpu-shares-v4/README.md) 的首阶段实际分配符合 100/59 权重；反转阶段存在采样空档，等权阶段有效窗口不足，整轮仍无法判定。[共享 POSIX 锁 v5](../results/starpub-2026-10-15-candidate-review/posix-v5/README.md) 原生 46/46、内部 Docker 45/46，exec 测试依赖了镜像中不存在的程序，需修复后重测。[GPU 生命周期原生 v4](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v4/README.md) 暴露探针的 context 释放顺序、子进程参数及 SIGPIPE 错误；修复后的 [v5](../results/starpub-2026-10-15-candidate-review/gpu-lifecycle-v5/README.md) 已在四卡原生实际通过 136 次计算/传输/校验循环及多线程、多进程生命周期检查，可用作后续内部对照，但内部生命周期仍未通过。这些失败和无法判定项均保留，不计入完成。
 
 [GPU 映射候选 v10](../results/starpub-2026-10-15-candidate-review/gpu-mapping-v10/README.md) 已通过实际四卡 NUMA 查询和原有 31/31、74/74 控制接口回归。内部 CUDA 仍在初始化失败：未知 `0x20810108` 控制布局和把字符设备事件标识误当成 eventfd 的实现正在修复。原生前后四卡计算通过仅用于对照；该候选没有内部计算或性能通过结论。
 
