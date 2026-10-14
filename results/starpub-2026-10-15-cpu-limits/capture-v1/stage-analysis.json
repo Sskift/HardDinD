@@ -1,0 +1,3375 @@
+{
+  "scope": "five-operation timing with additional observer overhead; no performance acceptance",
+  "runtime_verdict": "pass",
+  "phases": {
+    "unthrottled_reference": {
+      "sample_count": 60,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 10.140928,
+          "clock_before_ms": 0.046336,
+          "clock_after_ms": 0.05376,
+          "thread_cpu_ms": 10.0
+        },
+        "cpu.stat": {
+          "operation_ms": 0.118784,
+          "clock_before_ms": 0.038144,
+          "clock_after_ms": 0.045824,
+          "thread_cpu_ms": 0
+        },
+        "cpu.max.second": {
+          "operation_ms": 0.078336,
+          "clock_before_ms": 0.046592,
+          "clock_after_ms": 19.98976,
+          "thread_cpu_ms": 10.0
+        },
+        "/proc/stat": {
+          "operation_ms": 0.117248,
+          "clock_before_ms": 19.991552,
+          "clock_after_ms": 0.038656,
+          "thread_cpu_ms": 0
+        },
+        "process_clock": {
+          "operation_ms": 0.043264,
+          "clock_before_ms": 0.05248,
+          "clock_after_ms": 0.032,
+          "thread_cpu_ms": 0
+        }
+      },
+      "slow_sample_count": 1,
+      "longest_captures": [
+        {
+          "index": 38,
+          "capture_ms": 40.380672,
+          "at_s": 3.940022016,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.056576,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.044544,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.05504,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 19.98976,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.070912,
+              "clock_before_ms": 19.991552,
+              "clock_after_ms": 0.020736,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "capture_ms": 10.497792,
+          "at_s": 1.310141952,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 10.140928,
+              "clock_before_ms": 0.01664,
+              "clock_after_ms": 0.023808,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.05376,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.030464,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.0576,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015104,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 48,
+          "capture_ms": 1.026304,
+          "at_s": 4.986479104,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.12672,
+              "clock_before_ms": 0.046336,
+              "clock_after_ms": 0.044288,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.118784,
+              "clock_before_ms": 0.038144,
+              "clock_after_ms": 0.045824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.078336,
+              "clock_before_ms": 0.046592,
+              "clock_after_ms": 0.039424,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.117248,
+              "clock_before_ms": 0.052992,
+              "clock_after_ms": 0.038656,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.043264,
+              "clock_before_ms": 0.037632,
+              "clock_after_ms": 0.032,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 57,
+          "capture_ms": 0.521984,
+          "at_s": 5.892088832,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.074752,
+              "clock_before_ms": 0.026624,
+              "clock_after_ms": 0.023552,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.064,
+              "clock_before_ms": 0.018432,
+              "clock_after_ms": 0.01536,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.039168,
+              "clock_before_ms": 0.014848,
+              "clock_after_ms": 0.011776,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.07296,
+              "clock_before_ms": 0.017408,
+              "clock_after_ms": 0.016896,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.026624,
+              "clock_before_ms": 0.023808,
+              "clock_after_ms": 0.019712,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 22,
+          "capture_ms": 0.484352,
+          "at_s": 2.331920896,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.077568,
+              "clock_before_ms": 0.018944,
+              "clock_after_ms": 0.015616,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.05888,
+              "clock_before_ms": 0.015616,
+              "clock_after_ms": 0.016384,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.032768,
+              "clock_before_ms": 0.016896,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.087552,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.016128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.016896,
+              "clock_before_ms": 0.016384,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 45,
+          "capture_ms": 0.473856,
+          "at_s": 4.684753152,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.076032,
+              "clock_before_ms": 0.027392,
+              "clock_after_ms": 0.018432,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.052736,
+              "clock_before_ms": 0.011008,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.030464,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.105728,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.018432,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.021248,
+              "clock_before_ms": 0.011008,
+              "clock_after_ms": 0.011776,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "capture_ms": 0.4736,
+          "at_s": 1.208077312,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.067072,
+              "clock_before_ms": 0.026368,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.056576,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.044032,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.075776,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.026112,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.013824,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 28,
+          "capture_ms": 0.455168,
+          "at_s": 2.935416832,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.057856,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.060672,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.052736,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.0768,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.015872,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.017152,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 53,
+          "capture_ms": 0.45056,
+          "at_s": 5.4898496,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.071168,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.069888,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.026368,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.055552,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.01536,
+              "clock_before_ms": 0.05248,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 21,
+          "capture_ms": 0.430336,
+          "at_s": 2.23130624,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.068096,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.01152,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.061184,
+              "clock_before_ms": 0.010752,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.03712,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.0704,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.018176,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.014336,
+              "clock_before_ms": 0.01664,
+              "clock_after_ms": 0.018944,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "cpus_flag_quota": {
+      "sample_count": 53,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 1.111552,
+          "clock_before_ms": 0.081664,
+          "clock_after_ms": 0.064256,
+          "thread_cpu_ms": 0
+        },
+        "cpu.stat": {
+          "operation_ms": 0.16128,
+          "clock_before_ms": 0.057088,
+          "clock_after_ms": 0.05248,
+          "thread_cpu_ms": 10.0
+        },
+        "cpu.max.second": {
+          "operation_ms": 188.141312,
+          "clock_before_ms": 0.052224,
+          "clock_after_ms": 0.041728,
+          "thread_cpu_ms": 20.0
+        },
+        "/proc/stat": {
+          "operation_ms": 90.586368,
+          "clock_before_ms": 0.040704,
+          "clock_after_ms": 0.06784,
+          "thread_cpu_ms": 10.0
+        },
+        "process_clock": {
+          "operation_ms": 0.042496,
+          "clock_before_ms": 0.03968,
+          "clock_after_ms": 0.04224,
+          "thread_cpu_ms": 0
+        }
+      },
+      "slow_sample_count": 3,
+      "longest_captures": [
+        {
+          "index": 47,
+          "capture_ms": 188.597248,
+          "at_s": 5.200314368,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.05632,
+              "clock_before_ms": 0.01792,
+              "clock_after_ms": 0.0192,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.055296,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.01664,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 188.141312,
+              "clock_before_ms": 0.037888,
+              "clock_after_ms": 0.025856,
+              "thread_cpu_ms": 20.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.0832,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.022784,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015872,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 50,
+          "capture_ms": 99.104768,
+          "at_s": 5.69043584,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.060416,
+              "clock_before_ms": 0.022272,
+              "clock_after_ms": 0.064256,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.138752,
+              "clock_before_ms": 0.057088,
+              "clock_after_ms": 0.05248,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.10752,
+              "clock_before_ms": 0.052224,
+              "clock_after_ms": 0.041728,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.107264,
+              "clock_before_ms": 0.040704,
+              "clock_after_ms": 0.040448,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.042496,
+              "clock_before_ms": 0.03968,
+              "clock_after_ms": 0.04224,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 30,
+          "capture_ms": 92.294912,
+          "at_s": 3.396766464,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 1.111552,
+              "clock_before_ms": 0.024832,
+              "clock_after_ms": 0.027136,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.16128,
+              "clock_before_ms": 0.023808,
+              "clock_after_ms": 0.028416,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.052992,
+              "clock_before_ms": 0.022528,
+              "clock_after_ms": 0.024832,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 90.586368,
+              "clock_before_ms": 0.021248,
+              "clock_after_ms": 0.054016,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.028416,
+              "clock_before_ms": 0.024832,
+              "clock_after_ms": 0.024576,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 32,
+          "capture_ms": 0.81664,
+          "at_s": 3.691712256,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.088832,
+              "clock_before_ms": 0.03456,
+              "clock_after_ms": 0.031488,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.091392,
+              "clock_before_ms": 0.032256,
+              "clock_after_ms": 0.033792,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.0704,
+              "clock_before_ms": 0.035584,
+              "clock_after_ms": 0.031744,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.102144,
+              "clock_before_ms": 0.033024,
+              "clock_after_ms": 0.034304,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.032256,
+              "clock_before_ms": 0.032256,
+              "clock_after_ms": 0.032256,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 51,
+          "capture_ms": 0.758272,
+          "at_s": 5.889753088,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.077568,
+              "clock_before_ms": 0.02944,
+              "clock_after_ms": 0.028672,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.073728,
+              "clock_before_ms": 0.028416,
+              "clock_after_ms": 0.028928,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.060928,
+              "clock_before_ms": 0.028672,
+              "clock_after_ms": 0.028672,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.096256,
+              "clock_before_ms": 0.029184,
+              "clock_after_ms": 0.06784,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.030976,
+              "clock_before_ms": 0.029952,
+              "clock_after_ms": 0.028672,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 31,
+          "capture_ms": 0.754944,
+          "at_s": 3.59069056,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.133376,
+              "clock_before_ms": 0.025344,
+              "clock_after_ms": 0.027904,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.1024,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.02304,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.049664,
+              "clock_before_ms": 0.02176,
+              "clock_after_ms": 0.023552,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.134656,
+              "clock_before_ms": 0.02304,
+              "clock_after_ms": 0.02816,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.02432,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.022272,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "capture_ms": 0.728832,
+          "at_s": 1.89821312,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.096,
+              "clock_before_ms": 0.02304,
+              "clock_after_ms": 0.028672,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.10112,
+              "clock_before_ms": 0.02432,
+              "clock_after_ms": 0.024064,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.063232,
+              "clock_before_ms": 0.024064,
+              "clock_after_ms": 0.021504,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.131328,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.02816,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.025088,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.02304,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 33,
+          "capture_ms": 0.658176,
+          "at_s": 3.792716544,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.077056,
+              "clock_before_ms": 0.028416,
+              "clock_after_ms": 0.0256,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.067328,
+              "clock_before_ms": 0.02304,
+              "clock_after_ms": 0.025088,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.0512,
+              "clock_before_ms": 0.025088,
+              "clock_after_ms": 0.023552,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.11264,
+              "clock_before_ms": 0.024832,
+              "clock_after_ms": 0.025856,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.027136,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.024064,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "capture_ms": 0.632576,
+          "at_s": 1.09329536,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.115456,
+              "clock_before_ms": 0.081664,
+              "clock_after_ms": 0.037632,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.048128,
+              "clock_before_ms": 0.035584,
+              "clock_after_ms": 0.011264,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02176,
+              "clock_before_ms": 0.009472,
+              "clock_after_ms": 0.00896,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.087808,
+              "clock_before_ms": 0.009216,
+              "clock_after_ms": 0.011776,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.028416,
+              "clock_before_ms": 0.00896,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "capture_ms": 0.626944,
+          "at_s": 1.495645952,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.072192,
+              "clock_before_ms": 0.024832,
+              "clock_after_ms": 0.02304,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.065024,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.02304,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.048896,
+              "clock_before_ms": 0.023296,
+              "clock_after_ms": 0.022784,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.117248,
+              "clock_before_ms": 0.022528,
+              "clock_after_ms": 0.022528,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.025088,
+              "clock_before_ms": 0.022272,
+              "clock_after_ms": 0.022528,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "explicit_period_quota": {
+      "sample_count": 42,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 0.973056,
+          "clock_before_ms": 48.007424,
+          "clock_after_ms": 0.124416,
+          "thread_cpu_ms": 0
+        },
+        "cpu.stat": {
+          "operation_ms": 0.26496,
+          "clock_before_ms": 0.124672,
+          "clock_after_ms": 0.124672,
+          "thread_cpu_ms": 0
+        },
+        "cpu.max.second": {
+          "operation_ms": 0.251392,
+          "clock_before_ms": 0.123392,
+          "clock_after_ms": 48.207104,
+          "thread_cpu_ms": 10.0
+        },
+        "/proc/stat": {
+          "operation_ms": 0.210432,
+          "clock_before_ms": 248.028928,
+          "clock_after_ms": 97.970176,
+          "thread_cpu_ms": 10.0
+        },
+        "process_clock": {
+          "operation_ms": 0.03968,
+          "clock_before_ms": 0.037632,
+          "clock_after_ms": 0.038912,
+          "thread_cpu_ms": 0
+        }
+      },
+      "slow_sample_count": 6,
+      "longest_captures": [
+        {
+          "index": 7,
+          "capture_ms": 250.105088,
+          "at_s": 1.039521792,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.272384,
+              "clock_before_ms": 0.127488,
+              "clock_after_ms": 0.124416,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.26496,
+              "clock_before_ms": 0.124672,
+              "clock_after_ms": 0.124672,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.251392,
+              "clock_before_ms": 0.123392,
+              "clock_after_ms": 0.12672,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.126976,
+              "clock_before_ms": 248.028928,
+              "clock_after_ms": 0.02048,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.018432,
+              "clock_before_ms": 0.015616,
+              "clock_after_ms": 0.016128,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 30,
+          "capture_ms": 98.841344,
+          "at_s": 4.440676352,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.09856,
+              "clock_before_ms": 0.031232,
+              "clock_after_ms": 0.032256,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.116992,
+              "clock_before_ms": 0.027648,
+              "clock_after_ms": 0.031744,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.079616,
+              "clock_before_ms": 0.029952,
+              "clock_after_ms": 0.062464,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.210432,
+              "clock_before_ms": 0.028672,
+              "clock_after_ms": 97.970176,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.016384,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "capture_ms": 48.699904,
+          "at_s": 2.491375616,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.09088,
+              "clock_before_ms": 48.007424,
+              "clock_after_ms": 0.029952,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.08064,
+              "clock_before_ms": 0.028416,
+              "clock_after_ms": 0.028416,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.05888,
+              "clock_before_ms": 0.027904,
+              "clock_after_ms": 0.028672,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.095232,
+              "clock_before_ms": 0.027904,
+              "clock_after_ms": 0.028928,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.032,
+              "clock_before_ms": 0.027136,
+              "clock_after_ms": 0.02816,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 33,
+          "capture_ms": 48.693248,
+          "at_s": 4.891126272,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.062464,
+              "clock_before_ms": 0.027648,
+              "clock_after_ms": 0.011264,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.050944,
+              "clock_before_ms": 0.009984,
+              "clock_after_ms": 0.030208,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.029184,
+              "clock_before_ms": 0.01024,
+              "clock_after_ms": 48.207104,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.116992,
+              "clock_before_ms": 0.0192,
+              "clock_after_ms": 0.018176,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015104,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.012032,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 39,
+          "capture_ms": 48.577024,
+          "at_s": 5.69109248,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.077312,
+              "clock_before_ms": 0.028928,
+              "clock_after_ms": 0.056832,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.064,
+              "clock_before_ms": 0.02944,
+              "clock_after_ms": 0.023296,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.045056,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.010496,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.106496,
+              "clock_before_ms": 0.009984,
+              "clock_after_ms": 0.011008,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.01152,
+              "clock_before_ms": 0.009728,
+              "clock_after_ms": 0.009984,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "capture_ms": 48.364032,
+          "at_s": 0.491133184,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.056576,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.0256,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.051712,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02944,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.082688,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.066304,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.008704,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.009472,
+              "clock_before_ms": 0.007936,
+              "clock_after_ms": 0.008192,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 36,
+          "capture_ms": 1.356288,
+          "at_s": 5.339474688,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.973056,
+              "clock_before_ms": 0.09472,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.036096,
+              "clock_before_ms": 0.00896,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.0192,
+              "clock_before_ms": 0.009472,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.06144,
+              "clock_before_ms": 0.009216,
+              "clock_after_ms": 0.009728,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.010752,
+              "clock_before_ms": 0.00896,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 25,
+          "capture_ms": 0.930048,
+          "at_s": 3.78948992,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.104704,
+              "clock_before_ms": 0.045568,
+              "clock_after_ms": 0.03584,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.103424,
+              "clock_before_ms": 0.037888,
+              "clock_after_ms": 0.035584,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.072704,
+              "clock_before_ms": 0.03712,
+              "clock_after_ms": 0.036352,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.118784,
+              "clock_before_ms": 0.036352,
+              "clock_after_ms": 0.037376,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.03968,
+              "clock_before_ms": 0.037632,
+              "clock_after_ms": 0.038912,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 31,
+          "capture_ms": 0.847616,
+          "at_s": 4.689504768,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.107776,
+              "clock_before_ms": 0.03328,
+              "clock_after_ms": 0.03328,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.097536,
+              "clock_before_ms": 0.032768,
+              "clock_after_ms": 0.031232,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.069376,
+              "clock_before_ms": 0.03328,
+              "clock_after_ms": 0.032768,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.10496,
+              "clock_before_ms": 0.034304,
+              "clock_after_ms": 0.033792,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.03456,
+              "clock_before_ms": 0.034304,
+              "clock_after_ms": 0.032256,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 35,
+          "capture_ms": 0.82304,
+          "at_s": 5.190124288,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.086528,
+              "clock_before_ms": 0.036352,
+              "clock_after_ms": 0.033024,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.097024,
+              "clock_before_ms": 0.032256,
+              "clock_after_ms": 0.03456,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.069376,
+              "clock_before_ms": 0.033536,
+              "clock_after_ms": 0.033536,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.104448,
+              "clock_before_ms": 0.030464,
+              "clock_after_ms": 0.031744,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.03328,
+              "clock_before_ms": 0.032256,
+              "clock_after_ms": 0.03456,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "cpuset_single": {
+      "sample_count": 56,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 11.939072,
+          "clock_before_ms": 0.028928,
+          "clock_after_ms": 0.02048,
+          "thread_cpu_ms": 10.0
+        },
+        "cpu.stat": {
+          "operation_ms": 0.051968,
+          "clock_before_ms": 0.015104,
+          "clock_after_ms": 0.016384,
+          "thread_cpu_ms": 0
+        },
+        "cpu.max.second": {
+          "operation_ms": 0.03072,
+          "clock_before_ms": 0.015104,
+          "clock_after_ms": 0.014848,
+          "thread_cpu_ms": 0
+        },
+        "/proc/stat": {
+          "operation_ms": 0.095488,
+          "clock_before_ms": 0.016128,
+          "clock_after_ms": 0.02176,
+          "thread_cpu_ms": 0
+        },
+        "process_clock": {
+          "operation_ms": 0.026624,
+          "clock_before_ms": 0.01664,
+          "clock_after_ms": 0.019712,
+          "thread_cpu_ms": 0
+        }
+      },
+      "slow_sample_count": 0,
+      "longest_captures": [
+        {
+          "index": 26,
+          "capture_ms": 12.286976,
+          "at_s": 2.927947264,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 11.939072,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.019968,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.051968,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.028672,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.064768,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 25,
+          "capture_ms": 0.444928,
+          "at_s": 2.818120448,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.09728,
+              "clock_before_ms": 0.018944,
+              "clock_after_ms": 0.02048,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.04736,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02688,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.064256,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.016384,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "capture_ms": 0.423936,
+          "at_s": 1.31793024,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.060416,
+              "clock_before_ms": 0.016384,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.049408,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.016384,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.029696,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.07424,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015104,
+              "clock_before_ms": 0.01664,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 35,
+          "capture_ms": 0.422912,
+          "at_s": 3.897915392,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.06528,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.04736,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.03072,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.066048,
+              "clock_before_ms": 0.015616,
+              "clock_after_ms": 0.021504,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.014848,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 27,
+          "capture_ms": 0.420352,
+          "at_s": 3.047952896,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.065792,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.050176,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.030208,
+              "clock_before_ms": 0.014848,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.075264,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 30,
+          "capture_ms": 0.41088,
+          "at_s": 3.359993856,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.06272,
+              "clock_before_ms": 0.016896,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.048384,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.028672,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.064256,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.014592,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "capture_ms": 0.4096,
+          "at_s": 0.88790016,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.054784,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.041984,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02688,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.095488,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.02176,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.012288,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.011776,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 34,
+          "capture_ms": 0.400128,
+          "at_s": 3.787953152,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.058624,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.0448,
+              "clock_before_ms": 0.014848,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02816,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.071424,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015104,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 33,
+          "capture_ms": 0.398592,
+          "at_s": 3.678418432,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.06016,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.044544,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.012032,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.026368,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.059904,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.026624,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.019712,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "capture_ms": 0.395264,
+          "at_s": 1.527898112,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.058368,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.045824,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.028928,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.070912,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.01408,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "cpuset_range": {
+      "sample_count": 56,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 0.227584,
+          "clock_before_ms": 0.104192,
+          "clock_after_ms": 0.105984,
+          "thread_cpu_ms": 0
+        },
+        "cpu.stat": {
+          "operation_ms": 0.241664,
+          "clock_before_ms": 0.10624,
+          "clock_after_ms": 0.102656,
+          "thread_cpu_ms": 0
+        },
+        "cpu.max.second": {
+          "operation_ms": 0.360192,
+          "clock_before_ms": 0.100096,
+          "clock_after_ms": 0.100864,
+          "thread_cpu_ms": 10.0
+        },
+        "/proc/stat": {
+          "operation_ms": 323.720192,
+          "clock_before_ms": 0.100608,
+          "clock_after_ms": 0.101888,
+          "thread_cpu_ms": 110.0
+        },
+        "process_clock": {
+          "operation_ms": 0.103168,
+          "clock_before_ms": 0.100608,
+          "clock_after_ms": 0.101376,
+          "thread_cpu_ms": 0
+        }
+      },
+      "slow_sample_count": 1,
+      "longest_captures": [
+        {
+          "index": 51,
+          "capture_ms": 323.933952,
+          "at_s": 5.282110976,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.033536,
+              "clock_before_ms": 0.01024,
+              "clock_after_ms": 0.008704,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.026368,
+              "clock_before_ms": 0.00896,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.018944,
+              "clock_before_ms": 0.008704,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 323.720192,
+              "clock_before_ms": 0.00896,
+              "clock_after_ms": 0.011264,
+              "thread_cpu_ms": 110.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.009984,
+              "clock_before_ms": 0.008704,
+              "clock_after_ms": 0.009216,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 36,
+          "capture_ms": 20.385792,
+          "at_s": 3.755489536,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.043008,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.011264,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.041472,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.011776,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.050432,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.010752,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.043776,
+              "clock_before_ms": 0.011264,
+              "clock_after_ms": 0.011264,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.012544,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.047872,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 19,
+          "capture_ms": 2.50496,
+          "at_s": 2.044556032,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.227584,
+              "clock_before_ms": 0.104192,
+              "clock_after_ms": 0.105984,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.241664,
+              "clock_before_ms": 0.10624,
+              "clock_after_ms": 0.102656,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.360192,
+              "clock_before_ms": 0.100096,
+              "clock_after_ms": 0.100864,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.244224,
+              "clock_before_ms": 0.100608,
+              "clock_after_ms": 0.101888,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.103168,
+              "clock_before_ms": 0.100608,
+              "clock_after_ms": 0.101376,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 17,
+          "capture_ms": 0.445184,
+          "at_s": 1.843355904,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.07296,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.059904,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.012032,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.040704,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.02048,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.067584,
+              "clock_before_ms": 0.012288,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015104,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.012032,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 22,
+          "capture_ms": 0.425984,
+          "at_s": 2.348409088,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.090112,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.016384,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.071168,
+              "clock_before_ms": 0.023808,
+              "clock_after_ms": 0.011008,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.023552,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.011008,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.045824,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.012544,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "capture_ms": 0.425728,
+          "at_s": 1.64210688,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.064512,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.045824,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02816,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.073984,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "capture_ms": 0.417024,
+          "at_s": 1.139403008,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.059648,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.044544,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.037888,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.036096,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.056832,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.014848,
+              "clock_before_ms": 0.014848,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 40,
+          "capture_ms": 0.406272,
+          "at_s": 4.177481728,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.088576,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.045056,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.011008,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.02432,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.011264,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.075776,
+              "clock_before_ms": 0.011008,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.012288,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "capture_ms": 0.406016,
+          "at_s": 0.536346368,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.06016,
+              "clock_before_ms": 0.018176,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.043264,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.028416,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.073216,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.016384,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "capture_ms": 0.405504,
+          "at_s": 1.441029376,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.089344,
+              "clock_before_ms": 0.02048,
+              "clock_after_ms": 0.012288,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.040448,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.024576,
+              "clock_before_ms": 0.011776,
+              "clock_after_ms": 0.012032,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.058112,
+              "clock_before_ms": 0.01152,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.013312,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "cpuset_with_quota": {
+      "sample_count": 56,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 1.697024,
+          "clock_before_ms": 0.027648,
+          "clock_after_ms": 0.025344,
+          "thread_cpu_ms": 0
+        },
+        "cpu.stat": {
+          "operation_ms": 0.090112,
+          "clock_before_ms": 0.016384,
+          "clock_after_ms": 0.018944,
+          "thread_cpu_ms": 0
+        },
+        "cpu.max.second": {
+          "operation_ms": 0.036608,
+          "clock_before_ms": 0.020992,
+          "clock_after_ms": 0.024576,
+          "thread_cpu_ms": 0
+        },
+        "/proc/stat": {
+          "operation_ms": 0.099584,
+          "clock_before_ms": 0.020736,
+          "clock_after_ms": 0.024064,
+          "thread_cpu_ms": 0
+        },
+        "process_clock": {
+          "operation_ms": 0.016896,
+          "clock_before_ms": 0.016128,
+          "clock_after_ms": 0.016128,
+          "thread_cpu_ms": 0
+        }
+      },
+      "slow_sample_count": 0,
+      "longest_captures": [
+        {
+          "index": 12,
+          "capture_ms": 2.002944,
+          "at_s": 1.436301824,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 1.697024,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.0448,
+              "clock_before_ms": 0.012288,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.026112,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.057856,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.012544,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.012288,
+              "clock_before_ms": 0.012032,
+              "clock_after_ms": 0.011776,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "capture_ms": 0.4928,
+          "at_s": 0.608548608,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.066048,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.018176,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.090112,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.018944,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.028416,
+              "clock_before_ms": 0.0192,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.0768,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.024064,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.01664,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.016128,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 26,
+          "capture_ms": 0.482304,
+          "at_s": 2.925339136,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.067072,
+              "clock_before_ms": 0.017152,
+              "clock_after_ms": 0.016384,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.055296,
+              "clock_before_ms": 0.016384,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.036608,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.015616,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.099584,
+              "clock_before_ms": 0.014848,
+              "clock_after_ms": 0.01664,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.01664,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.015872,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "capture_ms": 0.450816,
+          "at_s": 1.225434624,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.072192,
+              "clock_before_ms": 0.027392,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.05376,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.03072,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.01408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.07552,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.015616,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.016896,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "capture_ms": 0.432896,
+          "at_s": 1.1247872,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.066048,
+              "clock_before_ms": 0.016384,
+              "clock_after_ms": 0.012288,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.050688,
+              "clock_before_ms": 0.013056,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.031744,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.079616,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.01536,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.01536,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 28,
+          "capture_ms": 0.413184,
+          "at_s": 3.134722304,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.056064,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.046848,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.032,
+              "clock_before_ms": 0.015616,
+              "clock_after_ms": 0.015872,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.062464,
+              "clock_before_ms": 0.014848,
+              "clock_after_ms": 0.015872,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.016128,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.015872,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 29,
+          "capture_ms": 0.410112,
+          "at_s": 3.235298304,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.058368,
+              "clock_before_ms": 0.015872,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.054272,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.028416,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.070144,
+              "clock_before_ms": 0.0128,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015616,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 25,
+          "capture_ms": 0.404736,
+          "at_s": 2.82475776,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.0576,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.015104,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.048896,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.030976,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.064768,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.014592,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.013056,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "capture_ms": 0.400384,
+          "at_s": 1.53848832,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.065536,
+              "clock_before_ms": 0.015104,
+              "clock_after_ms": 0.0128,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.046592,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.013568,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.029952,
+              "clock_before_ms": 0.013312,
+              "clock_after_ms": 0.013312,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.064768,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.014336,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 53,
+          "capture_ms": 0.39936,
+          "at_s": 5.815107584,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.051456,
+              "clock_before_ms": 0.016384,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.04096,
+              "clock_before_ms": 0.014336,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.030208,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.070912,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.015104,
+              "clock_before_ms": 0.014592,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "live_update": {
+      "sample_count": 170,
+      "stage_peaks": {
+        "cpu.max.first": {
+          "operation_ms": 10.142976,
+          "clock_before_ms": 0.1408,
+          "clock_after_ms": 96.435968,
+          "thread_cpu_ms": 10.0
+        },
+        "cpu.stat": {
+          "operation_ms": 10.12096,
+          "clock_before_ms": 0.123392,
+          "clock_after_ms": 109.828864,
+          "thread_cpu_ms": 10.0
+        },
+        "cpu.max.second": {
+          "operation_ms": 10.12608,
+          "clock_before_ms": 0.123392,
+          "clock_after_ms": 189.874688,
+          "thread_cpu_ms": 10.0
+        },
+        "/proc/stat": {
+          "operation_ms": 96.582912,
+          "clock_before_ms": 0.123392,
+          "clock_after_ms": 96.43648,
+          "thread_cpu_ms": 10.0
+        },
+        "process_clock": {
+          "operation_ms": 10.058752,
+          "clock_before_ms": 0.123136,
+          "clock_after_ms": 66.534912,
+          "thread_cpu_ms": 10.0
+        }
+      },
+      "slow_sample_count": 9,
+      "longest_captures": [
+        {
+          "index": 72,
+          "capture_ms": 300.843008,
+          "at_s": 8.540188416,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.120576,
+              "clock_before_ms": 0.049664,
+              "clock_after_ms": 0.049152,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.208128,
+              "clock_before_ms": 0.048896,
+              "clock_after_ms": 109.828864,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.18048,
+              "clock_before_ms": 0.080384,
+              "clock_after_ms": 189.874688,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.1152,
+              "clock_before_ms": 0.034048,
+              "clock_after_ms": 0.033536,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.034304,
+              "clock_before_ms": 0.032,
+              "clock_after_ms": 0.034304,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 56,
+          "capture_ms": 97.889792,
+          "at_s": 6.040515584,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.107776,
+              "clock_before_ms": 0.017152,
+              "clock_after_ms": 96.435968,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.22272,
+              "clock_before_ms": 0.092672,
+              "clock_after_ms": 0.067584,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.14208,
+              "clock_before_ms": 0.065536,
+              "clock_after_ms": 0.066304,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.15104,
+              "clock_before_ms": 0.065792,
+              "clock_after_ms": 0.067328,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.067328,
+              "clock_before_ms": 0.066304,
+              "clock_after_ms": 0.066304,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 83,
+          "capture_ms": 97.531392,
+          "at_s": 10.54009856,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.189696,
+              "clock_before_ms": 0.028416,
+              "clock_after_ms": 0.024576,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.119552,
+              "clock_before_ms": 0.020224,
+              "clock_after_ms": 0.022784,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.105728,
+              "clock_before_ms": 0.018944,
+              "clock_after_ms": 96.527616,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.255488,
+              "clock_before_ms": 0.027648,
+              "clock_after_ms": 0.030464,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.026368,
+              "clock_before_ms": 0.026368,
+              "clock_after_ms": 0.0256,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 78,
+          "capture_ms": 97.289984,
+          "at_s": 9.740249344,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.140288,
+              "clock_before_ms": 0.035072,
+              "clock_after_ms": 0.033536,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.159744,
+              "clock_before_ms": 0.030464,
+              "clock_after_ms": 96.344832,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.09088,
+              "clock_before_ms": 0.036352,
+              "clock_after_ms": 0.03072,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.11136,
+              "clock_before_ms": 0.031488,
+              "clock_after_ms": 0.040704,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.033792,
+              "clock_before_ms": 0.033024,
+              "clock_after_ms": 0.032,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 86,
+          "capture_ms": 97.216256,
+          "at_s": 10.940041984,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.088832,
+              "clock_before_ms": 0.029184,
+              "clock_after_ms": 0.025088,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.111616,
+              "clock_before_ms": 0.02688,
+              "clock_after_ms": 0.027392,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.067072,
+              "clock_before_ms": 0.026368,
+              "clock_after_ms": 0.025344,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 96.582912,
+              "clock_before_ms": 0.034816,
+              "clock_after_ms": 0.032256,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.022272,
+              "clock_before_ms": 0.028928,
+              "clock_after_ms": 0.019968,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 93,
+          "capture_ms": 97.137664,
+          "at_s": 11.940035072,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.08832,
+              "clock_before_ms": 0.024576,
+              "clock_after_ms": 0.040448,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.088832,
+              "clock_before_ms": 0.023808,
+              "clock_after_ms": 0.023296,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.050432,
+              "clock_before_ms": 0.020992,
+              "clock_after_ms": 0.023296,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.18432,
+              "clock_before_ms": 0.02304,
+              "clock_after_ms": 96.43648,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.016384,
+              "clock_before_ms": 0.01536,
+              "clock_after_ms": 0.014592,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 68,
+          "capture_ms": 96.904448,
+          "at_s": 7.94011776,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.064768,
+              "clock_before_ms": 0.02432,
+              "clock_after_ms": 0.013824,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.057344,
+              "clock_before_ms": 0.013568,
+              "clock_after_ms": 0.014336,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.032768,
+              "clock_before_ms": 0.012544,
+              "clock_after_ms": 0.014848,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.108544,
+              "clock_before_ms": 0.013824,
+              "clock_after_ms": 0.023296,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.023552,
+              "clock_before_ms": 0.01408,
+              "clock_after_ms": 0.061696,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 114,
+          "capture_ms": 67.13216,
+          "at_s": 14.27001984,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.06784,
+              "clock_before_ms": 0.0256,
+              "clock_after_ms": 0.022784,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.061184,
+              "clock_before_ms": 0.023296,
+              "clock_after_ms": 0.024576,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.04992,
+              "clock_before_ms": 0.022784,
+              "clock_after_ms": 0.02432,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.09472,
+              "clock_before_ms": 0.033792,
+              "clock_after_ms": 0.023296,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.024832,
+              "clock_before_ms": 0.02304,
+              "clock_after_ms": 66.534912,
+              "thread_cpu_ms": 10.0
+            }
+          ]
+        },
+        {
+          "index": 27,
+          "capture_ms": 66.918144,
+          "at_s": 2.870241792,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.076544,
+              "clock_before_ms": 0.018944,
+              "clock_after_ms": 0.017408,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.066304,
+              "clock_before_ms": 0.016128,
+              "clock_after_ms": 0.015616,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.034048,
+              "clock_before_ms": 0.016384,
+              "clock_after_ms": 0.015616,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 66.44736,
+              "clock_before_ms": 0.015616,
+              "clock_after_ms": 0.031744,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.028672,
+              "clock_before_ms": 0.028416,
+              "clock_after_ms": 0.027904,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        },
+        {
+          "index": 97,
+          "capture_ms": 10.786304,
+          "at_s": 12.540354048,
+          "operations": [
+            {
+              "name": "cpu.max.first",
+              "operation_ms": 0.083456,
+              "clock_before_ms": 0.030976,
+              "clock_after_ms": 0.031488,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "cpu.stat",
+              "operation_ms": 0.130816,
+              "clock_before_ms": 0.030976,
+              "clock_after_ms": 9.99296,
+              "thread_cpu_ms": 10.0
+            },
+            {
+              "name": "cpu.max.second",
+              "operation_ms": 0.076544,
+              "clock_before_ms": 0.032256,
+              "clock_after_ms": 0.032,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "/proc/stat",
+              "operation_ms": 0.093696,
+              "clock_before_ms": 0.03328,
+              "clock_after_ms": 0.029952,
+              "thread_cpu_ms": 0.0
+            },
+            {
+              "name": "process_clock",
+              "operation_ms": 0.033024,
+              "clock_before_ms": 0.029696,
+              "clock_after_ms": 0.03072,
+              "thread_cpu_ms": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "file_sha256": {
+    "validation.log.gz": "9f14b5d15180fe815d0e00b1af7525ba8e49c4cdd489fb5aff3d4c61f69228e7",
+    "fixture-results.json": "590bd8ce0b9ebb5ca1ca94277f153ac5bfbcc03fb407be1249a66bffdd960818",
+    "input-integrity.json": "149cb4c9c3804fb8a8ff2cced67a23ac22a238c414e385e9928d293bbb9fe469",
+    "supervisor.py": "3ec160e9209901f9e26ce70daf15a6906ff423d40d2c674135a7f9f76c1e4cc3",
+    "runtime.log.gz": "cfa9187cffaa9ba257f5daa406a979ec6b61d08141643a788006a59112e71a93",
+    "cleanup-audit.json": "80c9a006a5d2be7522485ce268785d9ad07ebaf9e712f73a55c8e2cbba8fe5b2",
+    "analyze-stages.py": "27d72eddeb40ee5912f35ebebe6c09baeda55a987016c9a2a6e2b887450ae1f2",
+    "manifest.json": "5b62c0cedcd461e0a1740c01812f0fd099ec16bc7c64c1bd4b2274ad011adb24",
+    "recheck.py": "293e3a07b4f7e7c8e8418ba255ab5b37a15d7d045f196faca124f912183687a5",
+    "status.json": "7880513f8a3f041ffa6badb0d36bb0159bf2f8f6dfe01e00389a87ebf77db97d",
+    "supervisor.log.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-cpuset0.stdout.gz": "dd240fa8bd411e69656020c6b744d69cd2ca6bae6da9c7c77ec7574b21eedcff",
+    "runtime/wait-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/build-probe.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/prerm-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-cpuset-range.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/logs-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-explicit.stdout.gz": "a4309e5012e5149a061531508912ade896222f597ccdf0e5485a8bac220ff3ff",
+    "runtime/final-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-explicit.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/start-cpulim-cpuset-range.stdout.gz": "292e0cfc014ef478fb81a7f7fb29b2237e6e749825c1f9a45ac1f2ed4ce7a48d",
+    "runtime/final-cpulim-ref.stdout.gz": "5ce73605467e25bb13bb1bb3262b8ed48035bfc8bb96c7dbe499330f6b5b0ead",
+    "runtime/daemon-info.stdout.gz": "a3c4df91e700c0cb7998852e5d700cc2edaf646827d7d44229e14d911d6f1651",
+    "runtime/logs-cpulim-update.stdout.gz": "03095b6ac2d359aabf79c128b29e6419cc10547d0c56ddd860ced98553571045",
+    "runtime/config-cpulim-cpuset-quota.stdout.gz": "c2cd5607f26a2ae5ca8717d30b27aafa969d4d16ade2a7e3f76754f4f0777a18",
+    "runtime/prerm-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-cpuset0.stdout.gz": "e9b86ecccffbb680b58fecbe982b5b6731aa0e7c5e8b361a5e42fbb683b64016",
+    "runtime/start-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/postupdate-0.stdout.gz": "fa4272e57e1cc5c1c24e83e2e6e34d036cd2b3ce72cef0392a99b0b201c89503",
+    "runtime/instance-stop.stdout.gz": "d7aa4876a200b717bcd6f9be28bb951535bf057b07a23c0462fd3eb0caf6e3fb",
+    "runtime/rm-cpulim-cpuset0.stdout.gz": "f816c22547649d85080958e5615b8356d6901e775c0c333354864176b274c12a",
+    "runtime/start-cpulim-update.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/gcc-version.stdout.gz": "983856f93fd39b2c4f5c0aef55383b88d0022af537b6b7001c85ef38855060e9",
+    "runtime/poll-cpulim-cpuset0-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-cpuset-quota-0.stdout.gz": "536ec2830ab40268c9d566f2c8f191b0d646bc69f41297828c1faa47a484e9e2",
+    "runtime/final-cpulim-update.stdout.gz": "9a3ca746692e37d7f6643ce0c21de869da452747ad397b5b4509a2f088304db1",
+    "runtime/rm-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/final-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/report.json": "8e20157f303f236e5b6dfcc237750d9349254f32691595c0b49f38226cfa32b2",
+    "runtime/start-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-explicit.stdout.gz": "5c225e3a1078259271d4394df00bdb4eb8d6119a95488d07f2618ae96477976d",
+    "runtime/poll-cpulim-cpus1-0.stdout.gz": "b81368872fc65ae655f999cb8eace064352bf27e276e7ed31e37763452d3a32f",
+    "runtime/wait-cpulim-cpus1.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/probe-selftest.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-ref-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-explicit.stdout.gz": "c1bdf11f816450e49c87f3b15b0b8826dfce9f361d192b6ae45e0a2f3c782bf3",
+    "runtime/prerm-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/update-1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-update-0.stdout.gz": "d78a39f2c3f119b343d20e5b7afffd237840dc46553dc56a051a12b14796f8a1",
+    "runtime/logs-cpulim-cpus1.stdout.gz": "8289cf67deecf286c7736524478801307777f365bf04a98c45ee860e5cfe0eaf",
+    "runtime/commands.log.gz": "4ad28d6055728ba8bf12ed54f97837a41e8f8fd54bcfee9fd98552bc866a67f2",
+    "runtime/rm-cpulim-update.stdout.gz": "124c66818db0b79857cb7b73242dfb4791df1671d971e3f3db81d237eba11b58",
+    "runtime/prerm-cpulim-update.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-cpuset0.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/final-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-ref.stdout.gz": "7f5d92d1835e2a4cedf49acf3a581fb7a60bdc6c07c9bb52b56092cfb46f0663",
+    "runtime/wait-cpulim-update.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/poll-cpulim-cpuset-range-0.stdout.gz": "b3ae19860875d5af8eccbadff8364064b889f8748b4d279219e9244cdc93efc7",
+    "runtime/final-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-explicit.stdout.gz": "3617c848ce11609a48f9efa8ea45674a2123a4be239f23952ee61ea8a2efdc36",
+    "runtime/start-cpulim-cpuset-quota.stdout.gz": "f09b2ca669753caf77bb8cda36b53e4dc5535331debb645efcfdc505684afffe",
+    "runtime/logs-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/postupdate-1.stdout.gz": "6fec13bae01b19224503371170f7081688665e15fcd9da132436372abc326e0f",
+    "runtime/probe-static-check.stdout.gz": "b6c4998b9808ccd0965c8cba8ffb3f1e81aa1fa1d46c95a07fdde2e9c8450bbd",
+    "runtime/prerm-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-cpuset-range.stdout.gz": "e5443c779eac2825b9e0f0c90f91605bf010dbd351bdd8ccab24d7ac80073e82",
+    "runtime/rm-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/instance-start.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/prerm-cpulim-ref.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-explicit-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/image-import.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-cpus1.stdout.gz": "6c4a12590dfb12e2b6189dff3ff3030f799222650b6e8d102869b0bf6895f4a9",
+    "runtime/final-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-cpus1.stdout.gz": "f83bf250d147e38d10b332bd3034afc91834e22554dbbeddcdb7368f616e74be",
+    "runtime/logs-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/update-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-cpuset-quota.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/prerm-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-ref.stdout.gz": "29b14faa9da49846ea738ccc9b036289196186bd6dbdd179a5493af904eed3c3",
+    "runtime/config-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-cpus1-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-cpuset-range.stdout.gz": "bb62bb845cbbeeb4067fb0afea2c74ec1ffaca67e2f1fe69f0f4a7f50c3f93ad",
+    "runtime/final-cpulim-cpuset-quota.stdout.gz": "6efebcf32ac3a29ca854b73b59d3709fa01e9bca24c30021a182b37fb29aec76",
+    "runtime/final-cpulim-update.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-update.stdout.gz": "faf5598655effac4fa9e3b27e3fcc3d497820e679282cf19db5fe346e59b0172",
+    "runtime/poll-cpulim-cpuset0-0.stdout.gz": "a675312b4ef829de022d5d3f0864e68e46b13dd8a98d27a527714a78d53bb60f",
+    "runtime/gcc-version.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-cpuset-quota-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/postupdate-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/instance-stop.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-cpuset0.stdout.gz": "39ae23f57cbc6dd57bec2bb3de4ab32a9f567e48799ad50b6e34c5cfb05e74b9",
+    "runtime/update-1.stdout.gz": "124c66818db0b79857cb7b73242dfb4791df1671d971e3f3db81d237eba11b58",
+    "runtime/poll-cpulim-update-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/prerm-cpulim-cpuset0.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-ref-0.stdout.gz": "73dc3bfdf800b25bd57a8ef841912abb08fa50d74902cdbb277c0d0759b18d79",
+    "runtime/rm-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/probe-selftest.stdout.gz": "45f7c9ec3383776647c2475329a8b4677bf5d1939c98df182c979dd12a0b66a1",
+    "runtime/wait-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-cpuset-quota.stdout.gz": "ea74f15fdb9204b43729dbf95a7a6122c8f92ed0d44c820f408ff55969875a16",
+    "runtime/logs-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/build-probe.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/prerm-cpulim-cpuset-quota.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-ref.stdout.gz": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae",
+    "runtime/prerm-cpulim-cpus1.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-update.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/final-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/daemon-info.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/final-cpulim-cpuset0.stdout.gz": "c6899d33ae0396490a6570c600bc1747f1b422dc88836b71086ea893edb94ca4",
+    "runtime/wait-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-ref.stdout.gz": "413efc3e04cc9ebfc7607e5f6a13f498f057cd61e8856ca9bf0690a256d5be1d",
+    "runtime/instance-start.stdout.gz": "515aacb5a7812d9312846fac861ecf89c12503731bf3410182e529e487b770ba",
+    "runtime/prerm-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/prerm-cpulim-explicit.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/probe-static-check.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-cpuset-range.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/postupdate-1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-ref.stdout.gz": "5f19f79a3c176e994dff7632649a31abc57019233c001ef31d69d3fe7b16714d",
+    "runtime/prerm-cpulim-cpuset-range.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-cpuset-quota.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-cpuset-range.stdout.gz": "b7ea9cebcaf96eb7e5aea263a4dbf72541b725319b889ba92905d4e143284464",
+    "runtime/start-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/rm-cpulim-cpus1.stdout.gz": "00dcb2f056a1767040766896c105995a1f8032630ec377b05e74ea6d8c616bf9",
+    "runtime/update-0.stdout.gz": "124c66818db0b79857cb7b73242dfb4791df1671d971e3f3db81d237eba11b58",
+    "runtime/final-cpulim-cpus1.stdout.gz": "4992fa374cbab3d2d94c11c45e0acd1d59ed360a91f6cefede503a1c816a4072",
+    "runtime/config-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-explicit-0.stdout.gz": "36df23662b62c0165d0092f68e63120bd7d2cc391ff513eb8db44735fd8ca64b",
+    "runtime/image-import.stdout.gz": "936e5563019a678cccdee33ab29d6d1c0d5bd2ec585acfe730d08a361d87c244",
+    "runtime/prerm-cpulim-update.stdout.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/wait-cpulim-cpuset0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/final-cpulim-explicit.stdout.gz": "ba4104d1f7b9c3abf1d850242a7c90305240114a2fb668b2b00e202e5886cc4f",
+    "runtime/rm-cpulim-update.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/logs-cpulim-cpus1.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/poll-cpulim-cpuset-range-0.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/start-cpulim-explicit.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/final-cpulim-cpuset-range.stdout.gz": "44e43bd52763b3205cd2b7369458eb06d772ec95932c5c1e6019657cc1f072fa",
+    "runtime/rm-cpulim-cpuset-quota.stdout.gz": "d71761fd39027f797651abb954428a93bc0bcf6a7387fb30737ee212cf8a7b03",
+    "runtime/wait-cpulim-update.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/config-cpulim-ref.stderr.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "runtime/instance/state.json": "82399410a1d79489bac79a93348bf48f15762125469560cc36c4ae0f5cca4b6e",
+    "runtime/instance/result-46c8716bb084.json": "82399410a1d79489bac79a93348bf48f15762125469560cc36c4ae0f5cca4b6e",
+    "runtime/instance/config.json": "c68b4a79beb54bc0a703917a1fbd88cd9ace7a788b4feff23c0bb125f74713b4",
+    "runtime/instance/network-46c8716bb084.log.gz": "0cd11caeea2fa659d89d022c7b28d1f77e36ea42ffb52902a3d0c74f3f7f4caa",
+    "runtime/instance/guest-46c8716bb084.log.gz": "e4495efce02053754e4f7a5197ba1bc475c64dd326d88e2c0c81dae49d9bdd10",
+    "runtime/instance/supervisor.log.gz": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "sources/tests/test_cpu_limit_checks.py": "55eb7acce37bd97b7295a90d2a921a3968a75f2fb0063c3e3bdae2683412ca71",
+    "sources/scripts/harddind.py": "e72ab62bc1d2b73766b934b3961fc60969f706d15fb8e4521f040f2b4bf40160",
+    "sources/scripts/run-cpu-limits.py": "d88dc06101e5317ba6351d698cf05528e16a42cd746093b4739de31fbd964c59",
+    "sources/scripts/cpu_limit_checks.py": "8e4ccda94e15f3c59e35eaa97ac6527a54f56a0a4535add2647c0bc20d450e9f",
+    "sources/scripts/run-cpu-capture.py": "c4e5bec4d512f4d443fca6c9e6cc81cbaadf4036bf3f81bd2ba2f5fd4fc9b01c",
+    "sources/scripts/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "sources/src/cpu_limit_probe.c": "49b1201d83d07dfc6207ecd7c122c70147813ffed2feb1b9db5f2eb0f9f144a0",
+    "sources/src/cpu_capture_probe.c": "5b96eb42cd03cc724418331611eb30307d05f4e754ddafae1090268ed9cfc8a8"
+  }
+}

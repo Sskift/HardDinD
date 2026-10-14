@@ -1,0 +1,212 @@
+[
+  {
+    "event": "sample",
+    "wall_ns": 13894675753154097,
+    "cap_end_ns": 13894675753204346,
+    "cap_dur_ns": 50249,
+    "proc_cpu_ns": 408431,
+    "quota_max": 0,
+    "quota": 50000,
+    "period": 100000,
+    "max_errno": 0,
+    "q2_quota_max": 0,
+    "q2_quota": 50000,
+    "q2_period": 100000,
+    "max2_errno": 0,
+    "max_stable": 1,
+    "stat_errno": 0,
+    "usage_usec": 1000,
+    "nr_periods": 10,
+    "nr_throttled": 2,
+    "throttled_usec": 500,
+    "steal_ns": 80000000,
+    "steal_errno": 0,
+    "stages": [
+      {
+        "name": "cpu.max.first",
+        "begin_ns": 13894675753154177,
+        "work_begin_ns": 13894675753156509,
+        "work_end_ns": 13894675753171703,
+        "end_ns": 13894675753172701,
+        "thread_cpu_begin_ns": 361184,
+        "thread_cpu_end_ns": 377706
+      },
+      {
+        "name": "cpu.stat",
+        "begin_ns": 13894675753172740,
+        "work_begin_ns": 13894675753173616,
+        "work_end_ns": 13894675753185866,
+        "end_ns": 13894675753186781,
+        "thread_cpu_begin_ns": 378661,
+        "thread_cpu_end_ns": 391827
+      },
+      {
+        "name": "cpu.max.second",
+        "begin_ns": 13894675753186810,
+        "work_begin_ns": 13894675753187670,
+        "work_end_ns": 13894675753191013,
+        "end_ns": 13894675753191896,
+        "thread_cpu_begin_ns": 392731,
+        "thread_cpu_end_ns": 396946
+      },
+      {
+        "name": "/proc/stat",
+        "begin_ns": 13894675753191925,
+        "work_begin_ns": 13894675753192789,
+        "work_end_ns": 13894675753200166,
+        "end_ns": 13894675753201152,
+        "thread_cpu_begin_ns": 397844,
+        "thread_cpu_end_ns": 406164
+      },
+      {
+        "name": "process_clock",
+        "begin_ns": 13894675753201180,
+        "work_begin_ns": 13894675753202039,
+        "work_end_ns": 13894675753203446,
+        "end_ns": 13894675753204305,
+        "thread_cpu_begin_ns": 407101,
+        "thread_cpu_end_ns": 409361
+      }
+    ]
+  },
+  {
+    "event": "sample",
+    "wall_ns": 13894675753223279,
+    "cap_end_ns": 13894675753244317,
+    "cap_dur_ns": 21038,
+    "proc_cpu_ns": 448503,
+    "quota_max": 0,
+    "quota": 50000,
+    "period": 100000,
+    "max_errno": 0,
+    "q2_quota_max": 0,
+    "q2_quota": 50000,
+    "q2_period": 100000,
+    "max2_errno": 0,
+    "max_stable": 1,
+    "stat_errno": 0,
+    "usage_usec": 1000,
+    "nr_periods": 10,
+    "nr_throttled": 2,
+    "throttled_usec": 500,
+    "steal_ns": 80000000,
+    "steal_errno": 0,
+    "stages": [
+      {
+        "name": "cpu.max.first",
+        "begin_ns": 13894675753223306,
+        "work_begin_ns": 13894675753224208,
+        "work_end_ns": 13894675753227333,
+        "end_ns": 13894675753228202,
+        "thread_cpu_begin_ns": 429251,
+        "thread_cpu_end_ns": 433260
+      },
+      {
+        "name": "cpu.stat",
+        "begin_ns": 13894675753228229,
+        "work_begin_ns": 13894675753229080,
+        "work_end_ns": 13894675753232167,
+        "end_ns": 13894675753233023,
+        "thread_cpu_begin_ns": 434150,
+        "thread_cpu_end_ns": 438089
+      },
+      {
+        "name": "cpu.max.second",
+        "begin_ns": 13894675753233046,
+        "work_begin_ns": 13894675753233896,
+        "work_end_ns": 13894675753236724,
+        "end_ns": 13894675753237582,
+        "thread_cpu_begin_ns": 438954,
+        "thread_cpu_end_ns": 442638
+      },
+      {
+        "name": "/proc/stat",
+        "begin_ns": 13894675753237605,
+        "work_begin_ns": 13894675753238447,
+        "work_end_ns": 13894675753240806,
+        "end_ns": 13894675753241696,
+        "thread_cpu_begin_ns": 443518,
+        "thread_cpu_end_ns": 446741
+      },
+      {
+        "name": "process_clock",
+        "begin_ns": 13894675753241719,
+        "work_begin_ns": 13894675753242565,
+        "work_end_ns": 13894675753243452,
+        "end_ns": 13894675753244295,
+        "thread_cpu_begin_ns": 447627,
+        "thread_cpu_end_ns": 449356
+      }
+    ]
+  },
+  {
+    "event": "sample",
+    "wall_ns": 13894675753249839,
+    "cap_end_ns": 13894675753269916,
+    "cap_dur_ns": 20077,
+    "proc_cpu_ns": 474092,
+    "quota_max": 0,
+    "quota": 50000,
+    "period": 100000,
+    "max_errno": 0,
+    "q2_quota_max": 0,
+    "q2_quota": 50000,
+    "q2_period": 100000,
+    "max2_errno": 0,
+    "max_stable": 1,
+    "stat_errno": 0,
+    "usage_usec": 1000,
+    "nr_periods": 10,
+    "nr_throttled": 2,
+    "throttled_usec": 500,
+    "steal_ns": 80000000,
+    "steal_errno": 0,
+    "stages": [
+      {
+        "name": "cpu.max.first",
+        "begin_ns": 13894675753249862,
+        "work_begin_ns": 13894675753250715,
+        "work_end_ns": 13894675753253547,
+        "end_ns": 13894675753254402,
+        "thread_cpu_begin_ns": 455784,
+        "thread_cpu_end_ns": 459460
+      },
+      {
+        "name": "cpu.stat",
+        "begin_ns": 13894675753254424,
+        "work_begin_ns": 13894675753255259,
+        "work_end_ns": 13894675753258079,
+        "end_ns": 13894675753258920,
+        "thread_cpu_begin_ns": 460331,
+        "thread_cpu_end_ns": 463989
+      },
+      {
+        "name": "cpu.max.second",
+        "begin_ns": 13894675753258942,
+        "work_begin_ns": 13894675753259786,
+        "work_end_ns": 13894675753262542,
+        "end_ns": 13894675753263394,
+        "thread_cpu_begin_ns": 464850,
+        "thread_cpu_end_ns": 468460
+      },
+      {
+        "name": "/proc/stat",
+        "begin_ns": 13894675753263418,
+        "work_begin_ns": 13894675753264256,
+        "work_end_ns": 13894675753266450,
+        "end_ns": 13894675753267307,
+        "thread_cpu_begin_ns": 469327,
+        "thread_cpu_end_ns": 472366
+      },
+      {
+        "name": "process_clock",
+        "begin_ns": 13894675753267329,
+        "work_begin_ns": 13894675753268176,
+        "work_end_ns": 13894675753269046,
+        "end_ns": 13894675753269893,
+        "thread_cpu_begin_ns": 473238,
+        "thread_cpu_end_ns": 474954
+      }
+    ]
+  }
+]

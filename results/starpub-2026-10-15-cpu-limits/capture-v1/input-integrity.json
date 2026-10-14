@@ -1,0 +1,34 @@
+{
+  "/root/harddind-rebuild/cpu-cpuset-kernel-v1": {
+    "expected": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+    "observed": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca"
+  },
+  "/root/harddind-rebuild/runtime-shares-v1.ext4": {
+    "expected": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "observed": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c"
+  },
+  "/root/harddind-rebuild/cpu-capture-owner-v1/repo/src/cpu_capture_probe.c": {
+    "expected": "5b96eb42cd03cc724418331611eb30307d05f4e754ddafae1090268ed9cfc8a8",
+    "observed": "5b96eb42cd03cc724418331611eb30307d05f4e754ddafae1090268ed9cfc8a8"
+  },
+  "/root/harddind-rebuild/cpu-capture-owner-v1/repo/scripts/run-cpu-capture.py": {
+    "expected": "c4e5bec4d512f4d443fca6c9e6cc81cbaadf4036bf3f81bd2ba2f5fd4fc9b01c",
+    "observed": "c4e5bec4d512f4d443fca6c9e6cc81cbaadf4036bf3f81bd2ba2f5fd4fc9b01c"
+  },
+  "/root/harddind-rebuild/cpu-capture-owner-v1/repo/scripts/cpu_limit_checks.py": {
+    "expected": "8e4ccda94e15f3c59e35eaa97ac6527a54f56a0a4535add2647c0bc20d450e9f",
+    "observed": "8e4ccda94e15f3c59e35eaa97ac6527a54f56a0a4535add2647c0bc20d450e9f"
+  },
+  "/root/harddind-rebuild/cpu-capture-owner-v1/repo/scripts/harddind.py": {
+    "expected": "e72ab62bc1d2b73766b934b3961fc60969f706d15fb8e4521f040f2b4bf40160",
+    "observed": "e72ab62bc1d2b73766b934b3961fc60969f706d15fb8e4521f040f2b4bf40160"
+  },
+  "/root/harddind-rebuild/cpu-capture-owner-v1/repo/scripts/guest_cleanup.py": {
+    "expected": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "observed": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14"
+  },
+  "/root/harddind-rebuild/cpu-capture-owner-v1/run/results/cpu-capture-v1/cpu-limit-probe": {
+    "expected": "afef800dc5c107087c896d444d12461865415563cc8e41d06950c86c78d5adaa",
+    "observed": "afef800dc5c107087c896d444d12461865415563cc8e41d06950c86c78d5adaa"
+  }
+}
