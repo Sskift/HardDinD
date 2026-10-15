@@ -49,6 +49,10 @@
 
 [修复后的无追踪复测](results/starpub-2026-10-15-candidate-review/gpu-plain-perf-v3/README.md) 完成原生前、内部 Docker、原生后三组各七次四卡计算，全部结果校验通过，27 个记录的进程组为空。内部 GPU 0 的传输加计算中位耗时仍约为原生的 2.27–2.37 倍，样本波动明显；其他卡的不同计时比例也尚待分阶段和时钟核对。该记录是性能差距的定位依据，没有性能达标结论。
 
+[扩展 CUDA 生命周期实测](results/starpub-2026-10-15-candidate-review/gpu-cuda-lifecycle-v3/README.md) 的前后原生对照通过，覆盖四卡、并发线程、独立子进程和 12 个方向的卡间传输。内部 Docker 完成每卡八轮计算与显存分配、释放后，在四线程阶段超过 180 秒超时，后续进程和卡间传输未测到；Docker 删除容器与实例正常关机仍成功。该失败说明先前顺序四卡成功不能代表 GPU 并发能力已经完成。
+
+[首次回传对照](results/starpub-2026-10-15-candidate-review/gpu-phase-v2/README.md) 显示主要慢样本随首次使用的卡移动，预先写入输出内存后缩短，但预写只转移成本，并不是优化。[不调用 CUDA 的独立内存测试](results/starpub-2026-10-15-candidate-review/cpu-touch-v1/README.md) 同样出现明显差距：4 MiB 匿名内存首次写入的原生前、Docker、原生后中位耗时分别为 2.041、22.272、2.569 ms。逐页缺页与交接是后续优化对象，完整性能尚未达标。
+
 [GPU 映射 v14 实测](results/starpub-2026-10-15-candidate-review/gpu-mapping-v14/README.md) 已打通内部四卡 CUDA：每卡完成 1,048,576 个元素的上传、计算、回传和精确校验，前后原生对照也通过。控制 31/31、分配 74/74 回归通过，实例正常退出，25 个记录的进程组为空。补丁现作为 `make kernel-gpu-mapping-experiment` 的可选构建纳入主线；这轮有追踪开销，不能用耗时宣称 GPU 性能一致。并发和完整生命周期验证继续进行。 [关闭追踪的后续运行](results/starpub-2026-10-15-candidate-review/gpu-plain-perf-v1/README.md) 在 `cuCtxCreate` 返回 CUDA 304，未产生内部性能样本；该早期失败记录与后续修复分开保存，不能将 v14 追踪成功推广为普通运行已稳定。
 
 [GPU 追踪分离对照](results/starpub-2026-10-15-candidate-review/gpu-instrumentation-v2/README.md) 进一步确认普通运行存在间歇失败：第二轮仅 4/8 完成四卡计算，其余出现 CUDA 304、999 或退出码 139；部分失败发生在后续 GPU。日志已将一个具体失败点缩到 class `0xc56f` 的通道分配 EIO。修复了另行发现的长路径管理 socket 问题，同样 109 字节绝对路径的实例已正常关机。前后原生四卡均通过，不把诊断完成当作 GPU 稳定性或性能通过。
