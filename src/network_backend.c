@@ -39,6 +39,7 @@ static uint64_t rx_syscalls, tx_syscalls, poll_calls;
 static bool trace_dns, trace_tcp;
 static bool vnet;
 static uint64_t rx_gso, tx_gso, coalesced;
+static uint64_t slirp_gso, slirp_gso_bytes;
 static struct in_addr guest_addr;
 struct timer { bool used; int64_t expires; SlirpTimerCb cb; void *opaque; };
 static struct timer timers[64];
@@ -199,8 +200,7 @@ static void dns_trace(const void *buf, size_t len, const char *direction) {
     for (size_t i = 0; i < len; i++) printf("%02x", p[i]);
     putchar('\n'); fflush(stdout);
 }
-static ssize_t send_frame(const void *buf, size_t len, void *opaque) {
-    (void)opaque;
+static ssize_t queue_frame(const void *buf, size_t len, unsigned segment_size) {
     dns_trace(buf, len, "to_guest");
     if (!head && batch_size == 1 && !vnet) {
         tx_syscalls++;
@@ -211,16 +211,31 @@ static ssize_t send_frame(const void *buf, size_t len, void *opaque) {
         }
     }
     if (len > MAX_FRAME) { dropped_packets++; return len; }
-    if (vnet && append_tcp(tail, buf, len)) return len;
+    if (vnet && !segment_size && append_tcp(tail, buf, len)) return len;
     if (queued == MAX_QUEUE) { dropped_packets++; return len; }
     struct tcp_frame tcp;
-    unsigned gso_size = vnet && tcp_frame(buf, len, &tcp) && tcp.size ? tcp.size : 0;
+    unsigned gso_size = segment_size ? segment_size :
+        (vnet && tcp_frame(buf, len, &tcp) && tcp.size ? tcp.size : 0);
     struct packet *p = malloc(sizeof(*p) + (gso_size ? MAX_FRAME : len));
     if (!p) die("packet allocation");
     p->next = NULL; p->len = len; p->gso_size = gso_size; memcpy(p->data, buf, len);
     if (tail) tail->next = p; else head = p;
     tail = p; queued++;
     return len;
+}
+static ssize_t send_frame(const void *buf, size_t len, void *opaque) {
+    (void)opaque;
+    return queue_frame(buf, len, 0);
+}
+static ssize_t send_gso(const void *buf, size_t len, unsigned mss, void *opaque) {
+    (void)opaque;
+    struct tcp_frame tcp;
+    if (!vnet || !mss || !tcp_frame(buf, len, &tcp) || tcp.size <= mss ||
+        mss + tcp.payload - 14 > (unsigned)mtu) {
+        dropped_packets++; return -1;
+    }
+    slirp_gso++; slirp_gso_bytes += len;
+    return queue_frame(buf, len, mss);
 }
 static void flush_frames(void) {
     while (head) {
@@ -279,7 +294,8 @@ static void timer_mod(void *timer, int64_t expires, void *opaque) { (void)opaque
 static void poll_register(int fd, void *opaque) { (void)fd; (void)opaque; }
 static void notify(void *opaque) { (void)opaque; }
 static const SlirpCb callbacks = {
-    .send_packet = send_frame, .guest_error = guest_error, .clock_get_ns = clock_ns,
+    .send_packet = send_frame, .send_packet_gso = send_gso,
+    .guest_error = guest_error, .clock_get_ns = clock_ns,
     .timer_new = timer_new, .timer_free = timer_free, .timer_mod = timer_mod,
     .register_poll_fd = poll_register, .unregister_poll_fd = poll_register, .notify = notify
 };
@@ -331,10 +347,11 @@ static int stats(char *buf, size_t len) {
         ",\"mtu\":%d,\"batch_size\":%u,\"rx_syscalls\":%" PRIu64 ",\"tx_syscalls\":%" PRIu64
         ",\"poll_calls\":%" PRIu64 ",\"vnet\":%s,\"rx_gso\":%" PRIu64
         ",\"tx_gso\":%" PRIu64 ",\"coalesced\":%" PRIu64
+        ",\"slirp_gso\":%" PRIu64 ",\"slirp_gso_bytes\":%" PRIu64
         ",\"user_us\":%" PRId64 ",\"system_us\":%" PRId64 "}",
         rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
         inventory_revision, mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls,
-        vnet ? "true" : "false", rx_gso, tx_gso, coalesced,
+        vnet ? "true" : "false", rx_gso, tx_gso, coalesced, slirp_gso, slirp_gso_bytes,
         (int64_t)usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec,
         (int64_t)usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec);
 }

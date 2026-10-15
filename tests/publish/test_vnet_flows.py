@@ -29,8 +29,25 @@ class VnetFlows(flows.ForwardedFlows):
         self.assertTrue(stats['vnet'])
         self.assertGreater(stats['rx_gso'], 0)
         self.assertGreater(stats['tx_gso'], 0)
-        self.assertGreater(stats['coalesced'], 0)
+        self.assertGreater(stats['slirp_gso'], 0)
+        self.assertGreater(stats['slirp_gso_bytes'], 0)
         self.assertEqual(stats['dropped_packets'], 0)
+
+    def test_large_segments_respect_guest_mss(self):
+        for mss in (536, 1200, 1460):
+            for addr, guest in (('127.0.0.1', '10.0.2.15'), ('::1', 'fd00::15')):
+                with self.subTest(mss=mss, address=addr):
+                    self.peer.advertised_mss = mss
+                    self.b.link_host.gso_sizes.clear()
+                    port = reserve_port(addr)
+                    self.command_ok(f'add tcp {addr} {port} 7777 {guest}')
+                    flows.tcp_echo(addr, port, 1024 * 1024 + 17, timeout=20)
+                    self.command_ok(f'del tcp {addr} {port} 7777 {guest}')
+                    sizes = self.b.link_host.gso_sizes
+                    self.assertTrue(sizes)
+                    limit = min(mss, 1460 if ':' not in addr else 1440)
+                    self.assertTrue(all(size <= limit for size in sizes), sizes)
+        self.assertEqual(self.b.command('stats')['dropped_packets'], 0)
 
     def test_invalid_vnet_headers_are_dropped(self):
         raw = self.b.link_host.link
