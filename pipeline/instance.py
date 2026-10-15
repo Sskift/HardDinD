@@ -27,7 +27,10 @@ from pipeline.guest_cleanup import cleanup_group, group_members
 from pipeline.port_driver import PortDriver
 
 # Boot parameters of the default execution core (see kernel/series).
-CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1')
+# Guest RAM in a memfd (shmem): a file under TMPDIR would make the host write
+# guest memory back to disk and stall exit in inode writeback.
+CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
+             'memfd_ram=1')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
 
@@ -179,10 +182,12 @@ def serve(instance):
     lock = (instance / 'instance.lock').open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     config = json.loads((instance / 'config.json').read_text())
-    if config.get('measure_lock'):
+    if config.get('hold_measure'):
         # Interactive guests block exclusive measurements for their whole life.
-        measure = open(config['measure_lock'], 'a')
-        fcntl.flock(measure, fcntl.LOCK_SH)
+        from pipeline import locks
+        write_state(instance, {'phase': 'queued', 'supervisor_pid': os.getpid(),
+                               'supervisor_start': start_time(os.getpid())})
+        measure = locks.acquire_shared()
     run = uuid.uuid4().hex[:12]
     state = {'phase': 'starting', 'run': run, 'supervisor_pid': os.getpid(),
              'supervisor_start': start_time(os.getpid()), 'config': config}
@@ -203,6 +208,7 @@ def serve(instance):
         if libc.prctl(1, signal.SIGKILL, 0, 0, 0) or os.getppid() != parent:
             os._exit(1)
     cpuset = parse_cpus(config['cpuset']) if config.get('cpuset') else None
+    # The guest, its network backend and virtiofsd are one virtual machine: same CPUs.
     def guest_setup():
         parent_death()
         if cpuset:
@@ -217,13 +223,16 @@ def serve(instance):
             cmd = [config['virtiofsd'], '--socket-path', str(path), '--shared-dir', share['source'],
                    '--tag', share['tag'], '--sandbox', 'chroot', '--cache', share_opts.get('cache', 'never'),
                    '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts', '--shared-flock',
+                   # MAP_SHARED with cache=never (FUSE_DIRECT_IO_ALLOW_MMAP); mapped pages are
+                   # not invalidated by outer writes, unlike a native bind mount.
+                   '--allow-mmap',
                    '--thread-pool-size', '4']
             if share_opts.get('profile'): cmd.append('--profile-requests')
             if share_opts.get('inline_flock'): cmd.append('--inline-flock')
             if share_opts.get('posix_locks'): cmd.append('--shared-posix-locks')
             with (instance / f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                                      start_new_session=True, preexec_fn=parent_death)
+                                      start_new_session=True, preexec_fn=guest_setup)
             filesystems.append((fs, path, share, cmd))
             until = time.monotonic() + 5
             while not path.exists():
@@ -238,9 +247,10 @@ def serve(instance):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
         with (instance / f'network-{run}.log').open('x') as log:
             helper = subprocess.Popen([config['network_backend'], str(helper_end.fileno()), str(ctl),
-                                       str(config['network_batch']), str(config['mtu'])],
+                                       str(config['network_batch']), str(config['mtu']),
+                                       *(['vnet'] if config.get('net_vnet') else [])],
                                       pass_fds=(helper_end.fileno(),), stdout=log, stderr=subprocess.STDOUT,
-                                      start_new_session=True, preexec_fn=parent_death)
+                                      start_new_session=True, preexec_fn=guest_setup)
         helper_end.close()
         until = time.monotonic() + 5
         while not ctl.exists():
@@ -261,12 +271,13 @@ def serve(instance):
         uml_dir.mkdir(exist_ok=True)
         tmp = instance / 'tmp'; tmp.mkdir(exist_ok=True)
         mtu = config['mtu']
+        vnet = int(bool(config.get('net_vnet')))
         cmd = [config['kernel'], f'umid={run}', 'uml_dir=uml/', f"mem={config['memory']}", f"ncpus={config['cpus']}",
                *CORE_ARGS,
                f"ubd0={instance / 'root.cow'},{config['disk']}", 'root=/dev/ubda', 'rw',
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
                f"harddind_dns={config['dns']}", f'harddind_mtu={mtu}',
-               f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={mtu},mac=02:00:00:00:02:15',
+               f'vec0:transport=fd,fd={guest_end.fileno()},gro={vnet},vnet_hdr={vnet},mtu={mtu},mac=02:00:00:00:02:15',
                *config['kernel_args']]
         for _, path, share, _ in filesystems:
             cmd += [f'virtio_uml.device={path}:26', 'harddind_share=' + share_argument(share)]
@@ -389,7 +400,7 @@ def serve(instance):
 
 def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cpus=4, memory='4G',
           cpuset=None, kernel_args=(), shares=(), share_options=None, publish_ports=True,
-          mtu=1500, dns=None, network_batch=1, boot_timeout=180, fresh=True, measure_lock=None):
+          mtu=1500, dns=None, network_batch=1, net_vnet=False, boot_timeout=180, fresh=True, hold_measure=False):
     """Boot a guest in `instance` and wait until dockerd answers.
 
     fresh=True requires a new instance; fresh=False reboots on the existing COW disk."""
@@ -409,17 +420,23 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'client': str(client), 'virtiofsd': str(virtiofsd) if virtiofsd else None,
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
-              'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'boot_timeout': boot_timeout,
-              'measure_lock': str(measure_lock) if measure_lock else None}
+              'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'net_vnet': net_vnet, 'boot_timeout': boot_timeout,
+              'hold_measure': hold_measure}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]
     with (instance / 'supervisor.log').open('a') as log:
         proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                 start_new_session=True)
     until = time.monotonic() + boot_timeout + 30
+    queued = False
     while time.monotonic() < until:
         state = read_state(instance)
-        if state.get('supervisor_pid') == proc.pid:
+        if state.get('supervisor_pid') == proc.pid and state.get('phase') == 'queued':
+            if not queued:
+                print(f'{instance.name}: waiting for a running benchmark to finish', file=sys.stderr, flush=True)
+                queued = True
+            until = time.monotonic() + boot_timeout + 30
+        elif state.get('supervisor_pid') == proc.pid:
             if state.get('phase') == 'ready':
                 return state
             if state.get('phase') in ('stopping', 'stopped', 'failed'):

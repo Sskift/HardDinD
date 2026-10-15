@@ -12,7 +12,7 @@ from suites.functional.peer import Peer as ProbePeer
 NAMES = ['outer_excludes_inner', 'inner_excludes_outer', 'shared_readers', 'independent_opens', 'dup_last_close', 'close_dup_keeps_lock', 'fork_last_close', 'close_releases', 'kill_releases', 'blocking_inner', 'blocking_outer', 'signal_cancels_wait', 'kill_cancels_wait', 'six_waiters_no_starvation', 'rename_keeps_lock', 'unlink_keeps_lock', 'downgrade', 'upgrade_failure_drops_shared', 'readonly_bind_flock', 'posix_outer_excludes_inner', 'posix_inner_excludes_outer', 'posix_one_byte_zero', 'posix_non_overlapping', 'posix_readers_coexist', 'posix_independent_guest_processes', 'posix_self_multi_open', 'posix_close_dup_releases', 'posix_fork_close', 'posix_partial_unlock', 'posix_downgrade_upgrade', 'posix_to_eof', 'posix_blocking_grant', 'posix_signal_eintr', 'posix_kill_release', 'posix_whence_cur_end', 'posix_whence_before_bof', 'posix_getlk_reports', 'posix_getlk_child_exact_pid', 'posix_getlk_host_pid_zero', 'posix_deadlock_cycle', 'posix_two_file_deadlock_cycle', 'posix_exec_preserves', 'posix_exec_missing', 'posix_readonly_rights', 'posix_cancel_grant_race', 'posix_large_offsets', 'posix_rename_unlink']
 
 def run(c, name):
-    share = c.ctx.run_dir / "share" / c.id
+    share = c.ctx.share / c.id
     share.mkdir(parents=True, exist_ok=True)
     os.chmod(share, 0o755)
     def Peer(mode, path, uid=None, readonly=False):

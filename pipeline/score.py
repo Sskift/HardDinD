@@ -29,8 +29,13 @@ def ratio_of(metric, spec):
     n = statistics.median(native)
     if g <= 0 or n <= 0:
         raise ValueError('non-positive sample median')
-    ratio = g / n if higher else n / g
     pairs = [(gv / nv if higher else nv / gv) for nv, gv in zip(native, guest) if nv > 0 and gv > 0]
+    # Samples are interleaved native/guest pairs, so each pair sees the same host
+    # load; the median pair ratio cancels drift that the ratio of medians keeps.
+    if len(pairs) == len(native) == len(guest):
+        ratio = statistics.median(pairs)
+    else:
+        ratio = g / n if higher else n / g
     spread = (min(pairs), max(pairs)) if len(pairs) >= 2 else None
     return ratio, n, g, spread
 

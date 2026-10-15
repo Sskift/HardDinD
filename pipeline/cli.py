@@ -75,11 +75,14 @@ def cmd_job(a):
     cmd_sync()
     args = ' '.join(shlex.quote(x) for x in a.args)
     root, name = config.REMOTE_ROOT, a.name
-    inner = f'cd {REMOTE_SRC} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
+    # Each job runs from its own copy so later syncs cannot change code under it.
+    snapshot = f'{root}/jobs/{name}'
+    inner = f'cd {snapshot} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
     ssh(f'''set -e
-mkdir -p {root}/logs
+mkdir -p {root}/logs {root}/jobs
 if tmux has-session -t hd-{name} 2>/dev/null; then echo "job {name} is still running" >&2; exit 3; fi
 [ ! -e {root}/logs/{name}.log ] || mv {root}/logs/{name}.log {root}/logs/{name}.log.1
+rm -rf {snapshot} && cp -a {REMOTE_SRC} {snapshot}
 tmux new-session -d -s hd-{name} {shlex.quote(inner)}
 echo "started job {name}: ./hd {args}"
 ''')
@@ -114,14 +117,30 @@ def cmd_fetch(_a):
                     '--include=scorecard.md', '--exclude=*', f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
                    check=True)
     runs = sorted(p.parent.name for p in dest.glob('*/summary.json'))
-    print(f'{len(runs)} run summaries in results/runs; latest: {runs[-1] if runs else "-"}')
-    # The scoreboard is the newest complete ci run: no --only, no --quick, no run error.
-    for name in reversed(runs):
+    print(f'{len(runs)} run summaries in results/runs (not tracked); latest: {runs[-1] if runs else "-"}')
+    # Tracked history: complete ci runs only (no --only, no --quick, no run error).
+    from pipeline import score
+    complete = []
+    for name in runs:
         summary = json.loads((dest / name / 'summary.json').read_text())
         if summary.get('kind') == 'ci' and not summary.get('only') and not summary.get('quick') and not summary.get('error'):
-            shutil.copy2(dest / name / 'scorecard.md', REPO / 'results/SCOREBOARD.md')
-            print(f'results/SCOREBOARD.md <- {name}')
-            break
+            complete.append(name)
+            target = REPO / 'results/ci' / name
+            if not target.exists():
+                target.mkdir(parents=True)
+                for f in ('summary.json', 'scorecard.md'):
+                    shutil.copy2(dest / name / f, target / f)
+                print(f'results/ci/{name} added')
+    if complete:
+        shutil.copy2(dest / complete[-1] / 'scorecard.md', REPO / 'results/SCOREBOARD.md')
+        rows = ['| run | revision | functional | key | important | other |', '|---|---|---|---|---|---|']
+        for name in reversed(complete):
+            card = score.scorecard(score.load(REPO / 'results/ci' / name / 'summary.json'))
+            t, tiers = card.get('test', {}), card.get('tiers', {})
+            rows.append(f"| {name} | {card['revision'].get('git', '?')[:8]} | {t.get('pass', 0)}/{t.get('checks', 0)} | " +
+                        ' | '.join(f"{tiers.get(k, {}).get('pass', 0)}/{tiers.get(k, {}).get('total', 0)}" for k in score.TIER_ORDER) + ' |')
+        (REPO / 'results/HISTORY.md').write_text('# Complete ci runs, newest first\n\n' + '\n'.join(rows) + '\n')
+        print(f'results/SCOREBOARD.md <- {complete[-1]}')
 
 
 def cmd_check(_a):
@@ -159,8 +178,7 @@ def cmd_up(a):
     path = config.INSTANCES / a.name
     if a.recreate and path.exists():
         instance.stop(path); instance.remove(path)
-    config.LOCKS.mkdir(parents=True, exist_ok=True)
-    state = instance.start(path, measure_lock=config.LOCKS / 'measure.lock', **opts)
+    state = instance.start(path, hold_measure=True, **opts)
     print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
 
 
@@ -196,7 +214,8 @@ def cmd_gc(a):
     """Drop old runs, dead instances and store entries no kept run refers to."""
     require_linux()
     from pipeline import build, instance
-    with build.lock('build'), build.lock('measure'):
+    from pipeline import locks
+    with build.lock('build'), locks.measure():
         runs = sorted(p for p in config.RUNS.glob('*') if p.is_dir()) if config.RUNS.exists() else []
         drop = runs[:-a.keep_runs] if len(runs) > a.keep_runs else []
         for path in drop:
@@ -219,37 +238,46 @@ def cmd_gc(a):
 
 
 def run_suite(kind, a):
-    """Shared driver for test/bench/ci: build, boot, run the suite(s), score."""
+    """Shared driver for test/bench/ci: build, boot, run the suite(s), score.
+
+    The functional phase holds the measure lock shared; the bench phase holds it
+    exclusively, so measurements never overlap another guest of this pipeline."""
     require_linux()
-    from pipeline import build, instance, runs, score
-    exclusive = kind in ('bench', 'ci')
-    with build.lock('measure', shared=not exclusive):
-        run_id, run_dir, rev = runs.new_run(kind, a.label)
-        print(f'run {run_id}', flush=True)
-        summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
-                   'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
-                   'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
-        try:
-            artifacts = build.everything(a.with_, shares=kind in ('test', 'ci'))
-            summary['artifacts'] = artifacts['ids']
-            if kind in ('test', 'ci'):
+    from pipeline import build, locks, runs, score
+    run_id, run_dir, rev = runs.new_run(kind, a.label)
+    print(f'run {run_id}', flush=True)
+    summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
+               'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
+               'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
+    try:
+        artifacts = build.everything(a.with_, shares=True)
+        summary['artifacts'] = artifacts['ids']
+        if kind in ('test', 'ci'):
+            with locks.measure(shared=True):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
-                summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
-            if kind in ('bench', 'ci'):
-                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
-        except Exception as error:
-            summary['error'] = f'{type(error).__name__}: {error}'
-            traceback.print_exc()
-        summary['finished'] = time.time()
-        summary['host_end'] = runs.host_info()
-        runs.write_json(run_dir / 'summary.json', summary)
-        card = score.scorecard(summary)
-        previous = latest_card(kind, exclude=run_id)
-        text = score.markdown(card, previous)
-        if summary.get('error'):
-            text += f"\n**Run error**: {summary['error']}\n"
-        (run_dir / 'scorecard.md').write_text(text)
-        print(text)
+            summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
+            summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
+        if kind in ('bench', 'ci'):
+            with locks.measure():
+                cpus = runs.pick_cpus(config.GUEST_CPUS)
+                summary['bench_cpus'] = cpus
+                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=cpus)
+            state = summary['bench'].pop('guest_state')
+            if shutdown_check(state)['status'] != 'pass':
+                summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
+    except Exception as error:
+        summary['error'] = f'{type(error).__name__}: {error}'
+        traceback.print_exc()
+    summary['finished'] = time.time()
+    summary['host_end'] = runs.host_info()
+    runs.write_json(run_dir / 'summary.json', summary)
+    card = score.scorecard(summary)
+    previous = latest_card(kind, exclude=run_id)
+    text = score.markdown(card, previous)
+    if summary.get('error'):
+        text += f"\n**Run error**: {summary['error']}\n"
+    (run_dir / 'scorecard.md').write_text(text)
+    print(text)
     return 2 if summary.get('error') else 0
 
 
@@ -268,33 +296,48 @@ def backend_selftest(run_dir, artifacts, only):
             'seconds': round(time.monotonic() - started, 2), 'detail': (result.stdout + result.stderr)[-800:]}
 
 
+def shutdown_check(state):
+    """An orderly guest shutdown is part of the functional gate (daemon state must persist)."""
+    problems = [k for k in ('error', 'shutdown_error') if state.get(k)]
+    if state.get('forced_shutdown'):
+        problems.append('forced_shutdown')
+    if state.get('phase') != 'stopped':
+        problems.append(f"phase={state.get('phase')}")
+    detail = '; '.join(f'{k}: {state[k]}' if k in state and k != 'forced_shutdown' else k for k in problems)
+    return {'id': 'guest.clean_shutdown', 'status': 'fail' if problems else 'pass', 'covers': [],
+            'seconds': round(state.get('stopped_at', 0) - state.get('ready_at', 0), 2) if not problems else 0.0,
+            'detail': detail}
+
+
 def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     from pipeline import instance, runs
     name = suite[0] + hashlib.sha256(run_id.encode()).hexdigest()[:10]
     path = config.INSTANCES / name
-    shares = []
-    if suite == 'test':
-        share = run_dir / 'share'
-        share.mkdir()
-        shares = [share]
+    share = run_dir / f'share-{suite}'
+    share.mkdir()
+    shares = [share]
     opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares)
     ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
-                       instance_options=opts, bench_cpus=config.BENCH_CPUS, quick=getattr(a, 'quick', False),
-                       only=a.only)
+                       instance_options=opts, bench_cpus=cpuset, quick=getattr(a, 'quick', False),
+                       only=a.only, share=share)
+    result = {}
     try:
         started = time.monotonic()
         instance.start(path, **opts)
         ctx.log(f'{suite}: guest {name} ready in {time.monotonic() - started:.1f}s')
         if suite == 'test':
             from pipeline import functional
-            return functional.run(ctx)
-        from pipeline import bench
-        return bench.run(ctx)
+            result = functional.run(ctx)
+        else:
+            from pipeline import bench
+            result = bench.run(ctx)
+        return result
     finally:
         state = instance.stop(path)
+        result['guest_state'] = state
         keep = run_dir / f'instance-{suite}'
         keep.mkdir(exist_ok=True)
-        for log in path.glob('*.log'):
+        for log in [*path.glob('*.log'), *path.glob('shutdown-diagnostic-*.json')]:
             shutil.copy2(log, keep / log.name)
         (keep / 'state.json').write_text(json.dumps(state, indent=2) + '\n')
         if not getattr(a, 'keep', False):
@@ -319,6 +362,12 @@ def find_summary(ref):
         if path.is_file():
             return path
     raise SystemExit(f'no summary for {ref}')
+
+
+def cmd_probe(a):
+    require_linux()
+    from pipeline import probe
+    sys.exit(probe.run(a))
 
 
 def cmd_score(a):
@@ -380,6 +429,15 @@ def main(argv=None):
                        ('ci', 'test then bench in one run')):
         s = sub.add_parser(kind, help=text); runopts(s, bench=kind != 'test')
         s.set_defaults(fn=lambda a, kind=kind: sys.exit(run_suite(kind, a)))
+    s = sub.add_parser('probe', help='run one static program natively and in guests, interleaved (kernel A/B)')
+    s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE')
+    s.add_argument('--kernel-arg', action='append', default=[], metavar='K=V', help='boot parameter for every guest')
+    s.add_argument('--ab', action='append', default=[], metavar='K=V', help='also boot guest B with these parameters')
+    s.add_argument('--reps', type=int, default=3); s.add_argument('--timeout', type=float, default=300)
+    s.add_argument('--privileged', action='store_true'); s.add_argument('--label')
+    s.add_argument('program', help='repo C file (built static) or static binary path')
+    s.add_argument('args', nargs=argparse.REMAINDER)
+    s.set_defaults(fn=cmd_probe)
     s = sub.add_parser('score', help='print a scorecard for a run')
     s.add_argument('run'); s.add_argument('--vs', help='compare with another run'); s.add_argument('--json', action='store_true')
     s.set_defaults(fn=cmd_score)

@@ -157,7 +157,15 @@ class Case:
 
     def d(self, *args, input=None, expected=0, timeout=60):
         self.write('$ docker ' + shlex.join(map(str, args)))
-        result = self.ctx.docker(*args, input=input, timeout=self.remaining(timeout))
+        try:
+            result = self.ctx.docker(*args, input=input, timeout=self.remaining(timeout))
+        except Exception as error:
+            cause = error if isinstance(error, subprocess.TimeoutExpired) else error.__cause__
+            if isinstance(cause, subprocess.TimeoutExpired):
+                for text in (cause.stdout, cause.stderr):
+                    if text:
+                        self.write(text.decode(errors='replace') if isinstance(text, bytes) else text)
+            raise
         self.write(result.stdout + result.stderr + f'\n[exit={result.returncode}]')
         require(result.returncode != 0 if expected == 'failure' else result.returncode == expected,
                 f'docker {args[:3]} exited {result.returncode}, expected {expected}: '
@@ -280,7 +288,7 @@ class Case:
                 self.d('image', 'prune', '-af', '--filter', 'label=' + self.label, timeout=10)
             except Exception as error:
                 errors.append(str(error))
-        shutil.rmtree(self.ctx.run_dir / 'share' / self.id, ignore_errors=True)
+        shutil.rmtree(self.ctx.share / self.id, ignore_errors=True)
         if errors:
             raise RuntimeError('cleanup: ' + '; '.join(errors))
 
@@ -307,7 +315,8 @@ def run_checks(suite, specs):
         except NotTested as error:
             row['detail'] = str(error)[-800:]
         except Exception as error:
-            row.update(status='fail', detail=f'{type(error).__name__}: {error}'[-800:])
+            case.write(f'{type(error).__name__}: {error}')
+            row.update(status='fail', detail=(suite.root / (name + '.log')).read_text()[-800:])
         finally:
             try:
                 with deadline(40):
@@ -542,20 +551,24 @@ def buildkit(c):
     shutil.copy2(FIXTURES / 'build.Dockerfile', folder / 'Dockerfile')
     tag = c.object('image', 'built')
     args = ['--pull=false', '--progress=plain', '--label', c.label, '--build-arg', 'CACHE_ID=' + c.name,
-            '--build-arg', 'TOKEN=' + c.name, '-t', tag, str(folder)]
+            '--build-arg', 'MARKER=' + c.name, '-t', tag, str(folder)]
     c.d('build', *args, timeout=90)
     first = c.output('cat', '/artifact', '/count', '/nonce', image=tag).splitlines()
     require(first[0] == c.name and first[1] == '1' and len(first[2]) == 36, first)
-    image_id = c.d('image', 'inspect', '-f', '{{.Id}}', tag).strip()
+    layers = c.d('image', 'inspect', '-f', '{{json .RootFS.Layers}}', tag).strip()
     c.d('build', *args, timeout=90)
-    require(c.d('image', 'inspect', '-f', '{{.Id}}', tag).strip() == image_id, 'warm build missed layer cache')
+    require(c.d('image', 'inspect', '-f', '{{json .RootFS.Layers}}', tag).strip() == layers, 'warm build changed filesystem layers')
     require(c.output('cat', '/artifact', '/count', '/nonce', image=tag).splitlines() == first, 'cached content changed')
+    changed = ['MARKER=' + c.name + '-changed' if arg == 'MARKER=' + c.name else arg for arg in args]
+    c.d('build', *changed, timeout=90)
+    reused = c.output('cat', '/artifact', '/count', '/nonce', image=tag).splitlines()
+    require(reused[:2] == [c.name + '-changed', '2'] and reused[2] != first[2], 'cache mount did not persist: ' + str(reused))
     c.d('build', '--no-cache', *args, timeout=90)
     second = c.output('cat', '/artifact', '/count', '/nonce', image=tag).splitlines()
-    require(second[:2] == [c.name, '2'] and second[2] != first[2], 'no-cache or cache mount failed: ' + str(second))
+    require(second[:2] == [c.name, '1'] and second[2] not in (first[2], reused[2]), 'no-cache did not rebuild: ' + str(second))
     c.d('buildx', 'build', '--load', '--no-cache', *args, timeout=90)
     third = c.output('cat', '/artifact', '/count', '/nonce', image=tag).splitlines()
-    require(third[:2] == [c.name, '3'] and third[2] != second[2], 'buildx result differs: ' + str(third))
+    require(third[:2] == [c.name, '1'] and third[2] != second[2], 'buildx result differs: ' + str(third))
 
 
 def pinned(key):
@@ -632,7 +645,7 @@ def tmpfs(c):
 
 @check('storage.bind_metadata', 'run|container exec', timeout=90)
 def bind_metadata(c):
-    share = c.ctx.run_dir / 'share' / c.id
+    share = c.ctx.share / c.id
     share.mkdir(parents=True)
     source = share / 'from-outer'
     source.write_bytes(b'outer')
@@ -808,7 +821,8 @@ def released(c, port, udp=False, host='127.0.0.1'):
     def bind():
         family = socket.AF_INET6 if ':' in host else socket.AF_INET
         with socket.socket(family, socket.SOCK_DGRAM if udp else socket.SOCK_STREAM) as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if not udp:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind((host, port))
             return True
     c.eventually(bind, timeout=10)
@@ -938,8 +952,9 @@ def publish_dynamic(c):
 def egress(c):
     item = build.LOCK['functional_https']
     host = item['url'].split('/')[2]
-    c.output('sh', '-ec', 'nslookup "$1"; wget -T 30 -qO /tmp/download "$2"; echo "$3  /tmp/download" | sha256sum -c -',
-             'sh', host, item['url'], item['sha256'])
+    # One retry: the outer internet path is shared and occasionally stalls.
+    c.output('sh', '-ec', 'nslookup "$1"; wget -T 20 -qO /tmp/download "$2" || wget -T 20 -qO /tmp/download "$2"; '
+             'echo "$3  /tmp/download" | sha256sum -c -', 'sh', host, item['url'], item['sha256'])
 
 
 @check('system.context', 'context create|context ls|context inspect|context rm|system info', base=False)
@@ -1113,11 +1128,18 @@ def swarm(c):
     for kind, name in [('secret', secret), ('config', conf)]:
         require(json.loads(c.d(kind, 'inspect', name))[0]['Spec']['Labels']['hd.check'] == c.id, kind + ' label lost')
     service = c.object('service')
+    image_id = c.d('image', 'inspect', '-f', '{{.Id}}', BASE).strip()
+    require(re.fullmatch(r'sha256:[0-9a-f]{64}', image_id), 'base image ID missing')
     script = 'test "$(cat /run/secrets/secret)" = secret-payload; test "$(cat /cfg)" = config-payload; printf "HTTP/1.0 200 OK\\r\\nContent-Length: 11\\r\\n\\r\\nvip-payload" >/response; echo service-ready; exec nc -lk -p 8080 -e cat /response'
     c.d('service', 'create', '--detach', '--name', service, '--label', c.label, '--container-label', c.label,
         '--network', net, '--no-resolve-image', '--replicas', '2', '--secret', f'source={secret},target=secret',
-        '--config', f'source={conf},target=/cfg', BASE, 'sh', '-ec', script)
-    c.eventually(lambda: c.d('service', 'ls', '--filter', 'name=' + service, '--format', '{{.Replicas}}').strip() == '2/2', timeout=45)
+        '--config', f'source={conf},target=/cfg', image_id, 'sh', '-ec', script)
+    try:
+        c.eventually(lambda: c.d('service', 'ls', '--filter', 'name=' + service, '--format', '{{.Replicas}}').strip() == '2/2', timeout=45)
+    except AssertionError as error:
+        tasks = c.d('service', 'ps', '--no-trunc', service)
+        c.d('service', 'logs', service)
+        raise AssertionError(str(error) + '\n' + tasks[-650:]) from error
     tasks = c.d('ps', '-q', '--filter', 'label=com.docker.swarm.service.name=' + service).split()
     require(len(tasks) == 2, 'service tasks absent')
     for task in tasks:
@@ -1208,7 +1230,9 @@ def persistence(c):
                              opts=('--restart', 'always', '-v', volume + ':/data'), image=image, detached=True)
     c.d('exec', persistent, 'sh', '-ec', 'printf volume-payload >/data/payload; printf layer-payload >/layer-data')
     identity = c.inspect(persistent)['Id']
-    stopped = c.container('sh', '-c', 'exit 19')
+    stopped = c.container('sh', '-c', 'exit 19', create=True)
+    c.d('start', stopped)
+    require(c.d('wait', stopped).strip() == '19', 'stopped fixture exited with the wrong code')
     servers = []
     for udp in (False, True):
         port = free_port(udp)

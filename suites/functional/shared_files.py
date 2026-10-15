@@ -1,18 +1,16 @@
 """Shared file effects ported from archive/evidence-20261015."""
-import contextlib
-import ctypes
 import errno
 import fcntl
 import os
-import select
-import time
 
 from suites.functional.peer import Peer as ProbePeer
 
-NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'guest_inotify_to_outer', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks']
+# Guest->outer inotify is checked with an outer UID 1001 watcher only: outer root
+# shares its 128 inotify instances with every root process on the Starpub host.
+NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks']
 
 def run(c, name):
-    share = c.ctx.run_dir / "share" / c.id
+    share = c.ctx.share / c.id
     share.mkdir(parents=True, exist_ok=True)
     os.chmod(share, 0o755)
     def Peer(mode, path, uid=None, readonly=False):
@@ -46,8 +44,8 @@ def run(c, name):
                 if name=='parallel_creation_masks':peer.ask('parallel-create');return
                 if name=='guest_inotify_to_outer_uid1001':
                     with Peer('native',path,uid=1001) as watcher:
-                        watcher.ask('watch');peer.ask('open');peer.ask('write 66');time.sleep(.1)
-                        row=watcher.ask('events');assert row['bytes']>0,row
+                        watcher.ask('watch');peer.ask('open');peer.ask('write 66')
+                        c.eventually(lambda: watcher.ask('events')['bytes'] > 0, timeout=3)
                     return
                 peer.ask('open')
                 if name=='read_initial':expect_byte(peer,'read',65)
@@ -87,15 +85,7 @@ def run(c, name):
                         except BlockingIOError:blocked=True
                     peer.ask('unlock');assert blocked,'outer lock ignored guest lock'
                 elif name in ['outer_inotify_to_guest','outer_inotify_to_guest_uid1001']:
-                    peer.ask('watch');host_write(path,66);time.sleep(.1)
-                    row=peer.ask('events');assert row['bytes']>0,row
-                elif name=='guest_inotify_to_outer':
-                    libc=ctypes.CDLL(None,use_errno=True);fd=libc.inotify_init1(os.O_NONBLOCK|os.O_CLOEXEC)
-                    if fd<0:raise OSError(ctypes.get_errno(),'inotify_init1')
-                    try:
-                        assert libc.inotify_add_watch(fd,os.fsencode(path),2)>=0
-                        peer.ask('write 66');assert select.select([fd],[],[],2)[0],'no outer inotify event'
-                        assert os.read(fd,4096)
-                    finally:os.close(fd)
+                    peer.ask('watch');host_write(path,66)
+                    c.eventually(lambda: peer.ask('events')['bytes'] > 0, timeout=3)
         finally:os.chmod(share,0o755)
     one("docker", name)

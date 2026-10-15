@@ -14,7 +14,9 @@ import re
 import selectors
 import shutil
 import signal
+import socket
 import stat
+import statistics
 import subprocess
 import tarfile
 import time
@@ -23,6 +25,7 @@ from pipeline import build, config
 
 TARGETS = json.loads((config.REPO / 'bench/targets.json').read_text())['metrics']
 METRICS = [name for name, spec in TARGETS.items() if spec.get('suite') != 'gpu']
+BIND_METRICS = ('disk.bind_write', 'disk.bind_read', 'fs.bind_metadata')
 
 
 def cpuset(value):
@@ -57,6 +60,8 @@ def parse_sample(output):
 
 
 def metric_budget(name, quick):
+    if name == 'fs.bind_metadata':
+        return 120 if quick else 900
     if name in ('app.compile', 'app.untar'):
         return 240 if quick else 600
     if name.startswith('disk.'):
@@ -64,51 +69,19 @@ def metric_budget(name, quick):
     return 120 if quick else 400
 
 
-def ubd_flush_analysis(source):
-    """Recognize the zero-descriptor FLUSH dispatch bug, not arbitrary kernels."""
-    zero = bool(re.search(r'if\s*\(op == REQ_OP_FLUSH\)\s*segs = 0;', source))
-    dispatch = source.partition('void *io_thread(void *arg)')[2]
-    only_segments = bool(re.search(r'for \(i = 0; !req->error && i < req->desc_cnt; i\+\+\)\s*do_io\(', dispatch))
-    return {'sha256': hashlib.sha256(source.encode()).hexdigest(),
-            'zero_segment_flush': zero, 'segment_only_dispatch': only_segments,
-            'flush_skipped': zero and 'io_req->desc_cnt = segs;' in source and only_segments and
-                             'REQ_OP_FLUSH' not in dispatch}
+FLUSH_COUNTERS = '/sys/module/ubd/parameters/host_flushes /sys/module/ubd/parameters/host_flush_errors'
 
 
-def successful_syncs(trace, path):
-    pending, count = set(), 0
-    for line in trace.splitlines():
-        pid = line.split()[0] if line.split() else ''
-        if path in line and re.search(r'\b(?:fsync|fdatasync)\(', line):
-            if re.search(r'= 0\s*$', line):
-                count += 1
-            elif '<unfinished ...>' in line:
-                pending.add(pid)
-        elif pid in pending and re.search(r'<\.\.\. (?:fsync|fdatasync) resumed>', line):
-            count += bool(re.search(r'= 0\s*$', line))
-            pending.remove(pid)
-    return count
-
-
-def guest_disk_processes(cow, group):
-    pids, descriptors = [], []
-    for path in pathlib.Path('/proc').iterdir():
-        if not path.name.isdigit():
-            continue
-        pid = int(path.name)
-        try:
-            if os.getpgid(pid) != group:
-                continue
-            pids.append(pid)
-            for fd in (path / 'fd').iterdir():
-                if os.readlink(fd) == str(cow):
-                    info = (path / 'fdinfo' / fd.name).read_text()
-                    flags = int(re.search(r'^flags:\s*(\d+)', info, re.M)[1], 8)
-                    descriptors.append({'pid': pid, 'fd': int(fd.name), 'flags': oct(flags),
-                                        'synchronous': bool(flags & os.O_DSYNC)})
-        except (ProcessLookupError, FileNotFoundError, PermissionError):
-            continue
-    return sorted(pids), descriptors
+def durability_error(before, after, fsyncs):
+    """Counters must count FLUSH of the writable image (UBD fds[1]), not its backing file."""
+    if before is None or after is None:
+        return 'guest fsync durability unverified: kernel exposes no host flush counters'
+    done, failed = after[0] - before[0], after[1] - before[1]
+    if failed:
+        return f'guest fsync not durable: {failed} host flushes failed'
+    if done < fsyncs:
+        return f'guest fsync not durable: {fsyncs} guest fsyncs, {done} host flushes'
+    return None
 
 
 def metric_info(name):
@@ -138,6 +111,16 @@ def small_archive(path, count=20000):
             data = f'harddind-file-{i:05d}\n'.encode()
             entry = tarfile.TarInfo(f'{i:05d}'); entry.size = len(data); entry.mode = 0o644
             archive.addfile(entry, io.BytesIO(data))
+
+
+def verify_bind_probe(path):
+    """Check all three guest-written probe blocks from the outer filesystem."""
+    block = bytes((j * 131 + j // 251) % 256 for j in range(4096))
+    expected = b''.join(bytes([i]) + block[1:] for i in range(3))
+    actual = path.read_bytes()
+    if actual != expected:
+        raise RuntimeError('guest bind write differs on outer filesystem')
+    return {'bytes': len(actual), 'sha256': hashlib.sha256(actual).hexdigest()}
 
 
 def bench_root(alpine_tar=None):
@@ -198,6 +181,8 @@ class Workloads:
         self.log_path = ctx.run_dir / 'bench.log'
         self.deadline = None
         self.disk_evidence = None
+        self.bind_evidence = None
+        self.write_evidence = None
 
     def begin_metric(self, name):
         budget = metric_budget(name, self.ctx.quick)
@@ -246,85 +231,105 @@ class Workloads:
             raise RuntimeError(f'command exited {proc.returncode}: {argv[:4]}: {stderr[-800:]}')
         return stdout
 
-    def native(self, *args, timeout=120):
-        return self.process(['chroot', self.root, *args], timeout=timeout,
-                            preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
+    def native(self, *args, timeout=120, workdir=None):
+        """A directory FD reaches the outer share without native bind mounts."""
+        fd = os.open(workdir, os.O_RDONLY | os.O_DIRECTORY) if workdir is not None else None
+        try:
+            command = [*args, '--work-fd', str(fd)] if fd is not None else list(args)
+            return self.process(['chroot', self.root, *command], timeout=timeout,
+                                pass_fds=() if fd is None else (fd,),
+                                preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
+        finally:
+            if fd is not None:
+                os.close(fd)
 
-    def durability(self):
-        """Unmeasured host trace of three checked guest fsyncs; cached per run."""
-        if self.disk_evidence is not None:
-            return self.disk_evidence
-        evidence = {'error': None}
-        self.disk_evidence = evidence
+    def bind_visibility(self):
+        """Once per run, verify guest file bytes through the outer path."""
+        if self.bind_evidence is None:
+            self.bind_evidence = {'error': None}
+            directory = None; created = False
+            try:
+                if self.ctx.share is None:
+                    raise RuntimeError('bench guest has no outer share')
+                directory = self.ctx.share / 'bench-verify'; directory.mkdir()
+                created = True
+                output = self.guest('/bench/workload', 'disk.fsync_probe', '1', '--workdir', '/bind',
+                                    '--keep-data', options=['-v', f'{directory}:/bind'])
+                self.bind_evidence.update(guest=parse_output(output), path=str(directory),
+                                          **verify_bind_probe(directory / 'fsync-probe'))
+            except Exception as error:
+                self.bind_evidence['error'] = f'bind visibility: {type(error).__name__}: {error}'
+            finally:
+                if created:
+                    try:
+                        shutil.rmtree(directory)
+                    except OSError as error:
+                        self.bind_evidence['error'] = self.bind_evidence['error'] or f'bind cleanup: {error}'
+        return self.bind_evidence
+
+    @contextlib.contextmanager
+    def bind_samples(self, name):
+        if self.ctx.share is None:
+            raise RuntimeError('bench guest has no outer share')
+        directory = self.ctx.share / ('bench-' + name); directory.mkdir()
+        try:
+            native_dir, guest_dir = directory / 'native', directory / 'guest'
+            native_dir.mkdir(); guest_dir.mkdir()
+            command = ['/bench/workload', name, str(int(self.ctx.quick))]
+            timeout = 120 if self.ctx.quick else 240
+            yield (lambda: self.native(*command, workdir=native_dir)), (
+                lambda: self.guest(*command, '--workdir', '/bind', options=['-v', f'{guest_dir}:/bind'], timeout=timeout))
+        finally:
+            shutil.rmtree(directory)
+
+    def flush_counters(self):
+        try:
+            values = self.guest('cat', *FLUSH_COUNTERS.split(), timeout=30).split()
+            return int(values[0]), int(values[1])
+        except (RuntimeError, ValueError, IndexError):
+            return None
+
+    def write_diagnostics(self):
+        """Unscored native fresh/overwrite and fsync/fdatasync comparisons."""
+        if self.write_evidence is not None:
+            return self.write_evidence
+        self.write_evidence = {'samples': [], 'error': None, 'bytes_per_sample': 256 * 1024 * 1024}
+        directory = self.root / 'work/write-diagnostics'; directory.mkdir()
         try:
             cow = self.ctx.instance / 'root.cow'
-            evidence['filesystems'] = []
-            for path in (self.root / 'work', cow):
-                mount = subprocess.run(['findmnt', '-J', '-T', str(path), '-o', 'SOURCE,FSTYPE,TARGET,OPTIONS'],
-                                       capture_output=True, text=True, check=True)
-                evidence['filesystems'].append({'path': str(path), 'device': os.stat(path).st_dev,
-                                                'mount': json.loads(mount.stdout)})
-            evidence['same_filesystem'] = len({item['device'] for item in evidence['filesystems']}) == 1
-            source = config.WORK / ('linux-' + build.LOCK['linux']['version']) / 'arch/um/drivers/ubd_kern.c'
-            evidence['ubd_source'] = {'path': str(source), **ubd_flush_analysis(source.read_text())}
-            host_source = source.parents[1] / 'os-Linux/file.c'
-            text = host_source.read_text()
-            evidence['os_sync_file'] = text[text.index('int os_sync_file('):].split('\n}', 1)[0] + '\n}'
-            state = json.loads((self.ctx.instance / 'state.json').read_text())
-            pids, descriptors = guest_disk_processes(cow, state['guest_pid'])
-            evidence['traced_pids'] = pids; evidence['cow_descriptors'] = descriptors
-            native_trace = self.ctx.run_dir / 'fsync-native.strace'
-            trace_args = ['strace', '-f', '-tt', '-yy', '-e', 'trace=fsync,fdatasync,sync_file_range']
-            output = self.process([*trace_args, '-o', native_trace, 'chroot', self.root,
-                                   '/bench/workload', 'disk.fsync_probe', '1'], timeout=30,
-                                  preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
-            evidence['native_probe'] = parse_output(output)
-            evidence['native_syncs'] = successful_syncs(native_trace.read_text(), 'fsync-probe')
-            if not pids:
-                raise RuntimeError('no UML processes found for fsync trace')
-            guest_trace = self.ctx.run_dir / 'fsync-guest.strace'
-            tracer_log = self.ctx.run_dir / 'fsync-tracer.log'
-            # Attach existing UML processes (including its persistent I/O helper)
-            # without taking over UML's ptrace ownership of new guest tasks.
-            args = [arg for arg in trace_args if arg != '-f']
-            args += ['-o', str(guest_trace), *[a for pid in pids for a in ('-p', str(pid))]]
-            with tracer_log.open('w') as log:
-                tracer = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=log)
-                try:
-                    time.sleep(0.3)
-                    evidence['attached_pids'] = []
-                    for pid in pids:
-                        try:
-                            status = pathlib.Path(f'/proc/{pid}/status').read_text()
-                            if int(re.search(r'^TracerPid:\s*(\d+)', status, re.M)[1]) == tracer.pid:
-                                evidence['attached_pids'].append(pid)
-                        except FileNotFoundError:
-                            pass
-                    output = self.guest('/bench/workload', 'disk.fsync_probe', '1', timeout=30)
-                    evidence['guest_probe'] = parse_output(output)
-                finally:
-                    if tracer.poll() is None:
-                        tracer.send_signal(signal.SIGINT)
-                    try:
-                        tracer.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        tracer.kill(); tracer.wait()
-            evidence['guest_syncs'] = successful_syncs(guest_trace.read_text(), str(cow))
-            evidence['tracer_log'] = tracer_log.read_text()[-8000:]
-            evidence['trace_files'] = [native_trace.name, guest_trace.name, tracer_log.name]
-            synchronous = bool(descriptors) and all(fd['synchronous'] for fd in descriptors)
-            if not evidence['same_filesystem']:
-                evidence['error'] = 'native scratch and guest COW are on different host filesystems'
-            elif evidence['ubd_source']['flush_skipped'] and descriptors and not synchronous:
-                evidence['error'] = ('guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; '
-                                     f"{evidence['guest_syncs']} host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC")
-            elif evidence['native_syncs'] < 3 or (evidence['guest_syncs'] < 3 and not synchronous):
-                evidence['error'] = ('guest fsync durability unverified: '
-                                     f"native={evidence['native_syncs']}, guest COW={evidence['guest_syncs']} host syncs")
+            self.write_evidence['native_device'] = directory.stat().st_dev
+            self.write_evidence['cow_device'] = cow.stat().st_dev
+            fd = os.open(cow, os.O_RDWR)
+            try:
+                start = time.monotonic(); os.fdatasync(fd)
+                self.write_evidence['host_cow_sync_seconds'] = time.monotonic() - start
+            finally:
+                os.close(fd)
+            variants = [('fresh_fsync', ['--keep-data']), ('overwrite_fsync', ['--reuse-data']),
+                        ('fresh_fdatasync', ['--keep-data', '--data-sync']),
+                        ('overwrite_fdatasync', ['--reuse-data', '--data-sync'])]
+            for pair in range(2):
+                for mode, flags in variants:
+                    sample = parse_output(self.native('/bench/workload', 'disk.seq_write', '1', *flags,
+                                                      workdir=directory))
+                    self.write_evidence['samples'].append({'mode': mode, 'pair': pair, 'workload': sample,
+                                                          'unix_time': time.time(), 'host_load': list(os.getloadavg())})
         except Exception as error:
-            evidence['error'] = f'guest fsync durability unverified: {type(error).__name__}: {error}'
-        self.ctx.log('bench durability: ' + (evidence['error'] or 'host flushes verified'))
-        return evidence
+            self.write_evidence['error'] = f'{type(error).__name__}: {error}'
+        finally:
+            shutil.rmtree(directory)
+        return self.write_evidence
+
+    def durability(self):
+        """Host flush counters around three checked guest fsyncs; cached per run."""
+        if self.disk_evidence is None:
+            before = self.flush_counters()
+            probe = parse_output(self.guest('/bench/workload', 'disk.fsync_probe', '1', timeout=30))
+            after = self.flush_counters()
+            self.disk_evidence = {'before': before, 'after': after, 'probe': probe,
+                                  'error': durability_error(before, after, 3)}
+            self.ctx.log('bench durability: ' + (self.disk_evidence['error'] or f'host flushes {before} -> {after}'))
+        return self.disk_evidence
 
     def docker(self, *args, timeout=120, combined=False):
         completed = self.ctx.docker(*args, timeout=self.timeout(timeout))
@@ -388,6 +393,38 @@ class Workloads:
             proc.stdout.close(); stderr.seek(0)
             self.record(argv, stderr=stderr.read(), returncode=proc.returncode); stderr.close()
 
+    @contextlib.contextmanager
+    def native_proxy(self, target_port):
+        """Native Docker's path for a loopback client to a published port: docker-proxy.
+
+        dockerd runs it with a pre-bound listener on fd 4 and a status pipe on fd 3."""
+        binary = build.moby() / 'docker-proxy'
+        listener = socket.socket(); listener.bind(('127.0.0.1', 0)); listener.listen(128)
+        status_r, status_w = os.pipe()
+        argv = [str(binary), '-proto', 'tcp', '-host-ip', '127.0.0.1', '-host-port', str(listener.getsockname()[1]),
+                '-container-ip', '127.0.0.1', '-container-port', str(target_port), '-use-listen-fd']
+        def setup():
+            os.sched_setaffinity(0, self.cpus)
+            status, listen = os.dup(status_w), os.dup(listener.fileno())  # either may already be 3 or 4
+            os.dup2(status, 3); os.dup2(listen, 4)
+        # dup2 clears close-on-exec on 3 and 4; every other descriptor Python opened has
+        # it set, so close_fds=False leaks nothing (close_fds would run after preexec_fn).
+        proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                text=True, start_new_session=True, preexec_fn=setup, close_fds=False)
+        os.close(status_w)
+        try:
+            with os.fdopen(status_r) as status:
+                line = status.readline().strip()
+            if line != '0':
+                raise RuntimeError(f'docker-proxy failed to start: {line} {proc.stderr.read() if proc.poll() is not None else ""}')
+            yield listener.getsockname()[1]
+        finally:
+            listener.close()
+            if proc.poll() is None:
+                proc.terminate()
+            proc.wait(timeout=5)
+            self.record(argv, stderr=proc.stderr.read(), returncode=proc.returncode); proc.stderr.close()
+
     def guest_server_ready(self, name):
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
@@ -405,7 +442,10 @@ class Workloads:
         seconds = '0.2' if self.ctx.quick else '1.5'
         with contextlib.ExitStack() as stack:
             native_port = stack.enter_context(self.native_server())
-            native = lambda: self.native('/bench/network', 'client', '127.0.0.1', str(native_port), mode, seconds)
+            # Published ports on native Docker go through docker-proxy for loopback clients.
+            client_port = (stack.enter_context(self.native_proxy(native_port)) if name.startswith('net.publish')
+                           else native_port)
+            native = lambda: self.native('/bench/network', 'client', '127.0.0.1', str(client_port), mode, seconds)
             if name.startswith('net.egress'):
                 guest = lambda: self.guest('/bench/network', 'client', '10.0.2.2', str(native_port), mode, seconds)
             else:
@@ -449,7 +489,10 @@ class Workloads:
 
     @contextlib.contextmanager
     def samples(self, name):
-        if name.startswith('net.'):
+        if name in BIND_METRICS:
+            with self.bind_samples(name) as pair:
+                yield pair
+        elif name.startswith('net.'):
             with self.network_samples(name) as pair:
                 yield pair
         elif name.startswith('docker.'):
@@ -592,15 +635,24 @@ def run(ctx):
         for name, metric in result['metrics'].items():
             metric['detail'] = dict(detail)
             metric['detail']['budget_seconds'] = runner.begin_metric(name)
-            if name == 'disk.seq_read':
+            if name in ('disk.seq_read', 'disk.bind_read'):
                 metric['detail']['read_policy'] = 'write+fsync then warm page-cache read with byte comparison; no cache drop'
             ctx.log(f'bench {name}: warmup + {pairs} pairs')
             try:
                 if name in ('disk.seq_write', 'disk.volume_write', 'app.untar'):
                     metric['detail']['durability'] = runner.durability()
+                if name in BIND_METRICS:
+                    metric['detail']['bind_visibility'] = runner.bind_visibility()
+                    metric['detail']['storage'] = 'outer share: native directory FD; guest /bind via virtiofs'
                 measure_pair(ctx, runner, name, metric, result['host_load'], pairs)
-                if metric['detail'].get('durability', {}).get('error'):
-                    metric['error'] = metric['detail']['durability']['error']
+                for check in ('durability', 'bind_visibility'):
+                    if metric['detail'].get(check, {}).get('error'):
+                        metric['error'] = metric['detail'][check]['error']
+                if name in ('disk.seq_write', 'disk.volume_write') and not metric['error']:
+                    if statistics.median(metric['guest']) > 2 * statistics.median(metric['native']):
+                        metric['detail']['write_diagnostics'] = runner.write_diagnostics()
+                        if metric['detail']['write_diagnostics']['error']:
+                            metric['error'] = 'write diagnostics: ' + metric['detail']['write_diagnostics']['error']
             except Exception as error:
                 metric['error'] = f'{type(error).__name__}: {error}'
                 ctx.log(f'bench {name}: {metric["error"]}')

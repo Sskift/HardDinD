@@ -17,11 +17,12 @@
 - 不把关闭网络、忽略资源限制、单核运行、禁用 GPU 称为完成。
 - 第三方源码版本固定在 `sources.lock.json`，改动保留为补丁。禁止使用未固定的 latest/master。
 - 不影响 Starpub 的 `/root/udock`。所有远端文件放在 `/root/harddind-rebuild/hd/` 下。
+- 自动化访问 Starpub 只用 fail-closed 别名 `starpub-root-mux`（`./hd` 默认如此）；master 断开时只用 `ssh -O check star-jump` 等它恢复，不重试、不探活。
 
 ## 工作方式
 
 - 所有构建、运行、测试、测量只走 `./hd`（见 `docs/pipeline.md`），不新增一次性的运行脚本或实验目录。新检查加进功能套件，新指标加进基准矩阵和 `targets.json`。
-- 一次改动的闭环：`./hd check` → `./hd job NAME -- ci` → `./hd fetch` → 提交改动及其 `results/runs/<id>/`。提交说明写清评分变化。
+- 一次改动的闭环：`./hd check` → `./hd job NAME -- ci` → `./hd fetch` → 提交改动；完整 ci 运行的摘要自动进入 `results/ci/`。提交说明写清评分变化。子代理不提交运行摘要。
 - 不写逐次实验的叙述性报告。失败用评分表和运行日志记录，`summary.json` 是事实来源；需要解释的结论写进提交说明或 `docs/`。
 - 性能测量（`bench`、`ci`）持有排它锁，同一时间只跑一个；构建和功能测试可以并行。
 - 直接在 `main` 开发，及时 commit/push；不强推，不覆盖远端改动。并行代理用各自的 worktree 和分支，由主代理合并。

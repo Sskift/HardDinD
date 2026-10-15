@@ -6,22 +6,31 @@
 ./hd check                                  # 本机：单元测试与语法检查，几秒
 ./hd job ci -- ci --label my-change         # 同步到 Starpub，在 tmux 里构建、功能测试、性能测试
 ./hd wait ci                                # 等结束，打印评分表
-./hd fetch                                  # 把 summary.json / scorecard.md 拉回 results/runs/
+./hd fetch                                  # 拉回运行摘要；完整 ci 运行进入 results/ci/，更新 SCOREBOARD.md 和 HISTORY.md
 git add -A && git commit && git push        # 提交改动和它的评分
 ```
 
 只想快速看一项：`./hd job b -- bench --only 'micro\.|cpu\.' --quick`，或 `./hd job t -- test --only volume`。`--only` 以外的项目记为未测，这种运行只用于定位，不能作为结论。
 
+内核改动的定向对照用 `./hd probe`：同一个静态程序（仓库里的 `.c` 文件会静态编译并缓存）在外层原生、guest A、guest B 中交替运行，guest B 是同一内核加上 `--ab` 参数，用于默认关闭的候选自比较：
+
+```sh
+./hd job p1 -- probe --with anon-faultaround --ab uml_faultaround=1 --reps 5 src/core_faults.c anon 65536
+```
+
+原始记录在 `runs/<id>/probe.jsonl`（每次运行的退出码、耗时、程序最后一行 JSON 输出）。probe 持有测量排它锁。
+
 ## 位置
 
 | 位置 | 内容 |
 | --- | --- |
-| 本机仓库 | 源码、补丁、测试定义、`results/runs/` 中的小型摘要 |
+| 本机仓库 | 源码、补丁、测试定义；`results/ci/` 完整 ci 运行的摘要（入库），`results/runs/` 所有运行的摘要（不入库，`./hd fetch` 拉取） |
 | `starpub-root:/root/harddind-rebuild/hd/src/<checkout>` | `./hd sync` 同步的源码，每个 checkout/worktree（按目录名）一份，互不覆盖；含 `.hd-revision.json`，记录 git 版本和是否有未提交改动 |
 | `…/hd/work` | 构建暂存：下载缓存、内核源码与目标文件、Go/Rust 工具链 |
 | `…/hd/store/<kind>/<key>` | 构建产物。key 是所有输入的哈希；完成的条目不再修改，输入不变就直接复用 |
 | `…/hd/runs/<run-id>` | 每次运行的原始日志、实例日志、`summary.json`、`scorecard.md` |
 | `…/hd/instances/<name>` | 运行中的 guest，含 COW 磁盘；测试结束即删除，`--keep` 可保留 |
+| `…/hd/jobs/<job>` | `./hd job` 启动时复制的源码快照，任务只从这里运行，之后的同步不影响它 |
 | `…/hd/logs/<job>.log` | `./hd job` 的输出 |
 
 run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 版本、是否带未提交改动和运行类型。
@@ -52,8 +61,8 @@ run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 
 
 ### 原生基线
 
-- 负载类指标：同一个基准镜像的 rootfs 在外层容器里解开，用 `chroot` 直接运行，与 guest 里 `docker run` 运行的是同一份二进制。两边绑定同样的宿主 CPU（`HD_BENCH_CPUS`，默认 `8-11`），按 原生/guest 交替成对采样，评分用中位数，评分表同时列出每对比值的范围以显示噪声。
-- 网络：原生用回环；guest 分别测外层→发布端口、容器→外层、容器↔容器。
+- 负载类指标：同一个基准镜像的 rootfs 在外层容器里解开，用 `chroot` 直接运行，与 guest 里 `docker run` 运行的是同一份二进制。两边绑定同样的宿主 CPU：每次运行开始时从 `/proc/stat` 采样，在同一 CPU 插槽内选最空闲的 4 个物理核（`HD_BENCH_CPUS` 可指定固定列表），记录在 `summary.json` 的 `bench_cpus`。按 原生/guest 交替成对采样，比值取各对比值的中位数（同一对经历相同的宿主负载，可抵消漂移），评分表同时列出每对比值的范围以显示噪声。
+- 网络：guest 分别测外层→发布端口、容器→外层、容器↔容器。原生对照取原生 Docker 在同一场景下走的路径：外层回环客户端访问发布端口时，原生 Docker 默认由 docker-proxy 转发，所以 `net.publish_*` 的原生侧是 客户端→docker-proxy（同一份固定 Moby 构建）→服务端；容器出站和容器之间在原生 Docker 里是内核 veth/bridge 路径，原生侧直接用回环。
 - Docker 控制面（run、exec、构建缓存等）：Starpub 上没有同机原生 Docker，暂用 `targets.json` 里的参考秒数（服务器上原生 Docker 29 的典型值）。有可用的原生 Docker 主机后再替换。
 
 Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持有 `measure` 排它锁，与其他测试、构建不并行；仍应关注评分表里的成对范围，范围很宽时重测，不要据此下结论。
@@ -62,7 +71,7 @@ Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持�
 
 - 多个代理可以同时改代码、跑 `./hd check` 和 `./hd test`（共享锁）。`bench` 和 `ci` 持有排它锁，同一时间只有一个在跑。
 - 代理各自用独立的 git worktree 和分支，`./hd job` 用不同的 job 名；主代理合并到 `main` 后推送。
-- 远端只经 ssh 别名 `starpub-root`（复用 ControlMaster 连接），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
+- 远端只经 fail-closed 别名 `starpub-root-mux`（只复用常驻 ControlMaster，master 不在时立即失败），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
 - 不影响 `/root/udock`。不在 `…/hd` 之外写文件。
 
 ## 套件接口
@@ -76,4 +85,4 @@ Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持�
 - `ctx.forward('add tcp 127.0.0.1 HOSTPORT GUESTPORT')`：显式端口转发；`docker run -p` 由发布驱动自动处理。
 - `ctx.selected(name)`：是否被 `--only` 选中。
 - `ctx.bench_cpus`、`ctx.quick`、`ctx.instance_options`。
-- 功能测试的 guest 额外挂载一个外层目录 `ctx.run_dir / 'share'`（virtiofs，guest 内同路径），可用于外层 bind mount 检查。
+- `ctx.share`：外层目录，以 virtiofs 挂载到 guest 内同一路径，可在容器里 `-v ctx.share:...` 做外层 bind mount。
