@@ -1,0 +1,447 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: publish guest TSC timekeeping to a read-only vvar
+
+Choose design (a). A fitted TSC-to-host-MONOTONIC conversion cannot stay
+exact across host NTP updates. Instead, harddind_vdso_clock=1 registers an
+invariant Intel TSC clocksource for BOTH the guest syscall and vDSO paths.
+The default remains the host-MONOTONIC timer clocksource and syscall vDSO.
+Require host clocksource=tsc, invariant TSC, and CPUID 15/16 frequency data;
+otherwise fail closed to the original timer. Frequency discovery follows
+the pinned kernel's native_calibrate_tsc, without timed calibration.
+This changes guest clock discipline when enabled: it is no longer slaved
+to host MONOTONIC/NTP; guest NTP still applies through its own timekeeper.
+
+Design (b) was rejected: exec gives each broker a host vDSO/vvar, but
+init_new_context and cached-broker scrubbing unmap everything below
+STUB_START (including the randomized host mapping). Retaining it requires
+relocation above TASK_SIZE, ELF discovery, and preserving the vvar relative
+layout. A constant offset also misses guest NTP and guest coarse clocks;
+a trapped host-vDSO fallback would already return guest time, making an
+unconditional post-call offset wrong. No runner/stub/filter changes here.
+
+Use the generic timekeeper update and namespace datastore, not tick-time
+sampling. Its seqcounts publish base/mult/shift/cycle_last atomically
+before the syscall timekeeper becomes visible. settimeofday/adjtimex,
+clocksource changes and coarse time updates use the same publication.
+Non-root time namespaces always trap, including realtime and time().
+Unknown clocks, unavailable mode and oversized/backwards deltas trap too.
+Vvar has no VM_MAYWRITE and is sealed; CLONE_VM shares read-only pages,
+and broker reuse refaults the newly installed guest mappings.
+
+The checked Docker runtime puts ordinary and privileged containers in a
+non-initial time namespace with zero offsets. They intentionally fall
+back under this policy. The checker can explicitly setns to guest PID 1
+(--initial-time with --pid=host --privileged) to measure the fast path;
+this is a diagnostic, not a fix for default-container performance.
+
+--- a/arch/um/include/asm/processor-generic.h
++++ b/arch/um/include/asm/processor-generic.h
+@@ -58,7 +58,12 @@
+ extern unsigned long stacksizelim;
+ 
+ #define STACK_ROOM	(stacksizelim)
++#ifdef CONFIG_GENERIC_GETTIMEOFDAY
++#include <vdso/datapage.h>
++#define STACK_TOP	(TASK_SIZE - (VDSO_NR_PAGES + 2) * PAGE_SIZE)
++#else
+ #define STACK_TOP	(TASK_SIZE - 2 * PAGE_SIZE)
++#endif
+ #define STACK_TOP_MAX	STACK_TOP
+ 
+ /* This decides where the kernel will search for a free chunk of vm
+--- a/arch/um/include/asm/vdso/clocksource.h
++++ b/arch/um/include/asm/vdso/clocksource.h
+@@ -0,0 +1,5 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_VDSO_CLOCKSOURCE_H
++#define __UM_VDSO_CLOCKSOURCE_H
++#define VDSO_ARCH_CLOCKMODES VDSO_CLOCKMODE_TSC
++#endif
+--- a/arch/um/include/asm/vdso/processor.h
++++ b/arch/um/include/asm/vdso/processor.h
+@@ -0,0 +1,6 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_VDSO_PROCESSOR_H
++#define __UM_VDSO_PROCESSOR_H
++/* UML already defines native_pause/cpu_relax in its processor header. */
++#include <asm/processor.h>
++#endif
+--- a/arch/um/include/asm/vdso/tsc.h
++++ b/arch/um/include/asm/vdso/tsc.h
+@@ -0,0 +1,14 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_VDSO_TSC_H
++#define __UM_VDSO_TSC_H
++#include <linux/types.h>
++
++static __always_inline u64 uml_read_tsc(void)
++{
++	u32 lo, hi;
++
++	/* Intel LFENCE orders RDTSC after the vvar sequence/data loads. */
++	asm volatile("lfence; rdtsc" : "=a" (lo), "=d" (hi) : : "memory");
++	return ((u64)hi << 32) | lo;
++}
++#endif
+--- a/arch/um/include/asm/vdso/vsyscall.h
++++ b/arch/um/include/asm/vdso/vsyscall.h
+@@ -0,0 +1,6 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_VDSO_VSYSCALL_H
++#define __UM_VDSO_VSYSCALL_H
++#include <vdso/datapage.h>
++#include <asm-generic/vdso/vsyscall.h>
++#endif
+--- a/arch/um/include/shared/os.h
++++ b/arch/um/include/shared/os.h
+@@ -308,6 +308,7 @@
+ extern void os_timer_disable(int cpu);
+ extern long long os_persistent_clock_emulation(void);
+ extern long long os_nsecs(void);
++extern unsigned long os_vdso_tsc_khz(void);
+ 
+ /* skas/mem.c */
+ int syscall_stub_flush(struct mm_id *mm_idp);
+--- a/arch/um/kernel/time.c
++++ b/arch/um/kernel/time.c
+@@ -8,6 +8,10 @@
+  */
+ 
+ #include <linux/clockchips.h>
++#ifdef CONFIG_X86_64
++#include <asm/vdso/tsc.h>
++#include <linux/vdso_datastore.h>
++#endif
+ #include <linux/init.h>
+ #include <linux/interrupt.h>
+ #include <linux/jiffies.h>
+@@ -912,6 +916,33 @@
+ 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
+ };
+ 
++#ifdef CONFIG_X86_64
++static bool harddind_vdso_clock;
++
++static int __init vdso_clock_setup(char *str, int *add)
++{
++	*add = 0;
++	return kstrtobool(str, &harddind_vdso_clock);
++}
++__uml_setup("harddind_vdso_clock=", vdso_clock_setup,
++"harddind_vdso_clock=<0|1>\n"
++"    Use an invariant Intel TSC clocksource and the guest clock vDSO.\n");
++
++static u64 vdso_tsc_read(struct clocksource *cs)
++{
++	return uml_read_tsc();
++}
++
++static struct clocksource vdso_tsc_clocksource = {
++	.name = "harddind-tsc",
++	.rating = 400,
++	.read = vdso_tsc_read,
++	.mask = CLOCKSOURCE_MASK(64),
++	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
++	.vdso_clock_mode = VDSO_CLOCKMODE_TSC,
++};
++#endif
++
+ int um_setup_timer(void)
+ {
+ 	int cpu = raw_smp_processor_id();
+@@ -944,6 +975,17 @@
+ 		return;
+ 	}
+ 
++#ifdef CONFIG_X86_64
++	if (harddind_vdso_clock && time_travel_mode == TT_MODE_OFF) {
++		unsigned long khz = os_vdso_tsc_khz();
++
++		if (khz && khz <= UINT_MAX &&
++		    !clocksource_register_khz(&vdso_tsc_clocksource, khz))
++			pr_info("HARDDIND_VDSO clock=tsc khz=%lu\n", khz);
++		else
++			pr_warn("HARDDIND_VDSO unavailable; using syscall clocks\n");
++	}
++#endif
+ 	err = clocksource_register_hz(&timer_clocksource, NSEC_PER_SEC/TIMER_MULTIPLIER);
+ 	if (err) {
+ 		printk(KERN_ERR "clocksource_register_hz returned %d\n", err);
+@@ -968,6 +1010,9 @@
+ 
+ void __init time_init(void)
+ {
++#ifdef CONFIG_GENERIC_GETTIMEOFDAY
++	vdso_setup_data_pages();
++#endif
+ 	timer_set_signal_handler();
+ 	late_time_init = um_timer_init;
+ }
+--- a/arch/um/os-Linux/time.c
++++ b/arch/um/os-Linux/time.c
+@@ -7,6 +7,10 @@
+  */
+ 
+ #include <stddef.h>
++#include <stdio.h>
++#ifdef __x86_64__
++#include <cpuid.h>
++#endif
+ #include <unistd.h>
+ #include <errno.h>
+ #include <signal.h>
+@@ -108,6 +112,38 @@
+ 	return timespec_to_ns(&ts);
+ }
+ 
++/* Use only the frequency discovery used by native Intel TSC timekeeping.
++ * Do not fit a TSC/host-clock offset: it drifts when either clock is slewed.
++ */
++unsigned long os_vdso_tsc_khz(void)
++{
++#ifdef __x86_64__
++	unsigned int a, b, c, d, den, num, crystal;
++	char source[16];
++	FILE *f;
++
++	if (!__get_cpuid(0, &a, &b, &c, &d) || a < 0x15 ||
++	    b != 0x756e6547 || d != 0x49656e69 || c != 0x6c65746e)
++		return 0;
++	if (!__get_cpuid(0x80000007, &a, &b, &c, &d) || !(d & (1U << 8)))
++		return 0;
++	f = fopen("/sys/devices/system/clocksource/clocksource0/current_clocksource", "r");
++	if (!f)
++		return 0;
++	a = fscanf(f, "%15s", source) == 1 && !strcmp(source, "tsc");
++	fclose(f);
++	if (!a || !__get_cpuid_count(0x15, 0, &den, &num, &crystal, &d) ||
++	    !den || !num)
++		return 0;
++	crystal /= 1000;
++	if (!crystal && __get_cpuid(0x16, &a, &b, &c, &d))
++		crystal = (unsigned long long)a * 1000 * den / num;
++	return (unsigned long long)crystal * num / den;
++#else
++	return 0;
++#endif
++}
++
+ static __thread int wake_signals;
+ 
+ void os_idle_prepare(void)
+--- a/arch/x86/um/Kconfig
++++ b/arch/x86/um/Kconfig
+@@ -31,6 +31,9 @@
+ config X86_64
+ 	def_bool 64BIT
+ 	select MODULES_USE_ELF_RELA
++	select HAVE_GENERIC_VDSO
++	select GENERIC_GETTIMEOFDAY
++	select GENERIC_VDSO_OVERFLOW_PROTECT
+ 
+ config ARCH_HAS_SC_SIGNALS
+ 	def_bool !64BIT
+--- a/arch/x86/um/vdso/um_vdso.c
++++ b/arch/x86/um/vdso/um_vdso.c
+@@ -1,27 +1,97 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ /*
+  * Copyright (C) 2011 Richard Weinberger <richrd@nod.at>
+- *
+- * This vDSO turns all calls into a syscall so that UML can trap them.
++ * Guest timekeeper parameters, shared read-only with every guest mm.
+  */
+-
+-
+-/* Disable profiling for userspace code */
+ #define DISABLE_BRANCH_PROFILING
+-
+ #include <vdso/gettime.h>
++#include <vdso/datapage.h>
++#include <vdso/clocksource.h>
+ #include <linux/time.h>
+ #include <asm/unistd.h>
++#include <asm/vdso/tsc.h>
++
++/* Do not wait on a namespace's permanently odd seq: all its clocks trap. */
++static __always_inline int read_clock(clockid_t clock, struct __kernel_timespec *ts)
++{
++	const struct vdso_clock *vc;
++	u64 sec, ns, cycles, delta;
++	u32 seq, mode;
++
++	if (clock != CLOCK_REALTIME && clock != CLOCK_MONOTONIC &&
++	    clock != CLOCK_BOOTTIME && clock != CLOCK_MONOTONIC_RAW)
++		return -1;
++	vc = &vdso_u_time_data.clock_data[clock == CLOCK_MONOTONIC_RAW ? CS_RAW : CS_HRES_COARSE];
++	for (;;) {
++		seq = READ_ONCE(vc->seq);
++		barrier();
++		mode = READ_ONCE(vc->clock_mode);
++		if (unlikely(mode != VDSO_CLOCKMODE_TSC))
++			return -1;
++		if (unlikely(seq & 1)) {
++			asm volatile("pause" : : : "memory");
++			continue;
++		}
++		sec = vc->basetime[clock].sec;
++		ns = vc->basetime[clock].nsec;
++		cycles = uml_read_tsc();
++		delta = (cycles - vc->cycle_last) & vc->mask;
++		/* Match timekeeping_cycles_to_ns(), including its overflow limit. */
++		if (unlikely(delta > vc->max_cycles))
++			return -1;
++		ns = (delta * vc->mult + ns) >> vc->shift;
++		barrier();
++		if (seq == READ_ONCE(vc->seq))
++			break;
++	}
++	ts->tv_sec = sec + ns / NSEC_PER_SEC;
++	ts->tv_nsec = ns % NSEC_PER_SEC;
++	return 0;
++}
++
++/* A tail-called leaf keeps TSC register saves out of coarse reads. */
++static noinline int clock_coarse(clockid_t clock, struct __kernel_timespec *ts)
++{
++	const struct vdso_clock *vc = &vdso_u_time_data.clock_data[CS_HRES_COARSE];
++	u32 seq;
++	u64 sec, ns;
++	long ret;
++
++	for (;;) {
++		seq = READ_ONCE(vc->seq);
++		barrier();
++		if (unlikely(READ_ONCE(vc->clock_mode) != VDSO_CLOCKMODE_TSC))
++			break;
++		if (unlikely(seq & 1)) {
++			asm volatile("pause" : : : "memory");
++			continue;
++		}
++		sec = vc->basetime[clock].sec;
++		ns = vc->basetime[clock].nsec;
++		barrier();
++		if (seq == READ_ONCE(vc->seq)) {
++			ts->tv_sec = sec;
++			ts->tv_nsec = ns;
++			return 0;
++		}
++	}
++	asm volatile("syscall" : "=a" (ret)
++		: "0" (__NR_clock_gettime), "D" (clock), "S" (ts)
++		: "rcx", "r11", "memory");
++	return ret;
++}
+ 
+ int __vdso_clock_gettime(clockid_t clock, struct __kernel_timespec *ts)
+ {
+ 	long ret;
+ 
+-	asm("syscall"
+-		: "=a" (ret)
++	if (clock == CLOCK_REALTIME_COARSE || clock == CLOCK_MONOTONIC_COARSE)
++		return clock_coarse(clock, ts);
++	if (!read_clock(clock, ts))
++		return 0;
++	asm volatile("syscall" : "=a" (ret)
+ 		: "0" (__NR_clock_gettime), "D" (clock), "S" (ts)
+ 		: "rcx", "r11", "memory");
+-
+ 	return ret;
+ }
+ int clock_gettime(clockid_t, struct __kernel_timespec *)
+@@ -29,13 +99,20 @@
+ 
+ int __vdso_gettimeofday(struct __kernel_old_timeval *tv, struct timezone *tz)
+ {
++	struct __kernel_timespec ts;
+ 	long ret;
+ 
+-	asm("syscall"
+-		: "=a" (ret)
++	/* Keep timezone queries, including tz-only calls, on the syscall path. */
++	if (!tz && !read_clock(CLOCK_REALTIME, &ts)) {
++		if (tv) {
++			tv->tv_sec = ts.tv_sec;
++			tv->tv_usec = ts.tv_nsec / 1000;
++		}
++		return 0;
++	}
++	asm volatile("syscall" : "=a" (ret)
+ 		: "0" (__NR_gettimeofday), "D" (tv), "S" (tz)
+ 		: "rcx", "r11", "memory");
+-
+ 	return ret;
+ }
+ int gettimeofday(struct __kernel_old_timeval *, struct timezone *)
+@@ -43,12 +120,19 @@
+ 
+ __kernel_old_time_t __vdso_time(__kernel_old_time_t *t)
+ {
++	const struct vdso_clock *vc = &vdso_u_time_data.clock_data[CS_HRES_COARSE];
+ 	long secs;
+ 
+-	asm volatile("syscall"
+-		: "=a" (secs)
+-		: "0" (__NR_time), "D" (t) : "cc", "r11", "cx", "memory");
+-
++	/* Like 64-bit sys_time and __cvdso_time_data(), an atomic seconds snapshot. */
++	if (likely(READ_ONCE(vc->clock_mode) == VDSO_CLOCKMODE_TSC)) {
++		secs = READ_ONCE(vc->basetime[CLOCK_REALTIME].sec);
++		if (t)
++			*t = secs;
++		return secs;
++	}
++	asm volatile("syscall" : "=a" (secs)
++		: "0" (__NR_time), "D" (t) : "rcx", "r11", "memory");
+ 	return secs;
+ }
+-__kernel_old_time_t time(__kernel_old_time_t *t) __attribute__((weak, alias("__vdso_time")));
++__kernel_old_time_t time(__kernel_old_time_t *t)
++	__attribute__((weak, alias("__vdso_time")));
+--- a/arch/x86/um/vdso/vdso-layout.lds.S
++++ b/arch/x86/um/vdso/vdso-layout.lds.S
+@@ -7,6 +7,7 @@
+ 
+ SECTIONS
+ {
++	PROVIDE(vdso_u_time_data = VDSO_PRELINK - 4 * 4096);
+ 	. = VDSO_PRELINK + SIZEOF_HEADERS;
+ 
+ 	.hash		: { *(.hash) }			:text
+--- a/arch/x86/um/vdso/vma.c
++++ b/arch/x86/um/vdso/vma.c
+@@ -9,6 +9,8 @@
+ #include <asm/page.h>
+ #include <asm/elf.h>
+ #include <linux/init.h>
++#include <linux/vdso_datastore.h>
++#include <vdso/datapage.h>
+ 
+ unsigned long um_vdso_addr;
+ static struct page *um_vdso;
+@@ -18,6 +20,7 @@
+ 
+ static int __init init_vdso(void)
+ {
++	BUILD_BUG_ON(VDSO_NR_PAGES != 4);
+ 	BUG_ON(vdso_end - vdso_start > PAGE_SIZE);
+ 
+ 	um_vdso_addr = task_size - PAGE_SIZE;
+@@ -44,11 +47,16 @@
+ 	if (mmap_write_lock_killable(mm))
+ 		return -EINTR;
+ 
++	vma = vdso_install_vvar_mapping(mm, um_vdso_addr - VDSO_NR_PAGES * PAGE_SIZE);
++	if (IS_ERR(vma))
++		goto out;
++
+ 	vma = _install_special_mapping(mm, um_vdso_addr, PAGE_SIZE,
+ 		VM_READ|VM_EXEC|
+ 		VM_MAYREAD|VM_MAYWRITE|VM_MAYEXEC,
+ 		&vdso_mapping);
+ 
++out:
+ 	mmap_write_unlock(mm);
+ 
+ 	return IS_ERR(vma) ? PTR_ERR(vma) : 0;
