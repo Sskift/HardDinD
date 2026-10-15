@@ -1,0 +1,414 @@
+From: HardDinD developers
+Subject: [DIAGNOSTIC] um: sample syscall phases and count both waiters per CPU
+
+Apply after fault-rendezvous-counters. Default off: uml_syscall_profile=1.
+One TSC sample per 256 calls; counts are machine-wide, split by receiving CPU.
+Return-gap includes sigreturn, guest instructions and the next SIGSYS entry,
+not just host signal delivery. Totals include scheduling delays. Getpid entry,
+seccomp, body and exit phases are sampled together; prepare and state-copy
+samples are independent. Profiling changes queue capacity to reserve space;
+compare enabled and disabled on this same kernel to quantify perturbation.
+
+--- /dev/null
++++ b/arch/um/include/shared/core-profile.h
+@@ -0,0 +1,57 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_CORE_PROFILE_H
++#define __UM_CORE_PROFILE_H
++
++#define UML_SP_STAGES(X) \
++	X(prepare) X(get_state) X(trace_enter) X(seccomp) X(body) X(trace_leave) \
++	X(forward) X(reply) X(return_gap) \
++	X(kernel_ready) X(kernel_spin) X(kernel_futex) \
++	X(runner_ready) X(runner_spin) X(runner_futex)
++#define UML_SP_ENUM(n) UML_SP_##n,
++enum { UML_SP_STAGES(UML_SP_ENUM) UML_SP_COUNT };
++#undef UML_SP_ENUM
++extern int uml_sp_enabled;
++unsigned long long uml_sp_begin(unsigned int stage);
++void uml_sp_add(unsigned int stage, unsigned long long cycles);
++void uml_sp_count(unsigned int stage, unsigned int count);
++void uml_sp_mark(unsigned int stage, unsigned long long *stamp);
++
++/* The stub cannot call functions outside its relocated code mapping. */
++static inline __attribute__((always_inline)) unsigned long long uml_sp_clock(void)
++{
++#ifdef __x86_64__
++	unsigned int lo, hi;
++	asm volatile("lfence; rdtsc; lfence" : "=a"(lo), "=d"(hi) : : "memory");
++	return ((unsigned long long)hi << 32) | lo;
++#else
++	return 0;
++#endif
++}
++
++struct uml_sp_stub {
++	unsigned int enabled, sequence, active, valid;
++	unsigned long long ready, release, resume, reply, gap;
++	unsigned int ready_hits, spin_hits, sleeps;
++};
++
++/* Publish on the existing release/acquire rendezvous; never reset a futex. */
++static inline __attribute__((always_inline)) void uml_sp_enter(struct uml_sp_stub *p, int eligible)
++{
++	if (!p->enabled)
++		return;
++	if (p->resume && eligible) {
++		p->gap = uml_sp_clock() - p->resume;
++		p->valid |= 2;
++	}
++	p->resume = 0;
++	p->active = eligible && !(++p->sequence & 255);
++}
++
++static inline __attribute__((always_inline)) void uml_sp_replied(struct uml_sp_stub *p)
++{
++	if (p->active) {
++		p->reply = uml_sp_clock() - p->release;
++		p->valid |= 1;
++	}
++}
++#endif
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -15,6 +15,7 @@
+ #include <mm_id.h>
+ 
+ #include <stub-futex.h>
++#include <core-profile.h>
+ 
+ struct stub_init_data {
+ 	int seccomp;
+@@ -175,12 +176,13 @@
+ 	unsigned char gpu_payload[STUB_GPU_PAYLOAD_SIZE] __aligned(64);
+ 
+ 	/* Reserve header space for the 128-byte GPU payload. */
+-	struct stub_syscall syscall_data[(UM_KERN_PAGE_SIZE - 320) / sizeof(struct stub_syscall)] __aligned(16);
++	struct stub_syscall syscall_data[(UM_KERN_PAGE_SIZE - 512) / sizeof(struct stub_syscall)] __aligned(16);
+ 
+ 	/* data shared with signal handler (only used in seccomp mode) */
+ 	short restart_wait;
+ 	unsigned int futex;
+ 	unsigned int spin_limit;
++	struct uml_sp_stub profile;
+ 	int signal;
+ 	unsigned short si_offset;
+ 	unsigned short mctx_offset;
+--- a/arch/um/kernel/Makefile
++++ b/arch/um/kernel/Makefile
+@@ -22,6 +22,7 @@
+ 
+ obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
+ obj-$(CONFIG_GPROF)	+= gprof_syms.o
++obj-y += core-profile.o
+ obj-$(CONFIG_OF) += dtb.o
+ obj-$(CONFIG_EARLY_PRINTK) += early_printk.o
+ obj-$(CONFIG_STACKTRACE) += stacktrace.o
+--- /dev/null
++++ b/arch/um/kernel/core-profile.c
+@@ -0,0 +1,91 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/kstrtox.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/smp.h>
++#include <init.h>
++#include <os.h>
++#include <core-profile.h>
++
++int uml_sp_enabled;
++static unsigned long tsc_khz;
++static struct {
++	unsigned long long sequence[UML_SP_COUNT];
++	unsigned long long count[UML_SP_COUNT], cycles[UML_SP_COUNT];
++} __aligned(64) stats[CONFIG_NR_CPUS];
++
++unsigned long long uml_sp_begin(unsigned int stage)
++{
++	unsigned int cpu;
++	if (!uml_sp_enabled)
++		return 0;
++	cpu = raw_smp_processor_id();
++	if (__atomic_add_fetch(&stats[cpu].sequence[stage], 1, __ATOMIC_RELAXED) & 255)
++		return 0;
++	return uml_sp_clock();
++}
++
++void uml_sp_add(unsigned int stage, unsigned long long cycles)
++{
++	unsigned int cpu = raw_smp_processor_id();
++	__atomic_fetch_add(&stats[cpu].count[stage], 1, __ATOMIC_RELAXED);
++	__atomic_fetch_add(&stats[cpu].cycles[stage], cycles, __ATOMIC_RELAXED);
++}
++
++void uml_sp_count(unsigned int stage, unsigned int count)
++{
++	unsigned int cpu = raw_smp_processor_id();
++	__atomic_fetch_add(&stats[cpu].count[stage], count, __ATOMIC_RELAXED);
++}
++
++void uml_sp_mark(unsigned int stage, unsigned long long *stamp)
++{
++	unsigned long long now;
++	if (!*stamp)
++		return;
++	now = uml_sp_clock();
++	uml_sp_add(stage, now - *stamp);
++	*stamp = now;
++}
++
++static int profile_show(struct seq_file *m, void *unused)
++{
++	unsigned int cpu;
++	seq_printf(m, "enabled %d\ntsc_khz %lu\nsample_period 256\n", uml_sp_enabled, tsc_khz);
++	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
++#define SHOW(n) seq_printf(m, "cpu%u_" #n "_count %llu\ncpu%u_" #n "_cycles %llu\n", \
++	cpu, __atomic_load_n(&stats[cpu].count[UML_SP_##n], __ATOMIC_RELAXED), \
++	cpu, __atomic_load_n(&stats[cpu].cycles[UML_SP_##n], __ATOMIC_RELAXED));
++		UML_SP_STAGES(SHOW)
++#undef SHOW
++	}
++	return 0;
++}
++DEFINE_PROC_SHOW_ATTRIBUTE(profile);
++
++static int __init profile_init(void)
++{
++	tsc_khz = os_vdso_tsc_khz();
++	if (uml_sp_enabled && !tsc_khz)
++		panic("uml_syscall_profile requires invariant host TSC with known frequency");
++	return proc_create("uml_syscall_profile", 0400, NULL, &profile_proc_ops) ? 0 : -ENOMEM;
++}
++__initcall(profile_init);
++
++static int __init profile_setup(char *line, int *add)
++{
++	unsigned int enable;
++	*add = 0;
++	if (kstrtouint(line, 10, &enable) || enable > 1) {
++		pr_warn("uml_syscall_profile requires 0 or 1\n");
++		return 0;
++	}
++	uml_sp_enabled = enable;
++	return 0;
++}
++__uml_setup("uml_syscall_profile=", profile_setup,
++"uml_syscall_profile=<0|1>\n"
++"    Default off. Sample syscall phases every 256 calls; per-CPU TSC totals\n"
++"    and spin/futex counts in /proc/uml_syscall_profile. Diagnostic only.\n");
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -431,14 +431,17 @@
+ 	int num_fds;
+ 	/* 0017: set only by the frame that finishes a submitted batch, so a
+ 	 * nested signal re-entering this handler cannot send the completion. */
+-	int notify = 0;
++	int notify = 0, profile_ready;
+ 	long res;
+ 
++	uml_sp_enter(&d->profile, sig == SIGSYS && info->si_syscall == __NR_getpid);
+ 	d->signal = sig;
+ 	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
+ 	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
+ 
+ restart_wait:
++	if (d->profile.active)
++		d->profile.ready = uml_sp_clock();
+ 	if (stub_futex_handoff(&d->futex, FUTEX_IN_KERN)) {
+ 		do {
+ 			res = stub_syscall3(__NR_futex, (unsigned long)&d->futex,
+@@ -467,6 +470,8 @@
+ 	}
+ 
+ 	res = 0;
++	profile_ready = d->profile.enabled &&
++		stub_futex_phase(&d->futex) != FUTEX_IN_KERN;
+ #ifdef __x86_64__
+ 	/* Kernel is concurrently consuming this request; never spin unbounded. */
+ 	for (unsigned int spin = 0; spin < d->spin_limit && spin < 10000; spin++) {
+@@ -475,15 +480,24 @@
+ 		asm volatile("pause" ::: "memory");
+ 	}
+ #endif
++	if (d->profile.enabled && stub_futex_phase(&d->futex) != FUTEX_IN_KERN) {
++		if (profile_ready)
++			d->profile.ready_hits++;
++		else
++			d->profile.spin_hits++;
++	}
+ 	while (stub_futex_phase(&d->futex) == FUTEX_IN_KERN) {
+ 		if (!stub_futex_prepare_wait(&d->futex, FUTEX_IN_KERN))
+ 			break;
++		if (d->profile.enabled)
++			d->profile.sleeps++;
+ 		res = stub_syscall4(__NR_futex, (unsigned long)&d->futex,
+ 				    FUTEX_WAIT, FUTEX_IN_KERN | STUB_FUTEX_WAITING, 0);
+ 		if (res < 0 && res != -EINTR && res != -EAGAIN)
+ 			break;
+ 	}
+ 
++	uml_sp_replied(&d->profile);
+ 	if (res < 0 && res != -EAGAIN && res != -EINTR) {
+ 		d->err = res;
+ 		stub_syscall1(__NR_exit, 70);
+@@ -540,6 +554,10 @@
+ 	/* Restore arch dependent state that is not part of the mcontext */
+ 	stub_seccomp_restore_state(&d->arch_data);
+ 
++	if (d->profile.active) {
++		d->profile.resume = uml_sp_clock();
++		d->profile.active = 0;
++	}
+ 	/* Return so that the host modified mcontext is restored. */
+ }
+ 
+--- a/arch/um/kernel/skas/syscall.c
++++ b/arch/um/kernel/skas/syscall.c
+@@ -14,21 +14,28 @@
+ #include <asm/syscall.h>
+ #include <asm/unistd.h>
+ #include <asm/delay.h>
++#include <core-profile.h>
+ 
+ void handle_syscall(struct uml_pt_regs *r)
+ {
+ 	struct pt_regs *regs = container_of(r, struct pt_regs, regs);
+-	int syscall;
++	int syscall, traced;
++	unsigned long long stamp = PT_SYSCALL_NR(r->gp) == __NR_getpid ?
++		uml_sp_begin(UML_SP_trace_enter) : 0;
+ 
+ 	/* Initialize the syscall number and default return value. */
+ 	UPT_SYSCALL_NR(r) = PT_SYSCALL_NR(r->gp);
+ 	PT_REGS_SET_SYSCALL_RETURN(regs, -ENOSYS);
+ 
+-	if (syscall_trace_enter(regs))
++	traced = syscall_trace_enter(regs);
++	uml_sp_mark(UML_SP_trace_enter, &stamp);
++	if (traced)
+ 		goto out;
+ 
+ 	/* Do the seccomp check after ptrace; failures should be fast. */
+-	if (secure_computing() == -1)
++	traced = secure_computing();
++	uml_sp_mark(UML_SP_seccomp, &stamp);
++	if (traced == -1)
+ 		goto out;
+ 
+ 	syscall = UPT_SYSCALL_NR(r);
+@@ -70,8 +77,10 @@
+ 		}
+ 	}
+ 
++	uml_sp_mark(UML_SP_body, &stamp);
+ out:
+ 	syscall_trace_leave(regs);
+ 	/* Generic debug validation; the normal resume hook handles ID updates. */
+ 	rseq_syscall(regs);
++	uml_sp_mark(UML_SP_trace_leave, &stamp);
+ }
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -357,6 +357,7 @@
+ 	uml_fs_inc(UML_FS_runner_start);
+ 	child->sock = sockets[0];
+ 	data->spin_limit = uml_seccomp_spin_limit;
++	data->profile.enabled = uml_sp_enabled;
+ 	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
+ 	map(broker, addr, STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE,
+ 	    UM_PROT_READ | UM_PROT_WRITE, fd, offset);
+--- a/arch/um/os-Linux/skas/process.c
++++ b/arch/um/os-Linux/skas/process.c
+@@ -191,12 +191,16 @@
+ 			}
+ 
+ 			data->signal = 0;
++			if (data->profile.active)
++				data->profile.release = uml_sp_clock();
+ 			if (stub_futex_handoff(&data->futex, FUTEX_IN_CHILD))
+ 				CATCH_EINTR(syscall(__NR_futex, &data->futex,
+ 						    FUTEX_WAKE, 1, NULL, NULL, 0));
+ 		}
+ 
+ 		do {
++			int profile_ready = data->profile.enabled &&
++				stub_futex_phase(&data->futex) != FUTEX_IN_CHILD;
+ 			/*
+ 			 * We need to check whether the child is still alive
+ 			 * before and after the FUTEX_WAIT call. Before, in
+@@ -220,12 +224,16 @@
+ 			}
+ 			if (stub_futex_phase(&data->futex) != FUTEX_IN_CHILD) {
+ 				uml_fs_inc(UML_FS_wait_poll_done);
++				if (data->profile.enabled)
++					uml_sp_add(profile_ready ? UML_SP_kernel_ready : UML_SP_kernel_spin, 0);
+ 				break;
+ 			}
+ #endif
+ 			if (!stub_futex_prepare_wait(&data->futex, FUTEX_IN_CHILD))
+ 				break;
+ 			uml_fs_inc(UML_FS_wait_futex);
++			if (data->profile.enabled)
++				uml_sp_add(UML_SP_kernel_futex, 0);
+ 			ret = syscall(__NR_futex, &data->futex,
+ 				      FUTEX_WAIT, FUTEX_IN_CHILD | STUB_FUTEX_WAITING,
+ 				      parallel_userspace && wait_sigsys ? &timeout : NULL,
+@@ -256,6 +264,22 @@
+ 		/* We may receive a SIGALRM before SIGSYS, iterate again. */
+ 	} while (wait_sigsys && data->signal == SIGALRM);
+ 
++	if (data->profile.enabled) {
++		struct uml_sp_stub *p = &data->profile;
++		if (p->active)
++			uml_sp_add(UML_SP_forward, uml_sp_clock() - p->ready);
++		if (p->valid & 1)
++			uml_sp_add(UML_SP_reply, p->reply);
++		if (p->valid & 2)
++			uml_sp_add(UML_SP_return_gap, p->gap);
++		p->valid = 0;
++		uml_sp_count(UML_SP_runner_ready, p->ready_hits);
++		p->ready_hits = 0;
++		uml_sp_count(UML_SP_runner_spin, p->spin_hits);
++		p->spin_hits = 0;
++		uml_sp_count(UML_SP_runner_futex, p->sleeps);
++		p->sleeps = 0;
++	}
+ 	if (data->mctx_offset > sizeof(data->sigstack) - sizeof(mcontext_t)) {
+ 		printk(UM_KERN_ERR "%s : invalid mcontext offset", __func__);
+ 		goto out_kill;
+@@ -613,6 +637,7 @@
+ 	interrupt_end();
+ 
+ 	while (1) {
++		unsigned long long prepare = uml_sp_begin(UML_SP_prepare);
+ 		struct mm_id *mm_id = current_mm_enter();
+ 
+ 		/*
+@@ -651,6 +676,7 @@
+ 
+ 		if (using_seccomp) {
+ 			struct stub_data *proc_data = (void *) mm_id->stack;
++			unsigned long long get_state;
+ 
+ 			err = set_stub_state(regs, proc_data, singlestepping());
+ 			if (err) {
+@@ -668,6 +694,7 @@
+ 			proc_data->syscall_data_len = mm_id->syscall_data_len;
+ 			proc_data->syscall_fd_num = mm_id->syscall_fd_num;
+ 
++			uml_sp_mark(UML_SP_prepare, &prepare);
+ 			wait_stub_done_seccomp(mm_id, 0, 0);
+ 			if (parallel_userspace && (mm_id->pid < 0 || proc_data->err < 0)) {
+ 				current_mm_exit(mm_id);
+@@ -693,7 +720,9 @@
+ 			mm_id->syscall_data_len = 0;
+ 			mm_id->syscall_fd_num = 0;
+ 
++			get_state = uml_sp_begin(UML_SP_get_state);
+ 			err = get_stub_state(regs, proc_data, NULL);
++			uml_sp_mark(UML_SP_get_state, &get_state);
+ 			if (err) {
+ 				printk(UM_KERN_ERR "%s - failed to get regs: %d",
+ 				       __func__, err);
