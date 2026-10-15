@@ -80,7 +80,7 @@ static void ptrace_after_patch(void) {
     pid_t child = fork(); CHECK(child >= 0);
     if (!child) {
         CHECK(!ptrace(PTRACE_TRACEME, 0, NULL, NULL));
-        CHECK(!raise(SIGSTOP));
+        CHECK(!syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), SIGSTOP));
         long expected = getpid();
         for (int i = 0; i < 64; i++) CHECK(core_patch_site() == expected);
         _exit(0);
