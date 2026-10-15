@@ -175,8 +175,12 @@ static void semantics(void) {
     for (size_t i = 0; i < pages; i++) CHECK(p[i * page] == pattern(i));
     CHECK(!madvise(p, bytes, MADV_COLD));
     for (size_t i = 0; i < pages; i++) {
-        CHECK(p[i * page] == pattern(i));
-        p[i * page] = pattern(i);
+        volatile unsigned char *aged = p + i * page;
+        unsigned char changed = (unsigned char)(pattern(i) ^ 0x5a);
+        CHECK(*aged == pattern(i));
+        *aged = changed;
+        CHECK(*aged == changed);
+        *aged = pattern(i);
     }
     CHECK(!mprotect(p, bytes, PROT_READ));
     denied(p + 7 * page, 1, SIGSEGV);
