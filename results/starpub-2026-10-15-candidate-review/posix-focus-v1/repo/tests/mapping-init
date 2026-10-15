@@ -1,0 +1,9 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+echo "HARDDIND_MAPPING_SHA256=$(sha256sum /mapping-semantics | cut -d' ' -f1)"
+if ! /mapping-semantics; then
+    echo 'MAPPING_SEMANTICS_END status=1'
+    poweroff -f
+    exit 1
+fi
+exec /sbin/harddind-dispatch-init

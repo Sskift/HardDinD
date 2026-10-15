@@ -1,0 +1,1 @@
+Owner focusv1: native10tested/2not_tested; defaultDocker11tested/1nested-denial; nested-enabled11tested/1failed. Raw nested errnoEIO withquerierpid-1 was harnesspipebug: G2 write-end closed in parent BEFORE G2fork. v2 keeps writer acrossfork and closes appropriateends afterward. Backend/kernel unchanged. Previousfailure immutable.

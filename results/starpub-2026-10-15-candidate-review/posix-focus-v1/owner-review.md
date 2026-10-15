@@ -1,0 +1,1 @@
+Owner corrected v8 transport: harddind instance must be name_prefix, not per-container name; --name now identifies each owned container. Added early persisted identities for all peers, actual cleanup audits, failure on forced/nonzero exits, bounded exact-container fallback removal, and stderr close. Author source preserved separately. Backend unchanged.

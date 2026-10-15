@@ -1,0 +1,144 @@
+{
+  "phase": "stopped",
+  "run": "753e51f6b78d",
+  "supervisor_pid": 1663282,
+  "supervisor_start": "1390406435",
+  "config": {
+    "kernel": "/root/harddind-rebuild/cpu-cpuset-kernel-v1",
+    "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "cpus": 4,
+    "memory": "4G",
+    "dns": "10.0.2.3",
+    "network_batch": 1,
+    "mtu": 1500,
+    "kernel_sha256": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+    "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "publish_ports": false,
+    "gpu_control_experiment": false,
+    "gpu_async_wait": false,
+    "memfd_ram": false,
+    "memfd_stub": false,
+    "shares": [
+      {
+        "source": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "target": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "tag": "harddind0"
+      }
+    ],
+    "virtiofsd": "/root/harddind-rebuild/posix-focus-owner-v2/run/virtiofsd",
+    "virtiofsd_sha256": "13ebaff57033f0a54f2ee7e708ccdc66171ed30f941f739f06b3543d1d53eb09",
+    "share_inline_flock": true,
+    "share_posix_locks": true,
+    "share_cache": "never",
+    "share_profile": false
+  },
+  "runtime_sha256": "1a45d334ed79858e9b4d37e68b5215c4c875d16eacf2f77b6e37e8fd4f9b6b1d",
+  "filesystems": [
+    {
+      "pid": 1666151,
+      "share": {
+        "source": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "target": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "tag": "harddind0"
+      },
+      "command": [
+        "/root/harddind-rebuild/posix-focus-owner-v2/run/virtiofsd",
+        "--socket-path",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run/instances/focus-v2/harddind0.sock",
+        "--shared-dir",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "--tag",
+        "harddind0",
+        "--sandbox",
+        "chroot",
+        "--cache",
+        "never",
+        "--inode-file-handles=never",
+        "--xattr",
+        "--posix-acl",
+        "--announce-submounts",
+        "--shared-flock",
+        "--thread-pool-size",
+        "4",
+        "--inline-flock",
+        "--shared-posix-locks"
+      ]
+    }
+  ],
+  "guest_pid": 1666167,
+  "network_pid": 1666166,
+  "api_port": 51541,
+  "mconsole": "/root/harddind-rebuild/posix-focus-owner-v2/run/instances/focus-v2/uml/753e51f6b78d/mconsole",
+  "command": [
+    "/root/harddind-rebuild/cpu-cpuset-kernel-v1",
+    "umid=753e51f6b78d",
+    "uml_dir=/root/harddind-rebuild/posix-focus-owner-v2/run/instances/focus-v2/uml/",
+    "mem=4G",
+    "ncpus=4",
+    "seccomp=on",
+    "seccomp_threads=1",
+    "seccomp_broker_cache=1",
+    "seccomp_spin=256",
+    "defer_ipi=1",
+    "ubd0=/root/harddind-rebuild/posix-focus-owner-v2/run/instances/focus-v2/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "root=/dev/ubda",
+    "rw",
+    "init=/sbin/harddind-runtime-init",
+    "con=null",
+    "con0=null,fd:1",
+    "ssl=null",
+    "panic=1",
+    "harddind_dns=10.0.2.3",
+    "harddind_mtu=1500",
+    "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+    "virtio_uml.device=/root/harddind-rebuild/posix-focus-owner-v2/run/instances/focus-v2/harddind0.sock:26",
+    "harddind_share=harddind0:L3Jvb3QvaGFyZGRpbmQtcmVidWlsZC9wb3NpeC1mb2N1cy1vd25lci12Mi9ydW4vcG9zaXgtZm9jdXMtc2hhcmU="
+  ],
+  "ready_at": 1792021996.4144285,
+  "guest_exit_code": 0,
+  "guest_cleanup": {
+    "process_group": 1666167,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "forced_shutdown": false,
+  "network_exit_code": 0,
+  "network_cleanup": {
+    "process_group": 1666166,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  },
+  "filesystem_cleanup": [
+    {
+      "share": {
+        "source": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "target": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share",
+        "tag": "harddind0"
+      },
+      "exit_code": 0,
+      "process_group": 1666151,
+      "forced_cleanup": false,
+      "initial_live_pids": [],
+      "initial_zombie_pids": [],
+      "initial_processes": [],
+      "forced_processes": [],
+      "remaining_live_pids": [],
+      "remaining_zombie_pids": [],
+      "clean_shutdown": true
+    }
+  ],
+  "stopped_at": 1792022036.5752838
+}

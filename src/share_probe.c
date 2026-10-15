@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <poll.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -287,6 +288,127 @@ int main(int argc, char **argv) {
             rc = second < 0 ? -1 : 0;
         } else if (!strcmp(op, "close-second")) {
             rc = close(second); second = -1;
+        } else if (!strcmp(op, "reopen")) {
+            /* Attempt a FRESH open of argv[1] with the requested mode without
+             * touching the held descriptor.  Used after chmod revocation:
+             * root with CAP_DAC_OVERRIDE is expected to succeed even mode000,
+             * an unprivileged owner gets EACCES. */
+            char mode[16] = "rdwr";
+            sscanf(line, "%*s %15s", mode);
+            int flags = !strcmp(mode, "rdonly") ? O_RDONLY
+                      : !strcmp(mode, "wronly") ? O_WRONLY : O_RDWR;
+            int nfd = open(path, flags | O_CLOEXEC);
+            if (nfd < 0) {
+                printf("{\"op\":\"reopen\",\"rc\":-1,\"errno\":%d}\n", errno);
+            } else {
+                printf("{\"op\":\"reopen\",\"rc\":0,\"errno\":0}\n");
+                close(nfd);
+            }
+            fflush(stdout);
+            continue;
+        } else if (!strncmp(op, "ns-nested-lockcheck", 18)) {
+            /* Nested PID-namespace GETLK identity, self-contained and bounded.
+             * C unshare(NEWUSER|NEWPID) (NEWPID alone if privileged); its
+             * children G1 (holder) and G2 (querier) live in the NEW pidns.
+             * G2's F_GETLK reports G1's LOCAL tgid; the fork pid g1 is G1's
+             * tgid in the ancestor ns.  Exact unshare errno is reported so an
+             * environment that forbids pidns creation records not_tested. */
+            off_t ns_start = 0, ns_len = 64;
+            sscanf(line, "%*s %lld %lld", (long long *)&ns_start, (long long *)&ns_len);
+            int rp[2], ready[2], release[2], g2res[2];
+            if (pipe2(rp, O_CLOEXEC)) { result(op, -1, errno); continue; }
+            pid_t cp = fork();
+            if (cp < 0) {
+                close(rp[0]); close(rp[1]); rc = -1; result(op, rc, errno);
+            } else if (!cp) {
+                close(rp[0]);
+                int ur = unshare(CLONE_NEWUSER | CLONE_NEWPID);
+                int ue = ur < 0 ? errno : 0;
+                if (ur < 0 && (ue == EPERM || ue == EINVAL)) {
+                    ur = unshare(CLONE_NEWPID);
+                    ue = ur < 0 ? errno : 0;
+                }
+                if (ur < 0) {
+                    dprintf(rp[1], "{\"op\":\"ns-nested-lockcheck\",\"rc\":-1,"
+                            "\"unshare_errno\":%d}\n", ue);
+                    close(rp[1]); _exit(0);
+                }
+                if (ue == 0) {
+                    int mfd = open("/proc/self/setgroups", O_WRONLY);
+                    if (mfd >= 0) { (void)!write(mfd, "deny", 4); close(mfd); }
+                    mfd = open("/proc/self/uid_map", O_WRONLY);
+                    if (mfd >= 0) { dprintf(mfd, "0 %d 1\n", geteuid()); close(mfd); }
+                    mfd = open("/proc/self/gid_map", O_WRONLY);
+                    if (mfd >= 0) { dprintf(mfd, "0 %d 1\n", getegid()); close(mfd); }
+                }
+                if (pipe2(ready, O_CLOEXEC) || pipe2(release, O_CLOEXEC)
+                    || pipe2(g2res, O_CLOEXEC)) _exit(11);
+                pid_t g1 = fork();
+                if (g1 == 0) {
+                    close(ready[0]); close(release[1]); close(g2res[0]); close(g2res[1]);
+                    struct flock ll = { .l_type = F_WRLCK, .l_whence = SEEK_SET,
+                                       .l_start = ns_start, .l_len = ns_len };
+                    int e = fcntl(fd, F_SETLK, &ll) < 0 ? errno : 0;
+                    dprintf(ready[1], "%d %d\n", e, (int)getpid());
+                    if (!e) { char x; (void)!read(release[0], &x, 1); }
+                    _exit(0);
+                }
+                close(ready[1]); close(release[0]);
+                /* Keep the writer until G2 has inherited it. */
+                int lock_err = 0, g1_local = -1;
+                FILE *rf = fdopen(ready[0], "r");
+                if (fscanf(rf, "%d %d", &lock_err, &g1_local) != 2) lock_err = EIO;
+                if (lock_err) {
+                    dprintf(rp[1], "{\"op\":\"ns-nested-lockcheck\",\"rc\":-1,\"lock_errno\":%d}\n",
+                            lock_err);
+                    (void)!write(release[1], "x", 1);
+                    waitpid(g1, NULL, 0);
+                    close(rp[1]); _exit(0);
+                }
+                pid_t g2 = fork();
+                if (g2 == 0) {
+                    close(ready[0]); close(release[1]); close(g2res[0]);
+                    struct flock q = { .l_type = F_WRLCK, .l_whence = SEEK_SET,
+                                      .l_start = ns_start, .l_len = ns_len };
+                    int ge = fcntl(fd, F_GETLK, &q) < 0 ? errno : 0;
+                    dprintf(g2res[1], "%d %d %d\n", ge, ge ? 0 : (int)q.l_pid, (int)getpid());
+                    _exit(0);
+                }
+                close(g2res[1]);
+                int getlk_errno = -1, getlk_pid = -1, g2_pid = -1;
+                FILE *gf = fdopen(g2res[0], "r");
+                if (fscanf(gf, "%d %d %d", &getlk_errno, &getlk_pid, &g2_pid) != 3)
+                    getlk_errno = EIO;
+                fclose(rf); fclose(gf);
+                dprintf(rp[1],
+                    "{\"op\":\"ns-nested-lockcheck\",\"rc\":0,\"unshare_errno\":0,"
+                    "\"holder_ancestor_pid\":%d,\"holder_local_pid\":%d,"
+                    "\"getlk_local_pid\":%d,\"getlk_errno\":%d,\"querier_local_pid\":%d}\n",
+                    (int)g1, g1_local, getlk_pid, getlk_errno, g2_pid);
+                (void)!write(release[1], "x", 1);
+                waitpid(g2, NULL, 0);
+                waitpid(g1, NULL, 0);
+                close(rp[1]);
+                _exit(0);
+            } else {
+                close(rp[1]);
+                char buf[512];
+                ssize_t n = read(rp[0], buf, sizeof(buf) - 1);
+                int status = 0;
+                waitpid(cp, &status, 0);
+                close(rp[0]);
+                if (n > 0) {
+                    buf[n] = 0;
+                    fputs(buf, stdout);
+                    fflush(stdout);
+                    continue;
+                }
+                printf("{\"op\":\"ns-nested-lockcheck\",\"rc\":-1,\"errno\":%d,"
+                       "\"child_exited\":%s,\"raw_status\":%d}\n", EIO,
+                       WIFEXITED(status) ? "true" : "false", status);
+                continue;
+            }
+
         } else if (!strcmp(op, "fork-hold")) {
             int pipes[2];
             if (child > 0) { rc = -1; errno = EBUSY; }

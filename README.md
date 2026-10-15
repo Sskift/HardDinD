@@ -71,7 +71,7 @@ CPU 限制另用 `scripts/run-cpu-limits.py WORK --kernel KERNEL --disk DISK --n
 
 `scripts/run-shared-locks.py --functional-only` 运行完整的锁功能检查和清理审计，跳过所有计时采样；报告保留 `benchmark_complete=false`，并独立记录 `functional_complete` 与各项成败。可用它在并行开发期间查找行为差异，性能测量仍须单独安排。此选项与 `--benchmark-only` 互斥，默认运行方式不变。
 
-[共享锁 v6 实测](results/starpub-2026-10-15-candidate-review/posix-v6/README.md) 已完成原生和内部 Docker 各 47/47，正常关机且 133 个记录的进程组为空。`virtiofs/patches/0005` 及启动选项 `--share-posix-locks` 现纳入主线，支持本轮验证的跨层字节范围锁、guest PID、guest 死锁检测、close/fork/exec 与取消语义。混合外层/guest 死锁、跨 PID namespace 的持锁者身份、共享 mmap 和完整 I/O 性能仍未完成；这轮未测性能。早期候选记录如下。
+[共享锁 v6 实测](results/starpub-2026-10-15-candidate-review/posix-v6/README.md) 已完成原生和内部 Docker 各 47/47，正常关机且 133 个记录的进程组为空。`virtiofs/patches/0005` 及启动选项 `--share-posix-locks` 现纳入主线，支持本轮验证的跨层字节范围锁、guest PID、guest 死锁检测、close/fork/exec 与取消语义。[后续定向复测](results/starpub-2026-10-15-candidate-review/posix-focus-v2/README.md) 补齐了描述符权限、chmod 后的权限撤销，以及同命名空间、兄弟容器和嵌套命名空间的 GETLK PID 检查；内部默认配置为 11 项通过、1 项缺测，给内部测试容器开放 namespace 创建后为 12/12。外层权限未改变。混合外层/guest 死锁、共享 mmap 和完整 I/O 性能仍未完成；这轮未测性能。早期候选记录如下。
 
 [POSIX 字节范围锁候选实测](results/starpub-2026-10-15-posix-candidate-v1/README.md) 为原生 37/37、内部 Docker 35/37。两个失败已定位为单字节范围被错误扩展到文件末尾，以及最大偏移常量少算一位；当时的候选尚未合入正式补丁目录。原始失败与 99 个进程组的清理证据保留，修复及更完整的 PID、死锁、exec 语义验证仍在进行。
 
@@ -225,3 +225,5 @@ GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、
 [固定参数对象分配实测](results/starpub-2026-10-15-gpu-fixed-alloc/) 用 `0026` 接入 `0xcb33` 的非 FINN 分配及权限掩码。guest 与五次实际 Docker 运行均有 56/57 条结果匹配原生，FINN 格式差异仍记为失败；线程和独立子进程分配/释放通过。真实 CUDA 已越过该分配，下一处阻断为 `RM_CONTROL 0x1f0`。原生前后四卡计算通过，内部计算仍未执行，完整功能与性能目标保持未完成。
 
 [系统能力与分配错误顺序实测](results/starpub-2026-10-15-gpu-system-features/) 用 `0027` 消除 `0xcb33` 的 FINN 错误顺序差异，扩展的 74 条结果在 guest 与五次 Docker 运行中全部匹配原生。第二版同时修正首版遗漏的系统能力过滤条件，31 条查询边界结果在 guest 与五次 Docker 运行中全部匹配原生；两组 Docker 各 12 项外层检查通过。实际 CUDA 已通过 `0x1f0`，下一处阻断仍为缺失的 `/dev/nvidia-uvm`。第二版 87 项证据核对通过，记录的 22 个进程组均已清理，首版失败记录保留。内部 GPU 计算与近原生性能尚未完成。
+
+[四卡 OS-event 内部实测](results/starpub-2026-10-15-candidate-review/gpu-os-event-docker-v1/README.md) 使用同一静态探针完成原生四卡、内部 Docker 四卡、原生四卡的前后对照，12/12 通过事件分配释放、错误返回和空队列轮询检查。`src/gpu_os_event_probe.c` 与对应检查器已纳入主线；CUDA 初始化仍卡在私有控制命令，实际计算、传输和 GPU 性能尚未达标。

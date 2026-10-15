@@ -1,0 +1,266 @@
+Subject: [PATCH] Add optional per-opcode queue and service timing
+
+Keep diagnostics disabled by default; do not infer application performance
+from instrumented service timings. Interrupt control messages are excluded.
+
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -16,6 +16,7 @@
+ pub mod passthrough;
+ pub mod read_dir;
+ pub mod retry_queue;
++pub mod request_profile;
+ pub mod sandbox;
+ #[cfg(feature = "seccomp")]
+ pub mod seccomp;
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -159,6 +159,10 @@
+     /// Coordinate flock with host processes (requires --thread-pool-size > 0).
+     #[arg(long)]
+     shared_flock: bool,
++
++    /// Aggregate request timings for diagnostics; adds measurement overhead.
++    #[arg(long)]
++    profile_requests: bool,
+ 
+     /// Enable support for extended attributes
+     #[arg(long)]
+@@ -872,13 +876,13 @@
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests);
+     } else {
+         let fs = PassthroughFs::new(fs_cfg).unwrap_or_else(|e| {
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests);
+     }
+ }
+ 
+@@ -888,10 +892,12 @@
+     listener: Listener,
+     thread_pool_size: usize,
+     tag: Option<String>,
++    profile_requests: bool,
+ ) {
+     let fs_backend = Arc::new(
+         VhostUserFsBackendBuilder::default()
+             .set_thread_pool_size(thread_pool_size)
++            .set_profile_requests(profile_requests)
+             .set_tag(tag)
+             .build(fs)
+             .unwrap_or_else(|error| {
+--- /dev/null
++++ b/src/request_profile.rs
+@@ -0,0 +1,91 @@
++// SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
++//! Optional aggregate diagnostics. No timing or mutex updates when disabled.
++use std::collections::BTreeMap;
++use std::sync::{Arc, Mutex};
++use std::time::{Duration, Instant};
++
++#[derive(Default)]
++struct Stats {
++    count: u64,
++    attempts: u64,
++    queue_ns: u128,
++    service_ns: u128,
++    reply_ns: u128,
++    total_ns: u128,
++    max_total_ns: u128,
++}
++#[derive(Default)]
++pub struct RequestProfile(Mutex<BTreeMap<(u32, u32), Stats>>);
++pub struct Sample {
++    profile: Arc<RequestProfile>,
++    key: (u32, u32),
++    received: Instant,
++    first_start: Option<Instant>,
++    service: Duration,
++    attempts: u64,
++}
++impl RequestProfile {
++    pub fn begin(self: &Arc<Self>, opcode: u32, lock_type: u32) -> Sample {
++        Sample { profile: self.clone(), key: (opcode, lock_type), received: Instant::now(),
++                 first_start: None, service: Duration::ZERO, attempts: 0 }
++    }
++}
++impl Sample {
++    pub fn start(&mut self) -> Instant {
++        let now = Instant::now();
++        self.first_start.get_or_insert(now);
++        self.attempts += 1;
++        now
++    }
++    pub fn end_service(&mut self, start: Instant) { self.service += start.elapsed(); }
++    pub fn finish(self, reply_start: Instant) {
++        let now = Instant::now();
++        let total = now.duration_since(self.received).as_nanos();
++        let mut rows = self.profile.0.lock().unwrap();
++        let row = rows.entry(self.key).or_default();
++        row.count += 1;
++        row.attempts += self.attempts;
++        row.queue_ns += self.first_start.unwrap().duration_since(self.received).as_nanos();
++        row.service_ns += self.service.as_nanos();
++        row.reply_ns += now.duration_since(reply_start).as_nanos();
++        row.total_ns += total;
++        row.max_total_ns = row.max_total_ns.max(total);
++    }
++}
++impl Drop for RequestProfile {
++    fn drop(&mut self) {
++        let rows = self.0.lock().unwrap();
++        for ((opcode, lock_type), s) in rows.iter() {
++            info!("HARDDIND_REQUEST_PROFILE {{\"opcode\":{},\"lock_type\":{},\"count\":{},\"attempts\":{},\"queue_ns\":{},\"service_ns\":{},\"reply_ns\":{},\"total_ns\":{},\"max_total_ns\":{}}}",
++                  opcode, lock_type, s.count, s.attempts, s.queue_ns, s.service_ns,
++                  s.reply_ns, s.total_ns, s.max_total_ns);
++        }
++        info!("HARDDIND_REQUEST_PROFILE_END rows={}", rows.len());
++    }
++}
++
++#[cfg(test)]
++mod harddind_tests {
++    use super::*;
++    #[test]
++    fn harddind_profile_concurrent_attempts_and_completion() {
++        let profile = Arc::new(RequestProfile::default());
++        let workers: Vec<_> = (0..8).map(|_| {
++            let profile = profile.clone();
++            std::thread::spawn(move || {
++                for _ in 0..128 {
++                    let mut sample = profile.begin(33, 2);
++                    for _ in 0..3 { let start = sample.start(); sample.end_service(start); }
++                    sample.finish(Instant::now());
++                }
++            })
++        }).collect();
++        for worker in workers { worker.join().unwrap(); }
++        let rows = profile.0.lock().unwrap();
++        let row = &rows[&(33, 2)];
++        assert_eq!(row.count, 1024);
++        assert_eq!(row.attempts, 3072);
++        assert!(row.queue_ns + row.service_ns + row.reply_ns <= row.total_ns);
++        assert!(row.max_total_ns <= row.total_ns);
++    }
++}
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -33,6 +33,7 @@
+ use crate::server::Server;
+ use crate::fuse::{InHeader, InterruptIn, LkIn, Opcode};
+ use crate::retry_queue::RetryQueue;
++use crate::request_profile::RequestProfile;
+ use std::time::{Duration, Instant};
+ use crate::util::other_io_error;
+ use crate::Error as VhostUserFsError;
+@@ -83,6 +84,7 @@
+     QueueWriter(VufDescriptorError),
+     /// Shared locks require asynchronous dispatch.
+     LocksNeedPool,
++    ProfileNeedsPool,
+     /// Failed to create the lock retry queue.
+     CreateRetryQueue(io::Error),
+     ReadRequest(io::Error),
+@@ -120,10 +122,12 @@
+     pool: Option<ThreadPool>,
+     // Drop this before the server: queued jobs may hold a server Arc.
+     retries: RetryQueue,
++    profile: Option<Arc<RequestProfile>>,
+ }
+ 
+ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFsThread<F> {
+-    fn new(fs: F, thread_pool_size: usize) -> Result<Self> {
++    fn new(fs: F, thread_pool_size: usize, profile_requests: bool) -> Result<Self> {
++        if profile_requests && thread_pool_size == 0 { return Err(Error::ProfileNeedsPool); }
+         if fs.requires_async_locks() && thread_pool_size == 0 { return Err(Error::LocksNeedPool); }
+         let pool = if thread_pool_size > 0 {
+             // HardDinD: outer seccomp denies unshare(CLONE_FS). Scoped CWD and
+@@ -147,6 +151,7 @@
+             event_idx: false,
+             pool,
+             retries: RetryQueue::new().map_err(Error::CreateRetryQueue)?,
++            profile: profile_requests.then(|| Arc::new(RequestProfile::default())),
+         })
+     }
+ 
+@@ -211,15 +216,20 @@
+             let header: InHeader = peek.read_obj().map_err(Error::ReadRequest)?;
+             if header.opcode == Opcode::Setlkw as u32 {
+                 let request: LkIn = peek.read_obj().map_err(Error::ReadRequest)?;
++                let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, request.lk.type_));
+                 self.retries.handle().submit(header.unique, Box::new(move |cancelled| {
++                    let started = sample.as_mut().map(|s| s.start());
+                     let result = if cancelled { Err(io::Error::from_raw_os_error(libc::EINTR)) }
+                                  else { server.try_flock(header, request) };
++                    if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
+                     if matches!(result.as_ref().err().and_then(io::Error::raw_os_error),
+                                 Some(libc::EAGAIN)) { return false; }
++                    let reply_start = sample.as_ref().map(|_| Instant::now());
+                     let mem = atomic_mem.memory();
+                     let writer = Writer::new(&mem, worker_desc.clone()).unwrap();
+                     let len = server.reply_flock(header, writer, result).unwrap();
+                     Self::return_descriptor(&mut worker_vring.get_mut(), worker_desc.head_index(), event_idx, len);
++                    if let (Some(s), Some(start)) = (sample.take(), reply_start) { s.finish(start); }
+                     true
+                 })).map_err(Error::CreateRetryQueue)?;
+                 continue;
+@@ -241,10 +251,15 @@
+                 })).map_err(Error::CreateRetryQueue)?;
+                 continue;
+             }
++            let lock_type = if self.profile.is_some() && header.opcode == Opcode::Setlk as u32 {
++                peek.read_obj::<LkIn>().map_err(Error::ReadRequest)?.lk.type_
++            } else { u32::MAX };
++            let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, lock_type));
+             drop(peek);
+             drop(mem);
+ 
+             self.pool.as_ref().unwrap().spawn_ok(async move {
++                let started = sample.as_mut().map(|s| s.start());
+                 let mem = atomic_mem.memory();
+                 let head_index = worker_desc.head_index();
+ 
+@@ -260,7 +275,10 @@
+                     .map_err(Error::ProcessQueue)
+                     .unwrap();
+ 
++                if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
++                let reply_start = sample.as_ref().map(|_| Instant::now());
+                 Self::return_descriptor(&mut worker_vring.get_mut(), head_index, event_idx, len);
++                if let (Some(s), Some(start)) = (sample, reply_start) { s.finish(start); }
+             });
+         }
+ 
+@@ -418,10 +436,17 @@
+ #[derive(Debug, Default)]
+ pub struct VhostUserFsBackendBuilder {
+     thread_pool_size: usize,
++    profile_requests: bool,
+     tag: Option<String>,
+ }
+ 
+ impl VhostUserFsBackendBuilder {
++    /// Enable diagnostics for pooled and retried requests (excluding interrupts).
++    pub fn set_profile_requests(mut self, enabled: bool) -> Self {
++        self.profile_requests = enabled;
++        self
++    }
++
+     /// Adjust the size of the thread pool to use.
+     ///
+     /// A value of `0` disables the usage of a thread pool.
+@@ -443,7 +468,7 @@
+     where
+         F: FileSystem + SerializableFileSystem + Send + Sync + 'static,
+     {
+-        let thread = RwLock::new(VhostUserFsThread::new(fs, self.thread_pool_size)?);
++        let thread = RwLock::new(VhostUserFsThread::new(fs, self.thread_pool_size, self.profile_requests)?);
+         Ok(VhostUserFsBackend {
+             thread,
+             premigration_thread: None.into(),

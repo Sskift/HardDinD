@@ -1,0 +1,200 @@
+Subject: [PATCH] Protect shared cwd and umask without unshare(CLONE_FS)
+
+Keep four worker threads under the existing outer seccomp policy. Serialize
+only scoped cwd changes and ACL creation masks. Regular I/O stays concurrent.
+
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -78,24 +78,13 @@
+     QueueReader(VufDescriptorError),
+     /// Creating a queue writer failed.
+     QueueWriter(VufDescriptorError),
+-    /// The unshare(CLONE_FS) call failed.
+-    UnshareCloneFs(io::Error),
+     /// Invalid tag name
+     InvalidTag,
+ }
+ 
+ impl fmt::Display for Error {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        use self::Error::UnshareCloneFs;
+         match self {
+-            UnshareCloneFs(error) => {
+-                write!(
+-                    f,
+-                    "The unshare(CLONE_FS) syscall failed with '{error}'. \
+-                    If running in a container please check that the container \
+-                    runtime seccomp policy allows unshare."
+-                )
+-            }
+             Self::InvalidTag => write!(
+                 f,
+                 "The tag may not be empty or longer than {MAX_TAG_LEN} bytes (encoded as UTF-8)."
+@@ -126,24 +115,11 @@
+ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFsThread<F> {
+     fn new(fs: F, thread_pool_size: usize) -> Result<Self> {
+         let pool = if thread_pool_size > 0 {
+-            // Test that unshare(CLONE_FS) works, it will be called for each thread.
+-            // It's an unprivileged system call but some Docker/Moby versions are
+-            // known to reject it via seccomp when CAP_SYS_ADMIN is not given.
+-            //
+-            // Note that the program is single-threaded here so this syscall has no
+-            // visible effect and is safe to make.
+-            let ret = unsafe { libc::unshare(libc::CLONE_FS) };
+-            if ret == -1 {
+-                return Err(Error::UnshareCloneFs(std::io::Error::last_os_error()));
+-            }
+-
++            // HardDinD: outer seccomp denies unshare(CLONE_FS). Scoped CWD and
++            // umask mutations are individually serialized in passthrough/oslib;
++            // fd-relative operations and ordinary reads/writes stay concurrent.
+             Some(
+                 ThreadPoolBuilder::new()
+-                    .after_start(|_| {
+-                        // unshare FS for xattr operation
+-                        let ret = unsafe { libc::unshare(libc::CLONE_FS) };
+-                        assert_eq!(ret, 0); // Should not fail
+-                    })
+                     .pool_size(thread_pool_size)
+                     .create()
+                     .map_err(Error::CreateThreadPool)?,
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -46,7 +46,7 @@
+ use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+ use std::str::FromStr;
+ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+-use std::sync::{Arc, Mutex, RwLock};
++use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+ use std::time::Duration;
+ use xattrmap::{AppliedRule, XattrMap};
+ 
+@@ -71,14 +71,20 @@
+     migration_info: HandleMigrationInfo,
+ }
+ 
++// Only operations using a temporary CWD take this lock. All other request
++// paths use descriptors or absolute paths, including reopening unlinked inodes.
++static WORKING_DIRECTORY: Mutex<()> = Mutex::new(());
++
+ struct ScopedWorkingDirectory {
+     back_to: RawFd,
++    _lock: MutexGuard<'static, ()>,
+ }
+ 
+ impl ScopedWorkingDirectory {
+     fn new(new_wd: RawFd, old_wd: RawFd) -> ScopedWorkingDirectory {
++        let lock = WORKING_DIRECTORY.lock().unwrap();
+         oslib::fchdir(new_wd).expect("the working directory should be changed");
+-        ScopedWorkingDirectory { back_to: old_wd }
++        ScopedWorkingDirectory { back_to: old_wd, _lock: lock }
+     }
+ }
+ 
+@@ -2693,3 +2699,36 @@
+         HandleDataFile::File(RwLock::new(file))
+     }
+ }
++
++#[cfg(test)]
++mod harddind_tests {
++    use super::*;
++    use std::sync::Barrier;
++
++    #[test]
++    fn harddind_concurrent_working_directories() {
++        let base = std::env::temp_dir().join(format!("virtiofs-cwd-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let original = Arc::new(File::open(".").unwrap());
++        let barrier = Arc::new(Barrier::new(8));
++        let mut workers = Vec::new();
++        for i in 0..8 {
++            let dir = base.join(i.to_string());
++            std::fs::create_dir(&dir).unwrap();
++            std::fs::write(dir.join("value"), i.to_string()).unwrap();
++            let fd = File::open(&dir).unwrap();
++            let original = original.clone();
++            let barrier = barrier.clone();
++            workers.push(std::thread::spawn(move || {
++                barrier.wait();
++                for _ in 0..256 {
++                    let _guard = set_working_directory(fd.as_raw_fd(), original.as_raw_fd());
++                    std::thread::yield_now();
++                    assert_eq!(std::fs::read_to_string("value").unwrap(), i.to_string());
++                }
++            }));
++        }
++        for worker in workers { worker.join().unwrap(); }
++        std::fs::remove_dir_all(base).unwrap();
++    }
++}
+--- a/src/oslib.rs
++++ b/src/oslib.rs
+@@ -7,6 +7,7 @@
+ use std::io::{self, Error, Result};
+ use std::os::unix::io::{AsRawFd, BorrowedFd, RawFd};
+ use std::os::unix::prelude::FromRawFd;
++use std::sync::{Mutex, MutexGuard};
+ 
+ // A helper function that check the return value of a C function call
+ // and wraps it in a `Result` type, returning the `errno` code as `Err`.
+@@ -150,14 +151,21 @@
+ /// An RAII implementation of a scoped file mode creation mask (umask), it set the
+ /// new umask. When this structure is dropped (falls out of scope), it set the previous
+ /// value of the mask.
++// pthread workers share their fs_struct in HardDinD. Hold the lock until the
++// previous mask has been restored; never serialize unrelated file I/O.
++static UMASK_LOCK: Mutex<()> = Mutex::new(());
++
+ pub struct ScopedUmask {
+     umask: libc::mode_t,
++    _lock: MutexGuard<'static, ()>,
+ }
+ 
+ impl ScopedUmask {
+     pub fn new(new_umask: u32) -> Self {
++        let lock = UMASK_LOCK.lock().unwrap();
+         Self {
+             umask: umask(new_umask),
++            _lock: lock,
+         }
+     }
+ }
+@@ -542,3 +550,37 @@
+     })?;
+     Ok(())
+ }
++
++#[cfg(test)]
++mod harddind_tests {
++    use super::*;
++    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
++    use std::sync::{Arc, Barrier};
++
++    #[test]
++    fn harddind_concurrent_creation_masks() {
++        let base = std::env::temp_dir().join(format!("virtiofs-mask-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let barrier = Arc::new(Barrier::new(8));
++        let mut workers = Vec::new();
++        for i in 0..8 {
++            let base = base.clone();
++            let barrier = barrier.clone();
++            workers.push(std::thread::spawn(move || {
++                barrier.wait();
++                for j in 0..256 {
++                    let mask = [0o007, 0o027, 0o077, 0][(i + j) % 4];
++                    let file = {
++                        let _guard = ScopedUmask::new(mask);
++                        std::thread::yield_now();
++                        std::fs::OpenOptions::new().write(true).create_new(true).mode(0o666)
++                            .open(base.join(format!("{i}-{j}"))).unwrap()
++                    };
++                    assert_eq!(file.metadata().unwrap().permissions().mode() & 0o777, 0o666 & !mask);
++                }
++            }));
++        }
++        for worker in workers { worker.join().unwrap(); }
++        std::fs::remove_dir_all(base).unwrap();
++    }
++}

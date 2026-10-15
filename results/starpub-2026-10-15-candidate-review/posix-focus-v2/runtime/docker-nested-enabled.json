@@ -1,0 +1,533 @@
+{
+  "kind": "posix-focus",
+  "peers": [
+    {
+      "mode": "docker",
+      "uid": null,
+      "container": "focus-v2-focus-1",
+      "pid": 1671684,
+      "pgid": 1671684,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/fdmode.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-1",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/fdmode.dat"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1671684,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": 42424,
+      "container": "focus-v2-focus-2",
+      "pid": 1672012,
+      "pgid": 1672012,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/chmod-revoke.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-2",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/chmod-revoke.dat",
+        "42424"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1672012,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": 42424,
+      "container": "focus-v2-focus-3",
+      "pid": 1672232,
+      "pgid": 1672232,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/chmod-revoke.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-3",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/chmod-revoke.dat",
+        "42424"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1672232,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": null,
+      "container": "focus-v2-focus-4",
+      "pid": 1672718,
+      "pgid": 1672718,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/chmod-root.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-4",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/chmod-root.dat"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1672718,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": null,
+      "container": "focus-v2-focus-5",
+      "pid": 1673105,
+      "pgid": 1673105,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/getlk-samens.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-5",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/getlk-samens.dat"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1673105,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": null,
+      "container": "focus-v2-focus-6",
+      "pid": 1673446,
+      "pgid": 1673446,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/getlk-sibling.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-6",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/getlk-sibling.dat"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1673446,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": null,
+      "container": "focus-v2-focus-7",
+      "pid": 1673657,
+      "pgid": 1673657,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/getlk-sibling.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-7",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/getlk-sibling.dat"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1673657,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "mode": "docker",
+      "uid": null,
+      "container": "focus-v2-focus-8",
+      "pid": 1674303,
+      "pgid": 1674303,
+      "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/getlk-nested.dat",
+      "cmd": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/posix-focus-owner-v2/run",
+        "focus-v2",
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "focus-v2-focus-8",
+        "--mount",
+        "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+        "--cap-add",
+        "SYS_ADMIN",
+        "--security-opt",
+        "seccomp=unconfined",
+        "harddind-focus:local",
+        "/share-probe",
+        "/share/getlk-nested.dat"
+      ],
+      "returncode": 0,
+      "forced": false,
+      "cleanup": {
+        "process_group": 1674303,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "mode": "docker",
+  "complete": true,
+  "rc": 0,
+  "probe": "/root/harddind-rebuild/posix-focus-owner-v2/run/share-probe",
+  "probe_sha256": "c60eb1ca164f45cce23dbe9c5882c385b68eda8088baaa53ea08721017abe261",
+  "allow_ns": "1",
+  "tested": 12,
+  "not_tested": 0,
+  "failures": [],
+  "runtime_s": 12.274,
+  "checks": {
+    "fdmode_rdonly_wrlock_ebadf": {
+      "status": "tested",
+      "detail": {
+        "op": "posix-wlock",
+        "rc": -1,
+        "errno": 9
+      },
+      "ts": 13904108.648
+    },
+    "fdmode_rdonly_rdlock_ok": {
+      "status": "tested",
+      "detail": {
+        "op": "posix-rlock",
+        "rc": 0,
+        "errno": 0
+      },
+      "ts": 13904108.652
+    },
+    "fdmode_wronly_rdlock_ebadf": {
+      "status": "tested",
+      "detail": {
+        "op": "posix-rlock",
+        "rc": -1,
+        "errno": 9
+      },
+      "ts": 13904108.66
+    },
+    "fdmode_wronly_wrlock_ok": {
+      "status": "tested",
+      "detail": {
+        "op": "posix-wlock",
+        "rc": 0,
+        "errno": 0
+      },
+      "ts": 13904108.664
+    },
+    "chmod000_held_fd_wrlock_ok": {
+      "status": "tested",
+      "detail": {
+        "op": "posix-wlock",
+        "rc": 0,
+        "errno": 0
+      },
+      "ts": 13904110.927
+    },
+    "chmod000_unpriv_reopen_eacces": {
+      "status": "tested",
+      "detail": {
+        "op": "reopen",
+        "rc": -1,
+        "errno": 13
+      },
+      "ts": 13904110.932
+    },
+    "chmod000_unpriv_reopen_eacces_second_process": {
+      "status": "tested",
+      "detail": {
+        "op": "reopen",
+        "rc": -1,
+        "errno": 13
+      },
+      "ts": 13904110.936
+    },
+    "chmod000_held_lock_conflicts": {
+      "status": "tested",
+      "detail": {
+        "op": "posix-wlock",
+        "rc": -1,
+        "errno": 11
+      },
+      "ts": 13904110.94
+    },
+    "root_dac_override_reopen_mode000_informational": {
+      "status": "tested",
+      "detail": {
+        "op": "reopen",
+        "rc": 0,
+        "errno": 0,
+        "note": "expected root success; DAC tests must use uid"
+      },
+      "ts": 13904113.417
+    },
+    "getlk_same_pidns_exact_child_tgid": {
+      "status": "tested",
+      "detail": {
+        "reported": {
+          "op": "posix-getlk",
+          "rc": 0,
+          "type": 1,
+          "start": 100,
+          "len": 64,
+          "pid": 8
+        },
+        "child_pid": 8,
+        "querier": "same probe process (fork child)",
+        "identity": {
+          "mode": "docker",
+          "uid": null,
+          "container": "focus-v2-focus-5",
+          "pid": 1673105,
+          "pgid": 1673105,
+          "path": "/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share/getlk-samens.dat",
+          "cmd": [
+            "/usr/bin/python3",
+            "/root/harddind-rebuild/posix-focus-owner-v2/repo/scripts/harddind.py",
+            "/root/harddind-rebuild/posix-focus-owner-v2/run",
+            "focus-v2",
+            "docker",
+            "run",
+            "--rm",
+            "-i",
+            "--name",
+            "focus-v2-focus-5",
+            "--mount",
+            "type=bind,src=/root/harddind-rebuild/posix-focus-owner-v2/run/posix-focus-share,dst=/share",
+            "--cap-add",
+            "SYS_ADMIN",
+            "--security-opt",
+            "seccomp=unconfined",
+            "harddind-focus:local",
+            "/share-probe",
+            "/share/getlk-samens.dat"
+          ],
+          "returncode": 0,
+          "forced": false,
+          "cleanup": {
+            "process_group": 1673105,
+            "forced_cleanup": false,
+            "initial_live_pids": [],
+            "initial_zombie_pids": [],
+            "initial_processes": [],
+            "forced_processes": [],
+            "remaining_live_pids": [],
+            "remaining_zombie_pids": [],
+            "clean_shutdown": true
+          }
+        }
+      },
+      "ts": 13904114.886
+    },
+    "getlk_sibling_container_pid_zero": {
+      "status": "tested",
+      "detail": {
+        "reported": {
+          "op": "posix-getlk",
+          "rc": 0,
+          "type": 1,
+          "start": 200,
+          "len": 64,
+          "pid": 0
+        },
+        "holder_child_pid": 7,
+        "holder_container": "focus-v2-focus-6",
+        "querier_container": "focus-v2-focus-7",
+        "expect": "locks_translate_pid -> 0 invisible sibling"
+      },
+      "ts": 13904117.46
+    },
+    "getlk_nested_pidns_local_vs_ancestor": {
+      "status": "tested",
+      "detail": {
+        "op": "ns-nested-lockcheck",
+        "rc": 0,
+        "unshare_errno": 0,
+        "holder_ancestor_pid": 8,
+        "holder_local_pid": 1,
+        "getlk_local_pid": 1,
+        "getlk_errno": 0,
+        "querier_local_pid": 2
+      },
+      "ts": 13904119.488
+    }
+  },
+  "pending_guest": [],
+  "baseline_limitation": [
+    "nested pidns not_tested only for unshare EPERM/EACCES",
+    "internal guest container needs SYS_ADMIN + seccomp=unconfined (POSIX_FOCUS_ALLOW_NS=1); outer host permissions are unchanged",
+    "mixed host/guest blocking deadlock cycles undetectable from userspace"
+  ]
+}
