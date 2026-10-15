@@ -17,6 +17,16 @@ static struct sockaddr_in address(const char *host, int port) {
     struct sockaddr_in addr = {.sin_family = AF_INET, .sin_port = htons((uint16_t)port)};
     require(inet_pton(AF_INET, host, &addr.sin_addr) == 1, "IPv4 address"); return addr;
 }
+static int connect_client(struct sockaddr_in *addr, int rr) {
+    int fd = socket(AF_INET, SOCK_STREAM, 0); require(fd >= 0, "client socket"); socket_options(fd);
+    require(connect(fd, (void *)addr, sizeof(*addr)) == 0, "connect");
+    uint32_t header[2] = {MAGIC, (uint32_t)rr}; write_all(fd, header, sizeof(header)); return fd;
+}
+static void finish_client(int fd, uint64_t count) {
+    uint64_t remote;
+    require(shutdown(fd, SHUT_WR) == 0, "shutdown write"); read_all(fd, &remote, sizeof(remote));
+    require(remote == count && count > 0, "server transfer count"); require(close(fd) == 0, "client close");
+}
 static void serve(int fd) {
     socket_options(fd);
     uint32_t header[2]; read_all(fd, header, sizeof(header));
@@ -65,17 +75,23 @@ int main(int argc, char **argv) {
     require(argc == 6 && !strcmp(argv[1], "client"), "client arguments");
     int rr = !strcmp(argv[4], "rr"); require(rr || !strcmp(argv[4], "stream"), "client mode");
     double duration = atof(argv[5]); require(duration > 0, "duration");
-    socket_options(fd); require(connect(fd, (void *)&addr, sizeof(addr)) == 0, "connect");
-    uint32_t header[2] = {MAGIC, (uint32_t)rr}; write_all(fd, header, sizeof(header));
-    uint64_t count = 0, remote = 0; double start = now();
+    close(fd); fd = connect_client(&addr, rr);
+    uint64_t count = 0;
+    struct batch_timer timer = batch_timer();
     do {
-        if (rr) {
-            unsigned char reply[64]; write_all(fd, pattern, 64); read_all(fd, reply, 64);
-            require(memcmp(reply, pattern, 64) == 0, "rr reply"); count++;
-        } else { write_all(fd, pattern, sizeof(pattern)); count += sizeof(pattern); }
-    } while (now() - start < duration);
-    require(shutdown(fd, SHUT_WR) == 0, "shutdown write");
-    read_all(fd, &remote, sizeof(remote)); double elapsed = now() - start;
-    require(remote == count && count > 0, "server transfer count"); close(fd);
-    result(count / elapsed / (rr ? 1.0 : 1e6), count); return 0;
+        for (uint64_t iteration = 0; iteration < timer.size; iteration++) {
+            if (rr) {
+                unsigned char reply[64]; write_all(fd, pattern, 64); read_all(fd, reply, 64);
+                require(memcmp(reply, pattern, 64) == 0, "rr reply"); count++;
+            } else { write_all(fd, pattern, sizeof(pattern)); count += sizeof(pattern); }
+        }
+        int was_measuring = timer.measuring;
+        if (!batch_next(&timer, duration)) break;
+        if (!was_measuring && timer.measuring) {
+            finish_client(fd, count); fd = connect_client(&addr, rr); count = 0;
+            timer.start = timer.last = now();
+        }
+    } while (1);
+    finish_client(fd, count); timer.elapsed = now() - timer.start; timer.reads++;
+    batch_result(count / timer.elapsed / (rr ? 1.0 : 1e6), count, &timer); return 0;
 }

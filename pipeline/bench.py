@@ -38,7 +38,7 @@ def cpuset(value):
     return result
 
 
-def parse_sample(output):
+def parse_output(output):
     """Read the last JSON line, rejecting NaN, bools and nonpositive samples."""
     for line in reversed(output.splitlines()):
         try:
@@ -48,8 +48,67 @@ def parse_sample(output):
         value = obj.get('value') if isinstance(obj, dict) else None
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or value <= 0:
             raise ValueError(f'invalid benchmark sample: {line[:200]}')
-        return float(value)
+        return obj
     raise ValueError('workload did not print a JSON sample')
+
+
+def parse_sample(output):
+    return float(parse_output(output)['value'])
+
+
+def metric_budget(name, quick):
+    if name in ('app.compile', 'app.untar'):
+        return 240 if quick else 600
+    if name.startswith('disk.'):
+        return 180 if quick else 400
+    return 120 if quick else 400
+
+
+def ubd_flush_analysis(source):
+    """Recognize the zero-descriptor FLUSH dispatch bug, not arbitrary kernels."""
+    zero = bool(re.search(r'if\s*\(op == REQ_OP_FLUSH\)\s*segs = 0;', source))
+    dispatch = source.partition('void *io_thread(void *arg)')[2]
+    only_segments = bool(re.search(r'for \(i = 0; !req->error && i < req->desc_cnt; i\+\+\)\s*do_io\(', dispatch))
+    return {'sha256': hashlib.sha256(source.encode()).hexdigest(),
+            'zero_segment_flush': zero, 'segment_only_dispatch': only_segments,
+            'flush_skipped': zero and 'io_req->desc_cnt = segs;' in source and only_segments and
+                             'REQ_OP_FLUSH' not in dispatch}
+
+
+def successful_syncs(trace, path):
+    pending, count = set(), 0
+    for line in trace.splitlines():
+        pid = line.split()[0] if line.split() else ''
+        if path in line and re.search(r'\b(?:fsync|fdatasync)\(', line):
+            if re.search(r'= 0\s*$', line):
+                count += 1
+            elif '<unfinished ...>' in line:
+                pending.add(pid)
+        elif pid in pending and re.search(r'<\.\.\. (?:fsync|fdatasync) resumed>', line):
+            count += bool(re.search(r'= 0\s*$', line))
+            pending.remove(pid)
+    return count
+
+
+def guest_disk_processes(cow, group):
+    pids, descriptors = [], []
+    for path in pathlib.Path('/proc').iterdir():
+        if not path.name.isdigit():
+            continue
+        pid = int(path.name)
+        try:
+            if os.getpgid(pid) != group:
+                continue
+            pids.append(pid)
+            for fd in (path / 'fd').iterdir():
+                if os.readlink(fd) == str(cow):
+                    info = (path / 'fdinfo' / fd.name).read_text()
+                    flags = int(re.search(r'^flags:\s*(\d+)', info, re.M)[1], 8)
+                    descriptors.append({'pid': pid, 'fd': int(fd.name), 'flags': oct(flags),
+                                        'synchronous': bool(flags & os.O_DSYNC)})
+        except (ProcessLookupError, FileNotFoundError, PermissionError):
+            continue
+    return sorted(pids), descriptors
 
 
 def metric_info(name):
@@ -137,12 +196,20 @@ class Workloads:
         self.image = None
         self.serial = 0
         self.log_path = ctx.run_dir / 'bench.log'
-        self.deadline = time.monotonic() + (360 if ctx.quick else 1500)
+        self.deadline = None
+        self.disk_evidence = None
+
+    def begin_metric(self, name):
+        budget = metric_budget(name, self.ctx.quick)
+        self.deadline = time.monotonic() + budget
+        return budget
 
     def timeout(self, requested):
+        if self.deadline is None:
+            return requested
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
-            raise RuntimeError('benchmark wall-time budget exhausted')
+            raise RuntimeError('metric wall-time budget exhausted')
         return min(requested, remaining)
 
     def record(self, argv, stdout='', stderr='', returncode=0):
@@ -152,8 +219,6 @@ class Workloads:
 
     def prepare(self):
         artifact = bench_root(self.ctx.artifacts.get('alpine_tar'))
-        # A cold artifact build is not part of the measurement time budget.
-        self.deadline = time.monotonic() + (360 if self.ctx.quick else 1500)
         self.image = 'hd-bench:' + artifact.name
         if self.root.exists():
             raise RuntimeError(f'native root already exists: {self.root}')
@@ -185,6 +250,82 @@ class Workloads:
         return self.process(['chroot', self.root, *args], timeout=timeout,
                             preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
 
+    def durability(self):
+        """Unmeasured host trace of three checked guest fsyncs; cached per run."""
+        if self.disk_evidence is not None:
+            return self.disk_evidence
+        evidence = {'error': None}
+        self.disk_evidence = evidence
+        try:
+            cow = self.ctx.instance / 'root.cow'
+            evidence['filesystems'] = []
+            for path in (self.root / 'work', cow):
+                mount = subprocess.run(['findmnt', '-J', '-T', str(path), '-o', 'SOURCE,FSTYPE,TARGET,OPTIONS'],
+                                       capture_output=True, text=True, check=True)
+                evidence['filesystems'].append({'path': str(path), 'device': os.stat(path).st_dev,
+                                                'mount': json.loads(mount.stdout)})
+            evidence['same_filesystem'] = len({item['device'] for item in evidence['filesystems']}) == 1
+            source = config.WORK / ('linux-' + build.LOCK['linux']['version']) / 'arch/um/drivers/ubd_kern.c'
+            evidence['ubd_source'] = {'path': str(source), **ubd_flush_analysis(source.read_text())}
+            host_source = source.parents[1] / 'os-Linux/file.c'
+            text = host_source.read_text()
+            evidence['os_sync_file'] = text[text.index('int os_sync_file('):].split('\n}', 1)[0] + '\n}'
+            state = json.loads((self.ctx.instance / 'state.json').read_text())
+            pids, descriptors = guest_disk_processes(cow, state['guest_pid'])
+            evidence['traced_pids'] = pids; evidence['cow_descriptors'] = descriptors
+            native_trace = self.ctx.run_dir / 'fsync-native.strace'
+            trace_args = ['strace', '-f', '-tt', '-yy', '-e', 'trace=fsync,fdatasync,sync_file_range']
+            output = self.process([*trace_args, '-o', native_trace, 'chroot', self.root,
+                                   '/bench/workload', 'disk.fsync_probe', '1'], timeout=30,
+                                  preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
+            evidence['native_probe'] = parse_output(output)
+            evidence['native_syncs'] = successful_syncs(native_trace.read_text(), 'fsync-probe')
+            if not pids:
+                raise RuntimeError('no UML processes found for fsync trace')
+            guest_trace = self.ctx.run_dir / 'fsync-guest.strace'
+            tracer_log = self.ctx.run_dir / 'fsync-tracer.log'
+            # Attach existing UML processes (including its persistent I/O helper)
+            # without taking over UML's ptrace ownership of new guest tasks.
+            args = [arg for arg in trace_args if arg != '-f']
+            args += ['-o', str(guest_trace), *[a for pid in pids for a in ('-p', str(pid))]]
+            with tracer_log.open('w') as log:
+                tracer = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=log)
+                try:
+                    time.sleep(0.3)
+                    evidence['attached_pids'] = []
+                    for pid in pids:
+                        try:
+                            status = pathlib.Path(f'/proc/{pid}/status').read_text()
+                            if int(re.search(r'^TracerPid:\s*(\d+)', status, re.M)[1]) == tracer.pid:
+                                evidence['attached_pids'].append(pid)
+                        except FileNotFoundError:
+                            pass
+                    output = self.guest('/bench/workload', 'disk.fsync_probe', '1', timeout=30)
+                    evidence['guest_probe'] = parse_output(output)
+                finally:
+                    if tracer.poll() is None:
+                        tracer.send_signal(signal.SIGINT)
+                    try:
+                        tracer.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        tracer.kill(); tracer.wait()
+            evidence['guest_syncs'] = successful_syncs(guest_trace.read_text(), str(cow))
+            evidence['tracer_log'] = tracer_log.read_text()[-8000:]
+            evidence['trace_files'] = [native_trace.name, guest_trace.name, tracer_log.name]
+            synchronous = bool(descriptors) and all(fd['synchronous'] for fd in descriptors)
+            if not evidence['same_filesystem']:
+                evidence['error'] = 'native scratch and guest COW are on different host filesystems'
+            elif evidence['ubd_source']['flush_skipped'] and descriptors and not synchronous:
+                evidence['error'] = ('guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; '
+                                     f"{evidence['guest_syncs']} host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC")
+            elif evidence['native_syncs'] < 3 or (evidence['guest_syncs'] < 3 and not synchronous):
+                evidence['error'] = ('guest fsync durability unverified: '
+                                     f"native={evidence['native_syncs']}, guest COW={evidence['guest_syncs']} host syncs")
+        except Exception as error:
+            evidence['error'] = f'guest fsync durability unverified: {type(error).__name__}: {error}'
+        self.ctx.log('bench durability: ' + (evidence['error'] or 'host flushes verified'))
+        return evidence
+
     def docker(self, *args, timeout=120, combined=False):
         completed = self.ctx.docker(*args, timeout=self.timeout(timeout))
         self.record(['docker', *args], completed.stdout, completed.stderr, completed.returncode)
@@ -192,11 +333,13 @@ class Workloads:
             raise RuntimeError(f'docker {args[:3]} exited {completed.returncode}: {completed.stderr[-800:]}')
         return (completed.stdout + ('\n' + completed.stderr if combined else '')).strip()
 
-    def cleanup(self, *args):
+    def cleanup(self, *args, missing_ok=False):
         """Cleanup remains possible after the measurement deadline expires."""
         completed = self.ctx.docker(*args, timeout=20)
         self.record(['docker', *args], completed.stdout, completed.stderr, completed.returncode)
         if completed.returncode:
+            if missing_ok and re.search(r'No such (?:image|container|network|volume)\b', completed.stderr, re.I):
+                return
             raise RuntimeError(f'cleanup {args[:3]}: {completed.stderr[-400:]}')
 
     def unique(self, label):
@@ -217,7 +360,7 @@ class Workloads:
         finally:
             # Also reap a container created before a timed-out run command.
             try:
-                self.cleanup('rm', '-f', name)
+                self.cleanup('rm', '-f', name, missing_ok=failed)
             except Exception as error:
                 if not failed:
                     raise
@@ -292,7 +435,14 @@ class Workloads:
         except Exception:
             # CLI timeout does not cancel the daemon's running container.
             try:
-                self.cleanup('rm', '-f', name)
+                output = self.ctx.docker('logs', name, timeout=10)
+                self.record(['docker', 'logs', name], output.stdout, output.stderr, output.returncode)
+                if 'app.compile' in command:
+                    self.ctx.docker('cp', f'{name}:/work/compile.log', self.ctx.run_dir / f'{name}-compile.log', timeout=10)
+            except Exception as diagnostics:
+                self.ctx.log(f'bench diagnostics {name}: {diagnostics}')
+            try:
+                self.cleanup('rm', '-f', name, missing_ok=True)
             except Exception as cleanup:
                 self.ctx.log(f'bench cleanup {name}: {cleanup}')
             raise
@@ -331,7 +481,7 @@ class Workloads:
                     self.docker('stop', '-t', '0', container)
                     self.docker('rm', container)
                 except Exception:
-                    self.cleanup('rm', '-f', container)
+                    self.cleanup('rm', '-f', container, missing_ok=True)
                     raise
             yield lifecycle
         else:
@@ -339,15 +489,26 @@ class Workloads:
             (path / 'Dockerfile').write_text(f'FROM {self.image}\nCOPY marker /marker\nRUN test "$(cat /marker)" = hd-bench\n')
             (path / 'marker').write_text('hd-bench\n')
             image = self.unique('build') + ':test'
+            created, failed = False, False
             def cached_build():
                 output = self.docker('build', '--progress=plain', '--network=default', '-t', image, path,
                                      timeout=90, combined=True)
                 check_build_cache(output)
             try:
                 self.docker('build', '--network=default', '-t', image, path, timeout=180)
+                self.docker('image', 'inspect', image)
+                created = True
                 yield cached_build
+            except Exception:
+                failed = True
+                raise
             finally:
-                self.cleanup('image', 'rm', image)
+                try:
+                    self.cleanup('image', 'rm', image, missing_ok=not created)
+                except Exception as error:
+                    if not failed:
+                        raise
+                    self.ctx.log(f'bench cleanup {image}: {error}')
 
     def close(self):
         if self.root.exists():
@@ -365,20 +526,37 @@ def published_port(output):
 def measure_pair(ctx, runner, name, metric, host_load, pairs):
     with runner.samples(name) as (native, guest):
         control = name.startswith('docker.')
-        def sample(fn):
-            if control:
-                start = time.monotonic(); fn(); value = time.monotonic() - start
-                if value <= 0:
-                    raise ValueError('nonpositive control-plane duration')
+        details = metric.setdefault('detail', {}).setdefault('samples', [])
+        def sample(fn, side, pair=None):
+            entry = {'side': side, 'phase': 'warmup' if pair is None else 'sample', 'pair': pair,
+                     'unix_time': time.time(), 'host_load': list(os.getloadavg())}
+            start = time.monotonic()
+            try:
+                output = fn()
+                if control:
+                    value = time.monotonic() - start
+                    if value <= 0:
+                        raise ValueError('nonpositive control-plane duration')
+                else:
+                    entry['workload'] = parse_output(output)
+                    value = float(entry['workload']['value'])
+                entry['value'] = value
                 return value
-            return parse_sample(fn())
+            except Exception as error:
+                entry['error'] = f'{type(error).__name__}: {error}'
+                raise
+            finally:
+                entry['wall_seconds'] = time.monotonic() - start
+                entry['finished'] = time.time()
+                entry['host_load_end'] = list(os.getloadavg())
+                details.append(entry)
         if native:
-            sample(native)
-        sample(guest)
-        for _ in range(pairs):
+            sample(native, 'native')
+        sample(guest, 'guest')
+        for pair in range(pairs):
             if native:
-                metric['native'].append(sample(native))
-            metric['guest'].append(sample(guest))
+                metric['native'].append(sample(native, 'native', pair))
+            metric['guest'].append(sample(guest, 'guest', pair))
             host_load.append([time.time(), os.getloadavg()[0]])
 
 
@@ -413,11 +591,16 @@ def run(ctx):
     try:
         for name, metric in result['metrics'].items():
             metric['detail'] = dict(detail)
+            metric['detail']['budget_seconds'] = runner.begin_metric(name)
             if name == 'disk.seq_read':
                 metric['detail']['read_policy'] = 'write+fsync then warm page-cache read with byte comparison; no cache drop'
             ctx.log(f'bench {name}: warmup + {pairs} pairs')
             try:
+                if name in ('disk.seq_write', 'disk.volume_write', 'app.untar'):
+                    metric['detail']['durability'] = runner.durability()
                 measure_pair(ctx, runner, name, metric, result['host_load'], pairs)
+                if metric['detail'].get('durability', {}).get('error'):
+                    metric['error'] = metric['detail']['durability']['error']
             except Exception as error:
                 metric['error'] = f'{type(error).__name__}: {error}'
                 ctx.log(f'bench {name}: {metric["error"]}')

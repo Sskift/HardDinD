@@ -62,6 +62,12 @@ class FakeRunner:
             raise RuntimeError('cannot import')
         return {'root_key': 'abc'}
 
+    def begin_metric(self, name):
+        return bench.metric_budget(name, self.ctx.quick)
+
+    def durability(self):
+        return {'error': 'guest fsync not durable: test evidence'}
+
     @contextlib.contextmanager
     def samples(self, name):
         def sample(side):
@@ -91,6 +97,14 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(data['host_load']), 2)
         self.assertEqual(data['pairs'], 2)
         self.assertTrue(ctx.runner.closed)
+        samples = data['metrics']['cpu.single']['detail']['samples']
+        self.assertEqual(len(samples), 6)
+        self.assertEqual([s['phase'] for s in samples], ['warmup'] * 2 + ['sample'] * 4)
+        for sample in samples:
+            self.assertEqual(sample['value'], 12)
+            self.assertEqual(len(sample['host_load']), 3)
+            self.assertEqual(len(sample['host_load_end']), 3)
+            self.assertEqual(sample['workload'], {'value': 12, 'verified': 1})
 
     @mock.patch.object(bench, 'Workloads', FakeRunner)
     def test_normal_pairs(self):
@@ -171,7 +185,9 @@ class RunnerTests(unittest.TestCase):
                 yield native, guest
         with self.assertRaisesRegex(RuntimeError, 'lost guest'):
             bench.measure_pair(ctx, PartialRunner(), 'cpu.single', metric, [], 2)
-        self.assertEqual(metric, {'native': [3, 3], 'guest': [2]})
+        self.assertEqual(metric['native'], [3, 3])
+        self.assertEqual(metric['guest'], [2])
+        self.assertIn('lost guest', metric['detail']['samples'][-1]['error'])
 
     def test_failed_guest_command_is_reaped(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -206,6 +222,64 @@ class RunnerTests(unittest.TestCase):
                 runner.docker('run')
             runner.cleanup('rm', '-f', 'sample')
             ctx.docker.assert_called_once_with('rm', '-f', 'sample', timeout=20)
+
+    def test_metric_budget_resets_after_exhaustion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = types.SimpleNamespace(run_id='test', run_dir=pathlib.Path(tmp), bench_cpus='8-11', quick=True)
+            runner = bench.Workloads(ctx); runner.deadline = 0
+            runner.begin_metric('cpu.single')
+            self.assertGreater(runner.timeout(1000), 119)
+            runner.deadline = 0
+            runner.begin_metric('app.compile')
+            self.assertGreater(runner.timeout(1000), 239)
+
+    def test_cleanup_missing_allowed_only_for_uncreated_resource(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = types.SimpleNamespace(run_id='test', run_dir=pathlib.Path(tmp), bench_cpus='8-11', quick=True,
+                                        docker=mock.Mock(return_value=subprocess.CompletedProcess([], 1, '', 'No such image: tag')))
+            runner = bench.Workloads(ctx)
+            runner.cleanup('image', 'rm', 'tag', missing_ok=True)
+            with self.assertRaisesRegex(RuntimeError, 'No such image'):
+                runner.cleanup('image', 'rm', 'tag')
+            ctx.docker.return_value.stderr = 'permission denied'
+            with self.assertRaisesRegex(RuntimeError, 'permission denied'):
+                runner.cleanup('image', 'rm', 'tag', missing_ok=True)
+
+    def test_failed_build_keeps_original_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = types.SimpleNamespace(run_id='test', run_dir=pathlib.Path(tmp), bench_cpus='8-11', quick=True,
+                                        log=lambda _: None)
+            runner = bench.Workloads(ctx); runner.image = 'hd-bench:test'
+            runner.docker = mock.Mock(side_effect=RuntimeError('build timed out'))
+            runner.cleanup = mock.Mock()
+            with self.assertRaisesRegex(RuntimeError, 'build timed out'):
+                with runner.control_samples('docker.build_cached'):
+                    self.fail('failed build yielded a sample')
+            self.assertTrue(runner.cleanup.call_args.kwargs['missing_ok'])
+
+    @mock.patch.object(bench, 'Workloads', FakeRunner)
+    def test_nondurable_disk_still_produces_samples_and_fails(self):
+        metric = bench.run(self.ctx(['disk.seq_write']))['metrics']['disk.seq_write']
+        self.assertEqual(metric['native'], [12, 12])
+        self.assertEqual(metric['guest'], [12, 12])
+        self.assertIn('guest fsync not durable', metric['error'])
+
+    def test_ubd_flush_dispatch_analysis(self):
+        source = ('if (op == REQ_OP_FLUSH)\n segs = 0;\nio_req->desc_cnt = segs;\n'
+                  'void *io_thread(void *arg) {\n'
+                  'for (i = 0; !req->error && i < req->desc_cnt; i++)\n do_io(req, desc);\n}')
+        self.assertTrue(bench.ubd_flush_analysis(source)['flush_skipped'])
+        fixed = source.replace('for (i', 'if (req_op(req->req) == REQ_OP_FLUSH) do_io(req, NULL);\nfor (i')
+        self.assertFalse(bench.ubd_flush_analysis(fixed)['flush_skipped'])
+
+    def test_host_sync_counter_requires_success_and_cow_path(self):
+        trace = ('123 10:00:00 fsync(5</x/root.cow>) = 0\n'
+                 '123 10:00:01 fdatasync(5</x/root.cow> <unfinished ...>\n'
+                 '123 10:00:02 <... fdatasync resumed>) = 0\n'
+                 '123 10:00:03 fsync(5</x/root.cow>) = -1 EIO\n'
+                 '123 10:00:04 fsync(6</other>) = 0\n'
+                 '123 10:00:05 sync_file_range(5</x/root.cow>, 0, 0, 0) = 0\n')
+        self.assertEqual(bench.successful_syncs(trace, '/x/root.cow'), 2)
 
     def test_network_topologies_use_required_endpoints(self):
         with tempfile.TemporaryDirectory() as tmp:
