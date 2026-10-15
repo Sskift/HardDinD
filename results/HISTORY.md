@@ -2,6 +2,7 @@
 
 | run | revision | functional | key | important | other |
 |---|---|---|---|---|---|
+| 20261015-172709-fc0d109c-ci-vnet-default | fc0d109c | 132/136 | 5/10 | 3/13 | 2/7 |
 | 20261015-145300-a63ab345-ci-faultaround | a63ab345 | 132/135 | 5/10 | 3/13 | 2/7 |
 | 20261015-143352-754812b6-ci-vdso-virtiofs | 754812b6 | 132/135 | 4/10 | 4/13 | 3/7 |
 | 20261015-131801-ddd53ed9-ci-fsync-fixed | ddd53ed9 | 126/130 | 5/10 | 5/13 | 2/7 |
