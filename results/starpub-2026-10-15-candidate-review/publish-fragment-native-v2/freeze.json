@@ -1,6 +1,0 @@
-{
-  "fixed_repo_source": "/root/harddind-rebuild/publish-fragment-native-owner-v1/repo",
-  "review_harness_source": "/root/harddind-rebuild/arkclaude/round14/ipv6-fragment-review/v2/tests",
-  "harness_sha256": "635be941183df4f0ed487f1d19bdd05f9de83cb6ecc7ff1e0eec709fe7aeed69",
-  "report_caveat": "Same harness source, separately linked binaries. Current uint32 production clock ABI only; no hypothetical 64-bit ABI claim. Fresh object directories, no cached objects. Negative control intentionally fails and skips six dependent checks."
-}

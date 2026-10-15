@@ -1,9 +1,0 @@
-{
-  "status": "rejected_preparation",
-  "runtime_started": false,
-  "reasons": [
-    "unified diff joined a missing-final-newline gpu.c with next file header; patch command exit zero but exact source reapply failed",
-    "frozen gpu.c mtime 21:52:16 newer than kernel buildc 21:50:28: source had warning cleanup edits for buildd before copy; cannot bind copied kernel to frozen source"
-  ],
-  "detected_at": "2026-10-14T21:55:52.558857+00:00"
-}

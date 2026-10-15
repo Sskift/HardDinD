@@ -1,6 +1,0 @@
-{
-  "prior_failed_run": "/root/harddind-rebuild/gpu-plain-perf-owner-v1",
-  "kernel_fix_run": "/root/harddind-rebuild/gpu-completion-owner-v1",
-  "runtime_from": "/root/harddind-rebuild/gpu-completion-owner-v1/repo",
-  "changes": "same seven repetitions per phase, completion ownership fix kernel and long socket path runtime; bounded lock waits"
-}

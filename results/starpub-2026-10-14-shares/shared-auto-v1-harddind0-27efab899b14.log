@@ -1,1 +1,0 @@
-[2026-10-14T09:13:24Z ERROR virtiofsd] Error creating vhost-user backend: The unshare(CLONE_FS) syscall failed with 'Operation not permitted (os error 1)'. If running in a container please check that the container runtime seccomp policy allows unshare.

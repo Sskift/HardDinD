@@ -1,2 +1,0 @@
-HARDDIND_NETWORK_READY libslirp=4.6.1
-HARDDIND_NETWORK_STATS {"rx_packets":144076,"tx_packets":275736,"rx_bytes":210009587,"tx_bytes":222242763,"dropped_packets":0,"queued_packets":0,"forwards":1,"batch_size":64,"rx_syscalls":24493,"tx_syscalls":10646,"poll_calls":11936}

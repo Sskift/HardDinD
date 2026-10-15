@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/root/harddind-rebuild/scripts/run-ipi-probes.py", line 29, in <module>
-    raise RuntimeError(f"IPI stress failed on CPUs {cpus}: {result.returncode}: {result.stderr}")
-RuntimeError: IPI stress failed on CPUs 0,1,2,3,4,5,6,7: 1: 

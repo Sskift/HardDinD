@@ -1,9 +1,0 @@
-{
-  "checks": {
-    "make_check": 0,
-    "help": 0,
-    "conflict": 2
-  },
-  "sha256": "84b5c4ee40ac8b7fd5dcd0bd308ff5b2c25f2daf036ed5d9ac001ab6e7583c9f",
-  "all_pass": true
-}

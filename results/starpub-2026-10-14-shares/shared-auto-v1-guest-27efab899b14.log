@@ -1,9 +1,0 @@
-Core dump limits :
-	soft - 0
-	hard - 0
-Checking environment variables for a tempdir.../root/harddind-rebuild/instances/shared-auto-v1/tmp
-Checking if /root/harddind-rebuild/instances/shared-auto-v1/tmp is on tmpfs...no
-Warning: tempdir /root/harddind-rebuild/instances/shared-auto-v1/tmp is not on tmpfs
-Checking PROT_EXEC mmap in /root/harddind-rebuild/instances/shared-auto-v1/tmp...OK
-Checking that seccomp filters can be installed...OK
-Adding 842354688 bytes to physical memory to account for exec-shield gap

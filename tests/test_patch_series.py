@@ -5,7 +5,7 @@ import tarfile
 import tempfile
 import unittest
 
-spec = importlib.util.spec_from_file_location("series", pathlib.Path(__file__).resolve().parents[1] / "scripts/apply-kernel-patches.py")
+spec = importlib.util.spec_from_file_location("series", pathlib.Path(__file__).resolve().parents[1] / "pipeline/patches.py")
 series = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(series)
 

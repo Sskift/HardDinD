@@ -1,3 +1,0 @@
-FP_RSS churn-before rss_kb=984 ncpu=32
-FP_RSS churn-after rss_kb=984 ncpu=32
-FP_PROBE_END failures=0 incomplete=0

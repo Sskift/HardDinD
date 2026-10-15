@@ -1,8 +1,0 @@
-{
-  "src/gpu_os_event_probe.c": "4d540b6d94a8a0760723be2405bd19fdc951b8c0920a2d42c96e1e82bc84e70a",
-  "scripts/gpu_os_event_checks.py": "4356b7ea8a94cdada34af28bef2b3d909b7fb45d3fcd338c9ffe632a9743be8c",
-  "tests/test_gpu_os_event_checks.py": "8620037ef617082eba2eb6651e961938274b30f485585b2c90f5a8533ad318f1",
-  "tests/run_os_event_host.sh": "9d0aeee271e7c777a1a4e221afa482550ac2e29bc55d8388b5084c6c02770fca",
-  "tests/fixtures/os-event-v1-native-0.jsonl": "510cb2761d7d50d39c9be240fdc7728b05988f569296cfd7f0f4b05762869eb9",
-  "REPORT-EVENT-v2.md": "7891af6effe9d43ce576d845803ae6b786637b83f83333617287f630d4a00ad8"
-}

@@ -3,33 +3,13 @@
 # HardDinD-patched libslirp 4.6.1 (built by build-libslirp.sh), with glib kept
 # dynamic from the host runtime package.
 #
-# This script is the single owner of the global build lock for the whole
-# pipeline; build-libslirp.sh reuses the inherited, inode-verified FD instead
-# of re-opening the lock (nested flock on a fresh open file description
-# self-deadlocks). Do not wrap this script in another flock.
+# Locking is owned by the pipeline (./hd build); this script takes none.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=${1:?real work directory required}
 variant=${2:-}
-LOCK=${HARDDIND_KERNEL_BUILD_LOCK:-/root/harddind-rebuild/kernel-build.lock}
 
-if [ -n "${HARDDIND_BUILD_LOCK_FD:-}" ]; then
-    fd=$HARDDIND_BUILD_LOCK_FD
-    target=$(stat -L -c '%d:%i' "$LOCK")
-    actual=$(stat -L -c '%d:%i' "/proc/$$/fd/$fd")
-    if [ "$target" != "$actual" ]; then
-        echo "inherited build lock FD $fd is $actual, expected $LOCK ($target)" >&2
-        exit 78
-    fi
-else
-    exec 9>"$LOCK"
-    # Bounded wait: fail closed instead of hanging behind a stale holder.
-    flock -w "${HARDDIND_LOCK_WAIT:-600}" -x 9
-    export HARDDIND_BUILD_LOCK_FD=9
-fi
-
-# Subordinate build inherits the held FD and must not re-lock.
 bash "$repo/scripts/build-libslirp.sh" "$work" "$variant"
 
 libdir="$work/libslirp-harddind"

@@ -4,8 +4,6 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(realpath "${1:?work directory required}")
 jobs=${JOBS:-4}
 [[ "$jobs" =~ ^[1-9][0-9]*$ ]] || { echo 'JOBS must be a positive integer' >&2; exit 1; }
-exec 9>"$work/kernel-build.lock"
-flock -x 9
 python3 "$repo/scripts/fetch-moby.py" "$work" > "$work/moby-inputs.json"
 patch_sha=$(cat "$repo"/moby/patches/[0-9]*.patch | sha256sum | cut -d' ' -f1)
 src="$work/moby-port-$patch_sha"

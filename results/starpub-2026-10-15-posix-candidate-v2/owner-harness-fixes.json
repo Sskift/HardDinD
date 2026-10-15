@@ -1,8 +1,0 @@
-{
-  "agent_sha256": "41a4b93725b1f3753000330a2a5a6e684fa8b38061a16b1d3354adfd19bc2835",
-  "owner_sha256": "3748395d821f360999e9746edf003184e24107a72984ff862a72703f89902a21",
-  "fixes": [
-    "Add existing posix_large_offsets branch to the actual case list; it was unreachable in agent runner",
-    "Write functional_complete before saving JSON, so final report contains its value"
-  ]
-}

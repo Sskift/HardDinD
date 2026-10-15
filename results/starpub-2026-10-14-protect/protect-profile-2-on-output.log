@@ -1,1 +1,0 @@
-{"mode": "guest", "passed": true, "exit_code": 0, "wall_seconds": 2.531250227242708, "host_cpu_seconds": 4.114095, "cleanup": {"process_group": 3003711, "forced_cleanup": false, "initial_live_pids": [], "initial_zombie_pids": [], "initial_processes": [], "forced_processes": [], "remaining_live_pids": [], "remaining_zombie_pids": [], "clean_shutdown": true}}

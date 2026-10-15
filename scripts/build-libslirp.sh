@@ -8,35 +8,12 @@
 # freed in ip6_input(), and oversized guest-bound IPv6 packets were emitted
 # without fragmentation.
 #
-# Global build lock contract (single owner, reentrant):
-#   - the canonical lock is /root/harddind-rebuild/kernel-build.lock
-#     (override with HARDDIND_KERNEL_BUILD_LOCK), shared with kernel/Moby and
-#     owner GPU builds
-#   - this script NEVER re-opens an already-held lock. If HARDDIND_BUILD_LOCK_FD
-#     is set it must reference the exact same inode, and the inherited FD is
-#     reused; otherwise the lock is acquired here for standalone invocations
-#   - compilers run sequentially (one gcc at a time, <= 4 jobs)
+# Locking is owned by the pipeline (./hd build); this script takes none.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=${1:?usage: build-libslirp.sh <work-directory> [asan]}
 variant=${2:-}
-LOCK=${HARDDIND_KERNEL_BUILD_LOCK:-/root/harddind-rebuild/kernel-build.lock}
-
-if [ -n "${HARDDIND_BUILD_LOCK_FD:-}" ]; then
-    fd=$HARDDIND_BUILD_LOCK_FD
-    target=$(stat -L -c '%d:%i' "$LOCK")
-    actual=$(stat -L -c '%d:%i' "/proc/$$/fd/$fd")
-    if [ "$target" != "$actual" ]; then
-        echo "inherited build lock FD $fd is $actual, expected $LOCK ($target)" >&2
-        exit 78
-    fi
-else
-    exec 9>"$LOCK"
-    # Bounded wait: fail closed instead of hanging behind a stale holder.
-    flock -w "${HARDDIND_LOCK_WAIT:-600}" -x 9
-    export HARDDIND_BUILD_LOCK_FD=9
-fi
 
 python3 - "$repo" "$work" "$variant" <<'PY'
 import json, os, pathlib, shutil, subprocess, sys, urllib.request, hashlib

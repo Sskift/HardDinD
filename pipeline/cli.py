@@ -1,0 +1,323 @@
+"""./hd — the only entry point for building, running, testing and measuring.
+
+Local commands (developer machine) talk to Starpub over one multiplexed ssh
+connection; everything else runs on the Linux host that holds the build store.
+"""
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+import traceback
+
+from pipeline import config
+
+REPO = config.REPO
+RSYNC_EXCLUDES = ['.git/', '.work/', '__pycache__/', '*.pyc', '/results/runs/']
+
+
+# ---------------------------------------------------------------- local side
+
+def ssh(script, check=True, capture=False):
+    """Run one shell script remotely in a single ssh invocation."""
+    result = subprocess.run(['ssh', config.REMOTE, 'bash -s'], input=script, text=True,
+                            capture_output=capture)
+    if check and result.returncode:
+        raise SystemExit(f'remote command failed ({result.returncode})' + (f': {result.stderr[-500:]}' if capture else ''))
+    return result
+
+
+def git(*args):
+    return subprocess.run(['git', '-C', REPO, *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def cmd_sync(_a=None):
+    status = git('status', '--porcelain', '--untracked-files=no')
+    diff = git('diff', 'HEAD')
+    rev = {'git': git('rev-parse', 'HEAD'), 'dirty': bool(status), 'subject': git('log', '-1', '--format=%s'),
+           'diff_sha256': hashlib.sha256(diff.encode()).hexdigest() if diff else None,
+           'synced_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+    (REPO / '.hd-revision.json').write_text(json.dumps(rev, indent=2) + '\n')
+    cmd = ['rsync', '-az', '--delete', *[f'--exclude={e}' for e in RSYNC_EXCLUDES], f'{REPO}/',
+           f'{config.REMOTE}:{config.REMOTE_ROOT}/src/']
+    subprocess.run(['ssh', config.REMOTE, f'mkdir -p {config.REMOTE_ROOT}/src'], check=True)
+    subprocess.run(cmd, check=True)
+    print(f"synced {rev['git'][:12]}{' (dirty)' if rev['dirty'] else ''} -> {config.REMOTE}:{config.REMOTE_ROOT}/src")
+
+
+def cmd_remote(a):
+    cmd_sync()
+    args = ' '.join(shlex.quote(x) for x in a.args)
+    sys.exit(ssh(f'cd {config.REMOTE_ROOT}/src && ./hd {args}', check=False).returncode)
+
+
+def cmd_job(a):
+    """Run `./hd ARGS` on Starpub inside tmux; returns immediately."""
+    if not a.name.replace('-', '').replace('_', '').isalnum():
+        raise SystemExit('job name must be alphanumeric with - or _')
+    cmd_sync()
+    args = ' '.join(shlex.quote(x) for x in a.args)
+    root, name = config.REMOTE_ROOT, a.name
+    inner = f'cd {root}/src && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
+    ssh(f'''set -e
+mkdir -p {root}/logs
+if tmux has-session -t hd-{name} 2>/dev/null; then echo "job {name} is still running" >&2; exit 3; fi
+[ ! -e {root}/logs/{name}.log ] || mv {root}/logs/{name}.log {root}/logs/{name}.log.1
+tmux new-session -d -s hd-{name} {shlex.quote(inner)}
+echo "started job {name}: ./hd {args}"
+''')
+
+
+def cmd_jobs(_a):
+    root = config.REMOTE_ROOT
+    ssh(f'''cd {root}/logs 2>/dev/null || exit 0
+running=$(tmux ls -F '#{{session_name}}' 2>/dev/null | sed -n 's/^hd-//p')
+for f in $(ls -t *.log 2>/dev/null | head -12); do
+  n=${{f%.log}}; s=done; echo " $running " | grep -q " $n " && s=running
+  printf '%-24s %-8s %s\\n' "$n" "$s" "$(tail -n 1 "$f" | cut -c1-110)"
+done
+''')
+
+
+def cmd_log(a):
+    ssh(f'tail -n {int(a.lines)} {config.REMOTE_ROOT}/logs/{a.name}.log')
+
+
+def cmd_wait(a):
+    """Block until a job ends, then show its tail. One ssh session, polled remotely."""
+    root, name = config.REMOTE_ROOT, a.name
+    ssh(f'while tmux has-session -t hd-{name} 2>/dev/null; do sleep 15; done; tail -n {int(a.lines)} {root}/logs/{name}.log')
+
+
+def cmd_fetch(_a):
+    dest = REPO / 'results/runs'
+    dest.mkdir(parents=True, exist_ok=True)
+    subprocess.run(['rsync', '-a', '--prune-empty-dirs', '--include=*/', '--include=summary.json',
+                    '--include=scorecard.md', '--exclude=*', f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
+                   check=True)
+    runs = sorted(p.parent.name for p in dest.glob('*/summary.json'))
+    print(f'{len(runs)} run summaries in results/runs; latest: {runs[-1] if runs else "-"}')
+
+
+def cmd_check(_a):
+    """Fast local checks; no Linux host needed."""
+    steps = [[sys.executable, '-m', 'unittest', 'discover', '-q', '-s', str(REPO / 'tests')],
+             [sys.executable, '-m', 'compileall', '-q', str(REPO / 'pipeline'), str(REPO / 'scripts')]]
+    steps += [['bash', '-n', str(p)] for p in sorted((REPO / 'scripts').glob('*.sh'))]
+    steps += [['sh', '-n', str(p)] for p in sorted((REPO / 'guest').iterdir())]
+    for step in steps:
+        if subprocess.run(step, cwd=REPO).returncode:
+            raise SystemExit('check failed: ' + ' '.join(step[-2:]))
+    print('check: ok')
+
+
+# --------------------------------------------------------------- remote side
+
+def require_linux():
+    if sys.platform != 'linux':
+        raise SystemExit('this command runs on the Linux build host; use ./hd remote ... or ./hd job NAME -- ...')
+
+
+def cmd_build(a):
+    require_linux()
+    from pipeline import build
+    artifacts = build.everything(a.with_, shares=a.shares)
+    print(json.dumps(artifacts, indent=2, default=str))
+
+
+def cmd_up(a):
+    require_linux()
+    from pipeline import build, instance, runs
+    artifacts = build.everything(a.with_, shares=bool(a.share))
+    opts = runs.instance_options(artifacts, cpuset=a.cpuset, kernel_args=a.kernel_arg, shares=a.share,
+                                 cpus=a.cpus, memory=a.memory)
+    path = config.INSTANCES / a.name
+    if a.recreate and path.exists():
+        instance.stop(path); instance.remove(path)
+    state = instance.start(path, **opts)
+    print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
+
+
+def cmd_down(a):
+    require_linux()
+    from pipeline import instance
+    path = config.INSTANCES / a.name
+    state = instance.stop(path)
+    print(f"{a.name}: {state.get('phase')}{' ' + state['error'] if state.get('error') else ''}")
+    if a.rm:
+        instance.remove(path)
+
+
+def cmd_docker(a):
+    require_linux()
+    from pipeline import instance
+    argv, env = instance.docker_env(config.INSTANCES / a.name)
+    args = a.args[1:] if a.args[:1] == ['--'] else a.args
+    os.execve(argv[0], [*argv, *args], env)
+
+
+def cmd_ps(_a):
+    require_linux()
+    from pipeline import instance
+    for path in sorted(config.INSTANCES.glob('*')) if config.INSTANCES.exists() else []:
+        state = instance.read_state(path)
+        alive = instance.live(state)
+        print(f"{path.name:28s} {state.get('phase', '?'):9s} {'live' if alive else 'dead':5s} "
+              f"api={state.get('api_port', '-')} {state.get('error', '')}")
+
+
+def run_suite(kind, a):
+    """Shared driver for test/bench/ci: build, boot, run the suite(s), score."""
+    require_linux()
+    from pipeline import build, instance, runs, score
+    exclusive = kind in ('bench', 'ci')
+    with build.lock('measure', shared=not exclusive):
+        run_id, run_dir, rev = runs.new_run(kind, a.label)
+        print(f'run {run_id}', flush=True)
+        summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
+                   'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
+                   'host': runs.host_info(), 'only': a.only}
+        try:
+            artifacts = build.everything(a.with_, shares=kind in ('test', 'ci'))
+            summary['artifacts'] = artifacts['ids']
+            if kind in ('test', 'ci'):
+                summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
+            if kind in ('bench', 'ci'):
+                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
+        except Exception as error:
+            summary['error'] = f'{type(error).__name__}: {error}'
+            traceback.print_exc()
+        summary['finished'] = time.time()
+        summary['host_end'] = runs.host_info()
+        runs.write_json(run_dir / 'summary.json', summary)
+        card = score.scorecard(summary)
+        previous = latest_card(kind, exclude=run_id)
+        text = score.markdown(card, previous)
+        if summary.get('error'):
+            text += f"\n**Run error**: {summary['error']}\n"
+        (run_dir / 'scorecard.md').write_text(text)
+        print(text)
+    return 2 if summary.get('error') else 0
+
+
+def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
+    from pipeline import instance, runs
+    name = suite[0] + hashlib.sha256(run_id.encode()).hexdigest()[:10]
+    path = config.INSTANCES / name
+    shares = []
+    if suite == 'test':
+        share = run_dir / 'share'
+        share.mkdir()
+        shares = [share]
+    opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares)
+    ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
+                       instance_options=opts, bench_cpus=config.BENCH_CPUS, quick=getattr(a, 'quick', False),
+                       only=a.only)
+    try:
+        started = time.monotonic()
+        instance.start(path, **opts)
+        ctx.log(f'{suite}: guest {name} ready in {time.monotonic() - started:.1f}s')
+        if suite == 'test':
+            from pipeline import functional
+            return functional.run(ctx)
+        from pipeline import bench
+        return bench.run(ctx)
+    finally:
+        state = instance.stop(path)
+        keep = run_dir / f'instance-{suite}'
+        keep.mkdir(exist_ok=True)
+        for log in path.glob('*.log'):
+            shutil.copy2(log, keep / log.name)
+        (keep / 'state.json').write_text(json.dumps(state, indent=2) + '\n')
+        if not getattr(a, 'keep', False):
+            instance.remove(path)
+        ctx.log(f'{suite}: guest {name} {state.get("phase")}')
+
+
+def latest_card(kind, exclude):
+    from pipeline import score
+    candidates = sorted(p for p in config.RUNS.glob(f'*-{kind}*/summary.json') if p.parent.name != exclude)
+    for path in reversed(candidates):
+        try:
+            return score.scorecard(score.load(path))
+        except (OSError, ValueError, KeyError):
+            continue
+    return None
+
+
+def find_summary(ref):
+    for path in (pathlib.Path(ref), pathlib.Path(ref) / 'summary.json', config.RUNS / ref / 'summary.json',
+                 REPO / 'results/runs' / ref / 'summary.json'):
+        if path.is_file():
+            return path
+    raise SystemExit(f'no summary for {ref}')
+
+
+def cmd_score(a):
+    from pipeline import score
+    card = score.scorecard(score.load(find_summary(a.run)))
+    previous = score.scorecard(score.load(find_summary(a.vs))) if a.vs else None
+    if a.json:
+        print(json.dumps(card, indent=2))
+    else:
+        print(score.markdown(card, previous))
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog='hd', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest='command', required=True)
+
+    def runopts(s, bench=False):
+        s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE',
+                       help='apply kernel/candidates/CANDIDATE.patch after the series (repeatable)')
+        s.add_argument('--kernel-arg', action='append', default=[], metavar='K=V', help='extra UML boot parameter')
+        s.add_argument('--only', metavar='REGEX', help='run only matching checks/metrics; the rest count as not tested')
+        s.add_argument('--label', help='short tag appended to the run id')
+        s.add_argument('--keep', action='store_true', help='keep the guest disk after the run')
+        if bench:
+            s.add_argument('--quick', action='store_true', help='fewer, shorter samples (smoke only, not for decisions)')
+
+    sub.add_parser('sync', help='[local] rsync this tree to Starpub').set_defaults(fn=cmd_sync)
+    s = sub.add_parser('remote', help='[local] sync, then run ./hd ARGS on Starpub in the foreground')
+    s.add_argument('args', nargs=argparse.REMAINDER); s.set_defaults(fn=cmd_remote)
+    s = sub.add_parser('job', help='[local] sync, then run ./hd ARGS on Starpub in tmux (detached)')
+    s.add_argument('name'); s.add_argument('args', nargs=argparse.REMAINDER); s.set_defaults(fn=cmd_job)
+    sub.add_parser('jobs', help='[local] list recent remote jobs').set_defaults(fn=cmd_jobs)
+    s = sub.add_parser('log', help='[local] tail a remote job log')
+    s.add_argument('name'); s.add_argument('-n', '--lines', default=40); s.set_defaults(fn=cmd_log)
+    s = sub.add_parser('wait', help='[local] wait for a remote job to finish')
+    s.add_argument('name'); s.add_argument('-n', '--lines', default=60); s.set_defaults(fn=cmd_wait)
+    sub.add_parser('fetch', help='[local] copy run summaries into results/runs').set_defaults(fn=cmd_fetch)
+    sub.add_parser('check', help='fast local unit and syntax checks').set_defaults(fn=cmd_check)
+
+    s = sub.add_parser('build', help='build (or reuse) every artifact')
+    s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE')
+    s.add_argument('--shares', action='store_true', help='also build virtiofsd'); s.set_defaults(fn=cmd_build)
+    s = sub.add_parser('up', help='boot a named guest for interactive work')
+    s.add_argument('name'); s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE')
+    s.add_argument('--kernel-arg', action='append', default=[]); s.add_argument('--share', action='append', default=[])
+    s.add_argument('--cpuset'); s.add_argument('--cpus', type=int); s.add_argument('--memory')
+    s.add_argument('--recreate', action='store_true', help='discard an existing instance of this name')
+    s.set_defaults(fn=cmd_up)
+    s = sub.add_parser('down', help='stop a named guest')
+    s.add_argument('name'); s.add_argument('--rm', action='store_true', help='also delete its disk'); s.set_defaults(fn=cmd_down)
+    s = sub.add_parser('docker', help='run the Docker CLI against a named guest')
+    s.add_argument('name'); s.add_argument('args', nargs=argparse.REMAINDER); s.set_defaults(fn=cmd_docker)
+    sub.add_parser('ps', help='list guests').set_defaults(fn=cmd_ps)
+    for kind, text in (('test', 'functional Docker suite on a fresh guest'),
+                       ('bench', 'performance matrix, native vs guest, exclusive'),
+                       ('ci', 'test then bench in one run')):
+        s = sub.add_parser(kind, help=text); runopts(s, bench=kind != 'test')
+        s.set_defaults(fn=lambda a, kind=kind: sys.exit(run_suite(kind, a)))
+    s = sub.add_parser('score', help='print a scorecard for a run')
+    s.add_argument('run'); s.add_argument('--vs', help='compare with another run'); s.add_argument('--json', action='store_true')
+    s.set_defaults(fn=cmd_score)
+    a = p.parse_args(argv)
+    if getattr(a, 'args', None) and a.args[:1] == ['--'] and a.command in ('remote', 'job'):
+        a.args = a.args[1:]
+    return a.fn(a)

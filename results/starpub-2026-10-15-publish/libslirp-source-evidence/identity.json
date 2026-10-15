@@ -1,8 +1,0 @@
-{
-  "upstream_archive_sha256": "3ee27347764c629e10228f7002dd22104e9cc21623d565dc0e7e57ed1b63a70e",
-  "debian_archive_sha256": "c7b4c8cd67cc99e1b4d13cc49be395372ee3f2fdecd268639446ea87742043a8",
-  "package_version": "libslirp0 4.6.1-1ubuntu0.2\n",
-  "scope": "Read from fixed source archives and installed package after the diagnostic; no library source rebuild or before-run library hash claim.",
-  "installed_library_path": "/usr/lib/x86_64-linux-gnu/libslirp.so.0.3.1",
-  "installed_library_sha256": "7c6181972a895bcbd36607bfb5e7e25b6f0f94cb464c09feba5aed99b01d6138"
-}

@@ -2,8 +2,6 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(realpath "${1:?work directory required}")
-exec 9>"$work/kernel-build.lock"
-flock -x 9
 python3 "$repo/scripts/fetch-moby.py" "$work" > "$work/moby-inputs.json"
 export PATH="$work/go-build-toolchain/bin:$PATH"
 export GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local GO111MODULE=off GOFLAGS=''

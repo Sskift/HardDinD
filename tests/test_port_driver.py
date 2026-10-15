@@ -5,7 +5,7 @@ import pathlib
 import socket
 import unittest
 
-spec = importlib.util.spec_from_file_location('port_driver', pathlib.Path(__file__).resolve().parents[1] / 'scripts/port_driver.py')
+spec = importlib.util.spec_from_file_location('port_driver', pathlib.Path(__file__).resolve().parents[1] / 'pipeline/port_driver.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 

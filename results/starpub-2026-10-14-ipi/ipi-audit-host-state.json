@@ -1,7 +1,0 @@
-{
-  "time_unix": 1791954525.1946127,
-  "loadavg": "59.54 63.47 52.77 36/53713 2605968\n",
-  "cpu_stat": "usage_usec 14244107951111\nuser_usec 13802246998692\nsystem_usec 441860952418\nnr_periods 20390973\nnr_throttled 147823\nthrottled_usec 156757391668\n",
-  "cpu_pressure": "some avg10=0.07 avg60=0.97 avg300=4.71 total=14018496052\nfull avg10=0.00 avg60=0.43 avg300=2.14 total=3940678758\n",
-  "note": "snapshot during or shortly after cleanup audit, not an exclusive host baseline"
-}

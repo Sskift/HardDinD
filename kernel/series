@@ -1,0 +1,28 @@
+# Default UML kernel patch series, applied in this order with fuzz 0.
+# Features that are not yet trusted stay behind boot parameters (default off).
+0001-um-bounded-seccomp-polling.patch
+0011-fuse-virtio-interrupts.patch
+0014-um-check-usercopy-read-permission.patch
+0015-um-opt-in-memfd-backing.patch
+0003-um-shared-vm-runners.patch
+0004-um-parallel-waiter-handoff.patch
+0005-um-cache-clean-mapping-brokers.patch
+0006-um-skip-idle-mapping-sync.patch
+0007-um-retain-broker-memory-fd.patch
+0008-um-defer-ipi-masking.patch
+0009-um-synchronize-deferred-ipi-idle.patch
+0012-um-gpu-control-transport.patch
+0013-um-gpu-register-fd.patch
+0016-um-gpu-rm-client.patch
+0019-um-gpu-root-control.patch
+0020-um-gpu-control-pointer-errors.patch
+0021-um-gpu-device-numbers.patch
+0022-um-gpu-build-version.patch
+0023-um-gpu-client-policy.patch
+0017-um-gpu-async-wait.patch
+0025-um-gpu-policy-driver-validation.patch
+0026-um-gpu-fixed-alloc.patch
+0027-um-gpu-system-features.patch
+0024-um-gpu-mapping-lifecycle.patch
+0028-um-gpu-completion-ownership.patch
+0029-um-opt-in-rseq.patch

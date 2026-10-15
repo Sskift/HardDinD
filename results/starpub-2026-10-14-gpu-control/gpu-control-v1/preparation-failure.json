@@ -1,7 +1,0 @@
-{
-  "reason": "shutil.copytree attempted to copy a character device as an unbounded regular file",
-  "path": "/root/harddind-rebuild/results/gpu-control-v1/root/dev/zero",
-  "size": 26157727744,
-  "blocks": 51089320,
-  "action": "interrupt this preparer and remove only its partial copied root; no guest was launched"
-}

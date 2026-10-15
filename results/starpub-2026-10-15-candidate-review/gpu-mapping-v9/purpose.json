@@ -1,6 +1,0 @@
-{
-  "purpose": "verify canonical-node selection falls back to existing harddind aliases with the previously tested system-features kernel",
-  "kernel_sha256": "9192f196143242aab3dfacc2966d7bcc605db9cc0caadfe68b09a76cb42b557e",
-  "same_harness_as_v8": true,
-  "expected_gpu_compute": "not expected to pass; baseline has no UVM device; preserve actual failure"
-}

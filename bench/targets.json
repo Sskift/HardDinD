@@ -1,0 +1,43 @@
+{
+  "schema": "hd.targets/1",
+  "note": "ratio = guest performance / native performance (1.0 = native). Native = the same binaries from the same image rootfs, run by chroot in the outer Starpub container, pinned to the same host CPUs and interleaved with the guest runs. Control-plane metrics have no same-machine native Docker; they use the reference seconds below (typical native Docker 29 on a server) until a native Docker host is available.",
+  "tiers": {
+    "key": {"min_ratio": 0.80, "approved": "user, 2026-10-15: key functions 80%"},
+    "important": {"min_ratio": 0.50, "approved": "proposed, awaiting user confirmation"},
+    "other": {"min_ratio": 0.20, "approved": "proposed, awaiting user confirmation"}
+  },
+  "metrics": {
+    "cpu.single":          {"tier": "key"},
+    "cpu.multi":           {"tier": "key"},
+    "mem.bandwidth":       {"tier": "key"},
+    "mem.touch":           {"tier": "key"},
+    "disk.seq_write":      {"tier": "key"},
+    "disk.seq_read":       {"tier": "key"},
+    "disk.volume_write":   {"tier": "key"},
+    "net.publish_stream":  {"tier": "key"},
+    "net.egress_stream":   {"tier": "key"},
+    "net.bridge_stream":   {"tier": "key"},
+    "gpu.compute":         {"tier": "key", "suite": "gpu"},
+    "gpu.h2d":             {"tier": "key", "suite": "gpu"},
+    "gpu.d2h":             {"tier": "key", "suite": "gpu"},
+
+    "app.compile":         {"tier": "important"},
+    "app.untar":           {"tier": "important"},
+    "app.gzip":            {"tier": "important"},
+    "fs.metadata":         {"tier": "important"},
+    "net.publish_rr":      {"tier": "important"},
+    "net.bridge_rr":       {"tier": "important"},
+    "docker.run":          {"tier": "important", "reference_seconds": 0.40},
+    "docker.exec":         {"tier": "important", "reference_seconds": 0.08},
+    "docker.build_cached": {"tier": "important", "reference_seconds": 0.60},
+    "docker.lifecycle":    {"tier": "important", "reference_seconds": 1.20},
+
+    "micro.syscall":       {"tier": "other"},
+    "micro.forkexec":      {"tier": "other"},
+    "micro.mmap":          {"tier": "other"},
+    "micro.clock":         {"tier": "other"},
+    "micro.thread":        {"tier": "other"},
+    "micro.pipe":          {"tier": "other"},
+    "micro.signal":        {"tier": "other"}
+  }
+}

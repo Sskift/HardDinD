@@ -1,7 +1,0 @@
-PROFILE_BEGIN case=getpid repeat=0 iterations=100000
-PROFILE_END {"case":"getpid","repeat":0,"iterations":100000,"seconds":0.212715937,"verified":true}
-PROFILE_BEGIN case=getpid repeat=1 iterations=100000
-PROFILE_END {"case":"getpid","repeat":1,"iterations":100000,"seconds":0.210170478,"verified":true}
-PROFILE_BEGIN case=getpid repeat=2 iterations=100000
-PROFILE_END {"case":"getpid","repeat":2,"iterations":100000,"seconds":0.209589094,"verified":true}
-PROFILE_COMPLETE

@@ -1,5 +1,0 @@
-{
-  "time_unix": 1791954771.6494064,
-  "reason": "spin0 RCU stall exposed missing IPI masking/pending check in os_idle_sleep; abort further timings for this revision",
-  "performance_acceptance": false
-}
