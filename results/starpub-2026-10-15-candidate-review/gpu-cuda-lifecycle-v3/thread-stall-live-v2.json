@@ -1,0 +1,57 @@
+{
+  "at": "2026-10-15T01:53:24.291918+00:00",
+  "calls": [
+    {
+      "command": "sysrq w",
+      "sent_ok": true
+    },
+    {
+      "command": "sysrq t",
+      "sent_ok": true
+    }
+  ],
+  "host_threads": [
+    {
+      "tid": 3405289,
+      "comm": "kernel",
+      "wchan": "0",
+      "syscall_errno": 1,
+      "stack_errno": 13
+    },
+    {
+      "tid": 3405324,
+      "comm": "kernel",
+      "wchan": "do_poll.constprop.0",
+      "syscall_errno": 1,
+      "stack_errno": 13
+    },
+    {
+      "tid": 3405325,
+      "comm": "kernel",
+      "wchan": "do_poll.constprop.0",
+      "syscall_errno": 1,
+      "stack_errno": 13
+    },
+    {
+      "tid": 3405326,
+      "comm": "kernel",
+      "wchan": "do_poll.constprop.0",
+      "syscall_errno": 1,
+      "stack_errno": 13
+    },
+    {
+      "tid": 3405334,
+      "comm": "kernel",
+      "wchan": "do_poll.constprop.0",
+      "syscall_errno": 1,
+      "stack_errno": 13
+    },
+    {
+      "tid": 3405335,
+      "comm": "kernel",
+      "wchan": "ep_poll",
+      "syscall_errno": 1,
+      "stack_errno": 13
+    }
+  ]
+}

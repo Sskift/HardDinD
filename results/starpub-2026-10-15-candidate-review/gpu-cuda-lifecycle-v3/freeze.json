@@ -1,0 +1,6 @@
+{
+  "base_owner": "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2",
+  "base_probe_sha256": "ab1b16f0140f95ee36ea04e45477719645b80a3ad2abb8df935bf5484195408f",
+  "probe_sha256": "f944fe5f2895f379cdca84c28dba4f4a6fbfac97cf27777b4fbb5158310707f9",
+  "owner_fix": "The child report receipt sentinel changed from0 to-1 in v3 initialization but !firstbyte_ns still tested onlyzero. Native v2 GPUprobe exits0, strictchecker correctly rejects allfourchild firstbyte_ns=-1. Use<0 so the real newline-complete receipt is timestamped once. Oldname retained, this is complete-report receipt, not first-byte receipt. Do not fabricate or repair v2 raw timestamps."
+}
