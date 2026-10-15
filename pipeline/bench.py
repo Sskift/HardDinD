@@ -75,6 +75,45 @@ def ubd_flush_analysis(source):
                              'REQ_OP_FLUSH' not in dispatch}
 
 
+def ubd_source_evidence(ctx):
+    """Tie an unmodified UBD file to the pinned source and running build key."""
+    relative = 'arch/um/drivers/ubd_kern.c'
+    path = config.WORK / ('linux-' + build.LOCK['linux']['version']) / relative
+    source = path.read_text()
+    patches = build.series() + build.candidate_paths(ctx.artifacts.get('candidates', []))
+    key = build.key_of('kernel/1', build.LOCK['linux'], config.REPO / 'kernel/config',
+                       config.REPO / 'scripts/build-kernel.sh', config.REPO / 'pipeline/patches.py',
+                       config.REPO / 'scripts/check-stub-relocations.py', *patches)
+    member_name = 'linux-' + build.LOCK['linux']['version'] + '/' + relative
+    with tarfile.open(build.fetch('linux'), 'r|*') as archive:
+        member = next(member for member in archive if member.name == member_name)
+        original = archive.extractfile(member).read()
+    touching = [p.name for p in patches if relative in p.read_text()]
+    matched = (source.encode() == original and not touching and
+               pathlib.Path(ctx.artifacts['kernel']).parent.name == key)
+    return {'path': str(path), **ubd_flush_analysis(source), 'matches_running_kernel': matched,
+            'kernel_key': key, 'patches_touching_ubd': touching,
+            'pinned_source_sha256': hashlib.sha256(original).hexdigest()}
+
+
+def durability_error(evidence):
+    if not evidence['same_filesystem']:
+        return 'native scratch and guest COW are on different host filesystems'
+    descriptors = evidence['cow_descriptors']
+    synchronous = bool(descriptors) and all(fd['synchronous'] for fd in descriptors)
+    source = evidence['ubd_source']
+    if (source['matches_running_kernel'] and source['flush_skipped'] and descriptors and not synchronous):
+        trace = (f"{evidence['guest_syncs']} host COW syncs observed" if evidence['attached_pids'] else
+                 'host trace unavailable: ptrace attach denied')
+        return ('guest fsync not durable: pinned UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; '
+                f'COW lacks O_DSYNC/O_SYNC; {trace}')
+    if evidence['native_syncs'] < 3 or (evidence['guest_syncs'] < 3 and not synchronous):
+        return ('guest fsync durability unverified: '
+                f"native={evidence['native_syncs']}, guest COW={evidence['guest_syncs']} host syncs; "
+                f"attached {len(evidence['attached_pids'])} UML processes")
+    return None
+
+
 def successful_syncs(trace, path):
     pending, count = set(), 0
     for line in trace.splitlines():
@@ -266,7 +305,7 @@ class Workloads:
                                                 'mount': json.loads(mount.stdout)})
             evidence['same_filesystem'] = len({item['device'] for item in evidence['filesystems']}) == 1
             source = config.WORK / ('linux-' + build.LOCK['linux']['version']) / 'arch/um/drivers/ubd_kern.c'
-            evidence['ubd_source'] = {'path': str(source), **ubd_flush_analysis(source.read_text())}
+            evidence['ubd_source'] = ubd_source_evidence(self.ctx)
             host_source = source.parents[1] / 'os-Linux/file.c'
             text = host_source.read_text()
             evidence['os_sync_file'] = text[text.index('int os_sync_file('):].split('\n}', 1)[0] + '\n}'
@@ -312,15 +351,7 @@ class Workloads:
             evidence['guest_syncs'] = successful_syncs(guest_trace.read_text(), str(cow))
             evidence['tracer_log'] = tracer_log.read_text()[-8000:]
             evidence['trace_files'] = [native_trace.name, guest_trace.name, tracer_log.name]
-            synchronous = bool(descriptors) and all(fd['synchronous'] for fd in descriptors)
-            if not evidence['same_filesystem']:
-                evidence['error'] = 'native scratch and guest COW are on different host filesystems'
-            elif evidence['ubd_source']['flush_skipped'] and descriptors and not synchronous:
-                evidence['error'] = ('guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; '
-                                     f"{evidence['guest_syncs']} host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC")
-            elif evidence['native_syncs'] < 3 or (evidence['guest_syncs'] < 3 and not synchronous):
-                evidence['error'] = ('guest fsync durability unverified: '
-                                     f"native={evidence['native_syncs']}, guest COW={evidence['guest_syncs']} host syncs")
+            evidence['error'] = durability_error(evidence)
         except Exception as error:
             evidence['error'] = f'guest fsync durability unverified: {type(error).__name__}: {error}'
         self.ctx.log('bench durability: ' + (evidence['error'] or 'host flushes verified'))
