@@ -190,7 +190,8 @@ def instance_options(artifacts, cpuset=None, kernel_args=(), shares=(), cpus=Non
         'virtiofsd': artifacts.get('virtiofsd'), 'cpus': cpus or config.GUEST_CPUS,
         'memory': memory or config.GUEST_MEMORY, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
         'shares': list(shares),
-        'share_options': {'posix_locks': True} if shares else None,
+        # notify_changes: virtiofsd watches the outer tree and invalidates guest caches (patch 0035).
+        'share_options': {'posix_locks': True, 'notify_changes': True} if shares else None,
         # vnet link: GSO/checksum offload and batched backend I/O (kernel patch 0034).
         'net_vnet': True, 'network_batch': 16,
     }

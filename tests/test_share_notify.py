@@ -55,7 +55,7 @@ class KernelNotificationWire(unittest.TestCase):
         if not shutil.which('cc'):
             self.skipTest('C compiler unavailable')
         root = pathlib.Path(__file__).resolve().parents[1]
-        patch = (root / 'kernel/candidates/share-notify.patch').read_text()
+        patch = (root / 'kernel/patches/0035-fuse-virtiofs-notifications.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         function = re.search(r'static int virtio_fs_notification\(.*?\n}', added, re.S).group()

@@ -232,6 +232,7 @@ def serve(instance):
             if share_opts.get('profile'): cmd.append('--profile-requests')
             if share_opts.get('inline_flock'): cmd.append('--inline-flock')
             if share_opts.get('inline_metadata'): cmd.append('--inline-metadata')
+            if share_opts.get('notify_changes'): cmd.append('--notify-changes')
             if share_opts.get('posix_locks'): cmd.append('--shared-posix-locks')
             with (instance / f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
