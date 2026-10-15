@@ -1,0 +1,228 @@
+--- a/arch/um/kernel/gpu.c
++++ b/arch/um/kernel/gpu.c
+@@ -1174,6 +1174,29 @@
+ /* The single-snapshot forward.  Returns held descriptor references in
+  * @holds (caller drops them outside gpu_lock); poke_out records, per
+  * modified field, the snapshot value for restoration. */
++/* The single-snapshot forward with a real per-call PRIVATE kernel buffer.
++ *
++ * Lock-cycle fix (actual guest evidence: mmap holds mmap_write_lock then
++ * takes gpu_lock in gpu_vma_close, while this path took gpu_lock then
++ * faulted guest pages (mmap_read_lock) - an ABBA deadlock visible only with
++ * concurrent same-mm threads).
++ *
++ *   Phase 1 (no gpu_lock): kmalloc a private buffer; copy_from_user the
++ *     block; validate/prefault nested ranges and fget embedded descriptors
++ *     into it.  These are the only faultable accesses and may take
++ *     mmap_lock.  The per-call buffer makes the snapshot immutable and
++ *     independent of the shared STUB_GPU_SHADOW pages, so concurrent ioctls
++ *     cannot corrupt each other.
++ *
++ *   Phase 2 (gpu_lock held): copy private -> shared shadow, um_tlb_sync,
++ *     run the worker ioctl (the worker maps shared shadow), then copy
++ *     shared -> private and restore pokes in private.  Only non-faultable
++ *     kernel-memory copies happen here.
++ *
++ *   Phase 3 (no gpu_lock): copy_to_user from the private buffer and
++ *     kfree; FD holds are owned/released by the single caller
++ *     (gpu_forward_block), never double-put here.
++ */
+ static long gpu_shadow_snapshot(struct gpu_file *state, unsigned int command,
+ 				unsigned long arg, size_t size,
+ 				const struct gpu_nested_ptr *nesteds,
+@@ -1184,64 +1207,71 @@
+ 				u64 poke_val[GPU_MAX_POKES],
+ 				unsigned int *npokes)
+ {
+-	void *shadow = (void *)state->mm->context.gpu_shadow_pages;
+ 	struct mm_struct *mm = state->mm;
+ 	unsigned int i, n = 0;
+ 	long result;
+-
++	void *priv;			/* per-call private snapshot */
++	void *shared = (void *)mm->context.gpu_shadow_pages;
++
++	*npokes = 0;
+ 	if (size > STUB_GPU_SHADOW_PAGES * UM_KERN_PAGE_SIZE ||
+ 	    nfds > GPU_MAX_FIELDS)
+ 		return -EINVAL;
+-	mutex_lock(&mm->context.gpu_lock);
+-	if (size && copy_from_user(shadow, (void __user *)arg, size)) {
+-		mutex_unlock(&mm->context.gpu_lock);
++
++	/* Phase 1: private, immutable, faultable - never under gpu_lock. */
++	priv = kmalloc(size ? size : 1, GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++	if (size && copy_from_user(priv, (void __user *)arg, size)) {
++		kfree(priv);
+ 		return -EFAULT;
+ 	}
+-	/* Validate nested ranges from the snapshot only. */
+ 	for (i = 0; i < nnested; i++) {
+ 		u64 orig = 0;
+ 
+-		if (gpu_check_nested(shadow, &nesteds[i], &orig)) {
+-			/* Fail closed if the poke table is exhausted: never
+-			 * forward the unreachable pointer unrewritten. */
++		if (gpu_check_nested(priv, &nesteds[i], &orig)) {
+ 			if (n >= GPU_MAX_POKES - nfds) {
+-				result = -EINVAL;
+-				goto err_unlocked;
++				kfree(priv);
++				return -EINVAL;
+ 			}
+ 			poke_off[n] = nesteds[i].ptr_off;
+ 			poke_val[n] = orig;
+-			*(u64 *)(shadow + nesteds[i].ptr_off) = ~0ULL;
++			*(u64 *)(priv + nesteds[i].ptr_off) = ~0ULL;
+ 			n++;
+ 		}
+ 	}
+-	/* Translate embedded descriptors from the snapshot; keep every
+-	 * referenced guest file until after the ioctl. */
++	/* fget outside gpu_lock (fput of a GPU file takes gpu_lock). */
+ 	for (i = 0; i < nfds; i++) {
+-		result = gpu_hold_fd(state, shadow, &fds[i], &holds[i]);
++		result = gpu_hold_fd(state, priv, &fds[i], &holds[i]);
+ 		if (result < 0)
+-			goto err_unlocked;
++			goto fail_priv;
+ 		if (holds[i].file) {
+ 			if (n >= GPU_MAX_POKES) {
+ 				result = -EINVAL;
+-				goto err_unlocked;
++				goto fail_priv;
+ 			}
+ 			poke_off[n] = fds[i].off;
+ 			poke_val[n] = 0;
+-			memcpy(&poke_val[n], shadow + fds[i].off, sizeof(s32));
+-			*(s32 *)(shadow + fds[i].off) = holds[i].host_fd;
++			memcpy(&poke_val[n], priv + fds[i].off, sizeof(s32));
++			*(s32 *)(priv + fds[i].off) = holds[i].host_fd;
+ 			n++;
+ 		}
+ 	}
+ 	*npokes = n;
+-	/* Pages prefaulted above must be visible in the broker/worker page
+-	 * tables before the worker dereferences them. */
++
++	/* Phase 2: serialize the shared worker shadow; non-faultable only. */
++	mutex_lock(&mm->context.gpu_lock);
++	memcpy(shared, priv, size);
+ 	result = um_tlb_sync(mm);
+-	if (result)
+-		goto err_locked;
++	if (result) {
++		mutex_unlock(&mm->context.gpu_lock);
++		goto fail_priv;
++	}
+ 	result = gpu_command(mm, GPU_OP_IOCTL_ADDR, state->host_fd, command,
+ 			     STUB_GPU_SHADOW, NULL, 0);
+-	/* Restore every modified field from the immutable snapshot: FD
+-	 * fields are s32, rewritten pointer fields are u64. */
++	/* Capture the worker output into the private buffer while still
++	 * serialized, then restore poke values privately. */
++	memcpy(priv, shared, size);
+ 	for (i = 0; i < n; i++) {
+ 		bool is_fd = false;
+ 		unsigned int j;
+@@ -1252,20 +1282,26 @@
+ 		if (is_fd) {
+ 			s32 v = (s32)poke_val[i];
+ 
+-			memcpy(shadow + poke_off[i], &v, sizeof(v));
++			memcpy(priv + poke_off[i], &v, sizeof(v));
+ 		} else {
+-			memcpy(shadow + poke_off[i], &poke_val[i],
++			memcpy(priv + poke_off[i], &poke_val[i],
+ 			       sizeof(u64));
+ 		}
+ 	}
++	mutex_unlock(&mm->context.gpu_lock);
++
++	/* Phase 3: copyback from private storage, then free. FD holds stay
++	 * owned by the caller (gpu_forward_block) and are released once. */
+ 	if (size && result != -EFAULT &&
+-	    copy_to_user((void __user *)arg, shadow, size))
++	    copy_to_user((void __user *)arg, priv, size))
+ 		result = -EFAULT;
+-err_locked:
+-	mutex_unlock(&mm->context.gpu_lock);
++	kfree(priv);
+ 	return result;
+-err_unlocked:
+-	mutex_unlock(&mm->context.gpu_lock);
++
++fail_priv:
++	/* A sync failure can leave a prepared shared block, but no worker
++	 * command or user copyback occurs; the next request overwrites it. */
++	kfree(priv);
+ 	return result;
+ }
+ 
+@@ -1454,14 +1490,10 @@
+ 			       unsigned long arg,
+ 			       union gpu_alloc_params *header, size_t size)
+ {
+-	/* NV0005 event object.  NV0005_PARAMETERS.data is the SAME opaque
+-	 * tag passed to NV_ESC_ALLOC_OS_EVENT (osapi eventConstruct ->
+-	 * osUserHandleToKernelPtr(hClient, nvfp, data)): it is a numeric
+-	 * correlation id (CUDA passes the GPU char fd number), not a guest
+-	 * VA and not an OS descriptor FD, so it must be forwarded verbatim
+-	 * and never rewritten to ~0 or a worker fd.  pAllocParms itself is a
+-	 * guest pointer carrying the 24-byte NV0005 child and is screened /
+-	 * bounced like every other allocation child. */
++	/* NV0005 event object.  data is the opaque OS-event correlation tag,
++	 * forwarded verbatim.  The 24-byte child lives in a per-call stack
++	 * (private) buffer; every faultable user access is OUTSIDE gpu_lock
++	 * to avoid the mmap_lock<->gpu_lock cycle. */
+ 	struct {
+ 		struct gpu_nvos64 hdr;
+ 		struct gpu_nv0005 child;
+@@ -1477,6 +1509,8 @@
+ 	if (!palloc)
+ 		return -EINVAL;
+ 	child_uptr = (void __user *)(unsigned long)palloc;
++
++	/* Phase 1: faultable private snapshot, no gpu_lock. */
+ 	if (copy_from_user(&child, child_uptr, sizeof(child)))
+ 		return -EFAULT;
+ 	fault_in_readable(child_uptr, sizeof(child));
+@@ -1489,28 +1523,30 @@
+ 		return gpu_rm_copyback(arg, &header->v64, size, result);
+ 	}
+ 
+-	mutex_lock(&state->mm->context.gpu_lock);
+-	block.child = child;	/* data kept as the guest opaque tag */
++	block.child = child;
+ 	memcpy(&block.hdr, &header->v64, size);
+ 	block.hdr.pAllocParms = STUB_GPU_DATA +
+ 		offsetof(struct stub_data, gpu_payload) +
+ 		sizeof(block.hdr);
++
++	/* Phase 2: gpu_lock for non-faultable serialization only. */
++	mutex_lock(&state->mm->context.gpu_lock);
+ 	result = um_tlb_sync(state->mm);
+ 	if (!result)
+ 		result = gpu_command(state->mm, GPU_OP_IOCTL_PAYLOAD,
+ 				     state->host_fd, command, 0, &block,
+ 				     sizeof(block.hdr) + sizeof(block.child));
+-	/* Preserve the raw driver header output (Status/hObjectNew) and
+-	 * restore the guest's own pAllocParms; the data tag is returned
+-	 * untouched (already identical) for both header forms. */
++	mutex_unlock(&state->mm->context.gpu_lock);
++
++	/* Phase 3: copyback from the private stack block, no gpu_lock. */
+ 	memcpy(&header->v64, &block.hdr, size);
+ 	header->v64.pAllocParms = palloc;
+ 	if (result != -EFAULT &&
+ 	    copy_to_user(child_uptr, &block.child, sizeof(block.child)))
+ 		result = -EFAULT;
+-	mutex_unlock(&state->mm->context.gpu_lock);
+ 	return gpu_rm_copyback(arg, &header->v64, size, result);
+ }
++
+ 
+ 
+ /* 0x2b NV_ESC_RM_ALLOC.  The header is snapshotted once; 32-byte NVOS21 and
