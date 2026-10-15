@@ -362,24 +362,35 @@ struct worker {
     uint64_t cpu_start, cpu_end, getcpu_errors, getcpu_out_of_range;
     int aff_start_err, aff_end_err;
     cpu_set_t aff_start, aff_end, seen;
-    uint64_t sink;
+    uint64_t sink, work_blocks;
 };
 
 static uint64_t spin_deadline;
+
+/* Work completed is separate from scheduler CPU accounting. Each block is
+ * 1024 dependent integer steps; the final value lets an offline verifier
+ * check that count without trusting guest CPU-clock deltas. It is a workload
+ * observation, not a native-performance or resource-enforcement verdict. */
+#define WORK_STEPS 1024
+#define WORK_MULTIPLIER UINT64_C(6364136223846793005)
+#define WORK_SEED UINT64_C(0x9e3779b97f4a7c15)
 
 static void *spin_fn(void *arg) {
     struct worker *w = arg;
     w->aff_start_err = pthread_getaffinity_np(pthread_self(), sizeof(w->aff_start), &w->aff_start);
     w->cpu_start = now_ns(CLOCK_THREAD_CPUTIME_ID);
-    uint64_t x = 0x9e3779b97f4a7c15ull ^ (uint64_t)w->idx;
+    uint64_t x = WORK_SEED ^ (uint64_t)w->idx;
+    uint64_t blocks = 0;
     while (now_ns(CLOCK_MONOTONIC) < spin_deadline) {
-        for (int k = 0; k < 1024; k++) { x = x * 6364136223846793005ull + (uint64_t)k + 1; }
+        for (int k = 0; k < WORK_STEPS; k++) { x = x * WORK_MULTIPLIER + (uint64_t)k + 1; }
+        blocks++;
         int cpu = sched_getcpu();
         if (cpu >= 0 && cpu < MAX_CPUS) CPU_SET(cpu, &w->seen);
         else if (cpu < 0) w->getcpu_errors++;
         else w->getcpu_out_of_range++;
     }
     w->sink = x;
+    w->work_blocks = blocks;
     w->cpu_end = now_ns(CLOCK_THREAD_CPUTIME_ID);
     w->aff_end_err = pthread_getaffinity_np(pthread_self(), sizeof(w->aff_end), &w->aff_end);
     return NULL;
@@ -502,12 +513,13 @@ static int cmd_spin(int argc, char **argv) {
     uint64_t cap0_end = now_ns(CLOCK_MONOTONIC);
     printf("{\"event\":\"start\",\"wall_ns\":%llu,\"cap_end_ns\":%llu,\"proc_cpu_ns\":%llu,"
            "\"sampler_cpu_ns\":%llu,\"steal_ns\":%llu,\"steal_errno\":%d,"
-           "\"load_deadline_ns\":%llu,\"threads\":%d,\"nproc\":%ld,\"clk_tck\":%ld,",
+           "\"load_deadline_ns\":%llu,\"threads\":%d,\"nproc\":%ld,\"clk_tck\":%ld,"
+           "\"workload_revision\":1,\"steps_per_block\":%d,",
            (unsigned long long)t0, (unsigned long long)cap0_end,
            (unsigned long long)proc0, (unsigned long long)sampler0,
            (unsigned long long)steal0, steal0_err,
            (unsigned long long)spin_deadline, threads,
-           (long)sysconf(_SC_NPROCESSORS_ONLN), clk_tck);
+           (long)sysconf(_SC_NPROCESSORS_ONLN), clk_tck, WORK_STEPS);
     json_affinity("affinity", &own);
     json_cg("cgroup", &cg0);
     fputs("}\n", stdout);
@@ -567,8 +579,9 @@ static int cmd_spin(int argc, char **argv) {
         fputs("],", stdout);
         json_affinity("affinity_start", &workers[i].aff_start);
         json_affinity("affinity_end", &workers[i].aff_end);
-        fputs("\"sink\":", stdout);
-        printf("%llu}", (unsigned long long)workers[i].sink);
+        printf("\"sink\":%llu,\"work_blocks\":%llu}",
+               (unsigned long long)workers[i].sink,
+               (unsigned long long)workers[i].work_blocks);
     }
     printf("],\"worker_cpu_ns\":%llu,", (unsigned long long)total);
     fputs("\"stat_start\":{", stdout); json_stat_fields(&cg0.stat); fputs("},", stdout);

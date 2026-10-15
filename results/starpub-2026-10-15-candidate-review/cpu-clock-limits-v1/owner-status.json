@@ -1,0 +1,2247 @@
+{
+  "status": "finished",
+  "stage": "off-after",
+  "cells": {
+    "baseline": {
+      "clock_mode": null,
+      "kernel": "baseline-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "pass",
+        "cpuset_with_quota": "indeterminate",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "final_state": {
+        "phase": "stopped",
+        "run": "f1345fa6d159",
+        "supervisor_pid": 2697843,
+        "supervisor_start": "1392633527",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/baseline-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 2700133,
+        "network_pid": 2700116,
+        "api_port": 47349,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-baseline/uml/f1345fa6d159/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-limits-owner-v1/baseline-kernel",
+          "umid=f1345fa6d159",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-baseline/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1792044263.3162837,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2700133,
+          "forced_cleanup": false,
+          "initial_live_pids": [
+            2716223
+          ],
+          "initial_zombie_pids": [],
+          "initial_processes": [
+            {
+              "pid": 2716223,
+              "state": "R",
+              "ppid": 1,
+              "process_group": 2700133,
+              "start_time_ticks": "1392642978",
+              "comm": "uml-userspace",
+              "wchan": "0",
+              "exe_errno": 2
+            }
+          ],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2700116,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792044364.8664527
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "off-before": {
+      "clock_mode": "0",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "indeterminate",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "final_state": {
+        "phase": "stopped",
+        "run": "55e234507d4f",
+        "supervisor_pid": 2726996,
+        "supervisor_start": "1392648781",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 2729385,
+        "network_pid": 2729384,
+        "api_port": 60593,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-off-before/uml/55e234507d4f/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "umid=55e234507d4f",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-off-before/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=0"
+        ],
+        "ready_at": 1792044416.5075445,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2729385,
+          "forced_cleanup": false,
+          "initial_live_pids": [
+            2729551
+          ],
+          "initial_zombie_pids": [],
+          "initial_processes": [
+            {
+              "pid": 2729551,
+              "state": "R",
+              "ppid": 1,
+              "process_group": 2729385,
+              "start_time_ticks": "1392650034",
+              "comm": "uml-userspace",
+              "wchan": "0",
+              "exe_errno": 2
+            }
+          ],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2729384,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792044490.6105487
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "on-first": {
+      "clock_mode": "1",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "pass",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "final_state": {
+        "phase": "stopped",
+        "run": "50dff3ef8dac",
+        "supervisor_pid": 2752392,
+        "supervisor_start": "1392660515",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 2765408,
+        "network_pid": 2765353,
+        "api_port": 55281,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-on-first/uml/50dff3ef8dac/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "umid=50dff3ef8dac",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-on-first/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=1"
+        ],
+        "ready_at": 1792044541.8857195,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2765408,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2765353,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792044621.2786434
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "on-second": {
+      "clock_mode": "1",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "indeterminate",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "final_state": {
+        "phase": "stopped",
+        "run": "1feffac2f8f7",
+        "supervisor_pid": 2807181,
+        "supervisor_start": "1392674452",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 2810884,
+        "network_pid": 2810851,
+        "api_port": 44599,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-on-second/uml/1feffac2f8f7/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "umid=1feffac2f8f7",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-on-second/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=1"
+        ],
+        "ready_at": 1792044681.6480463,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2810884,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2810851,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792044769.3584409
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "off-after": {
+      "clock_mode": "0",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "indeterminate",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "indeterminate",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "final_state": {
+        "phase": "stopped",
+        "run": "7cc581921aaf",
+        "supervisor_pid": 2835901,
+        "supervisor_start": "1392688362",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 2838137,
+        "network_pid": 2838128,
+        "api_port": 41307,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-off-after/uml/7cc581921aaf/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+          "umid=7cc581921aaf",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-limits-owner-v1/run/instances/clklim-off-after/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=0"
+        ],
+        "ready_at": 1792044811.542647,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2838137,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2838128,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792044896.0198357
+      },
+      "normal_shutdown": true,
+      "completed": true
+    }
+  },
+  "commands": [
+    {
+      "label": "checker-tests",
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/repo/tests",
+        "-p",
+        "test_cpu_limit_checks.py"
+      ],
+      "started_at": "2026-10-15T06:03:50.597681+00:00",
+      "pid": 2694759,
+      "exit_code": 0,
+      "wall_seconds": 0.9711596705019474,
+      "cleanup": {
+        "process_group": 2694759,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clklim-baseline",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/baseline-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clklim-baseline",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:03:51.603577+00:00",
+      "pid": 2694986,
+      "exit_code": 2,
+      "wall_seconds": 154.26041119918227,
+      "cleanup": {
+        "process_group": 2694986,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clklim-off-before",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clklim-off-before",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:06:25.894937+00:00",
+      "pid": 2724551,
+      "exit_code": 2,
+      "wall_seconds": 116.93479242920876,
+      "cleanup": {
+        "process_group": 2724551,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clklim-on-first",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clklim-on-first",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:08:22.853474+00:00",
+      "pid": 2749515,
+      "exit_code": 2,
+      "wall_seconds": 134.2601404543966,
+      "cleanup": {
+        "process_group": 2749515,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clklim-on-second",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clklim-on-second",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:10:37.189969+00:00",
+      "pid": 2803230,
+      "exit_code": 2,
+      "wall_seconds": 144.54224230907857,
+      "cleanup": {
+        "process_group": 2803230,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clklim-off-after",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-limits-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clklim-off-after",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:13:01.758895+00:00",
+      "pid": 2833554,
+      "exit_code": 2,
+      "wall_seconds": 127.09322625212371,
+      "cleanup": {
+        "process_group": 2833554,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "resource_enforcement_acceptance": false,
+  "affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "limitations": [
+    "Functional busy-load enforcement; no matching native writable cgroup available.",
+    "Clock candidate changes accounting granularity; it has no host steal compensation.",
+    "Existing CFS accounting checker unchanged; no new performance tolerance.",
+    "No GPU experiment, external busy load, host sampler or tracing.",
+    "Candidate source/config linked to the preceding owner clock source reapplication."
+  ],
+  "inputs": {
+    "candidate.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "candidate-kernel": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+    "baseline-kernel": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+    "source-commit.txt": "25616432dc2ee47fadfea0a9276460a3e3804f4176a50916b60d73895ed4f39d",
+    "clock-source-binding.json": "72887db8700259763d0245881dc1d8368ddfb102381195be85c75d49c6cb3500",
+    "baseline.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "supervisor.py": "d824c5a6ba80b29a51780ffb1b7cfeb25f7c58c1506f9cf66fc4985f7dcde069",
+    "prepare.py": "6cd54126b52c32d3f4ec614d31c9c2cceec84456850e23108b9fbf260ae8751b",
+    "repo/tests/test_cpu_limit_checks.py": "55eb7acce37bd97b7295a90d2a921a3968a75f2fb0063c3e3bdae2683412ca71",
+    "repo/src/cpu_limit_probe.c": "49b1201d83d07dfc6207ecd7c122c70147813ffed2feb1b9db5f2eb0f9f144a0",
+    "repo/scripts/harddind.py": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+    "repo/scripts/port_driver.py": "957afff0d68699d1ad8c96ba140b759522d80adbe0df33f75965f32fe91f606c",
+    "repo/scripts/run-cpu-limits.py": "c0e1e8790624a4d12d2d6f45865486165b00c7f375c65dba84f7bacacc7c6a24",
+    "repo/scripts/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "repo/scripts/result_checks.py": "97b14437839b98ff361b31dc3b9d97268c887fb764e7589de756b8f028b0c046",
+    "repo/scripts/cpu_limit_checks.py": "8e4ccda94e15f3c59e35eaa97ac6527a54f56a0a4535add2647c0bc20d450e9f"
+  },
+  "external_inputs": {
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/network-backend": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "/root/harddind-rebuild/client/docker": "60c81ddca5ac1b3cb64cfcbe9444a263db642ed74cd0e28e512edbf012dd312f",
+    "/root/harddind-rebuild/client/ld-musl-x86_64.so.1": "38d022ce7425ff105ccfb53598f606e6e5f5f0a34bfbc793d65e6f34c9d72806"
+  },
+  "groups": {
+    "2694759": [
+      [],
+      []
+    ],
+    "2694986": [
+      [],
+      []
+    ],
+    "2697658": [
+      [],
+      []
+    ],
+    "2697783": [
+      [],
+      []
+    ],
+    "2697800": [
+      [],
+      []
+    ],
+    "2697817": [
+      [],
+      []
+    ],
+    "2697842": [
+      [],
+      []
+    ],
+    "2697843": [
+      [],
+      []
+    ],
+    "2700116": [
+      [],
+      []
+    ],
+    "2700133": [
+      [],
+      []
+    ],
+    "2701483": [
+      [],
+      []
+    ],
+    "2702264": [
+      [],
+      []
+    ],
+    "2702438": [
+      [],
+      []
+    ],
+    "2702455": [
+      [],
+      []
+    ],
+    "2702784": [
+      [],
+      []
+    ],
+    "2702817": [
+      [],
+      []
+    ],
+    "2702842": [
+      [],
+      []
+    ],
+    "2704162": [
+      [],
+      []
+    ],
+    "2704211": [
+      [],
+      []
+    ],
+    "2704236": [
+      [],
+      []
+    ],
+    "2704269": [
+      [],
+      []
+    ],
+    "2704311": [
+      [],
+      []
+    ],
+    "2705828": [
+      [],
+      []
+    ],
+    "2705877": [
+      [],
+      []
+    ],
+    "2705950": [
+      [],
+      []
+    ],
+    "2707453": [
+      [],
+      []
+    ],
+    "2707503": [
+      [],
+      []
+    ],
+    "2707567": [
+      [],
+      []
+    ],
+    "2707622": [
+      [],
+      []
+    ],
+    "2707650": [
+      [],
+      []
+    ],
+    "2708742": [
+      [],
+      []
+    ],
+    "2708787": [
+      [],
+      []
+    ],
+    "2708851": [
+      [],
+      []
+    ],
+    "2710113": [
+      [],
+      []
+    ],
+    "2710153": [
+      [],
+      []
+    ],
+    "2710204": [
+      [],
+      []
+    ],
+    "2710252": [
+      [],
+      []
+    ],
+    "2710309": [
+      [],
+      []
+    ],
+    "2710673": [
+      [],
+      []
+    ],
+    "2710704": [
+      [],
+      []
+    ],
+    "2710729": [
+      [],
+      []
+    ],
+    "2711983": [
+      [],
+      []
+    ],
+    "2712024": [
+      [],
+      []
+    ],
+    "2712057": [
+      [],
+      []
+    ],
+    "2712097": [
+      [],
+      []
+    ],
+    "2712127": [
+      [],
+      []
+    ],
+    "2712558": [
+      [],
+      []
+    ],
+    "2712631": [
+      [],
+      []
+    ],
+    "2712687": [
+      [],
+      []
+    ],
+    "2713926": [
+      [],
+      []
+    ],
+    "2713973": [
+      [],
+      []
+    ],
+    "2714019": [
+      [],
+      []
+    ],
+    "2714068": [
+      [],
+      []
+    ],
+    "2714124": [
+      [],
+      []
+    ],
+    "2714682": [
+      [],
+      []
+    ],
+    "2714721": [
+      [],
+      []
+    ],
+    "2714781": [
+      [],
+      []
+    ],
+    "2715861": [
+      [],
+      []
+    ],
+    "2715894": [
+      [],
+      []
+    ],
+    "2715943": [
+      [],
+      []
+    ],
+    "2715991": [
+      [],
+      []
+    ],
+    "2716032": [
+      [],
+      []
+    ],
+    "2716333": [
+      [],
+      []
+    ],
+    "2717379": [
+      [],
+      []
+    ],
+    "2717463": [
+      [],
+      []
+    ],
+    "2718845": [
+      [],
+      []
+    ],
+    "2718923": [
+      [],
+      []
+    ],
+    "2718956": [
+      [],
+      []
+    ],
+    "2720506": [
+      [],
+      []
+    ],
+    "2720539": [
+      [],
+      []
+    ],
+    "2720617": [
+      [],
+      []
+    ],
+    "2720725": [
+      [],
+      []
+    ],
+    "2724551": [
+      [],
+      []
+    ],
+    "2726875": [
+      [],
+      []
+    ],
+    "2726976": [
+      [],
+      []
+    ],
+    "2726977": [
+      [],
+      []
+    ],
+    "2726978": [
+      [],
+      []
+    ],
+    "2726979": [
+      [],
+      []
+    ],
+    "2726996": [
+      [],
+      []
+    ],
+    "2729384": [
+      [],
+      []
+    ],
+    "2729385": [
+      [],
+      []
+    ],
+    "2730834": [
+      [],
+      []
+    ],
+    "2730944": [
+      [],
+      []
+    ],
+    "2731077": [
+      [],
+      []
+    ],
+    "2731120": [
+      [],
+      []
+    ],
+    "2731405": [
+      [],
+      []
+    ],
+    "2731439": [
+      [],
+      []
+    ],
+    "2731489": [
+      [],
+      []
+    ],
+    "2732691": [
+      [],
+      []
+    ],
+    "2732734": [
+      [],
+      []
+    ],
+    "2732785": [
+      [],
+      []
+    ],
+    "2732836": [
+      [],
+      []
+    ],
+    "2732861": [
+      [],
+      []
+    ],
+    "2733092": [
+      [],
+      []
+    ],
+    "2733125": [
+      [],
+      []
+    ],
+    "2733174": [
+      [],
+      []
+    ],
+    "2734365": [
+      [],
+      []
+    ],
+    "2734404": [
+      [],
+      []
+    ],
+    "2734437": [
+      [],
+      []
+    ],
+    "2734469": [
+      [],
+      []
+    ],
+    "2734511": [
+      [],
+      []
+    ],
+    "2734842": [
+      [],
+      []
+    ],
+    "2734884": [
+      [],
+      []
+    ],
+    "2734902": [
+      [],
+      []
+    ],
+    "2736233": [
+      [],
+      []
+    ],
+    "2736288": [
+      [],
+      []
+    ],
+    "2736341": [
+      [],
+      []
+    ],
+    "2736376": [
+      [],
+      []
+    ],
+    "2736419": [
+      [],
+      []
+    ],
+    "2736682": [
+      [],
+      []
+    ],
+    "2736714": [
+      [],
+      []
+    ],
+    "2736746": [
+      [],
+      []
+    ],
+    "2738021": [
+      [],
+      []
+    ],
+    "2738038": [
+      [],
+      []
+    ],
+    "2738094": [
+      [],
+      []
+    ],
+    "2738135": [
+      [],
+      []
+    ],
+    "2738159": [
+      [],
+      []
+    ],
+    "2738414": [
+      [],
+      []
+    ],
+    "2738447": [
+      [],
+      []
+    ],
+    "2738499": [
+      [],
+      []
+    ],
+    "2739644": [
+      [],
+      []
+    ],
+    "2739692": [
+      [],
+      []
+    ],
+    "2739733": [
+      [],
+      []
+    ],
+    "2739766": [
+      [],
+      []
+    ],
+    "2739791": [
+      [],
+      []
+    ],
+    "2740018": [
+      [],
+      []
+    ],
+    "2740050": [
+      [],
+      []
+    ],
+    "2740100": [
+      [],
+      []
+    ],
+    "2741318": [
+      [],
+      []
+    ],
+    "2741382": [
+      [],
+      []
+    ],
+    "2741423": [
+      [],
+      []
+    ],
+    "2741453": [
+      [],
+      []
+    ],
+    "2741472": [
+      [],
+      []
+    ],
+    "2741695": [
+      [],
+      []
+    ],
+    "2742760": [
+      [],
+      []
+    ],
+    "2742899": [
+      [],
+      []
+    ],
+    "2744221": [
+      [],
+      []
+    ],
+    "2744291": [
+      [],
+      []
+    ],
+    "2744332": [
+      [],
+      []
+    ],
+    "2746027": [
+      [],
+      []
+    ],
+    "2746083": [
+      [],
+      []
+    ],
+    "2746101": [
+      [],
+      []
+    ],
+    "2746149": [
+      [],
+      []
+    ],
+    "2749515": [
+      [],
+      []
+    ],
+    "2752275": [
+      [],
+      []
+    ],
+    "2752373": [
+      [],
+      []
+    ],
+    "2752380": [
+      [],
+      []
+    ],
+    "2752381": [
+      [],
+      []
+    ],
+    "2752382": [
+      [],
+      []
+    ],
+    "2752392": [
+      [],
+      []
+    ],
+    "2765353": [
+      [],
+      []
+    ],
+    "2765408": [
+      [],
+      []
+    ],
+    "2772448": [
+      [],
+      []
+    ],
+    "2772851": [
+      [],
+      []
+    ],
+    "2773931": [
+      [],
+      []
+    ],
+    "2774117": [
+      [],
+      []
+    ],
+    "2776044": [
+      [],
+      []
+    ],
+    "2776333": [
+      [],
+      []
+    ],
+    "2776595": [
+      [],
+      []
+    ],
+    "2781155": [
+      [],
+      []
+    ],
+    "2781188": [
+      [],
+      []
+    ],
+    "2781249": [
+      [],
+      []
+    ],
+    "2781381": [
+      [],
+      []
+    ],
+    "2781617": [
+      [],
+      []
+    ],
+    "2782760": [
+      [],
+      []
+    ],
+    "2782858": [
+      [],
+      []
+    ],
+    "2782899": [
+      [],
+      []
+    ],
+    "2785497": [
+      [],
+      []
+    ],
+    "2785649": [
+      [],
+      []
+    ],
+    "2785808": [
+      [],
+      []
+    ],
+    "2785918": [
+      [],
+      []
+    ],
+    "2786047": [
+      [],
+      []
+    ],
+    "2786708": [
+      [],
+      []
+    ],
+    "2786749": [
+      [],
+      []
+    ],
+    "2786774": [
+      [],
+      []
+    ],
+    "2787856": [
+      [],
+      []
+    ],
+    "2787884": [
+      [],
+      []
+    ],
+    "2787920": [
+      [],
+      []
+    ],
+    "2787969": [
+      [],
+      []
+    ],
+    "2788005": [
+      [],
+      []
+    ],
+    "2788300": [
+      [],
+      []
+    ],
+    "2788318": [
+      [],
+      []
+    ],
+    "2788360": [
+      [],
+      []
+    ],
+    "2790937": [
+      [],
+      []
+    ],
+    "2791156": [
+      [],
+      []
+    ],
+    "2791342": [
+      [],
+      []
+    ],
+    "2791529": [
+      [],
+      []
+    ],
+    "2791684": [
+      [],
+      []
+    ],
+    "2792531": [
+      [],
+      []
+    ],
+    "2792547": [
+      [],
+      []
+    ],
+    "2792572": [
+      [],
+      []
+    ],
+    "2793763": [
+      [],
+      []
+    ],
+    "2793772": [
+      [],
+      []
+    ],
+    "2793821": [
+      [],
+      []
+    ],
+    "2793849": [
+      [],
+      []
+    ],
+    "2793902": [
+      [],
+      []
+    ],
+    "2794145": [
+      [],
+      []
+    ],
+    "2794180": [
+      [],
+      []
+    ],
+    "2794232": [
+      [],
+      []
+    ],
+    "2795483": [
+      [],
+      []
+    ],
+    "2795516": [
+      [],
+      []
+    ],
+    "2795572": [
+      [],
+      []
+    ],
+    "2795622": [
+      [],
+      []
+    ],
+    "2795646": [
+      [],
+      []
+    ],
+    "2795960": [
+      [],
+      []
+    ],
+    "2796939": [
+      [],
+      []
+    ],
+    "2797096": [
+      [],
+      []
+    ],
+    "2798294": [
+      [],
+      []
+    ],
+    "2798365": [
+      [],
+      []
+    ],
+    "2798415": [
+      [],
+      []
+    ],
+    "2799884": [
+      [],
+      []
+    ],
+    "2799914": [
+      [],
+      []
+    ],
+    "2799931": [
+      [],
+      []
+    ],
+    "2799987": [
+      [],
+      []
+    ],
+    "2803230": [
+      [],
+      []
+    ],
+    "2806983": [
+      [],
+      []
+    ],
+    "2807143": [
+      [],
+      []
+    ],
+    "2807144": [
+      [],
+      []
+    ],
+    "2807149": [
+      [],
+      []
+    ],
+    "2807150": [
+      [],
+      []
+    ],
+    "2807181": [
+      [],
+      []
+    ],
+    "2810851": [
+      [],
+      []
+    ],
+    "2810884": [
+      [],
+      []
+    ],
+    "2813147": [
+      [],
+      []
+    ],
+    "2813307": [
+      [],
+      []
+    ],
+    "2813716": [
+      [],
+      []
+    ],
+    "2813756": [
+      [],
+      []
+    ],
+    "2814425": [
+      [],
+      []
+    ],
+    "2814560": [
+      [],
+      []
+    ],
+    "2814654": [
+      [],
+      []
+    ],
+    "2815866": [
+      [],
+      []
+    ],
+    "2815929": [
+      [],
+      []
+    ],
+    "2816000": [
+      [],
+      []
+    ],
+    "2816033": [
+      [],
+      []
+    ],
+    "2816104": [
+      [],
+      []
+    ],
+    "2816953": [
+      [],
+      []
+    ],
+    "2817068": [
+      [],
+      []
+    ],
+    "2817193": [
+      [],
+      []
+    ],
+    "2819307": [
+      [],
+      []
+    ],
+    "2819358": [
+      [],
+      []
+    ],
+    "2819416": [
+      [],
+      []
+    ],
+    "2819472": [
+      [],
+      []
+    ],
+    "2819513": [
+      [],
+      []
+    ],
+    "2820001": [
+      [],
+      []
+    ],
+    "2820034": [
+      [],
+      []
+    ],
+    "2820088": [
+      [],
+      []
+    ],
+    "2821306": [
+      [],
+      []
+    ],
+    "2821336": [
+      [],
+      []
+    ],
+    "2821398": [
+      [],
+      []
+    ],
+    "2821439": [
+      [],
+      []
+    ],
+    "2821480": [
+      [],
+      []
+    ],
+    "2821928": [
+      [],
+      []
+    ],
+    "2821976": [
+      [],
+      []
+    ],
+    "2822025": [
+      [],
+      []
+    ],
+    "2823287": [
+      [],
+      []
+    ],
+    "2823328": [
+      [],
+      []
+    ],
+    "2823345": [
+      [],
+      []
+    ],
+    "2823385": [
+      [],
+      []
+    ],
+    "2823417": [
+      [],
+      []
+    ],
+    "2823732": [
+      [],
+      []
+    ],
+    "2823852": [
+      [],
+      []
+    ],
+    "2823901": [
+      [],
+      []
+    ],
+    "2824795": [
+      [],
+      []
+    ],
+    "2824836": [
+      [],
+      []
+    ],
+    "2824869": [
+      [],
+      []
+    ],
+    "2824901": [
+      [],
+      []
+    ],
+    "2824942": [
+      [],
+      []
+    ],
+    "2825276": [
+      [],
+      []
+    ],
+    "2825316": [
+      [],
+      []
+    ],
+    "2825325": [
+      [],
+      []
+    ],
+    "2826455": [
+      [],
+      []
+    ],
+    "2826496": [
+      [],
+      []
+    ],
+    "2826529": [
+      [],
+      []
+    ],
+    "2826545": [
+      [],
+      []
+    ],
+    "2826579": [
+      [],
+      []
+    ],
+    "2826882": [
+      [],
+      []
+    ],
+    "2827832": [
+      [],
+      []
+    ],
+    "2827919": [
+      [],
+      []
+    ],
+    "2829104": [
+      [],
+      []
+    ],
+    "2829188": [
+      [],
+      []
+    ],
+    "2829220": [
+      [],
+      []
+    ],
+    "2830788": [
+      [],
+      []
+    ],
+    "2830822": [
+      [],
+      []
+    ],
+    "2830863": [
+      [],
+      []
+    ],
+    "2830887": [
+      [],
+      []
+    ],
+    "2833554": [
+      [],
+      []
+    ],
+    "2835770": [
+      [],
+      []
+    ],
+    "2835857": [
+      [],
+      []
+    ],
+    "2835866": [
+      [],
+      []
+    ],
+    "2835875": [
+      [],
+      []
+    ],
+    "2835876": [
+      [],
+      []
+    ],
+    "2835901": [
+      [],
+      []
+    ],
+    "2838128": [
+      [],
+      []
+    ],
+    "2838137": [
+      [],
+      []
+    ],
+    "2839347": [
+      [],
+      []
+    ],
+    "2839424": [
+      [],
+      []
+    ],
+    "2839590": [
+      [],
+      []
+    ],
+    "2839614": [
+      [],
+      []
+    ],
+    "2840002": [
+      [],
+      []
+    ],
+    "2840026": [
+      [],
+      []
+    ],
+    "2840083": [
+      [],
+      []
+    ],
+    "2841171": [
+      [],
+      []
+    ],
+    "2841247": [
+      [],
+      []
+    ],
+    "2841290": [
+      [],
+      []
+    ],
+    "2841344": [
+      [],
+      []
+    ],
+    "2841401": [
+      [],
+      []
+    ],
+    "2841792": [
+      [],
+      []
+    ],
+    "2841841": [
+      [],
+      []
+    ],
+    "2841986": [
+      [],
+      []
+    ],
+    "2846753": [
+      [],
+      []
+    ],
+    "2846973": [
+      [],
+      []
+    ],
+    "2847255": [
+      [],
+      []
+    ],
+    "2847463": [
+      [],
+      []
+    ],
+    "2847685": [
+      [],
+      []
+    ],
+    "2849776": [
+      [],
+      []
+    ],
+    "2849938": [
+      [],
+      []
+    ],
+    "2850316": [
+      [],
+      []
+    ],
+    "2858962": [
+      [],
+      []
+    ],
+    "2859303": [
+      [],
+      []
+    ],
+    "2859330": [
+      [],
+      []
+    ],
+    "2859403": [
+      [],
+      []
+    ],
+    "2859450": [
+      [],
+      []
+    ],
+    "2859995": [
+      [],
+      []
+    ],
+    "2860049": [
+      [],
+      []
+    ],
+    "2860150": [
+      [],
+      []
+    ],
+    "2861664": [
+      [],
+      []
+    ],
+    "2861975": [
+      [],
+      []
+    ],
+    "2862178": [
+      [],
+      []
+    ],
+    "2862467": [
+      [],
+      []
+    ],
+    "2862740": [
+      [],
+      []
+    ],
+    "2863973": [
+      [],
+      []
+    ],
+    "2864099": [
+      [],
+      []
+    ],
+    "2864304": [
+      [],
+      []
+    ],
+    "2866062": [
+      [],
+      []
+    ],
+    "2866129": [
+      [],
+      []
+    ],
+    "2866185": [
+      [],
+      []
+    ],
+    "2866279": [
+      [],
+      []
+    ],
+    "2866372": [
+      [],
+      []
+    ],
+    "2866776": [
+      [],
+      []
+    ],
+    "2866815": [
+      [],
+      []
+    ],
+    "2866862": [
+      [],
+      []
+    ],
+    "2868616": [
+      [],
+      []
+    ],
+    "2868673": [
+      [],
+      []
+    ],
+    "2868703": [
+      [],
+      []
+    ],
+    "2868767": [
+      [],
+      []
+    ],
+    "2868799": [
+      [],
+      []
+    ],
+    "2870074": [
+      [],
+      []
+    ],
+    "2871927": [
+      [],
+      []
+    ],
+    "2872043": [
+      [],
+      []
+    ],
+    "2873342": [
+      [],
+      []
+    ],
+    "2873395": [
+      [],
+      []
+    ],
+    "2873452": [
+      [],
+      []
+    ],
+    "2874772": [
+      [],
+      []
+    ],
+    "2874797": [
+      [],
+      []
+    ],
+    "2874822": [
+      [],
+      []
+    ],
+    "2874855": [
+      [],
+      []
+    ]
+  },
+  "groups_empty": true,
+  "inputs_unchanged": true,
+  "external_inputs_unchanged": true,
+  "exit_code": 0,
+  "finished_at": "2026-10-15T06:15:29.403842+00:00"
+}

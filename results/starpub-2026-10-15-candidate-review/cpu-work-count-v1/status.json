@@ -1,0 +1,151 @@
+{
+  "status": "finished",
+  "stage": "bounded-host-validation",
+  "commands": [
+    {
+      "name": "compile",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-static",
+        "-pthread",
+        "src/cpu_limit_probe.c",
+        "-o",
+        "cpu-limit-probe"
+      ],
+      "pid": 2881042,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2881042,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "name": "selftest",
+      "command": [
+        "/root/harddind-rebuild/cpu-work-count-owner-v1/cpu-limit-probe",
+        "selftest"
+      ],
+      "pid": 2881168,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2881168,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "name": "unit-tests",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_cpu_limit_checks.py"
+      ],
+      "pid": 2881177,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2881177,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "name": "native-spin",
+      "command": [
+        "/root/harddind-rebuild/cpu-work-count-owner-v1/cpu-limit-probe",
+        "spin",
+        "--threads",
+        "4",
+        "--duration-ms",
+        "1000",
+        "--sample-ms",
+        "100"
+      ],
+      "pid": 2881431,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2881431,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "guest_verification": "not_tested",
+  "inputs": {
+    "src/cpu_limit_probe.c": "5660a32983d13bdf4676dac5f0c7a8dad7bd18aaffe22830e4a7672a8d5c66f5",
+    "scripts/run-cpu-limits.py": "0fd06bd292d7981be11c69aeb695847b5389aac4edc2fe60ddae5eb93e1af3b3",
+    "scripts/cpu_limit_checks.py": "7ed9adbbc5542a3aac232fd9c9121674647ea70aa8b816a18c6eec43df67c76b",
+    "tests/test_cpu_limit_checks.py": "d14a34663a0e63b5a9b54052ae9018f30d65db1b114b4a0118f9d55f0af0a1f7"
+  },
+  "locked_wall_seconds": 2.9324522875249386,
+  "completed_work": {
+    "status": "pass",
+    "worker_blocks": [
+      373347,
+      419673,
+      318234,
+      373335
+    ],
+    "total_blocks": 1484589,
+    "steps_per_block": 1024,
+    "blocks_per_wall_second": 1454038.4368653262,
+    "scope": "count and arithmetic result only; no performance acceptance"
+  },
+  "input_unchanged": true,
+  "binary_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+  "groups": {
+    "2881042": [
+      [],
+      []
+    ],
+    "2881168": [
+      [],
+      []
+    ],
+    "2881177": [
+      [],
+      []
+    ],
+    "2881431": [
+      [],
+      []
+    ]
+  },
+  "exit_code": 0,
+  "finished_at": "2026-10-15T06:15:32.576710+00:00"
+}

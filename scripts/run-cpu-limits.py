@@ -253,7 +253,8 @@ def main():
                      'created_id': created_id, 'wait_exit': wait_row['exit_code'],
                      'probe_exit': probe_exit, 'inspect_start': cfg,
                      'inspect_end': final, 'removed': rm['exit_code'] == 0,
-                     'parse_error': parse_error, 'events': events}
+                     'parse_error': parse_error, 'events': events,
+                     'completed_work': summary['completed_work'] if summary else None}
             report['phases'][spec['phase']] = phase
             if (probe_exit != '0' or final['exit_code'] != 0 or final['running']
                     or cfg['id'] != created_id or final['id'] != created_id):
@@ -302,7 +303,8 @@ def main():
                 'wait_output': waited['stdout'].strip(), 'snapshots': snapshots,
                 'inspect_end': final, 'identities': identities,
                 'same_container': len(set(identities)) == 1 and created_id == final.get('id'),
-                'parse_error': parse_error, 'events': events}
+                'parse_error': parse_error, 'events': events,
+                'completed_work': summary['completed_work'] if summary else None}
             if waited['stdout'].strip() != '0' or final['exit_code'] != 0 or final['running']:
                 report['phases']['live_update']['parse_error'] = 'update container did not exit successfully'
                 return None

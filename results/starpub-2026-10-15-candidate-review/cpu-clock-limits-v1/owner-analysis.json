@@ -1,0 +1,751 @@
+{
+  "cells": {
+    "baseline": {
+      "verdict": "indeterminate",
+      "phases": {
+        "unthrottled_reference": {
+          "samples": 56,
+          "capture_median_ms": 0.6327039999999999,
+          "capture_max_ms": 26.110464,
+          "inter_capture_max_ms": 209.979392,
+          "rates": {
+            "thread": 3.8350949459005315,
+            "proc": 3.8350949459005315,
+            "stat": 3.8350949459005315
+          }
+        },
+        "cpus_flag_quota": {
+          "samples": 45,
+          "capture_median_ms": 0.6784,
+          "capture_max_ms": 199.403264,
+          "inter_capture_max_ms": 318.803712,
+          "rates": {
+            "thread": 0.9901127548743043,
+            "proc": 0.9933697047258644,
+            "stat": 0.9933697047258644
+          }
+        },
+        "explicit_period_quota": {
+          "samples": 31,
+          "capture_median_ms": 0.678656,
+          "capture_max_ms": 295.429376,
+          "inter_capture_max_ms": 395.738368,
+          "rates": {
+            "thread": 0.48317072316459525,
+            "proc": 0.49293174787499106,
+            "stat": 0.49293174787499106
+          }
+        },
+        "cpuset_single": {
+          "samples": 51,
+          "capture_median_ms": 0.12928,
+          "capture_max_ms": 0.714752,
+          "inter_capture_max_ms": 249.915648,
+          "rates": {
+            "thread": 0.9914098959098921,
+            "proc": 0.9914098959098921,
+            "stat": 0.9930622457364087
+          }
+        },
+        "cpuset_range": {
+          "samples": 50,
+          "capture_median_ms": 0.191488,
+          "capture_max_ms": 30.150656,
+          "inter_capture_max_ms": 221.748736,
+          "rates": {
+            "thread": 1.9795420046590713,
+            "proc": 1.9812026942602952,
+            "stat": 1.9812026942602952
+          }
+        },
+        "cpuset_with_quota": {
+          "samples": 28,
+          "capture_median_ms": 0.1696,
+          "capture_max_ms": 170.467328,
+          "inter_capture_max_ms": 588.036096,
+          "rates": {
+            "thread": 0.47914235060400784,
+            "proc": 0.47914235060400784,
+            "stat": 0.4807888878913068
+          }
+        },
+        "live_update": {
+          "samples": 141,
+          "capture_median_ms": 0.6784,
+          "capture_max_ms": 798.097664,
+          "inter_capture_max_ms": 898.549248,
+          "rates": {
+            "thread": 1.466170422645931,
+            "proc": 1.4666682733836716,
+            "stat": 1.4666682733836716
+          }
+        }
+      },
+      "nonpass": {
+        "unthrottled_reference": {
+          "status": "indeterminate",
+          "reason": "offered load below available guest CPUs",
+          "evidence": {
+            "expected": 3.9418534775851284,
+            "rates": {
+              "thread": 3.8350949459005315,
+              "proc": 3.8350949459005315,
+              "stat": 3.8350949459005315
+            },
+            "stat_delta": {
+              "usage_usec": 23350000,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            }
+          }
+        },
+        "cpuset_with_quota": {
+          "status": "indeterminate",
+          "reason": "consumption below quota delivery bound; host starvation or noise",
+          "evidence": {
+            "expected": 0.5,
+            "period_s": 0.1,
+            "wall_s": 6.07335168,
+            "lower": 0.47941828390876257,
+            "upper": 0.5205817160912375,
+            "lower_narrow": 0.4794160358484154,
+            "lower_wide": 0.4794306702295142,
+            "upper_wide": 0.5205693297704859,
+            "upper_narrow": 0.5205839641515846,
+            "least_rate": 0.47885399705691006,
+            "worst_rate": 0.48084140258101543,
+            "rates": {
+              "thread": 0.47914235060400784,
+              "proc": 0.47914235060400784,
+              "stat": 0.4807888878913068
+            },
+            "rates_interval": {
+              "thread": {
+                "low": 0.47885399705691006,
+                "high": 0.47919468544888866
+              },
+              "proc": {
+                "low": 0.47885399705691006,
+                "high": 0.47919468544888866
+              },
+              "stat": {
+                "low": 0.4804995434385489,
+                "high": 0.48084140258101543
+              }
+            },
+            "tolerance": 0.03,
+            "stat_delta": {
+              "usage_usec": 2920000,
+              "nr_periods": 61,
+              "nr_throttled": 57,
+              "throttled_usec": 2910000,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            },
+            "steal_s": 0.0,
+            "unaccounted_thread_cpu_cores": 0.0,
+            "worker_cpu_cores": 0.44127199299613096,
+            "sampler_cpu_cores": 0.03787035760787691,
+            "other_process_cpu_cores": 0.0016465372872989659,
+            "cpuset": [
+              0
+            ]
+          }
+        },
+        "cpu_weight_share_contention": {
+          "status": "not_tested",
+          "reason": "needs a controlled two-container contention protocol; never counts as passed"
+        }
+      }
+    },
+    "off-before": {
+      "verdict": "indeterminate",
+      "phases": {
+        "unthrottled_reference": {
+          "samples": 58,
+          "capture_median_ms": 0.641408,
+          "capture_max_ms": 14.316288,
+          "inter_capture_max_ms": 158.944256,
+          "rates": {
+            "thread": 3.837678110901558,
+            "proc": 3.840968019269241,
+            "stat": 3.840968019269241
+          }
+        },
+        "cpus_flag_quota": {
+          "samples": 47,
+          "capture_median_ms": 0.715776,
+          "capture_max_ms": 99.778816,
+          "inter_capture_max_ms": 287.495168,
+          "rates": {
+            "thread": 1.009029907383143,
+            "proc": 1.014016875623916,
+            "stat": 1.014016875623916
+          }
+        },
+        "explicit_period_quota": {
+          "samples": 24,
+          "capture_median_ms": 0.680064,
+          "capture_max_ms": 396.898304,
+          "inter_capture_max_ms": 846.603008,
+          "rates": {
+            "thread": 0.5006622162284641,
+            "proc": 0.5006622162284641,
+            "stat": 0.5006622162284641
+          }
+        },
+        "cpuset_single": {
+          "samples": 56,
+          "capture_median_ms": 0.125952,
+          "capture_max_ms": 94.731776,
+          "inter_capture_max_ms": 194.942976,
+          "rates": {
+            "thread": 0.9833637716325345,
+            "proc": 0.9833637716325345,
+            "stat": 0.985002711251922
+          }
+        },
+        "cpuset_range": {
+          "samples": 48,
+          "capture_median_ms": 0.126336,
+          "capture_max_ms": 19.889664,
+          "inter_capture_max_ms": 774.702848,
+          "rates": {
+            "thread": 1.8295953954439115,
+            "proc": 1.8295953954439115,
+            "stat": 1.8295953954439115
+          }
+        },
+        "cpuset_with_quota": {
+          "samples": 51,
+          "capture_median_ms": 0.12544,
+          "capture_max_ms": 0.726528,
+          "inter_capture_max_ms": 190.85824,
+          "rates": {
+            "thread": 0.5023140884861382,
+            "proc": 0.5023140884861382,
+            "stat": 0.5023140884861382
+          }
+        },
+        "live_update": {
+          "samples": 146,
+          "capture_median_ms": 0.66176,
+          "capture_max_ms": 692.837376,
+          "inter_capture_max_ms": 999.366144,
+          "rates": {
+            "thread": 1.5016310963661699,
+            "proc": 1.50312923181316,
+            "stat": 1.50312923181316
+          }
+        }
+      },
+      "nonpass": {
+        "unthrottled_reference": {
+          "status": "indeterminate",
+          "reason": "offered load below available guest CPUs",
+          "evidence": {
+            "expected": 3.9478900412189195,
+            "rates": {
+              "thread": 3.837678110901558,
+              "proc": 3.840968019269241,
+              "stat": 3.840968019269241
+            },
+            "stat_delta": {
+              "usage_usec": 23350000,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            }
+          }
+        },
+        "cpuset_range": {
+          "status": "indeterminate",
+          "reason": "cpuset-local consumption outside expected per-CPU band",
+          "evidence": {
+            "expected": 1.969071277607797,
+            "cpuset": [
+              1,
+              2
+            ],
+            "rates": {
+              "thread": 1.8295953954439115,
+              "proc": 1.8295953954439115,
+              "stat": 1.8295953954439115
+            },
+            "tolerance": 0.09845356388038985,
+            "stat_delta": {
+              "usage_usec": 11150000,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            },
+            "steal_s": 0.0
+          }
+        },
+        "cpu_weight_share_contention": {
+          "status": "not_tested",
+          "reason": "needs a controlled two-container contention protocol; never counts as passed"
+        }
+      }
+    },
+    "on-first": {
+      "verdict": "indeterminate",
+      "phases": {
+        "unthrottled_reference": {
+          "samples": 58,
+          "capture_median_ms": 0.675072,
+          "capture_max_ms": 30.258176,
+          "inter_capture_max_ms": 130.520832,
+          "rates": {
+            "thread": 3.878321237528413,
+            "proc": 3.8829672470180383,
+            "stat": 3.8831497379480333
+          }
+        },
+        "cpus_flag_quota": {
+          "samples": 47,
+          "capture_median_ms": 0.701696,
+          "capture_max_ms": 87.374848,
+          "inter_capture_max_ms": 297.730816,
+          "rates": {
+            "thread": 0.9769527583369951,
+            "proc": 0.9886798339583381,
+            "stat": 0.9888147949246561
+          }
+        },
+        "explicit_period_quota": {
+          "samples": 32,
+          "capture_median_ms": 1.67936,
+          "capture_max_ms": 204.132864,
+          "inter_capture_max_ms": 400.720384,
+          "rates": {
+            "thread": 0.48842057992773635,
+            "proc": 0.497308149528996,
+            "stat": 0.4975395482289663
+          }
+        },
+        "cpuset_single": {
+          "samples": 50,
+          "capture_median_ms": 0.128384,
+          "capture_max_ms": 31.398144,
+          "inter_capture_max_ms": 219.302656,
+          "rates": {
+            "thread": 0.9946469415471308,
+            "proc": 0.9946765306284433,
+            "stat": 0.994815016455682
+          }
+        },
+        "cpuset_range": {
+          "samples": 52,
+          "capture_median_ms": 0.128512,
+          "capture_max_ms": 0.690944,
+          "inter_capture_max_ms": 214.451456,
+          "rates": {
+            "thread": 1.964005495120919,
+            "proc": 1.964037975920233,
+            "stat": 1.9641404062003178
+          }
+        },
+        "cpuset_with_quota": {
+          "samples": 48,
+          "capture_median_ms": 0.13145600000000002,
+          "capture_max_ms": 5.535744,
+          "inter_capture_max_ms": 380.117504,
+          "rates": {
+            "thread": 0.4982441947733269,
+            "proc": 0.4986746657016692,
+            "stat": 0.49897760938889335
+          }
+        },
+        "live_update": {
+          "samples": 149,
+          "capture_median_ms": 0.674048,
+          "capture_max_ms": 304.2112,
+          "inter_capture_max_ms": 492.702464,
+          "rates": {
+            "thread": 1.506209522259909,
+            "proc": 1.509760353687205,
+            "stat": 1.5099090322077475
+          }
+        }
+      },
+      "nonpass": {
+        "unthrottled_reference": {
+          "status": "indeterminate",
+          "reason": "offered load below available guest CPUs",
+          "evidence": {
+            "expected": 3.9659655431837173,
+            "rates": {
+              "thread": 3.878321237528413,
+              "proc": 3.8829672470180383,
+              "stat": 3.8831497379480333
+            },
+            "stat_delta": {
+              "usage_usec": 23498841,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            }
+          }
+        },
+        "cpu_weight_share_contention": {
+          "status": "not_tested",
+          "reason": "needs a controlled two-container contention protocol; never counts as passed"
+        }
+      }
+    },
+    "on-second": {
+      "verdict": "indeterminate",
+      "phases": {
+        "unthrottled_reference": {
+          "samples": 52,
+          "capture_median_ms": 0.6912,
+          "capture_max_ms": 120.303104,
+          "inter_capture_max_ms": 220.57216,
+          "rates": {
+            "thread": 3.771721673200701,
+            "proc": 3.7730706013787088,
+            "stat": 3.773597433479927
+          }
+        },
+        "cpus_flag_quota": {
+          "samples": 31,
+          "capture_median_ms": 1.310464,
+          "capture_max_ms": 217.92128,
+          "inter_capture_max_ms": 505.80736,
+          "rates": {
+            "thread": 1.0026368603978895,
+            "proc": 1.0120912367293755,
+            "stat": 1.0127426132943724
+          }
+        },
+        "explicit_period_quota": {
+          "samples": 20,
+          "capture_median_ms": 85.592704,
+          "capture_max_ms": 550.05184,
+          "inter_capture_max_ms": 682.706432,
+          "rates": {
+            "thread": 0.4878413301721588,
+            "proc": 0.4919205216509377,
+            "stat": 0.4930267898139342
+          }
+        },
+        "cpuset_single": {
+          "samples": 47,
+          "capture_median_ms": 0.13568,
+          "capture_max_ms": 96.834048,
+          "inter_capture_max_ms": 291.99232,
+          "rates": {
+            "thread": 0.9663155226010063,
+            "proc": 0.9663458050170671,
+            "stat": 0.9668301365791531
+          }
+        },
+        "cpuset_range": {
+          "samples": 33,
+          "capture_median_ms": 0.131072,
+          "capture_max_ms": 29.17248,
+          "inter_capture_max_ms": 1559.232256,
+          "rates": {
+            "thread": 1.8804861779942321,
+            "proc": 1.8805817969879648,
+            "stat": 1.8813029572703905
+          }
+        },
+        "cpuset_with_quota": {
+          "samples": 43,
+          "capture_median_ms": 0.125184,
+          "capture_max_ms": 99.995904,
+          "inter_capture_max_ms": 464.704,
+          "rates": {
+            "thread": 0.4917485243244987,
+            "proc": 0.4917721292637839,
+            "stat": 0.4918383922051653
+          }
+        },
+        "live_update": {
+          "samples": 156,
+          "capture_median_ms": 0.6772480000000001,
+          "capture_max_ms": 198.91328,
+          "inter_capture_max_ms": 300.796416,
+          "rates": {
+            "thread": 1.4774204143277405,
+            "proc": 1.4787292017141414,
+            "stat": 1.4788444420501006
+          }
+        }
+      },
+      "nonpass": {
+        "unthrottled_reference": {
+          "status": "indeterminate",
+          "reason": "offered load below available guest CPUs",
+          "evidence": {
+            "expected": 3.999645215470807,
+            "rates": {
+              "thread": 3.771721673200701,
+              "proc": 3.7730706013787088,
+              "stat": 3.773597433479927
+            },
+            "stat_delta": {
+              "usage_usec": 22643593,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            }
+          }
+        },
+        "cpuset_range": {
+          "status": "indeterminate",
+          "reason": "cpuset-local consumption outside expected per-CPU band",
+          "evidence": {
+            "expected": 1.9741612510071382,
+            "cpuset": [
+              1,
+              2
+            ],
+            "rates": {
+              "thread": 1.8804861779942321,
+              "proc": 1.8805817969879648,
+              "stat": 1.8813029572703905
+            },
+            "tolerance": 0.09870806255035691,
+            "stat_delta": {
+              "usage_usec": 11435558,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            },
+            "steal_s": 0.0
+          }
+        },
+        "cpu_weight_share_contention": {
+          "status": "not_tested",
+          "reason": "needs a controlled two-container contention protocol; never counts as passed"
+        }
+      }
+    },
+    "off-after": {
+      "verdict": "indeterminate",
+      "phases": {
+        "unthrottled_reference": {
+          "samples": 54,
+          "capture_median_ms": 0.635392,
+          "capture_max_ms": 24.187904,
+          "inter_capture_max_ms": 435.576576,
+          "rates": {
+            "thread": 3.7093327967400733,
+            "proc": 3.7159359703880313,
+            "stat": 3.7159359703880313
+          }
+        },
+        "cpus_flag_quota": {
+          "samples": 39,
+          "capture_median_ms": 1.2928,
+          "capture_max_ms": 189.481472,
+          "inter_capture_max_ms": 399.661056,
+          "rates": {
+            "thread": 0.9941225798765982,
+            "proc": 0.9941225798765982,
+            "stat": 0.9941225798765982
+          }
+        },
+        "explicit_period_quota": {
+          "samples": 15,
+          "capture_median_ms": 99.845632,
+          "capture_max_ms": 700.197632,
+          "inter_capture_max_ms": 849.867008,
+          "rates": {
+            "thread": 0.4955877457823083,
+            "proc": 0.5037388600221488,
+            "stat": 0.5037388600221488
+          }
+        },
+        "cpuset_single": {
+          "samples": 50,
+          "capture_median_ms": 0.16,
+          "capture_max_ms": 1.730304,
+          "inter_capture_max_ms": 273.55904,
+          "rates": {
+            "thread": 0.9754570363987167,
+            "proc": 0.9754570363987167,
+            "stat": 0.9754570363987167
+          }
+        },
+        "cpuset_range": {
+          "samples": 45,
+          "capture_median_ms": 0.201472,
+          "capture_max_ms": 220.72832,
+          "inter_capture_max_ms": 739.117568,
+          "rates": {
+            "thread": 1.913684731717026,
+            "proc": 1.913684731717026,
+            "stat": 1.913684731717026
+          }
+        },
+        "cpuset_with_quota": {
+          "samples": 42,
+          "capture_median_ms": 0.153472,
+          "capture_max_ms": 0.73088,
+          "inter_capture_max_ms": 460.865536,
+          "rates": {
+            "thread": 0.49546254482708857,
+            "proc": 0.49546254482708857,
+            "stat": 0.49546254482708857
+          }
+        },
+        "live_update": {
+          "samples": 132,
+          "capture_median_ms": 0.7306239999999999,
+          "capture_max_ms": 597.484544,
+          "inter_capture_max_ms": 797.679104,
+          "rates": {
+            "thread": 1.4550619060516379,
+            "proc": 1.4664295771926665,
+            "stat": 1.4664295771926665
+          }
+        }
+      },
+      "nonpass": {
+        "unthrottled_reference": {
+          "status": "indeterminate",
+          "reason": "offered load below available guest CPUs",
+          "evidence": {
+            "expected": 3.9619041887744446,
+            "rates": {
+              "thread": 3.7093327967400733,
+              "proc": 3.7159359703880313,
+              "stat": 3.7159359703880313
+            },
+            "stat_delta": {
+              "usage_usec": 22510000,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            }
+          }
+        },
+        "cpuset_range": {
+          "status": "indeterminate",
+          "reason": "cpuset-local consumption outside expected per-CPU band",
+          "evidence": {
+            "expected": 1.9762665043549323,
+            "cpuset": [
+              1,
+              2
+            ],
+            "rates": {
+              "thread": 1.913684731717026,
+              "proc": 1.913684731717026,
+              "stat": 1.913684731717026
+            },
+            "tolerance": 0.09881332521774662,
+            "stat_delta": {
+              "usage_usec": 11620000,
+              "nr_periods": 0,
+              "nr_throttled": 0,
+              "throttled_usec": 0,
+              "nr_bursts": 0,
+              "burst_usec": 0
+            },
+            "steal_s": 0.0
+          }
+        },
+        "update_window_recovered_2": {
+          "status": "indeterminate",
+          "reason": "post-update delivery below quota bound; starvation or noise",
+          "evidence": {
+            "segment": 2,
+            "expected": 2.0,
+            "period_s": 0.1,
+            "wall_s": 6.591456768,
+            "wall_wide_s": 6.59276672,
+            "wall_narrow_s": 6.590766848,
+            "lower": 1.9355225991827365,
+            "upper": 2.0644774008172635,
+            "lower_wide": 1.9355354105415699,
+            "lower_narrow": 1.9355158497028355,
+            "upper_wide": 2.06446458945843,
+            "upper_narrow": 2.0644841502971643,
+            "least_rate": 1.9202863589264083,
+            "worst_rate": 1.9208690417931773,
+            "rates": {
+              "proc": 1.9206679866977778,
+              "stat": 1.9206679866977778
+            },
+            "rates_interval": {
+              "proc": {
+                "low": 1.9202863589264083,
+                "high": 1.9208690417931773
+              },
+              "stat": {
+                "low": 1.9202863589264083,
+                "high": 1.9208690417931773
+              }
+            },
+            "nr_throttled": 65,
+            "throttled_usec": 12740000,
+            "steal_cores": 0.0,
+            "transition_guard_s": {
+              "head": 0.5,
+              "tail": 0.2
+            },
+            "first_stable_wall_s": 12.372972544,
+            "last_stable_cap_end_s": 19.997023744,
+            "samples_total": 132,
+            "used": 48,
+            "stable_total": 132,
+            "unstable_total": 0,
+            "unstable_indexes": [],
+            "slow_indexes": [
+              8,
+              16,
+              29,
+              54,
+              59,
+              61,
+              63,
+              68,
+              90,
+              99,
+              110,
+              123,
+              130
+            ],
+            "candidate_groups": [
+              48
+            ],
+            "endpoint_indexes": [
+              78,
+              129
+            ]
+          }
+        },
+        "cpu_weight_share_contention": {
+          "status": "not_tested",
+          "reason": "needs a controlled two-container contention protocol; never counts as passed"
+        }
+      }
+    }
+  },
+  "raw_command_count": 335,
+  "capture_count": 2027,
+  "process_groups_empty": 356,
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "resource_enforcement_acceptance": false
+}

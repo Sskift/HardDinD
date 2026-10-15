@@ -76,6 +76,45 @@ def _cap_end(event):
     return end
 
 
+def completed_work(start, workers, wall_s):
+    """Validate the dependent-loop result independently of guest CPU clocks.
+
+    Older frozen probes have no work counter. Keep their absence explicit;
+    never invent throughput from an accounting counter. The affine recurrence
+    is evaluated modulo 2**64 using exponentiation, not by repeating the busy
+    loop. This does not establish a native Docker baseline.
+    """
+    if 'workload_revision' not in start:
+        return {'status': NOT_TESTED, 'reason': 'probe has no completed-work counter'}
+    if (type(start['workload_revision']) is not int or start['workload_revision'] != 1
+            or type(start.get('steps_per_block')) is not int or start['steps_per_block'] != 1024):
+        raise ValueError('unknown work-counter protocol')
+    mask = (1 << 64) - 1
+    mul, add = 1, 0
+    for k in range(1024):
+        mul = (mul * 6364136223846793005) & mask
+        add = (add * 6364136223846793005 + k + 1) & mask
+    counts = []
+    for worker in workers:
+        blocks, sink = worker.get('work_blocks'), worker.get('sink')
+        if (type(blocks) is not int or not 0 <= blocks <= mask
+                or type(sink) is not int or not 0 <= sink <= mask):
+            raise ValueError('missing or invalid completed-work evidence')
+        value, a, b, n = 0x9e3779b97f4a7c15 ^ worker['idx'], mul, add, blocks
+        while n:
+            if n & 1:
+                value = (a * value + b) & mask
+            a, b = (a * a) & mask, (a * b + b) & mask
+            n >>= 1
+        if value != sink:
+            raise ValueError('completed-work count does not match worker result')
+        counts.append(blocks)
+    total = sum(counts)
+    return {'status': PASS, 'worker_blocks': counts, 'total_blocks': total,
+            'steps_per_block': 1024, 'blocks_per_wall_second': total / wall_s,
+            'scope': 'count and arithmetic result only; no performance acceptance'}
+
+
 def spin_summary(events):
     if sum(e.get('event') == 'start' for e in events) != 1 or sum(e.get('event') == 'end' for e in events) != 1:
         raise ValueError('spin stream needs exactly one start and end')
@@ -150,7 +189,9 @@ def spin_summary(events):
         if end['steal_ns'] < start['steal_ns']:
             raise ValueError('steal counter moved backwards')
         steal_s = (end['steal_ns'] - start['steal_ns']) / 1e9 / wall_s
+    work = completed_work(start, workers, wall_s)
     return {'start': start, 'end': end, 'samples': samples, 'wall_s': wall_s,
+            'completed_work': work,
             'active_wall_s': active_wall_s,
             'elapsed_wide_s': elapsed_wide_s, 'elapsed_narrow_s': elapsed_narrow_s,
             'rates_interval': rates_interval, 'steal_s': steal_s,

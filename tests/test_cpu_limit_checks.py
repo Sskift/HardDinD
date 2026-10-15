@@ -947,5 +947,53 @@ class CaptureExecutableTests(unittest.TestCase):
         self.assertEqual(samples[1]['max_stable'], 1)
 
 
+class CompletedWorkTests(unittest.TestCase):
+    protocol = {'workload_revision': 1, 'steps_per_block': 1024}
+
+    @staticmethod
+    def worker(idx, blocks):
+        # Literal dependent busy-loop reference, independent of the checker's
+        # affine exponentiation. Check at multiple worker seeds and counts.
+        value = 0x9e3779b97f4a7c15 ^ idx
+        for _ in range(blocks):
+            for k in range(1024):
+                value = (value * 6364136223846793005 + k + 1) % (1 << 64)
+        return {'idx': idx, 'work_blocks': blocks, 'sink': value}
+
+    def test_completed_work_matches_literal_loop(self):
+        workers = [self.worker(i, n) for i, n in enumerate((0, 1, 2, 37))]
+        r = checks.completed_work(self.protocol, workers, 2.0)
+        self.assertEqual(r['status'], checks.PASS)
+        self.assertEqual(r['worker_blocks'], [0, 1, 2, 37])
+        self.assertEqual(r['total_blocks'], 40)
+        self.assertEqual(r['blocks_per_wall_second'], 20)
+
+    def test_missing_counter_does_not_invent_work(self):
+        self.assertEqual(checks.completed_work({}, [], 1)['status'], checks.NOT_TESTED)
+        with self.assertRaisesRegex(ValueError, 'completed-work evidence'):
+            checks.completed_work(self.protocol, [{'idx': 0, 'sink': 1}], 1)
+
+    def test_changed_count_or_result_is_rejected(self):
+        original = self.worker(3, 17)
+        for key in ('work_blocks', 'sink', 'idx'):
+            worker = dict(original)
+            worker[key] += 1
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'does not match'):
+                checks.completed_work(self.protocol, [worker], 1)
+
+    def test_bad_protocol_and_counters_are_rejected(self):
+        for protocol in ({'workload_revision': 2, 'steps_per_block': 1024},
+                         {'workload_revision': True, 'steps_per_block': 1024},
+                         {'workload_revision': 1, 'steps_per_block': 512}):
+            with self.subTest(protocol=protocol), self.assertRaises(ValueError):
+                checks.completed_work(protocol, [self.worker(0, 0)], 1)
+        for key in ('work_blocks', 'sink'):
+            for value in (-1, 1 << 64, 0.5, True, None):
+                worker = self.worker(0, 0)
+                worker[key] = value
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    checks.completed_work(self.protocol, [worker], 1)
+
+
 if __name__ == '__main__':
     unittest.main()
