@@ -1,0 +1,68 @@
+Fix synchronous-to-asynchronous GPU completion ownership.
+
+Claim the completed batch flag before exposing an idle worker; send the
+latched completion only after parking. This prevents a synchronous mapping
+completion from consuming the following asynchronous ioctl flag.
+
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -446,28 +446,24 @@
+ 		} while (res == -EINTR);
+ 	}
+ 
+-	/* 0017 asynchronous GPU completion: report only AFTER parking in
+-	 * FUTEX_IN_KERN.  The kernel must not publish the next batch (and its
+-	 * FUTEX_IN_CHILD handoff) before this phase exchange is visible, or
+-	 * the exchange below would clobber it.  Claiming the flag with
+-	 * ACQ_REL orders every gpu_result/gpu_payload store before the
+-	 * datagram; the kernel sleeps schedulably on the socket IRQ instead
+-	 * of blocking in the handoff futex with guest interrupts disabled.
+-	 * A notification that cannot be delivered is unrecoverable: exit so
+-	 * the SIGCHLD reaper fails the waiter instead of leaving it asleep. */
++	/* Claim the completed batch before publishing FUTEX_IN_KERN (below
++	 * syscall_handler). A synchronous caller may submit its next async
++	 * request as soon as it observes that phase. Reading gpu_async here
++	 * would steal the next batch's flag and report completion too early.
++	 * The latched notification is still sent only AFTER parking, so the
++	 * next handoff cannot be overwritten by this frame's phase exchange.
++	 * An undeliverable completion is fatal: SIGCHLD wakes the waiter. */
+ 	if (notify) {
++		const char done = 0;
++		long sent;
++
+ 		notify = 0;
+-		if (__atomic_exchange_n(&d->gpu_async, 0, __ATOMIC_ACQ_REL)) {
+-			const char done = 0;
+-			long sent;
+-
+-			do {
+-				sent = stub_syscall3(__NR_write, 0,
+-						     (unsigned long)&done, 1);
+-			} while (sent == -EINTR);
+-			if (sent != 1)
+-				stub_syscall1(__NR_exit, 72);
+-		}
++		do {
++			sent = stub_syscall3(__NR_write, 0,
++					     (unsigned long)&done, 1);
++		} while (sent == -EINTR);
++		if (sent != 1)
++			stub_syscall1(__NR_exit, 72);
+ 	}
+ 
+ 	res = 0;
+@@ -532,9 +528,11 @@
+ 		/* Report SIGSYS if we restart. */
+ 		d->signal = SIGSYS;
+ 		d->restart_wait = 0;
+-		/* 0017: this frame completed queued work; its parking pass
+-		 * sends the async completion byte (if this batch used it). */
+-		notify = 1;
++		/* Own this batch's async flag before releasing the worker.
++		 * ACQ_REL publishes its result/payload before the completion
++		 * sent by the parking pass. Never read the flag after that
++		 * pass publishes FUTEX_IN_KERN: it may name a newer batch. */
++		notify = __atomic_exchange_n(&d->gpu_async, 0, __ATOMIC_ACQ_REL);
+ 
+ 		goto restart_wait;
+ 	}

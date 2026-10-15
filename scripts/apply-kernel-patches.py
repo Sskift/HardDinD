@@ -127,4 +127,6 @@ if __name__ == "__main__":
     if mapping_mode:
         # This replacement patch is based on the full 0027 async series.
         patches += [repo / "kernel/experiments/0024-um-gpu-mapping-lifecycle.patch"]
+    if async_mode:
+        patches += [repo / "kernel/experiments/0028-um-gpu-completion-ownership.patch"]
     apply_series(src, pathlib.Path(sys.argv[2]), patches)

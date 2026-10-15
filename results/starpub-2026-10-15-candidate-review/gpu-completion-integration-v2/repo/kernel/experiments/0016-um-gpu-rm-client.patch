@@ -1,0 +1,379 @@
+--- a/arch/um/include/shared/os.h
++++ b/arch/um/include/shared/os.h
+@@ -64,7 +64,9 @@
+ 
+ int start_userspace_cpu(struct mm_id *broker, struct mm_id *child, unsigned long addr);
+ int os_gpu_device_present(unsigned int index);
+-long os_gpu_command(struct mm_id *id, int operation, int fd, unsigned int command, unsigned long argument);
++long os_gpu_command(struct mm_id *id, int operation, int fd,
++		    unsigned int command, unsigned long argument,
++		    void *payload, size_t payload_size);
+ 
+ struct openflags {
+ 	unsigned int r : 1;
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -46,6 +46,11 @@
+ #define STUB_MEMFD_SLOT (-1)
+ #define STUB_MEMFD_HOST_FD 1
+ 
++/* Fixed RM ioctl block exchanged by STUB_SYSCALL_GPU operation 4.  It lives
++ * inside the shared stub pages, so the GPU worker never dereferences a guest
++ * pointer or a UML kernel address. */
++#define STUB_GPU_PAYLOAD_SIZE 64
++
+ struct stub_syscall {
+ 	struct {
+ 		unsigned long addr;
+@@ -68,8 +73,12 @@
+ 	int syscall_fd_num;
+ 
+ 	int syscall_data_len;
+-	/* 192 leaves enough room for additional fields in the struct */
+-	struct stub_syscall syscall_data[(UM_KERN_PAGE_SIZE - 192) / sizeof(struct stub_syscall)] __aligned(16);
++
++	/* Bounded RM parameter block (NVOS00/21/64, max 48 bytes). */
++	unsigned char gpu_payload[STUB_GPU_PAYLOAD_SIZE] __aligned(64);
++
++	/* 256 leaves enough room for additional fields in the struct */
++	struct stub_syscall syscall_data[(UM_KERN_PAGE_SIZE - 256) / sizeof(struct stub_syscall)] __aligned(16);
+ 
+ 	/* data shared with signal handler (only used in seccomp mode) */
+ 	short restart_wait;
+--- a/arch/um/kernel/gpu.c
++++ b/arch/um/kernel/gpu.c
+@@ -1,8 +1,11 @@
+ // SPDX-License-Identifier: GPL-2.0
+-/* Experimental NVIDIA control transport, not a CUDA device backend yet. */
++/* Experimental NVIDIA control transport: queries, FD association and RM
++ * root-client alloc/free.  Not a CUDA device backend: device mmap, UVM,
++ * pinned-memory and nested-object allocation are still absent. */
+ #include <linux/fs.h>
+ #include <linux/file.h>
+ #include <linux/init.h>
++#include <linux/ioctl.h>
+ #include <linux/miscdevice.h>
+ #include <linux/mm.h>
+ #include <linux/module.h>
+@@ -15,6 +18,62 @@
+ #include <init.h>
+ #include <os.h>
+ #include <skas.h>
++#include <stub-data.h>
++
++/*
++ * NVIDIA driver 550.120 RM parameter blocks, fixed against the open-gpu-
++ * kernel-modules reference commit in sources.lock.json:
++ *   src/common/sdk/nvidia/inc/nvos.h:159-165  NVOS00_PARAMETERS (RM_FREE)
++ *   src/common/sdk/nvidia/inc/nvos.h:454-463  NVOS21_PARAMETERS (RM_ALLOC)
++ *   src/common/sdk/nvidia/inc/nvos.h:471-480  NVOS64_PARAMETERS (RM_ALLOC)
++ *   nvos.h:168/173/183  NV01_ROOT 0x00 / NV01_ROOT_NON_PRIV 0x01 /
++ *                       NV01_ROOT_CLIENT 0x41
++ *   src/nvidia/arch/nvalloc/unix/include/nv_escape.h:29/31  0x29/0x2b
++ *   .../nv-ioctl-numbers.h:29  magic 'F', encoded with _IOWR
++ * escape.c:373 accepts both 32-byte NVOS21 and 48-byte NVOS64 for
++ * NV_ESC_RM_ALLOC; escape.c:424 requires the 16-byte NVOS00 for FREE.
++ */
++struct gpu_nvos00 {
++	u32 hRoot;
++	u32 hObjectParent;
++	u32 hObjectOld;
++	u32 status;
++};
++
++struct gpu_nvos21 {
++	u32 hRoot;
++	u32 hObjectParent;
++	u32 hObjectNew;
++	u32 hClass;
++	u64 pAllocParms;
++	u32 paramsSize;
++	u32 status;
++};
++
++struct gpu_nvos64 {
++	u32 hRoot;
++	u32 hObjectParent;
++	u32 hObjectNew;
++	u32 hClass;
++	u64 pAllocParms;
++	u64 pRightsRequested;
++	u32 paramsSize;
++	u32 flags;
++	u32 status;
++};
++
++static_assert(sizeof(struct gpu_nvos00) == 16);
++static_assert(sizeof(struct gpu_nvos21) == 32);
++static_assert(sizeof(struct gpu_nvos64) == 48);
++static_assert(offsetof(struct gpu_nvos00, status) == 12);
++static_assert(offsetof(struct gpu_nvos21, pAllocParms) == 16);
++static_assert(offsetof(struct gpu_nvos21, paramsSize) == 24);
++static_assert(offsetof(struct gpu_nvos21, status) == 28);
++static_assert(offsetof(struct gpu_nvos64, pAllocParms) == 16);
++static_assert(offsetof(struct gpu_nvos64, pRightsRequested) == 24);
++static_assert(offsetof(struct gpu_nvos64, paramsSize) == 32);
++static_assert(offsetof(struct gpu_nvos64, flags) == 36);
++static_assert(offsetof(struct gpu_nvos64, status) == 40);
+ 
+ int uml_gpu_bridge;
+ 
+@@ -27,7 +86,8 @@
+ }
+ __uml_setup("gpu_bridge=", gpu_setup,
+ "gpu_bridge=1\n"
+-"    Enable experimental NVIDIA control transport. No CUDA mmap backend yet.\n");
++"    Enable the experimental NVIDIA transport: control queries, REGISTER_FD\n"
++"    and root-client RM_ALLOC/FREE. No device mmap or CUDA backend yet.\n");
+ 
+ /* Index 255 is the NVIDIA control minor; 0..254 are physical GPUs.
+  * Nodes remain diagnostic names until CUDA and device mappings are supported. */
+@@ -69,15 +129,20 @@
+ }
+ 
+ static long gpu_command(struct mm_struct *mm, int operation, int fd,
+-			unsigned int command, unsigned long argument)
++			unsigned int command, unsigned long argument,
++			void *payload, size_t payload_size)
+ {
+ 	unsigned long flags;
+ 	long result;
+ 
+-	/* Only bounded control queries are exposed in this first transport.
+-	 * Blocking CUDA commands need an interruptible guest wait before enabling. */
++	/* Only bounded, non-blocking commands are exposed: control queries,
++	 * REGISTER_FD and root-client alloc/free; there is still no device
++	 * mmap or CUDA path.  The handoff busy-waits with guest interrupts
++	 * disabled, so anything that can block inside the host GPU driver
++	 * cannot use this transport until an interruptible wait exists. */
+ 	local_irq_save(flags);
+-	result = os_gpu_command(&mm->context.gpu_id, operation, fd, command, argument);
++	result = os_gpu_command(&mm->context.gpu_id, operation, fd, command,
++				argument, payload, payload_size);
+ 	local_irq_restore(flags);
+ 	return result;
+ }
+@@ -99,7 +164,7 @@
+ 	if (!result && task_tgid(current) != mm->context.gpu_owner)
+ 		result = -EXDEV;
+ 	if (!result)
+-		result = gpu_command(mm, 0, -1, device->index, 0);
++		result = gpu_command(mm, 0, -1, device->index, 0, NULL, 0);
+ 	if (result >= 0) {
+ 		mmgrab(mm);
+ 		state->mm = mm;
+@@ -138,7 +203,8 @@
+ 	/* Invalid or unrelated descriptors are represented by -1, never by a
+ 	 * guest integer that could accidentally name an unrelated host file. */
+ 	mutex_lock(&state->mm->context.gpu_lock);
+-	result = gpu_command(state->mm, 3, state->host_fd, command, host_fd);
++	result = gpu_command(state->mm, 3, state->host_fd, command, host_fd,
++			     NULL, 0);
+ 	mutex_unlock(&state->mm->context.gpu_lock);
+ 	if (source)
+ 		fput(source);
+@@ -150,6 +216,79 @@
+ 	return result;
+ }
+ 
++/* Copy the RM block back unless the host ioctl failed with -EFAULT, in which
++ * case the driver never performed its copyout (nv.c:2689-2700).  The RM side
++ * effect may already have happened before a copyout failure, so a failed
++ * copy here surfaces as -EFAULT just like the native driver path. */
++static long gpu_rm_copyback(unsigned long arg, const void *payload,
++			    size_t size, long result)
++{
++	if (result != -EFAULT &&
++	    copy_to_user((void __user *)arg, payload, size))
++		return -EFAULT;
++	return result;
++}
++
++/* Issue an ioctl against the fixed stub payload.  payload holds a kernel-side
++ * copy of one NVOS block; the worker only sees the bytes in stub pages. */
++static long gpu_rm_request(struct gpu_file *state, unsigned int command,
++			   void *payload, size_t size)
++{
++	long result;
++
++	mutex_lock(&state->mm->context.gpu_lock);
++	result = gpu_command(state->mm, 4, state->host_fd, command, 0,
++			     payload, size);
++	mutex_unlock(&state->mm->context.gpu_lock);
++	return result;
++}
++
++/* NV_ESC_RM_ALLOC (0x2b): only root-client allocation is exposed.  Every
++ * other hClass carries a class-specific pAllocParms block (and possibly a
++ * nested rights mask), so it is rejected rather than forwarding an
++ * untranslated guest pointer to the host driver. */
++static long gpu_rm_alloc(struct gpu_file *state, unsigned int command,
++			 unsigned long arg, size_t size)
++{
++	/* The two layouts share their first 24 bytes only. */
++	union {
++		struct gpu_nvos21 v21;
++		struct gpu_nvos64 v64;
++	} params = {};
++	long result;
++
++	if (copy_from_user(&params, (void __user *)arg, size))
++		return -EFAULT;
++	if (params.v64.hClass != 0x00 && params.v64.hClass != 0x01 &&
++	    params.v64.hClass != 0x41)
++		return -EOPNOTSUPP;
++	if (params.v64.pAllocParms ||
++	    (size == sizeof(struct gpu_nvos21) ?
++	     params.v21.paramsSize : params.v64.paramsSize))
++		return -EOPNOTSUPP;
++	/* The 48-byte NVOS64 form additionally carries a rights mask pointer
++	 * and FINN flags: nested data this transport cannot translate yet. */
++	if (size == sizeof(struct gpu_nvos64) &&
++	    (params.v64.pRightsRequested || params.v64.flags))
++		return -EOPNOTSUPP;
++	result = gpu_rm_request(state, command, &params, size);
++	return gpu_rm_copyback(arg, &params, size, result);
++}
++
++/* NV_ESC_RM_FREE (0x29): NVOS00 contains numeric RM handles only; the host
++ * driver validates them and reports status in the block. */
++static long gpu_rm_free(struct gpu_file *state, unsigned int command,
++			unsigned long arg)
++{
++	struct gpu_nvos00 params;
++	long result;
++
++	if (copy_from_user(&params, (void __user *)arg, sizeof(params)))
++		return -EFAULT;
++	result = gpu_rm_request(state, command, &params, sizeof(params));
++	return gpu_rm_copyback(arg, &params, sizeof(params), result);
++}
++
+ static long gpu_ioctl(struct file *file, unsigned int command, unsigned long arg)
+ {
+ 	struct gpu_file *state = file->private_data;
+@@ -162,6 +301,19 @@
+ 		return -EXDEV;
+ 	if (command == _IOWR('F', 201, int))
+ 		return gpu_register_fd(state, command, arg);
++	/* Whitelisted RM root-client transport; exact _IOWR encodings with
++	 * the fixed NVOS block sizes.  Anything else falls through to the
++	 * query filter and stays unavailable. */
++	if (command == _IOWR('F', 0x2b, struct gpu_nvos21) ||
++	    command == _IOWR('F', 0x2b, struct gpu_nvos64))
++		return gpu_rm_alloc(state, command, arg, size);
++	if (command == _IOWR('F', 0x29, struct gpu_nvos00))
++		return gpu_rm_free(state, command, arg);
++	/* Match the driver's size error without issuing malformed host calls. */
++	if (_IOC_TYPE(command) == 'F' &&
++	    _IOC_DIR(command) == (_IOC_READ | _IOC_WRITE) &&
++	    (_IOC_NR(command) == 0x29 || _IOC_NR(command) == 0x2b))
++		return -EINVAL;
+ 	/* SYS_PARAMS (214) mutates global host state; it is not a query.
+ 	 * Other embedded pointers/FDs and mmap remain unavailable. */
+ 	if (_IOC_TYPE(command) != 'F' ||
+@@ -174,7 +326,7 @@
+ 	if (result)
+ 		return result;
+ 	mutex_lock(&mm->context.gpu_lock);
+-	result = gpu_command(mm, 1, state->host_fd, command, arg);
++	result = gpu_command(mm, 1, state->host_fd, command, arg, NULL, 0);
+ 	mutex_unlock(&mm->context.gpu_lock);
+ 	return result;
+ }
+@@ -186,7 +338,7 @@
+ 	long result;
+ 
+ 	mutex_lock(&mm->context.gpu_lock);
+-	result = gpu_command(mm, 2, state->host_fd, 0, 0);
++	result = gpu_command(mm, 2, state->host_fd, 0, 0, NULL, 0);
+ 	mutex_unlock(&mm->context.gpu_lock);
+ 	mmdrop(mm);
+ 	kfree(state);
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -19,6 +19,13 @@
+ 
+ /* Ensure the stub_data struct covers the allocated area */
+ static_assert(sizeof(struct stub_data) == STUB_DATA_PAGES * UM_KERN_PAGE_SIZE);
++
++/* The GPU payload must stay in the first stub data page, which is mapped
++ * into every GPU worker; it must not grow the shared stub region. */
++static_assert(STUB_GPU_PAYLOAD_SIZE == 64);
++static_assert(offsetof(struct stub_data, gpu_payload) % STUB_GPU_PAYLOAD_SIZE == 0);
++static_assert(offsetof(struct stub_data, gpu_payload) + STUB_GPU_PAYLOAD_SIZE
++	      <= UM_KERN_PAGE_SIZE);
+ 
+ static_assert(NR_CPUS <= 64);
+ 
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -99,6 +99,11 @@
+ 			else if (sc->mem.prot == 3)
+ 				d->gpu_result = stub_syscall3(__NR_ioctl, sc->mem.fd,
+ 					sc->mem.length, (unsigned long)&d->gpu_fd);
++			else if (sc->mem.prot == 4)
++				/* Fixed NVOS00/21/64 block in shared stub memory. */
++				d->gpu_result = stub_syscall3(__NR_ioctl, sc->mem.fd,
++					sc->mem.length,
++					(unsigned long)&d->gpu_payload[0]);
+ 			else
+ 				d->gpu_result = -EOPNOTSUPP;
+ 			continue;
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -370,9 +370,13 @@
+ 		!stat(path, &st) && S_ISCHR(st.st_mode);
+ }
+ 
+-/* Caller owns the GPU mutex and disables guest interrupts for this handoff. */
++/* Caller owns the GPU mutex and disables guest interrupts for this handoff.
++ * Operation 4 forwards a fixed-size RM parameter block: the UML kernel copies
++ * it into the shared stub payload before the ioctl and back afterwards, so
++ * the worker never sees a guest or kernel pointer. */
+ long os_gpu_command(struct mm_id *id, int operation, int fd,
+-		    unsigned int command, unsigned long argument)
++		    unsigned int command, unsigned long argument,
++		    void *payload, size_t payload_size)
+ {
+ 	struct stub_data *data = (void *)id->stack;
+ 	struct stub_syscall *sc;
+@@ -381,6 +385,8 @@
+ 
+ 	if (id->pid < 2)
+ 		return -ECHILD;
++	if (payload_size > sizeof(data->gpu_payload))
++		return -EINVAL;
+ 	error = syscall_stub_flush(id);
+ 	if (error)
+ 		return error;
+@@ -396,14 +402,26 @@
+ 	data->gpu_result = -EIO;
+ 	if (operation == 3)
+ 		data->gpu_fd = (int)argument;
++	if (payload_size) {
++		/* Never let stale stub bytes reach the host beyond the block
++		 * the kernel actually validated. */
++		memset(data->gpu_payload, 0, sizeof(data->gpu_payload));
++		memcpy(data->gpu_payload, payload, payload_size);
++	}
+ 	sc = syscall_stub_alloc(id);
+ 	sc->syscall = STUB_SYSCALL_GPU;
+ 	sc->mem.prot = operation;
+ 	sc->mem.fd = fd;
+ 	sc->mem.length = command;
+-	sc->mem.addr = argument;
++	sc->mem.addr = operation == 4 ? 0 : argument;
+ 	error = syscall_stub_flush(id);
+ 	if (host_fd >= 0)
+ 		os_close_file(host_fd);
+-	return error ? error : data->gpu_result;
+-}
++	if (error)
++		return error;
++	/* nvidia nv.c skips copyout when the ioctl itself returns -EFAULT;
++	 * preserve the caller's input block in that case. */
++	if (payload_size && data->gpu_result != -EFAULT)
++		memcpy(payload, data->gpu_payload, payload_size);
++	return data->gpu_result;
++}
