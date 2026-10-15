@@ -21,8 +21,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +#define UML_SP_STAGES(X) \
 +	X(prepare) X(get_state) X(receive) X(exit_work) X(clock_pair) X(trace_enter) X(seccomp) X(body) X(trace_leave) \
 +	X(forward) X(reply) X(return_gap) \
-+	X(kernel_ready) X(kernel_spin) X(kernel_futex) \
-+	X(runner_ready) X(runner_spin) X(runner_futex)
++	X(kernel_ready) X(kernel_spin) X(kernel_futex) X(kernel_eagain) \
++	X(runner_ready) X(runner_spin) X(runner_futex) X(runner_eagain)
 +#define UML_SP_ENUM(n) UML_SP_##n,
 +enum { UML_SP_STAGES(UML_SP_ENUM) UML_SP_COUNT };
 +#undef UML_SP_ENUM
@@ -47,7 +47,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +struct uml_sp_stub {
 +	unsigned int enabled, sequence, active, valid;
 +	unsigned long long ready, release, resume, reply, gap;
-+	unsigned int ready_hits, spin_hits, sleeps;
++	unsigned int ready_hits, spin_hits, sleeps, races;
 +};
 +
 +/* Publish on the existing release/acquire rendezvous; never reset a futex. */
@@ -108,7 +108,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  obj-$(CONFIG_STACKTRACE) += stacktrace.o
 --- /dev/null
 +++ b/arch/um/kernel/core-profile.c
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,108 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/kernel.h>
@@ -147,8 +147,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +{
 +	unsigned int cpu = raw_smp_processor_id();
 +	__atomic_fetch_add(&stats[cpu].count[stage], 1, __ATOMIC_RELAXED);
-+	__atomic_fetch_add(&stats[cpu].cycles[stage], cycles, __ATOMIC_RELAXED);
 +	if (cycles) {
++		__atomic_fetch_add(&stats[cpu].cycles[stage], cycles, __ATOMIC_RELAXED);
 +		unsigned int bin = min_t(unsigned int, 63 - __builtin_clzll(cycles), 31);
 +		__atomic_fetch_add(&histogram[stage][bin], 1, __ATOMIC_RELAXED);
 +	}
@@ -157,7 +157,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +void uml_sp_count(unsigned int stage, unsigned int count)
 +{
 +	unsigned int cpu = raw_smp_processor_id();
-+	__atomic_fetch_add(&stats[cpu].count[stage], count, __ATOMIC_RELAXED);
++	if (count)
++		__atomic_fetch_add(&stats[cpu].count[stage], count, __ATOMIC_RELAXED);
 +}
 +
 +void uml_sp_mark(unsigned int stage, unsigned long long *stamp)
@@ -246,7 +247,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  #ifdef __x86_64__
  	/* Kernel is concurrently consuming this request; never spin unbounded. */
  	for (unsigned int spin = 0; spin < d->spin_limit && spin < 10000; spin++) {
-@@ -475,15 +480,24 @@
+@@ -475,15 +480,26 @@
  		asm volatile("pause" ::: "memory");
  	}
  #endif
@@ -263,6 +264,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +			d->profile.sleeps++;
  		res = stub_syscall4(__NR_futex, (unsigned long)&d->futex,
  				    FUTEX_WAIT, FUTEX_IN_KERN | STUB_FUTEX_WAITING, 0);
++		if (d->profile.enabled && res == -EAGAIN)
++			d->profile.races++;
  		if (res < 0 && res != -EINTR && res != -EAGAIN)
  			break;
  	}
@@ -271,7 +274,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  	if (res < 0 && res != -EAGAIN && res != -EINTR) {
  		d->err = res;
  		stub_syscall1(__NR_exit, 70);
-@@ -540,6 +554,10 @@
+@@ -540,6 +556,10 @@
  	/* Restore arch dependent state that is not part of the mcontext */
  	stub_seccomp_restore_state(&d->arch_data);
  
@@ -356,7 +359,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  			/*
  			 * We need to check whether the child is still alive
  			 * before and after the FUTEX_WAIT call. Before, in
-@@ -220,12 +224,16 @@
+@@ -220,16 +224,22 @@
  			}
  			if (stub_futex_phase(&data->futex) != FUTEX_IN_CHILD) {
  				uml_fs_inc(UML_FS_wait_poll_done);
@@ -373,7 +376,13 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  			ret = syscall(__NR_futex, &data->futex,
  				      FUTEX_WAIT, FUTEX_IN_CHILD | STUB_FUTEX_WAITING,
  				      parallel_userspace && wait_sigsys ? &timeout : NULL,
-@@ -256,6 +264,22 @@
+ 				      NULL, 0);
++			if (data->profile.enabled && ret < 0 && errno == EAGAIN)
++				uml_sp_add(UML_SP_kernel_eagain, 0);
+ 			if (ret < 0 && errno == ETIMEDOUT && parallel_userspace && wait_sigsys) {
+ 				siginfo_t state = {};
+ 				int status = waitid(P_PID, mm_idp->pid, &state,
+@@ -256,6 +266,24 @@
  		/* We may receive a SIGALRM before SIGSYS, iterate again. */
  	} while (wait_sigsys && data->signal == SIGALRM);
  
@@ -392,11 +401,13 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +		p->spin_hits = 0;
 +		uml_sp_count(UML_SP_runner_futex, p->sleeps);
 +		p->sleeps = 0;
++		uml_sp_count(UML_SP_runner_eagain, p->races);
++		p->races = 0;
 +	}
  	if (data->mctx_offset > sizeof(data->sigstack) - sizeof(mcontext_t)) {
  		printk(UM_KERN_ERR "%s : invalid mcontext offset", __func__);
  		goto out_kill;
-@@ -613,6 +637,7 @@
+@@ -613,6 +641,7 @@
  	interrupt_end();
  
  	while (1) {
@@ -404,7 +415,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  		struct mm_id *mm_id = current_mm_enter();
  
  		/*
-@@ -651,6 +676,7 @@
+@@ -651,6 +680,7 @@
  
  		if (using_seccomp) {
  			struct stub_data *proc_data = (void *) mm_id->stack;
@@ -412,7 +423,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  
  			err = set_stub_state(regs, proc_data, singlestepping());
  			if (err) {
-@@ -668,7 +694,9 @@
+@@ -668,7 +698,9 @@
  			proc_data->syscall_data_len = mm_id->syscall_data_len;
  			proc_data->syscall_fd_num = mm_id->syscall_fd_num;
  
@@ -422,7 +433,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  			if (parallel_userspace && (mm_id->pid < 0 || proc_data->err < 0)) {
  				current_mm_exit(mm_id);
  				fatal_sigsegv();
-@@ -693,7 +721,9 @@
+@@ -693,7 +725,9 @@
  			mm_id->syscall_data_len = 0;
  			mm_id->syscall_fd_num = 0;
  
@@ -432,7 +443,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  			if (err) {
  				printk(UM_KERN_ERR "%s - failed to get regs: %d",
  				       __func__, err);
-@@ -821,6 +851,7 @@
+@@ -821,6 +855,7 @@
  		}
  
  		current_mm_exit(mm_id);
@@ -440,7 +451,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  
  		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
  
-@@ -860,7 +891,9 @@
+@@ -860,7 +895,9 @@
  				       __func__, sig);
  				fatal_sigsegv();
  			}
