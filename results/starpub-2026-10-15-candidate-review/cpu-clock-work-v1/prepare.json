@@ -1,0 +1,34 @@
+{
+  "source_commit": "11138e629956e79643a1dcac9758da9a6dda34d4",
+  "clock_source_binding": "/root/harddind-rebuild/cpu-clock-owner-v1/prepare.json",
+  "config_identical": true,
+  "private_changes": [
+    "allow only clock boot flag 0/1",
+    "bound build lock wait to 90 seconds"
+  ],
+  "inputs": {
+    "candidate.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "candidate-kernel": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+    "baseline-kernel": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+    "source-commit.txt": "ed927a5cc6aeafb05358807ce43169fecac266aa2250f3c45dfcf8b63821a790",
+    "clock-source-binding.json": "72887db8700259763d0245881dc1d8368ddfb102381195be85c75d49c6cb3500",
+    "baseline.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "supervisor.py": "7859f99e72a57e368b781d0474e4748fdc517b93b9195b3179ba46f4636e0659",
+    "cpu-limit-probe": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+    "prepare.py": "b26cab1f2b2307d04fb8504602310bf62ca00121d4ede9dc42493713db034f14",
+    "repo/tests/test_cpu_limit_checks.py": "d14a34663a0e63b5a9b54052ae9018f30d65db1b114b4a0118f9d55f0af0a1f7",
+    "repo/src/cpu_limit_probe.c": "5660a32983d13bdf4676dac5f0c7a8dad7bd18aaffe22830e4a7672a8d5c66f5",
+    "repo/scripts/harddind.py": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+    "repo/scripts/port_driver.py": "957afff0d68699d1ad8c96ba140b759522d80adbe0df33f75965f32fe91f606c",
+    "repo/scripts/run-cpu-limits.py": "25caa53258a0b510cb38c413c0375a4e40b10e7b15281543ca4f87e46b59ef2e",
+    "repo/scripts/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "repo/scripts/result_checks.py": "97b14437839b98ff361b31dc3b9d97268c887fb764e7589de756b8f028b0c046",
+    "repo/scripts/cpu_limit_checks.py": "7ed9adbbc5542a3aac232fd9c9121674647ea70aa8b816a18c6eec43df67c76b"
+  },
+  "external_inputs": {
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/network-backend": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "/root/harddind-rebuild/client/docker": "60c81ddca5ac1b3cb64cfcbe9444a263db642ed74cd0e28e512edbf012dd312f",
+    "/root/harddind-rebuild/client/ld-musl-x86_64.so.1": "38d022ce7425ff105ccfb53598f606e6e5f5f0a34bfbc793d65e6f34c9d72806"
+  }
+}

@@ -1,0 +1,2822 @@
+{
+  "status": "finished",
+  "stage": "native-after",
+  "cells": {
+    "native-before": {
+      "clock_mode": null,
+      "kernel": null,
+      "completed_work": {
+        "status": "pass",
+        "worker_blocks": [
+          3091191,
+          3086453,
+          3083390,
+          2175537
+        ],
+        "total_blocks": 11436571,
+        "steps_per_block": 1024,
+        "blocks_per_wall_second": 1894567.2597903323,
+        "scope": "count and arithmetic result only; no performance acceptance"
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "completed": true
+    },
+    "baseline": {
+      "clock_mode": null,
+      "kernel": "baseline-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "pass",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "indeterminate",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "completed_work": {
+        "unthrottled_reference": {
+          "status": "pass",
+          "worker_blocks": [
+            80752,
+            95054,
+            70362,
+            93696
+          ],
+          "total_blocks": 339864,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 55939.252534132545,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpus_flag_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            37408,
+            37009,
+            45820,
+            43603
+          ],
+          "total_blocks": 163840,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 26692.644170412015,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "explicit_period_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            14475,
+            15927,
+            13212,
+            7804
+          ],
+          "total_blocks": 51418,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 8498.719447373005,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_single": {
+          "status": "pass",
+          "worker_blocks": [
+            140355,
+            141032,
+            136555,
+            136334
+          ],
+          "total_blocks": 554276,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 91095.86402833153,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_range": {
+          "status": "pass",
+          "worker_blocks": [
+            199680,
+            142829,
+            161513,
+            156672
+          ],
+          "total_blocks": 660694,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 109141.98742220389,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_with_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            57439,
+            54665,
+            60953,
+            55938
+          ],
+          "total_blocks": 228995,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 37975.933412439976,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "live_update": {
+          "status": "pass",
+          "worker_blocks": [
+            117795,
+            101763,
+            111814,
+            109855
+          ],
+          "total_blocks": 441227,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 21997.4856326561,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        }
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "final_state": {
+        "phase": "stopped",
+        "run": "354da952854f",
+        "supervisor_pid": 2974566,
+        "supervisor_start": "1392746009",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-work-owner-v1/baseline-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 2977011,
+        "network_pid": 2977001,
+        "api_port": 47441,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-baseline/uml/354da952854f/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-work-owner-v1/baseline-kernel",
+          "umid=354da952854f",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-baseline/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15"
+        ],
+        "ready_at": 1792045388.2728934,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 2977011,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 2977001,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792045476.3032706
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "off-before": {
+      "clock_mode": "0",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "indeterminate",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "completed_work": {
+        "unthrottled_reference": {
+          "status": "pass",
+          "worker_blocks": [
+            102438,
+            96783,
+            109277,
+            105283
+          ],
+          "total_blocks": 413781,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 68766.07863964052,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpus_flag_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            20372,
+            18205,
+            17266,
+            13965
+          ],
+          "total_blocks": 69808,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 11610.162350890176,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "explicit_period_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            4198,
+            5232,
+            3412,
+            5827
+          ],
+          "total_blocks": 18669,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 3046.392785834845,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_single": {
+          "status": "pass",
+          "worker_blocks": [
+            35617,
+            42651,
+            49612,
+            44556
+          ],
+          "total_blocks": 172436,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 28438.666705058986,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_range": {
+          "status": "pass",
+          "worker_blocks": [
+            87753,
+            85748,
+            74091,
+            109321
+          ],
+          "total_blocks": 356913,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 58913.65733438777,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_with_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            34309,
+            31115,
+            30726,
+            24837
+          ],
+          "total_blocks": 120987,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 20095.036976608688,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "live_update": {
+          "status": "pass",
+          "worker_blocks": [
+            81575,
+            87778,
+            70759,
+            84863
+          ],
+          "total_blocks": 324975,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 16200.367253270177,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        }
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "final_state": {
+        "phase": "stopped",
+        "run": "f7cc6d0b3365",
+        "supervisor_pid": 3025292,
+        "supervisor_start": "1392762722",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 3026974,
+        "network_pid": 3026973,
+        "api_port": 44293,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-off-before/uml/f7cc6d0b3365/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "umid=f7cc6d0b3365",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-off-before/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=0"
+        ],
+        "ready_at": 1792045560.9821606,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 3026974,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 3026973,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792045674.0654156
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "on-first": {
+      "clock_mode": "1",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "indeterminate",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "pass",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "completed_work": {
+        "unthrottled_reference": {
+          "status": "pass",
+          "worker_blocks": [
+            66410,
+            67549,
+            65410,
+            65031
+          ],
+          "total_blocks": 264400,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 43694.295260119,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpus_flag_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            30389,
+            32217,
+            25468,
+            24710
+          ],
+          "total_blocks": 112784,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 18515.135415324457,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "explicit_period_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            12565,
+            8096,
+            7190,
+            13398
+          ],
+          "total_blocks": 41249,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 6718.427201471502,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_single": {
+          "status": "pass",
+          "worker_blocks": [
+            70838,
+            68673,
+            76137,
+            75108
+          ],
+          "total_blocks": 290756,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 48356.96409044005,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_range": {
+          "status": "pass",
+          "worker_blocks": [
+            141264,
+            153935,
+            168646,
+            141809
+          ],
+          "total_blocks": 605654,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 99340.25007346061,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_with_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            38416,
+            41092,
+            32376,
+            34573
+          ],
+          "total_blocks": 146457,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 24378.512894820284,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "live_update": {
+          "status": "pass",
+          "worker_blocks": [
+            177443,
+            154700,
+            151643,
+            159065
+          ],
+          "total_blocks": 642851,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 32122.065887072076,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        }
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "final_state": {
+        "phase": "stopped",
+        "run": "2cc53307bf7b",
+        "supervisor_pid": 3074599,
+        "supervisor_start": "1392780375",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 3077501,
+        "network_pid": 3077477,
+        "api_port": 58317,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-on-first/uml/2cc53307bf7b/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "umid=2cc53307bf7b",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-on-first/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=1"
+        ],
+        "ready_at": 1792045745.3062549,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 3077501,
+          "forced_cleanup": false,
+          "initial_live_pids": [
+            3119067
+          ],
+          "initial_zombie_pids": [],
+          "initial_processes": [
+            {
+              "pid": 3119067,
+              "state": "D",
+              "ppid": 1,
+              "process_group": 3077501,
+              "start_time_ticks": "1392793055",
+              "comm": "uml-userspace",
+              "wchan": "__inode_wait_for_writeback",
+              "exe_errno": 2
+            }
+          ],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 3077477,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792045841.776883
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "on-second": {
+      "clock_mode": "1",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "pass",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "pass",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "completed_work": {
+        "unthrottled_reference": {
+          "status": "pass",
+          "worker_blocks": [
+            142411,
+            149122,
+            136315,
+            128289
+          ],
+          "total_blocks": 556137,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 92212.99047825948,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpus_flag_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            37250,
+            38114,
+            30291,
+            36711
+          ],
+          "total_blocks": 142366,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 23528.638727331643,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "explicit_period_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            35493,
+            15454,
+            31232,
+            26567
+          ],
+          "total_blocks": 108746,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 17736.13021243446,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_single": {
+          "status": "pass",
+          "worker_blocks": [
+            114678,
+            112615,
+            109097,
+            106600
+          ],
+          "total_blocks": 442990,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 72670.03747414975,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_range": {
+          "status": "pass",
+          "worker_blocks": [
+            205457,
+            225809,
+            191271,
+            197081
+          ],
+          "total_blocks": 819618,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 136387.66025098294,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_with_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            48542,
+            52681,
+            48335,
+            52655
+          ],
+          "total_blocks": 202213,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 33119.349488118234,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "live_update": {
+          "status": "pass",
+          "worker_blocks": [
+            196123,
+            222484,
+            205581,
+            213412
+          ],
+          "total_blocks": 837600,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 41874.575734957594,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        }
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "final_state": {
+        "phase": "stopped",
+        "run": "1f4558bbea83",
+        "supervisor_pid": 3126420,
+        "supervisor_start": "1392796203",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 3130103,
+        "network_pid": 3130077,
+        "api_port": 54729,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-on-second/uml/1f4558bbea83/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "umid=1f4558bbea83",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-on-second/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=1"
+        ],
+        "ready_at": 1792045893.4875638,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 3130103,
+          "forced_cleanup": false,
+          "initial_live_pids": [
+            3130394
+          ],
+          "initial_zombie_pids": [],
+          "initial_processes": [
+            {
+              "pid": 3130394,
+              "state": "R",
+              "ppid": 1,
+              "process_group": 3130103,
+              "start_time_ticks": "1392797712",
+              "comm": "uml-userspace",
+              "wchan": "0",
+              "exe_errno": 2
+            }
+          ],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 3130077,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792045972.0976977
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "off-after": {
+      "clock_mode": "0",
+      "kernel": "candidate-kernel",
+      "runner_exit_code": 2,
+      "verdict": "indeterminate",
+      "checks": {
+        "unthrottled_reference": "indeterminate",
+        "cpus_flag_quota": "pass",
+        "explicit_period_quota": "pass",
+        "cpuset_single": "pass",
+        "cpuset_range": "indeterminate",
+        "cpuset_with_quota": "pass",
+        "update_window_initial_2": "pass",
+        "update_window_half": "pass",
+        "update_window_recovered_2": "indeterminate",
+        "update_timeline": "pass",
+        "same_container_identity": "pass",
+        "config_writes_recorded": "pass",
+        "lifecycle_clean": "pass",
+        "inputs_unchanged": "pass",
+        "cpu_weight_share_contention": "not_tested"
+      },
+      "errors": [],
+      "completed_work": {
+        "unthrottled_reference": {
+          "status": "pass",
+          "worker_blocks": [
+            121067,
+            126959,
+            110322,
+            115475
+          ],
+          "total_blocks": 473823,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 78805.81392170362,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpus_flag_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            38790,
+            43105,
+            36863,
+            40867
+          ],
+          "total_blocks": 159625,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 26257.772451982673,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "explicit_period_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            15145,
+            16531,
+            16397,
+            14736
+          ],
+          "total_blocks": 62809,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 10350.80193219065,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_single": {
+          "status": "pass",
+          "worker_blocks": [
+            121139,
+            121969,
+            118605,
+            122601
+          ],
+          "total_blocks": 484314,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 79837.1819323228,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_range": {
+          "status": "pass",
+          "worker_blocks": [
+            145574,
+            76435,
+            114475,
+            184706
+          ],
+          "total_blocks": 521190,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 86517.71098668258,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "cpuset_with_quota": {
+          "status": "pass",
+          "worker_blocks": [
+            51718,
+            50354,
+            50549,
+            50760
+          ],
+          "total_blocks": 203381,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 33523.45180896127,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        },
+        "live_update": {
+          "status": "pass",
+          "worker_blocks": [
+            204905,
+            216656,
+            209791,
+            206283
+          ],
+          "total_blocks": 837635,
+          "steps_per_block": 1024,
+          "blocks_per_wall_second": 41875.81904399716,
+          "scope": "count and arithmetic result only; no performance acceptance"
+        }
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "final_state": {
+        "phase": "stopped",
+        "run": "a8ac5cbb6303",
+        "supervisor_pid": 3161418,
+        "supervisor_start": "1392809183",
+        "config": {
+          "kernel": "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "disk": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "cpus": 4,
+          "memory": "4G",
+          "dns": "10.0.2.3",
+          "network_batch": 1,
+          "mtu": 1500,
+          "kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+          "disk_sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+          "network_sha256": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+          "publish_ports": false,
+          "gpu_control_experiment": false,
+          "gpu_async_wait": false,
+          "memfd_ram": false,
+          "memfd_stub": false,
+          "shares": []
+        },
+        "runtime_sha256": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+        "filesystems": [],
+        "guest_pid": 3164796,
+        "network_pid": 3164771,
+        "api_port": 58643,
+        "mconsole": "/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-off-after/uml/a8ac5cbb6303/mconsole",
+        "command": [
+          "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+          "umid=a8ac5cbb6303",
+          "uml_dir=uml/",
+          "mem=4G",
+          "ncpus=4",
+          "seccomp=on",
+          "seccomp_threads=1",
+          "seccomp_broker_cache=1",
+          "seccomp_spin=256",
+          "defer_ipi=1",
+          "ubd0=/root/harddind-rebuild/cpu-clock-work-owner-v1/run/instances/clkwork-off-after/root.cow,/root/harddind-rebuild/runtime-shares-v1.ext4",
+          "root=/dev/ubda",
+          "rw",
+          "init=/sbin/harddind-runtime-init",
+          "con=null",
+          "con0=null,fd:1",
+          "ssl=null",
+          "panic=1",
+          "harddind_dns=10.0.2.3",
+          "harddind_mtu=1500",
+          "vec0:transport=fd,fd=5,gro=0,mtu=1500,mac=02:00:00:00:02:15",
+          "harddind_hr_sched_clock=0"
+        ],
+        "ready_at": 1792046021.5500088,
+        "guest_exit_code": 0,
+        "guest_cleanup": {
+          "process_group": 3164796,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "forced_shutdown": false,
+        "network_exit_code": 0,
+        "network_cleanup": {
+          "process_group": 3164771,
+          "forced_cleanup": false,
+          "initial_live_pids": [],
+          "initial_zombie_pids": [],
+          "initial_processes": [],
+          "forced_processes": [],
+          "remaining_live_pids": [],
+          "remaining_zombie_pids": [],
+          "clean_shutdown": true
+        },
+        "filesystem_cleanup": [],
+        "stopped_at": 1792046098.1811767
+      },
+      "normal_shutdown": true,
+      "completed": true
+    },
+    "native-after": {
+      "clock_mode": null,
+      "kernel": null,
+      "completed_work": {
+        "status": "pass",
+        "worker_blocks": [
+          2043365,
+          2871996,
+          2784928,
+          2902876
+        ],
+        "total_blocks": 10603165,
+        "steps_per_block": 1024,
+        "blocks_per_wall_second": 1751842.8431612866,
+        "scope": "count and arithmetic result only; no performance acceptance"
+      },
+      "probe_sha256": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+      "completed": true
+    }
+  },
+  "commands": [
+    {
+      "label": "checker-tests",
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/repo/tests",
+        "-p",
+        "test_cpu_limit_checks.py"
+      ],
+      "started_at": "2026-10-15T06:22:30.250055+00:00",
+      "pid": 2970580,
+      "exit_code": 0,
+      "wall_seconds": 0.984232721850276,
+      "cleanup": {
+        "process_group": 2970580,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-native-before",
+      "command": [
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/cpu-limit-probe",
+        "spin",
+        "--threads",
+        "4",
+        "--duration-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:22:31.261910+00:00",
+      "pid": 2970810,
+      "exit_code": 0,
+      "wall_seconds": 6.042007936164737,
+      "cleanup": {
+        "process_group": 2970810,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-baseline",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/baseline-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clkwork-baseline",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:22:37.328356+00:00",
+      "pid": 2971960,
+      "exit_code": 2,
+      "wall_seconds": 138.4807700831443,
+      "cleanup": {
+        "process_group": 2971960,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-off-before",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clkwork-off-before",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:24:56.133002+00:00",
+      "pid": 3019821,
+      "exit_code": 2,
+      "wall_seconds": 198.32609857805073,
+      "cleanup": {
+        "process_group": 3019821,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-on-first",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clkwork-on-first",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:28:14.755496+00:00",
+      "pid": 3069639,
+      "exit_code": 2,
+      "wall_seconds": 164.39089521579444,
+      "cleanup": {
+        "process_group": 3069639,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-on-second",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clkwork-on-second",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:30:59.179294+00:00",
+      "pid": 3122728,
+      "exit_code": 2,
+      "wall_seconds": 128.59120883233845,
+      "cleanup": {
+        "process_group": 3122728,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-off-after",
+      "command": [
+        "/usr/bin/python3",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/repo/scripts/run-cpu-limits.py",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/run",
+        "--kernel",
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/candidate-kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--name",
+        "clkwork-off-after",
+        "--cpus",
+        "4",
+        "--window-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:33:07.867426+00:00",
+      "pid": 3157681,
+      "exit_code": 2,
+      "wall_seconds": 122.81236491724849,
+      "cleanup": {
+        "process_group": 3157681,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "clkwork-native-after",
+      "command": [
+        "/root/harddind-rebuild/cpu-clock-work-owner-v1/cpu-limit-probe",
+        "spin",
+        "--threads",
+        "4",
+        "--duration-ms",
+        "6000",
+        "--sample-ms",
+        "100"
+      ],
+      "started_at": "2026-10-15T06:35:10.785578+00:00",
+      "pid": 3188258,
+      "exit_code": 0,
+      "wall_seconds": 6.097175370901823,
+      "cleanup": {
+        "process_group": 3188258,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "resource_enforcement_acceptance": false,
+  "affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "limitations": [
+    "Functional busy-load enforcement; no matching native writable cgroup available.",
+    "Clock candidate changes accounting granularity; it has no host steal compensation.",
+    "Existing CFS accounting checker unchanged; no new performance tolerance.",
+    "Native before/after uses the same binary in the existing outer cgroup; no matching native quota group.",
+    "Work counts compare this fixed workload only, not full Docker command performance.",
+    "No GPU experiment, external busy load, host sampler or tracing.",
+    "Candidate source/config linked to the preceding owner clock source reapplication."
+  ],
+  "inputs": {
+    "candidate.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "candidate-kernel": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+    "baseline-kernel": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca",
+    "source-commit.txt": "ed927a5cc6aeafb05358807ce43169fecac266aa2250f3c45dfcf8b63821a790",
+    "clock-source-binding.json": "72887db8700259763d0245881dc1d8368ddfb102381195be85c75d49c6cb3500",
+    "baseline.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "supervisor.py": "7859f99e72a57e368b781d0474e4748fdc517b93b9195b3179ba46f4636e0659",
+    "cpu-limit-probe": "f784e2de33fa44c775efa8f468c0e2c00bdbb5d99ec7ed4b97e321175882b4c4",
+    "prepare.py": "b26cab1f2b2307d04fb8504602310bf62ca00121d4ede9dc42493713db034f14",
+    "repo/tests/test_cpu_limit_checks.py": "d14a34663a0e63b5a9b54052ae9018f30d65db1b114b4a0118f9d55f0af0a1f7",
+    "repo/src/cpu_limit_probe.c": "5660a32983d13bdf4676dac5f0c7a8dad7bd18aaffe22830e4a7672a8d5c66f5",
+    "repo/scripts/harddind.py": "4b095675d67741510fab576b61f0258d475598d2b17cb1e66efa217d03f63b18",
+    "repo/scripts/port_driver.py": "957afff0d68699d1ad8c96ba140b759522d80adbe0df33f75965f32fe91f606c",
+    "repo/scripts/run-cpu-limits.py": "25caa53258a0b510cb38c413c0375a4e40b10e7b15281543ca4f87e46b59ef2e",
+    "repo/scripts/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "repo/scripts/result_checks.py": "97b14437839b98ff361b31dc3b9d97268c887fb764e7589de756b8f028b0c046",
+    "repo/scripts/cpu_limit_checks.py": "7ed9adbbc5542a3aac232fd9c9121674647ea70aa8b816a18c6eec43df67c76b"
+  },
+  "external_inputs": {
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/network-backend": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "/root/harddind-rebuild/client/docker": "60c81ddca5ac1b3cb64cfcbe9444a263db642ed74cd0e28e512edbf012dd312f",
+    "/root/harddind-rebuild/client/ld-musl-x86_64.so.1": "38d022ce7425ff105ccfb53598f606e6e5f5f0a34bfbc793d65e6f34c9d72806"
+  },
+  "groups": {
+    "2970580": [
+      [],
+      []
+    ],
+    "2970810": [
+      [],
+      []
+    ],
+    "2971960": [
+      [],
+      []
+    ],
+    "2974438": [
+      [],
+      []
+    ],
+    "2974538": [
+      [],
+      []
+    ],
+    "2974539": [
+      [],
+      []
+    ],
+    "2974540": [
+      [],
+      []
+    ],
+    "2974557": [
+      [],
+      []
+    ],
+    "2974566": [
+      [],
+      []
+    ],
+    "2977001": [
+      [],
+      []
+    ],
+    "2977011": [
+      [],
+      []
+    ],
+    "2978292": [
+      [],
+      []
+    ],
+    "2978384": [
+      [],
+      []
+    ],
+    "2978540": [
+      [],
+      []
+    ],
+    "2978573": [
+      [],
+      []
+    ],
+    "2978889": [
+      [],
+      []
+    ],
+    "2978982": [
+      [],
+      []
+    ],
+    "2979079": [
+      [],
+      []
+    ],
+    "2980173": [
+      [],
+      []
+    ],
+    "2980205": [
+      [],
+      []
+    ],
+    "2980238": [
+      [],
+      []
+    ],
+    "2980265": [
+      [],
+      []
+    ],
+    "2980320": [
+      [],
+      []
+    ],
+    "2980579": [
+      [],
+      []
+    ],
+    "2980620": [
+      [],
+      []
+    ],
+    "2980653": [
+      [],
+      []
+    ],
+    "2981944": [
+      [],
+      []
+    ],
+    "2981969": [
+      [],
+      []
+    ],
+    "2982002": [
+      [],
+      []
+    ],
+    "2982050": [
+      [],
+      []
+    ],
+    "2982075": [
+      [],
+      []
+    ],
+    "2982354": [
+      [],
+      []
+    ],
+    "2982387": [
+      [],
+      []
+    ],
+    "2982429": [
+      [],
+      []
+    ],
+    "2983683": [
+      [],
+      []
+    ],
+    "2983724": [
+      [],
+      []
+    ],
+    "2983745": [
+      [],
+      []
+    ],
+    "2983789": [
+      [],
+      []
+    ],
+    "2983814": [
+      [],
+      []
+    ],
+    "2984013": [
+      [],
+      []
+    ],
+    "2984075": [
+      [],
+      []
+    ],
+    "2984100": [
+      [],
+      []
+    ],
+    "2985340": [
+      [],
+      []
+    ],
+    "2985380": [
+      [],
+      []
+    ],
+    "2985405": [
+      [],
+      []
+    ],
+    "2985454": [
+      [],
+      []
+    ],
+    "2985479": [
+      [],
+      []
+    ],
+    "2985738": [
+      [],
+      []
+    ],
+    "2985802": [
+      [],
+      []
+    ],
+    "2985867": [
+      [],
+      []
+    ],
+    "2986875": [
+      [],
+      []
+    ],
+    "2986915": [
+      [],
+      []
+    ],
+    "2986940": [
+      [],
+      []
+    ],
+    "2986990": [
+      [],
+      []
+    ],
+    "2987021": [
+      [],
+      []
+    ],
+    "2987266": [
+      [],
+      []
+    ],
+    "2987317": [
+      [],
+      []
+    ],
+    "2987360": [
+      [],
+      []
+    ],
+    "2989309": [
+      [],
+      []
+    ],
+    "2989367": [
+      [],
+      []
+    ],
+    "2989409": [
+      [],
+      []
+    ],
+    "2989426": [
+      [],
+      []
+    ],
+    "2989465": [
+      [],
+      []
+    ],
+    "2989742": [
+      [],
+      []
+    ],
+    "2990847": [
+      [],
+      []
+    ],
+    "2991068": [
+      [],
+      []
+    ],
+    "2996944": [
+      [],
+      []
+    ],
+    "2998225": [
+      [],
+      []
+    ],
+    "2998600": [
+      [],
+      []
+    ],
+    "3007724": [
+      [],
+      []
+    ],
+    "3008098": [
+      [],
+      []
+    ],
+    "3008825": [
+      [],
+      []
+    ],
+    "3009067": [
+      [],
+      []
+    ],
+    "3019821": [
+      [],
+      []
+    ],
+    "3023488": [
+      [],
+      []
+    ],
+    "3024400": [
+      [],
+      []
+    ],
+    "3024535": [
+      [],
+      []
+    ],
+    "3024604": [
+      [],
+      []
+    ],
+    "3025215": [
+      [],
+      []
+    ],
+    "3025292": [
+      [],
+      []
+    ],
+    "3026973": [
+      [],
+      []
+    ],
+    "3026974": [
+      [],
+      []
+    ],
+    "3030691": [
+      [],
+      []
+    ],
+    "3031319": [
+      [],
+      []
+    ],
+    "3033393": [
+      [],
+      []
+    ],
+    "3033480": [
+      [],
+      []
+    ],
+    "3037188": [
+      [],
+      []
+    ],
+    "3037403": [
+      [],
+      []
+    ],
+    "3037647": [
+      [],
+      []
+    ],
+    "3041828": [
+      [],
+      []
+    ],
+    "3042089": [
+      [],
+      []
+    ],
+    "3042328": [
+      [],
+      []
+    ],
+    "3042599": [
+      [],
+      []
+    ],
+    "3042733": [
+      [],
+      []
+    ],
+    "3044580": [
+      [],
+      []
+    ],
+    "3044648": [
+      [],
+      []
+    ],
+    "3044723": [
+      [],
+      []
+    ],
+    "3046409": [
+      [],
+      []
+    ],
+    "3046462": [
+      [],
+      []
+    ],
+    "3046542": [
+      [],
+      []
+    ],
+    "3046658": [
+      [],
+      []
+    ],
+    "3046718": [
+      [],
+      []
+    ],
+    "3049178": [
+      [],
+      []
+    ],
+    "3049233": [
+      [],
+      []
+    ],
+    "3049313": [
+      [],
+      []
+    ],
+    "3051694": [
+      [],
+      []
+    ],
+    "3051803": [
+      [],
+      []
+    ],
+    "3051871": [
+      [],
+      []
+    ],
+    "3051955": [
+      [],
+      []
+    ],
+    "3051982": [
+      [],
+      []
+    ],
+    "3052737": [
+      [],
+      []
+    ],
+    "3052833": [
+      [],
+      []
+    ],
+    "3052889": [
+      [],
+      []
+    ],
+    "3054592": [
+      [],
+      []
+    ],
+    "3054670": [
+      [],
+      []
+    ],
+    "3054797": [
+      [],
+      []
+    ],
+    "3054963": [
+      [],
+      []
+    ],
+    "3055011": [
+      [],
+      []
+    ],
+    "3056824": [
+      [],
+      []
+    ],
+    "3056967": [
+      [],
+      []
+    ],
+    "3057137": [
+      [],
+      []
+    ],
+    "3059026": [
+      [],
+      []
+    ],
+    "3059084": [
+      [],
+      []
+    ],
+    "3059126": [
+      [],
+      []
+    ],
+    "3059213": [
+      [],
+      []
+    ],
+    "3059319": [
+      [],
+      []
+    ],
+    "3060236": [
+      [],
+      []
+    ],
+    "3060305": [
+      [],
+      []
+    ],
+    "3060361": [
+      [],
+      []
+    ],
+    "3061800": [
+      [],
+      []
+    ],
+    "3061864": [
+      [],
+      []
+    ],
+    "3061897": [
+      [],
+      []
+    ],
+    "3061940": [
+      [],
+      []
+    ],
+    "3061987": [
+      [],
+      []
+    ],
+    "3062466": [
+      [],
+      []
+    ],
+    "3063647": [
+      [],
+      []
+    ],
+    "3063772": [
+      [],
+      []
+    ],
+    "3064978": [
+      [],
+      []
+    ],
+    "3065089": [
+      [],
+      []
+    ],
+    "3065165": [
+      [],
+      []
+    ],
+    "3066320": [
+      [],
+      []
+    ],
+    "3066346": [
+      [],
+      []
+    ],
+    "3066382": [
+      [],
+      []
+    ],
+    "3066425": [
+      [],
+      []
+    ],
+    "3069639": [
+      [],
+      []
+    ],
+    "3074382": [
+      [],
+      []
+    ],
+    "3074558": [
+      [],
+      []
+    ],
+    "3074563": [
+      [],
+      []
+    ],
+    "3074566": [
+      [],
+      []
+    ],
+    "3074576": [
+      [],
+      []
+    ],
+    "3074599": [
+      [],
+      []
+    ],
+    "3077477": [
+      [],
+      []
+    ],
+    "3077501": [
+      [],
+      []
+    ],
+    "3081613": [
+      [],
+      []
+    ],
+    "3082261": [
+      [],
+      []
+    ],
+    "3083858": [
+      [],
+      []
+    ],
+    "3084140": [
+      [],
+      []
+    ],
+    "3087299": [
+      [],
+      []
+    ],
+    "3087689": [
+      [],
+      []
+    ],
+    "3087912": [
+      [],
+      []
+    ],
+    "3092835": [
+      [],
+      []
+    ],
+    "3093010": [
+      [],
+      []
+    ],
+    "3093311": [
+      [],
+      []
+    ],
+    "3093637": [
+      [],
+      []
+    ],
+    "3093892": [
+      [],
+      []
+    ],
+    "3096295": [
+      [],
+      []
+    ],
+    "3096459": [
+      [],
+      []
+    ],
+    "3096698": [
+      [],
+      []
+    ],
+    "3099411": [
+      [],
+      []
+    ],
+    "3099470": [
+      [],
+      []
+    ],
+    "3099596": [
+      [],
+      []
+    ],
+    "3099745": [
+      [],
+      []
+    ],
+    "3099796": [
+      [],
+      []
+    ],
+    "3100629": [
+      [],
+      []
+    ],
+    "3100672": [
+      [],
+      []
+    ],
+    "3100744": [
+      [],
+      []
+    ],
+    "3103195": [
+      [],
+      []
+    ],
+    "3103244": [
+      [],
+      []
+    ],
+    "3103301": [
+      [],
+      []
+    ],
+    "3103400": [
+      [],
+      []
+    ],
+    "3103494": [
+      [],
+      []
+    ],
+    "3104726": [
+      [],
+      []
+    ],
+    "3104808": [
+      [],
+      []
+    ],
+    "3104855": [
+      [],
+      []
+    ],
+    "3106391": [
+      [],
+      []
+    ],
+    "3106446": [
+      [],
+      []
+    ],
+    "3106512": [
+      [],
+      []
+    ],
+    "3106585": [
+      [],
+      []
+    ],
+    "3106626": [
+      [],
+      []
+    ],
+    "3107233": [
+      [],
+      []
+    ],
+    "3107305": [
+      [],
+      []
+    ],
+    "3107351": [
+      [],
+      []
+    ],
+    "3109286": [
+      [],
+      []
+    ],
+    "3109409": [
+      [],
+      []
+    ],
+    "3109599": [
+      [],
+      []
+    ],
+    "3109831": [
+      [],
+      []
+    ],
+    "3110056": [
+      [],
+      []
+    ],
+    "3111459": [
+      [],
+      []
+    ],
+    "3111537": [
+      [],
+      []
+    ],
+    "3111618": [
+      [],
+      []
+    ],
+    "3113140": [
+      [],
+      []
+    ],
+    "3113187": [
+      [],
+      []
+    ],
+    "3113254": [
+      [],
+      []
+    ],
+    "3113299": [
+      [],
+      []
+    ],
+    "3113340": [
+      [],
+      []
+    ],
+    "3113783": [
+      [],
+      []
+    ],
+    "3115112": [
+      [],
+      []
+    ],
+    "3115248": [
+      [],
+      []
+    ],
+    "3116828": [
+      [],
+      []
+    ],
+    "3116952": [
+      [],
+      []
+    ],
+    "3116989": [
+      [],
+      []
+    ],
+    "3118642": [
+      [],
+      []
+    ],
+    "3118682": [
+      [],
+      []
+    ],
+    "3118730": [
+      [],
+      []
+    ],
+    "3118794": [
+      [],
+      []
+    ],
+    "3122728": [
+      [],
+      []
+    ],
+    "3126231": [
+      [],
+      []
+    ],
+    "3126374": [
+      [],
+      []
+    ],
+    "3126391": [
+      [],
+      []
+    ],
+    "3126394": [
+      [],
+      []
+    ],
+    "3126405": [
+      [],
+      []
+    ],
+    "3126420": [
+      [],
+      []
+    ],
+    "3130077": [
+      [],
+      []
+    ],
+    "3130103": [
+      [],
+      []
+    ],
+    "3132118": [
+      [],
+      []
+    ],
+    "3132217": [
+      [],
+      []
+    ],
+    "3132419": [
+      [],
+      []
+    ],
+    "3132461": [
+      [],
+      []
+    ],
+    "3132924": [
+      [],
+      []
+    ],
+    "3132997": [
+      [],
+      []
+    ],
+    "3133054": [
+      [],
+      []
+    ],
+    "3134738": [
+      [],
+      []
+    ],
+    "3134791": [
+      [],
+      []
+    ],
+    "3134824": [
+      [],
+      []
+    ],
+    "3134879": [
+      [],
+      []
+    ],
+    "3134930": [
+      [],
+      []
+    ],
+    "3135378": [
+      [],
+      []
+    ],
+    "3135444": [
+      [],
+      []
+    ],
+    "3135518": [
+      [],
+      []
+    ],
+    "3137235": [
+      [],
+      []
+    ],
+    "3137260": [
+      [],
+      []
+    ],
+    "3137310": [
+      [],
+      []
+    ],
+    "3137359": [
+      [],
+      []
+    ],
+    "3137391": [
+      [],
+      []
+    ],
+    "3137990": [
+      [],
+      []
+    ],
+    "3138027": [
+      [],
+      []
+    ],
+    "3138083": [
+      [],
+      []
+    ],
+    "3139837": [
+      [],
+      []
+    ],
+    "3139890": [
+      [],
+      []
+    ],
+    "3139936": [
+      [],
+      []
+    ],
+    "3139986": [
+      [],
+      []
+    ],
+    "3140026": [
+      [],
+      []
+    ],
+    "3140343": [
+      [],
+      []
+    ],
+    "3140391": [
+      [],
+      []
+    ],
+    "3140447": [
+      [],
+      []
+    ],
+    "3142049": [
+      [],
+      []
+    ],
+    "3142098": [
+      [],
+      []
+    ],
+    "3142139": [
+      [],
+      []
+    ],
+    "3142163": [
+      [],
+      []
+    ],
+    "3142211": [
+      [],
+      []
+    ],
+    "3142756": [
+      [],
+      []
+    ],
+    "3142844": [
+      [],
+      []
+    ],
+    "3142925": [
+      [],
+      []
+    ],
+    "3144454": [
+      [],
+      []
+    ],
+    "3144495": [
+      [],
+      []
+    ],
+    "3144552": [
+      [],
+      []
+    ],
+    "3144600": [
+      [],
+      []
+    ],
+    "3144656": [
+      [],
+      []
+    ],
+    "3145001": [
+      [],
+      []
+    ],
+    "3145047": [
+      [],
+      []
+    ],
+    "3145096": [
+      [],
+      []
+    ],
+    "3146924": [
+      [],
+      []
+    ],
+    "3146964": [
+      [],
+      []
+    ],
+    "3146997": [
+      [],
+      []
+    ],
+    "3147054": [
+      [],
+      []
+    ],
+    "3147086": [
+      [],
+      []
+    ],
+    "3147467": [
+      [],
+      []
+    ],
+    "3148829": [
+      [],
+      []
+    ],
+    "3148962": [
+      [],
+      []
+    ],
+    "3150721": [
+      [],
+      []
+    ],
+    "3150838": [
+      [],
+      []
+    ],
+    "3150883": [
+      [],
+      []
+    ],
+    "3152975": [
+      [],
+      []
+    ],
+    "3153016": [
+      [],
+      []
+    ],
+    "3153057": [
+      [],
+      []
+    ],
+    "3153113": [
+      [],
+      []
+    ],
+    "3157681": [
+      [],
+      []
+    ],
+    "3161257": [
+      [],
+      []
+    ],
+    "3161374": [
+      [],
+      []
+    ],
+    "3161391": [
+      [],
+      []
+    ],
+    "3161392": [
+      [],
+      []
+    ],
+    "3161401": [
+      [],
+      []
+    ],
+    "3161418": [
+      [],
+      []
+    ],
+    "3164771": [
+      [],
+      []
+    ],
+    "3164796": [
+      [],
+      []
+    ],
+    "3166669": [
+      [],
+      []
+    ],
+    "3166803": [
+      [],
+      []
+    ],
+    "3167069": [
+      [],
+      []
+    ],
+    "3167118": [
+      [],
+      []
+    ],
+    "3167523": [
+      [],
+      []
+    ],
+    "3167588": [
+      [],
+      []
+    ],
+    "3167669": [
+      [],
+      []
+    ],
+    "3169313": [
+      [],
+      []
+    ],
+    "3169346": [
+      [],
+      []
+    ],
+    "3169387": [
+      [],
+      []
+    ],
+    "3169436": [
+      [],
+      []
+    ],
+    "3169461": [
+      [],
+      []
+    ],
+    "3169697": [
+      [],
+      []
+    ],
+    "3169722": [
+      [],
+      []
+    ],
+    "3169767": [
+      [],
+      []
+    ],
+    "3170747": [
+      [],
+      []
+    ],
+    "3170771": [
+      [],
+      []
+    ],
+    "3170788": [
+      [],
+      []
+    ],
+    "3170813": [
+      [],
+      []
+    ],
+    "3170829": [
+      [],
+      []
+    ],
+    "3171156": [
+      [],
+      []
+    ],
+    "3171175": [
+      [],
+      []
+    ],
+    "3171200": [
+      [],
+      []
+    ],
+    "3172272": [
+      [],
+      []
+    ],
+    "3172323": [
+      [],
+      []
+    ],
+    "3172349": [
+      [],
+      []
+    ],
+    "3172374": [
+      [],
+      []
+    ],
+    "3172391": [
+      [],
+      []
+    ],
+    "3172499": [
+      [],
+      []
+    ],
+    "3172524": [
+      [],
+      []
+    ],
+    "3172557": [
+      [],
+      []
+    ],
+    "3174276": [
+      [],
+      []
+    ],
+    "3174360": [
+      [],
+      []
+    ],
+    "3174431": [
+      [],
+      []
+    ],
+    "3174483": [
+      [],
+      []
+    ],
+    "3174635": [
+      [],
+      []
+    ],
+    "3175073": [
+      [],
+      []
+    ],
+    "3175129": [
+      [],
+      []
+    ],
+    "3175227": [
+      [],
+      []
+    ],
+    "3176804": [
+      [],
+      []
+    ],
+    "3176860": [
+      [],
+      []
+    ],
+    "3176916": [
+      [],
+      []
+    ],
+    "3176998": [
+      [],
+      []
+    ],
+    "3177047": [
+      [],
+      []
+    ],
+    "3177502": [
+      [],
+      []
+    ],
+    "3177535": [
+      [],
+      []
+    ],
+    "3177576": [
+      [],
+      []
+    ],
+    "3179493": [
+      [],
+      []
+    ],
+    "3179558": [
+      [],
+      []
+    ],
+    "3179610": [
+      [],
+      []
+    ],
+    "3179650": [
+      [],
+      []
+    ],
+    "3179699": [
+      [],
+      []
+    ],
+    "3180136": [
+      [],
+      []
+    ],
+    "3181598": [
+      [],
+      []
+    ],
+    "3181729": [
+      [],
+      []
+    ],
+    "3183170": [
+      [],
+      []
+    ],
+    "3183231": [
+      [],
+      []
+    ],
+    "3183272": [
+      [],
+      []
+    ],
+    "3184978": [
+      [],
+      []
+    ],
+    "3185019": [
+      [],
+      []
+    ],
+    "3185062": [
+      [],
+      []
+    ],
+    "3185086": [
+      [],
+      []
+    ],
+    "3188258": [
+      [],
+      []
+    ]
+  },
+  "groups_empty": true,
+  "inputs_unchanged": true,
+  "external_inputs_unchanged": true,
+  "exit_code": 0,
+  "finished_at": "2026-10-15T06:35:44.166323+00:00"
+}
