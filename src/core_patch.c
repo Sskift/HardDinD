@@ -276,6 +276,12 @@ int main(int argc, char **argv) {
     CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
     verify_site(mapping + OFFSET);
     CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_WRITE));
+    CHECK(is_original(mapping + OFFSET));
+    uint32_t replacement_nr = SYS_getppid;
+    memcpy(mapping + OFFSET + 1, &replacement_nr, sizeof(replacement_nr));
+    CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_EXEC));
+    CHECK(((long (*)(void))(mapping + OFFSET))() == getppid());
+    CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_WRITE));
     unsigned char replacement[] = {0xb8, 123, 0, 0, 0, 0xc3, 0x90, 0x90};
     memcpy(mapping + OFFSET, replacement, sizeof(replacement));
     CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_EXEC));

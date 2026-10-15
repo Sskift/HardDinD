@@ -151,7 +151,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,416 @@
+@@ -0,0 +1,420 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -445,7 +445,11 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +        if (!(UPT_SYSCALL_ARG4(r) & MAP_FIXED))
 +            return 0;
 +        fallthrough;
-+    case __NR_munmap: case __NR_mprotect: case __NR_pkey_mprotect: case __NR_madvise:
++    case __NR_mprotect: case __NR_pkey_mprotect:
++        if (UPT_SYSCALL_ARG3(r) & PROT_WRITE)
++            break;
++        fallthrough;
++    case __NR_munmap: case __NR_madvise:
 +        if (start >= UML_PATCH_END || end <= UML_PATCH_BASE)
 +            return 0;
 +        break;
