@@ -1,0 +1,11 @@
+--- a/src/ip6_input.c
++++ b/src/ip6_input.c
+@@ -49,7 +49,7 @@
+         goto bad;
+     }
+ 
+-    if (ntohs(ip6->ip_pl) + sizeof(struct ip6) > slirp->if_mtu) {
++    if (ntohs(ip6->ip_pl) + sizeof(struct ip6) > slirp->if_mru) {
+         icmp6_send_error(m, ICMP6_TOOBIG, 0);
+         goto bad;
+     }

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Build the HardDinD network backend, statically linked against the pinned
-# HardDinD-patched libslirp 4.6.1 (built by build-libslirp.sh), with glib kept
-# dynamic from the host runtime package.
+# HardDinD-patched libslirp 4.6.1 and the pinned glib development archive.
 #
 # Locking is owned by the pipeline (./hd build); this script takes none.
 set -euo pipefail
@@ -24,16 +23,15 @@ else
 fi
 [ -f "$archive" ] || { echo "missing $archive (build-libslirp.sh failed)" >&2; exit 1; }
 
-# Link the pinned host runtime soname directly: the extracted glib dev
-# directory only provides headers and a dev symlink, and the dynamic dependency
-# must be the ABI-pinned libglib-2.0.so.0 anyway.
-# awk consumes the whole stream (no early exit) so pipefail cannot turn a
-# producer SIGPIPE into a spurious build failure.
-glib_lib=$(ldconfig -p | awk '/libglib-2.0\.so\.0 \(/{if (!seen) {print $NF; seen=1}} END{exit seen ? 0 : 1}')
-[ -n "$glib_lib" ] && [ -f "$glib_lib" ] || { echo "pinned libglib-2.0.so.0 not found" >&2; exit 1; }
+glib_lib="$work/glib-headers/usr/lib/x86_64-linux-gnu/libglib-2.0.a"
+stage_src="$work/libslirp-stage/libslirp-v4.6.1/src"
+link=(-static -pthread -lm)
+# ASan needs a dynamic libc; production builds remain static.
+if [ "$variant" = "asan" ]; then link=(-pthread -lm); fi
+[ -f "$glib_lib" ] || { echo "pinned glib archive not found" >&2; exit 1; }
 
 gcc "${san[@]}" -Wall -Wextra -Werror \
-    "$repo/src/network_backend.c" "$archive" "$glib_lib" -o "$out.new"
+    -I"$stage_src" "$repo/src/network_backend.c" "$archive" "$glib_lib" "${link[@]}" -o "$out.new"
 [ "$("$out.new" --version)" = "4.6.1" ]
 mv "$out.new" "$out"
 sha256sum "$out"
@@ -52,7 +50,7 @@ stage_src="$work/libslirp-stage/libslirp-v4.6.1/src"
 cunit="$work/native_ip6frag${variant:+-$variant}"
 gcc -D_GNU_SOURCE "${san[@]}" -Wall -Wextra -Werror \
     -I"$glib_inc" -I"$glib_cfg" -I"$stage_src" \
-    "$repo/tests/publish/native_ip6frag.c" "$archive" "$glib_lib" -o "$cunit"
+    "$repo/tests/publish/native_ip6frag.c" "$archive" "$glib_lib" "${link[@]}" -o "$cunit"
 if [ "$variant" = "asan" ]; then
     ASAN_OPTIONS=detect_leaks=0:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
         "$cunit"

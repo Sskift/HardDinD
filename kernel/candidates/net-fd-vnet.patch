@@ -1,0 +1,77 @@
+--- a/arch/um/drivers/vector_transports.c
++++ b/arch/um/drivers/vector_transports.c
+@@ -197,6 +197,7 @@
+ 	uint8_t *header, struct sk_buff *skb, struct vector_private *vp)
+ {
+ 	struct virtio_net_hdr *vheader = (struct virtio_net_hdr *) header;
++	int err;
+ 
+ 	if ((vheader->gso_type != VIRTIO_NET_HDR_GSO_NONE) &&
+ 		(vp->req_size != 65536)) {
+@@ -206,11 +207,11 @@
+ 				GSO_ERROR
+ 		);
+ 	}
+-	if ((vheader->flags & VIRTIO_NET_HDR_F_DATA_VALID) > 0)
+-		return 1;
+-
+-	virtio_net_hdr_to_skb(skb, vheader, virtio_legacy_is_little_endian());
+-	return 0;
++	err = virtio_net_hdr_to_skb(skb, vheader,
++				    virtio_legacy_is_little_endian());
++	if (err)
++		return err;
++	return !!(vheader->flags & VIRTIO_NET_HDR_F_DATA_VALID);
+ }
+ 
+ static bool get_uint_param(
+@@ -464,6 +465,21 @@
+ }
+ 
+ 
++static int build_fd_transport_data(struct vector_private *vp)
++{
++	char *vnet = uml_vector_fetch_arg(vp->parsed, "vnet_hdr");
++
++	if (!vnet || strcmp(vnet, "1"))
++		return 0;
++	vp->form_header = &raw_form_header;
++	vp->verify_header = &raw_verify_header;
++	vp->header_size = sizeof(struct virtio_net_hdr);
++	vp->rx_header_size = sizeof(struct virtio_net_hdr);
++	vp->req_size = 65536;
++	netdev_info(vp->dev, "fd: using vnet headers for TCP GSO and checksum\n");
++	return 0;
++}
++
+ static int build_bess_transport_data(struct vector_private *vp)
+ {
+ 	vp->form_header = NULL;
+@@ -477,6 +493,8 @@
+ {
+ 	char *transport = uml_vector_fetch_arg(vp->parsed, "transport");
+ 
++	if (!strcmp(transport, "fd"))
++		return build_fd_transport_data(vp);
+ 	if (strncmp(transport, TRANS_GRE, TRANS_GRE_LEN) == 0)
+ 		return build_gre_transport_data(vp);
+ 	if (strncmp(transport, TRANS_L2TPV3, TRANS_L2TPV3_LEN) == 0)
+--- a/arch/um/drivers/vector_kern.c
++++ b/arch/um/drivers/vector_kern.c
+@@ -1638,6 +1638,16 @@
+ 	vp->req_size	= get_req_size(def);
+ 
+ 	dev->features = dev->hw_features = (NETIF_F_SG | NETIF_F_FRAGLIST);
++	/* Register offloads before wanted_features is derived by net core. */
++	if (uml_vector_fetch_arg(def, "transport") &&
++	    !strcmp(uml_vector_fetch_arg(def, "transport"), "fd") &&
++	    uml_vector_fetch_arg(def, "vnet_hdr") &&
++	    !strcmp(uml_vector_fetch_arg(def, "vnet_hdr"), "1")) {
++		dev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM |
++			NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_GRO;
++		dev->features = dev->hw_features;
++		netif_set_tso_max_size(dev, 65520);
++	}
+ 	INIT_WORK(&vp->reset_tx, vector_reset_tx);
+ 
+ 	timer_setup(&vp->tl, vector_timer_expire, 0);
