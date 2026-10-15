@@ -68,7 +68,7 @@ for label, (threads, cpus) in cells.items():
         for r in cell['samples'] if r['mode'] == mode), 2) for mode in sorted(modes)}
     print(label, json.dumps(medians, sort_keys=True))
 assert total == manifest['samples'] == 285
-assert hashlib.sha256(data['sources/cpu_limit_probe.c']).hexdigest() == manifest['original_cpu_limit_probe_sha256']
+assert hashlib.sha256(data['sources/cpu_limit_probe.c']).hexdigest() == manifest['unused_snapshot_cpu_probe_sha256']
 print('Verified 7 cells, 285 thread samples, 25 commands, 28 empty process groups.')
 print('Durations are guest/native CLOCK_MONOTONIC_RAW per thread, in ns per loop iteration.')
 print('No whole-Docker or performance acceptance; external binaries remain hash-bound on Starpub.')

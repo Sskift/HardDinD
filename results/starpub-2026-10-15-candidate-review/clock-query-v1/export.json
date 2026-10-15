@@ -63,7 +63,7 @@
   "commands": 25,
   "groups": 28,
   "samples": 285,
-  "original_cpu_limit_probe_sha256": "49b1201d83d07dfc6207ecd7c122c70147813ffed2feb1b9db5f2eb0f9f144a0",
   "performance_acceptance": false,
-  "full_acceptance": false
+  "full_acceptance": false,
+  "unused_snapshot_cpu_probe_sha256": "49b1201d83d07dfc6207ecd7c122c70147813ffed2feb1b9db5f2eb0f9f144a0"
 }

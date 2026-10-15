@@ -1,6 +1,6 @@
 # 时钟与 CPU 查询路径的实际分解
 
-同一静态程序在 Starpub 外层和内部 Docker 中运行，解释原有 CPU 工作量实验中高频查询的开销。原有 `cpu_limit_probe.c` 未改动；该诊断没有减少它的查询频率，也不代替实际 Docker 工作流或性能验收。
+同一静态程序在 Starpub 外层和内部 Docker 中运行，解释原有 CPU 工作量实验中高频查询的开销。主线原有 `cpu_limit_probe.c` 未改动；该诊断没有减少它的查询频率，也不代替实际 Docker 工作流或性能验收。
 
 原生前后分别运行 1、4 个线程；内部运行 1、4 个线程，再用 `--cpuset-cpus=2,3` 运行 4 个线程。guest 始终是 4 vCPU、4 GiB，保留普通网络、资源控制和外层安全限制，未运行 GPU。每种查询每线程执行 20,000 次、重复 3 次，实际验证返回值、时间单调性和 CPU 编号是否属于允许集合。所有 7 组、285 条线程记录通过这些定向检查，guest 正常关机，28 个记录的进程组为空。
 
@@ -16,7 +16,7 @@
 
 外层 glibc 报告 rseq 注册大小为 32，内部为 0；两侧都存在 vDSO。归档保留实际静态二进制 `sched_getcpu` 的反汇编：它优先读取 rseq TLS，无法使用时退回 vDSO 或系统调用。固定 UML 源码的时间 vDSO 则直接执行系统调用。这些证据支持分别处理时间查询和 guest CPU 编号缓存；不能用宿主 CPU 编号替代 guest 编号，也不能只启用缓存而遗漏迁移、信号和 fork/exec 的语义。
 
-原始证据来自 `/root/harddind-rebuild/clock-query-owner-v1`。`evidence.tar.gz` 保存 25 个实际命令的完整 stdout/stderr、状态和清理记录、编译命令、执行监督程序、探针及关联运行器源码、基线内核配置与补丁清单。`export.json` 固定归档及各成员 SHA256。内核、磁盘和静态二进制留在 Starpub，原始状态记录其摘要；离线复核不会重新执行它们。
+原始证据来自 `/root/harddind-rebuild/clock-query-owner-v1`。`evidence.tar.gz` 保存 25 个实际命令的完整 stdout/stderr、状态和清理记录、编译命令、执行监督程序、探针及关联运行器源码、基线内核配置与补丁清单。`export.json` 固定归档及各成员 SHA256。内核、磁盘和静态二进制留在 Starpub，原始状态记录其摘要；离线复核不会重新执行它们。执行目录继承工作流的冻结快照，归档中的 `sources/cpu_limit_probe.c` 是该快照自带、未参与本轮执行的旧版本；它与工作量计数版不同，不能视作前轮 CPU 负载的来源。本轮实际执行的唯一探针是 `clock_query_probe.c`，其源码与主线新增文件逐字一致。
 
 ```sh
 python3 results/starpub-2026-10-15-candidate-review/clock-query-v1/recheck.py
