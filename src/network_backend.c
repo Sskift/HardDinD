@@ -40,10 +40,12 @@ static bool trace_dns, trace_tcp;
 static bool vnet;
 static uint64_t rx_gso, tx_gso, coalesced;
 static uint64_t slirp_gso, slirp_gso_bytes;
+static uint64_t coalesced_acks;
+static uint64_t rx_csum_packets, rx_csum_bytes;
 static struct in_addr guest_addr;
 struct timer { bool used; int64_t expires; SlirpTimerCb cb; void *opaque; };
 static struct timer timers[64];
-struct packet { struct packet *next; size_t len; unsigned gso_size; unsigned char data[]; };
+struct packet { struct packet *next; size_t len, capacity; unsigned gso_size; unsigned char data[]; };
 static struct packet *head, *tail;
 static unsigned queued;
 /* One host forwarding. family is AF_INET or AF_INET6; the address union key
@@ -105,7 +107,7 @@ static bool append_tcp(struct packet *q, const unsigned char *p, size_t len) {
     if (!q || !q->gso_size || !tcp_frame(q->data, q->len, &a) || !tcp_frame(p, len, &b) ||
         a.tcp != (a.version == 4 ? 34u : 54u) || b.tcp != a.tcp ||
         a.payload != b.payload || a.version != b.version || !b.size || b.size > q->gso_size ||
-        a.size % q->gso_size || q->len + b.size > MAX_FRAME ||
+        a.size % q->gso_size || q->len + b.size > q->capacity ||
         q->data[a.tcp + 13] != 0x10 || (p[b.tcp + 13] & ~8u) != 0x10 ||
         be32(q->data + a.tcp + 4) + a.size != be32(p + b.tcp + 4)) return false;
     /* Require identical flow, ACK, window, options and IP metadata. */
@@ -125,6 +127,24 @@ static bool append_tcp(struct packet *q, const unsigned char *p, size_t len) {
     coalesced++;
     return true;
 }
+static bool replace_ack(struct packet *q, const unsigned char *p, size_t len) {
+    struct tcp_frame a, b;
+    if (!q || q->len != len || !tcp_frame(q->data, q->len, &a) || !tcp_frame(p, len, &b) ||
+        a.tcp != (a.version == 4 ? 34u : 54u) || b.tcp != a.tcp || a.version != b.version ||
+        a.payload != a.tcp + 20 || b.payload != a.payload || a.size || b.size ||
+        q->data[a.tcp + 13] != 0x10 || p[b.tcp + 13] != 0x10 ||
+        (int32_t)(be32(p + b.tcp + 8) - be32(q->data + a.tcp + 8)) <= 0) return false;
+    /* Only cumulative ACK progress may replace an ACK. Preserve duplicates,
+     * sequence changes, ECN, options, and every flow's independent feedback. */
+    for (unsigned i = 0; i < a.payload; i++) {
+        if (a.version == 4 && ((i >= 18 && i < 20) || (i >= 24 && i < 26))) continue;
+        if ((i >= a.tcp + 8 && i < a.tcp + 12) || (i >= a.tcp + 14 && i < a.tcp + 18)) continue;
+        if (q->data[i] != p[i]) return false;
+    }
+    memcpy(q->data, p, len);
+    coalesced_acks++;
+    return true;
+}
 static void frame_header(struct packet *p, unsigned char hdr[VNET_SIZE]) {
     memset(hdr, 0, VNET_SIZE);
     struct tcp_frame f;
@@ -142,7 +162,8 @@ static void frame_header(struct packet *p, unsigned char hdr[VNET_SIZE]) {
     putle16(hdr + 2, f.payload); putle16(hdr + 4, p->gso_size);
     putle16(hdr + 6, f.tcp); putle16(hdr + 8, 16);
 }
-static bool input_frame(unsigned char **data, unsigned *len) {
+static bool input_frame(unsigned char **data, unsigned *len, bool *tcp_checksum_valid) {
+    *tcp_checksum_valid = false;
     if (!vnet) return *len >= 14;
     if (*len < VNET_SIZE + 14) return false;
     unsigned char *hdr = *data, *p = hdr + VNET_SIZE;
@@ -158,8 +179,19 @@ static bool input_frame(unsigned char **data, unsigned *len) {
     if (hdr[0] & 1) {
         unsigned start = le16(hdr + 6), offset = le16(hdr + 8);
         if (start > *len || offset + 2 > *len - start) return false;
-        unsigned check = finish_sum(sum16(p + start, *len - start, 0));
-        put16(p + start + offset, check ? check : 65535);
+        struct tcp_frame f;
+        if (type && offset == 16 && tcp_frame(p, *len, &f) && start == f.tcp &&
+            f.tcp == (f.version == 4 ? 34u : 54u)) {
+            unsigned sum = sum16(p + (f.version == 4 ? 26 : 22), f.version == 4 ? 8 : 32,
+                                 *len - start + 6);
+            *tcp_checksum_valid = be16(p + start + offset) == ((~finish_sum(sum)) & 65535);
+        }
+        if (*tcp_checksum_valid) {
+            rx_csum_packets++; rx_csum_bytes += *len;
+        } else {
+            unsigned check = finish_sum(sum16(p + start, *len - start, 0));
+            put16(p + start + offset, check ? check : 65535);
+        }
     }
     if (type) rx_gso++;
     return true;
@@ -201,7 +233,7 @@ static void dns_trace(const void *buf, size_t len, const char *direction) {
     putchar('\n'); fflush(stdout);
 }
 static ssize_t queue_frame(const void *buf, size_t len, unsigned segment_size) {
-    dns_trace(buf, len, "to_guest");
+    dns_trace(buf, len, segment_size ? "to_guest_gso" : "to_guest");
     if (!head && batch_size == 1 && !vnet) {
         tx_syscalls++;
         ssize_t n = send(link_fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -211,14 +243,16 @@ static ssize_t queue_frame(const void *buf, size_t len, unsigned segment_size) {
         }
     }
     if (len > MAX_FRAME) { dropped_packets++; return len; }
-    if (vnet && !segment_size && append_tcp(tail, buf, len)) return len;
+    if (vnet && !segment_size && (replace_ack(tail, buf, len) || append_tcp(tail, buf, len))) return len;
     if (queued == MAX_QUEUE) { dropped_packets++; return len; }
-    struct tcp_frame tcp;
+    struct tcp_frame tcp = {0};
     unsigned gso_size = segment_size ? segment_size :
         (vnet && tcp_frame(buf, len, &tcp) && tcp.size ? tcp.size : 0);
-    struct packet *p = malloc(sizeof(*p) + (gso_size ? MAX_FRAME : len));
+    size_t capacity = gso_size && !segment_size && ((const unsigned char *)buf)[tcp.tcp + 13] == 0x10
+        ? MAX_FRAME : len;
+    struct packet *p = malloc(sizeof(*p) + capacity);
     if (!p) die("packet allocation");
-    p->next = NULL; p->len = len; p->gso_size = gso_size; memcpy(p->data, buf, len);
+    p->next = NULL; p->len = len; p->capacity = capacity; p->gso_size = gso_size; memcpy(p->data, buf, len);
     if (tail) tail->next = p; else head = p;
     tail = p; queued++;
     return len;
@@ -239,6 +273,23 @@ static ssize_t send_gso(const void *buf, size_t len, unsigned mss, void *opaque)
 }
 static void flush_frames(void) {
     while (head) {
+        if (vnet && head == tail) {
+            unsigned char header[VNET_SIZE];
+            frame_header(head, header);
+            if (trace_tcp) tcp_trace_frame(head->data, head->len,
+                header[0] & 1 ? "wire_partial_to_guest" : "wire_to_guest");
+            struct iovec vectors[2] = {{header, sizeof(header)}, {head->data, head->len}};
+            struct msghdr message = {.msg_iov = vectors, .msg_iovlen = 2};
+            tx_syscalls++;
+            ssize_t sent = sendmsg(link_fd, &message, MSG_DONTWAIT | MSG_NOSIGNAL);
+            if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
+            if (sent == (ssize_t)(head->len + VNET_SIZE)) {
+                tx_packets++; tx_bytes += head->len;
+                if (header[1]) tx_gso++;
+            } else dropped_packets++;
+            free(head); head = tail = NULL; queued--;
+            continue;
+        }
         if (batch_size > 1 || vnet) {
             struct mmsghdr messages[MAX_BATCH] = {0};
             struct iovec vectors[MAX_BATCH][2];
@@ -339,6 +390,10 @@ static int number(const char *s, int minimum, int maximum) {
 }
 static int stats(char *buf, size_t len) {
     struct rusage usage = {0};
+    int sndbuf, rcvbuf;
+    socklen_t size = sizeof(sndbuf);
+    if (getsockopt(link_fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, &size) ||
+        getsockopt(link_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &size)) die("link buffers");
     if (getrusage(RUSAGE_SELF, &usage)) die("getrusage");
     return snprintf(buf, len, "{\"rx_packets\":%" PRIu64 ",\"tx_packets\":%" PRIu64
         ",\"rx_bytes\":%" PRIu64 ",\"tx_bytes\":%" PRIu64
@@ -348,10 +403,15 @@ static int stats(char *buf, size_t len) {
         ",\"poll_calls\":%" PRIu64 ",\"vnet\":%s,\"rx_gso\":%" PRIu64
         ",\"tx_gso\":%" PRIu64 ",\"coalesced\":%" PRIu64
         ",\"slirp_gso\":%" PRIu64 ",\"slirp_gso_bytes\":%" PRIu64
+        ",\"coalesced_acks\":%" PRIu64
+        ",\"rx_csum_packets\":%" PRIu64 ",\"rx_csum_bytes\":%" PRIu64
+        ",\"link_sndbuf\":%d,\"link_rcvbuf\":%d"
         ",\"user_us\":%" PRId64 ",\"system_us\":%" PRId64 "}",
         rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
         inventory_revision, mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls,
-        vnet ? "true" : "false", rx_gso, tx_gso, coalesced, slirp_gso, slirp_gso_bytes,
+        vnet ? "true" : "false", rx_gso, tx_gso, coalesced, slirp_gso, slirp_gso_bytes, coalesced_acks,
+        rx_csum_packets, rx_csum_bytes,
+        sndbuf, rcvbuf,
         (int64_t)usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec,
         (int64_t)usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec);
 }
@@ -632,6 +692,7 @@ int main(int argc, char **argv) {
         if (pfds[0].revents & POLLOUT) flush_frames();
         if (pfds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
             unsigned received = 0;
+            bool bulk = false;
             if (batch_size == 1) {
                 /* Keep the reference path as the original one-frame receive
                  * loop, without constructing batch descriptor arrays. */
@@ -642,12 +703,13 @@ int main(int argc, char **argv) {
                     if (len < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
                     unsigned size = (unsigned)len;
                     unsigned char *data = frames[0];
-                    if (size > MAX_FRAME + (vnet ? VNET_SIZE : 0) || !input_frame(&data, &size)) {
+                    bool checksum_valid;
+                    if (size > MAX_FRAME + (vnet ? VNET_SIZE : 0) || !input_frame(&data, &size, &checksum_valid)) {
                         dropped_packets++; continue;
                     }
                     rx_packets++; rx_bytes += size;
-                    dns_trace(data, size, "from_guest");
-                    slirp_input(slirp, data, (int)size);
+                    dns_trace(data, size, checksum_valid ? "from_guest_partial" : "from_guest");
+                    slirp_input_checksum(slirp, data, (int)size, checksum_valid);
                     if (vnet && queued >= MAX_BATCH) flush_frames();
                 }
             }
@@ -664,21 +726,26 @@ int main(int argc, char **argv) {
                 int got = recvmmsg(link_fd, messages, count, MSG_DONTWAIT | MSG_TRUNC, NULL);
                 if (got < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
                 if (!got) break;
+                if (got > 1) bulk = true;
                 for (int i = 0; i < got; i++) {
                     unsigned len = messages[i].msg_len;
                     if (!len) { stopping = 1; break; }
                     unsigned char *data = frames[i];
-                    if (len > MAX_FRAME + (vnet ? VNET_SIZE : 0) || !input_frame(&data, &len)) {
+                    bool checksum_valid;
+                    if (len > MAX_FRAME + (vnet ? VNET_SIZE : 0) || !input_frame(&data, &len, &checksum_valid)) {
                         dropped_packets++; continue;
                     }
                     rx_packets++; rx_bytes += len;
-                    dns_trace(data, len, "from_guest");
-                    slirp_input(slirp, data, (int)len);
+                    dns_trace(data, len, checksum_valid ? "from_guest_partial" : "from_guest");
+                    slirp_input_checksum(slirp, data, (int)len, checksum_valid);
+                    if (len > (unsigned)mtu + 14 || (tail && tail->len > (unsigned)mtu + 14)) bulk = true;
                     /* Bound memory even when one receive batch creates many replies. */
                     if (queued >= MAX_BATCH) flush_frames();
                 }
                 received += (unsigned)got;
-                if (stopping) break;
+                /* Drain bulk traffic across short batches; only isolated small
+                 * frames can avoid the final empty receive without extra polls. */
+                if (stopping || (!bulk && (unsigned)got < count)) break;
             }
         }
         if (pfds[1].revents & POLLIN) control(slirp);
@@ -686,7 +753,7 @@ int main(int argc, char **argv) {
         if ((batch_size > 1 || vnet) && head) flush_frames();
     }
     slirp_cleanup(slirp);
-    char report[1024]; stats(report, sizeof(report));
+    char report[2048]; stats(report, sizeof(report));
     printf("HARDDIND_NETWORK_STATS %s\n", report);
     close(link_fd); close(ctl_fd); unlink(argv[2]);
     while (head) { struct packet *p = head; head = p->next; free(p); }

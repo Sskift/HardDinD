@@ -56,6 +56,16 @@ def window_option(options):
     return None
 
 
+def recv_exact(sock, size):
+    data = bytearray()
+    while len(data) < size:
+        part = sock.recv(size - len(data))
+        if not part:
+            raise EOFError('short TCP stream')
+        data.extend(part)
+    return bytes(data)
+
+
 class TCPSession:
     def __init__(self, peer, src, dst, sport, dport, iss, client_isn, window=None):
         self.peer = peer
@@ -67,8 +77,13 @@ class TCPSession:
         self.state = 'SYN_RCVD'
         self.closed = False
         self.window_scale = peer.window_scale if window is not None else None
+        self.send_lock = threading.RLock()
 
     def send_segment(self, flags, payload=b''):
+        with self.send_lock:
+            self._send_segment(flags, payload)
+
+    def _send_segment(self, flags, payload):
         pure_syn = bool(flags & TCP_SYN)
         seq = self.iss if pure_syn else self.snd_nxt
         ack = self.rcv_nxt if flags & TCP_ACK else 0
@@ -487,7 +502,8 @@ class SlirpPeer:
         off = (off_res >> 4) * 4
         option = window_option(payload[20:off])
         if len(self.tcp_headers) < 128:
-            self.tcp_headers.append({'flags': flags, 'window': win, 'scale': option})
+            self.tcp_headers.append({'flags': flags, 'window': win, 'scale': option,
+                                     'seq': seq, 'ack': ack, 'payload': len(payload) - off})
         body = payload[off:]
         key = (family, bytes(src), bytes(dst), sport, dport)
         sess = self.sessions.get(key)

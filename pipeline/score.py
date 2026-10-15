@@ -83,7 +83,7 @@ def score_test(test):
 
 
 def scorecard(summary):
-    card = {'run_id': summary['run_id'], 'revision': summary.get('revision', {}),
+    card = {'run_id': summary['run_id'], 'revision': summary.get('revision', {}), 'quiet': summary.get('quiet'),
             'candidates': summary.get('candidates', []), 'kernel_args': summary.get('kernel_args', [])}
     if 'test' in summary:
         card['test'] = score_test(summary['test'])
@@ -111,6 +111,9 @@ def markdown(card, previous=None):
     rev = card['revision']
     lines = [f"# Scorecard `{card['run_id']}`", '',
              f"revision `{rev.get('git', '?')[:12]}`{' (dirty)' if rev.get('dirty') else ''} {rev.get('subject', '')}"]
+    quiet = card.get('quiet')
+    if quiet and not quiet.get('quiet'):
+        lines.append(f"**Host was CPU-throttled** (quota periods throttled: {quiet.get('throttled')}); performance below is not decision-grade.")
     if card['candidates'] or card['kernel_args']:
         lines.append(f"candidates: {', '.join(card['candidates']) or '-'}; kernel args: {' '.join(card['kernel_args']) or '-'}")
     lines.append('')

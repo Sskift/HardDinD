@@ -1,0 +1,87 @@
+--- a/src/libslirp.h
++++ b/src/libslirp.h
+@@ -160,6 +160,9 @@
+ /* This is called by the application when the guest emits a packet on the
+  * guest network, to be interpreted by slirp. */
+ void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len);
++/* HardDinD static ABI: caller validated the TCP partial-checksum metadata. */
++void slirp_input_checksum(Slirp *slirp, const uint8_t *pkt, int pkt_len,
++                          bool tcp_checksum_valid);
+ 
+ /* These set up / remove port forwarding between a host port in the real world
+  * and the guest network. */
+--- a/src/mbuf.h
++++ b/src/mbuf.h
+@@ -109,6 +109,7 @@
+ #define ifs_next m_nextpkt
+ #define ifq_so m_so
+ 
++#define M_CSUM_VALID 0x10 /* TCP checksum validated by the virtual link */
+ #define M_EXT 0x01 /* m_ext points to more (malloced) data */
+ #define M_FREELIST 0x02 /* mbuf is on free list */
+ #define M_USEDLIST 0x04 /* XXX mbuf is on used list (for dtom()) */
+--- a/src/mbuf.c
++++ b/src/mbuf.c
+@@ -246,6 +246,7 @@
+     assert(M_ROOMBEFORE(m) >= header_size);
+ 
+     n = m_get(slirp);
++    n->m_flags |= m->m_flags & M_CSUM_VALID;
+     m_inc(n, m->m_len + header_size);
+ 
+     if (copy_header) {
+--- a/src/tcp_input.c
++++ b/src/tcp_input.c
+@@ -322,7 +322,7 @@
+     }
+ 
+     len = ((sizeof(struct tcpiphdr) - sizeof(struct tcphdr)) + tlen);
+-    if (cksum(m, len)) {
++    if (!(m->m_flags & M_CSUM_VALID) && cksum(m, len)) {
+         goto drop;
+     }
+ 
+--- a/src/slirp.c
++++ b/src/slirp.c
+@@ -929,7 +929,8 @@
+     }
+ }
+ 
+-void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
++void slirp_input_checksum(Slirp *slirp, const uint8_t *pkt, int pkt_len,
++                          bool tcp_checksum_valid)
+ {
+     struct mbuf *m;
+     int proto;
+@@ -958,6 +959,8 @@
+         if (M_FREEROOM(m) < pkt_len + TCPIPHDR_DELTA + head_pad) {
+             m_inc(m, pkt_len + TCPIPHDR_DELTA + head_pad);
+         }
++        if (tcp_checksum_valid)
++            m->m_flags |= M_CSUM_VALID;
+         m->m_len = pkt_len + TCPIPHDR_DELTA + head_pad;
+         memcpy(m->m_data + TCPIPHDR_DELTA + head_pad, pkt, pkt_len);
+ 
+@@ -978,6 +981,11 @@
+     default:
+         break;
+     }
++}
++
++void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
++{
++    slirp_input_checksum(slirp, pkt, pkt_len, false);
+ }
+ 
+ /* Prepare the IPv4 packet to be sent to the ethernet device. Returns 1 if no
+--- a/src/tcp_output.c
++++ b/src/tcp_output.c
+@@ -391,7 +391,7 @@
+      */
+     if (len + optlen)
+         ti->ti_len = htons((uint16_t)(sizeof(struct tcphdr) + optlen + len));
+-    ti->ti_sum = cksum(m, (int)(hdrlen + len));
++    ti->ti_sum = m->m_gso_size ? 0 : cksum(m, (int)(hdrlen + len));
+ 
+     /*
+      * In transmit state, time the transmission and arrange for
