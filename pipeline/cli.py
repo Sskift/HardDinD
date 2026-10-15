@@ -235,8 +235,12 @@ def run_suite(kind, a):
             if kind in ('test', 'ci'):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
                 summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
+                summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
             if kind in ('bench', 'ci'):
                 summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
+                state = summary['bench'].pop('guest_state')
+                if shutdown_check(state)['status'] != 'pass':
+                    summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
         except Exception as error:
             summary['error'] = f'{type(error).__name__}: {error}'
             traceback.print_exc()
@@ -268,6 +272,19 @@ def backend_selftest(run_dir, artifacts, only):
             'seconds': round(time.monotonic() - started, 2), 'detail': (result.stdout + result.stderr)[-800:]}
 
 
+def shutdown_check(state):
+    """An orderly guest shutdown is part of the functional gate (daemon state must persist)."""
+    problems = [k for k in ('error', 'shutdown_error') if state.get(k)]
+    if state.get('forced_shutdown'):
+        problems.append('forced_shutdown')
+    if state.get('phase') != 'stopped':
+        problems.append(f"phase={state.get('phase')}")
+    detail = '; '.join(f'{k}: {state[k]}' if k in state and k != 'forced_shutdown' else k for k in problems)
+    return {'id': 'guest.clean_shutdown', 'status': 'fail' if problems else 'pass', 'covers': [],
+            'seconds': round(state.get('stopped_at', 0) - state.get('ready_at', 0), 2) if not problems else 0.0,
+            'detail': detail}
+
+
 def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     from pipeline import instance, runs
     name = suite[0] + hashlib.sha256(run_id.encode()).hexdigest()[:10]
@@ -281,20 +298,24 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
                        instance_options=opts, bench_cpus=config.BENCH_CPUS, quick=getattr(a, 'quick', False),
                        only=a.only)
+    result = {}
     try:
         started = time.monotonic()
         instance.start(path, **opts)
         ctx.log(f'{suite}: guest {name} ready in {time.monotonic() - started:.1f}s')
         if suite == 'test':
             from pipeline import functional
-            return functional.run(ctx)
-        from pipeline import bench
-        return bench.run(ctx)
+            result = functional.run(ctx)
+        else:
+            from pipeline import bench
+            result = bench.run(ctx)
+        return result
     finally:
         state = instance.stop(path)
+        result['guest_state'] = state
         keep = run_dir / f'instance-{suite}'
         keep.mkdir(exist_ok=True)
-        for log in path.glob('*.log'):
+        for log in [*path.glob('*.log'), *path.glob('shutdown-diagnostic-*.json')]:
             shutil.copy2(log, keep / log.name)
         (keep / 'state.json').write_text(json.dumps(state, indent=2) + '\n')
         if not getattr(a, 'keep', False):
