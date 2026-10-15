@@ -436,6 +436,7 @@ def main(argv=None):
     s.add_argument('--ab', action='append', default=[], metavar='K=V', help='also boot guest B with these parameters')
     s.add_argument('--reps', type=int, default=3); s.add_argument('--timeout', type=float, default=300)
     s.add_argument('--privileged', action='store_true'); s.add_argument('--label')
+    s.add_argument('--env', action='append', default=[], metavar='K=V', help='environment for the program on every side')
     s.add_argument('program', help='repo C file (built static) or static binary path')
     s.add_argument('args', nargs=argparse.REMAINDER)
     s.set_defaults(fn=cmd_probe)

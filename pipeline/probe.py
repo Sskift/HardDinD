@@ -82,11 +82,12 @@ def run(a):
                 sides = [('native', None)] + [(side, path) for side, path in paths.items()]
                 for side, path in sides:
                     if path is None:
-                        cmd, env = [str(binary), *a.args], None
+                        cmd, env = [str(binary), *a.args], {**os.environ, **dict(e.split('=', 1) for e in a.env)}
                         preexec = lambda: os.sched_setaffinity(0, affinity)
                     else:
                         argv, env = instance.docker_env(path)
                         cmd = [*argv, 'run', '--rm', *(['--privileged'] if a.privileged else []),
+                               *[x for e in a.env for x in ('-e', e)],
                                'hd-probe:latest', '/probe', *a.args]
                         preexec = None
                     started = time.monotonic()
@@ -119,7 +120,7 @@ def run(a):
                 instance.remove(path)
             runs.write_json(run_dir / 'summary.json', {
                 'schema': 'hd.probe/1', 'run_id': run_id, 'kind': 'probe', 'revision': rev,
-                'program': str(a.program), 'args': a.args, 'candidates': a.with_, 'kernel_args': a.kernel_arg,
+                'program': str(a.program), 'args': a.args, 'env': a.env, 'candidates': a.with_, 'kernel_args': a.kernel_arg,
                 'ab': a.ab, 'cpus': cpus, 'bench_cpus': bench_cpus, 'artifacts': artifacts['ids'],
                 'records': records})
     failed = [r for r in records if r['rc'] != 0]
