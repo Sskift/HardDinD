@@ -1,5 +1,5 @@
 From: HardDinD developers
-Subject: [EXPERIMENT] um: publish guest TSC timekeeping to a read-only vvar
+Subject: um: publish guest TSC timekeeping to a read-only vvar
 
 Choose design (a). A fitted TSC-to-host-MONOTONIC conversion cannot stay
 exact across host NTP updates. Instead, harddind_vdso_clock=1 registers an
@@ -8,8 +8,20 @@ The default remains the host-MONOTONIC timer clocksource and syscall vDSO.
 Require host clocksource=tsc, invariant TSC, and CPUID 15/16 frequency data;
 otherwise fail closed to the original timer. Frequency discovery follows
 the pinned kernel's native_calibrate_tsc, without timed calibration.
-This changes guest clock discipline when enabled: it is no longer slaved
-to host MONOTONIC/NTP; guest NTP still applies through its own timekeeper.
+Seed wall time and the monotonic epoch from the host. A kernel
+thread disciplines the guest through ADJ_FREQUENCY: RAW-to-host-MONOTONIC
+rate estimates track host NTP and TSC calibration error; bounded frequency
+correction slews phase without stepping MONOTONIC. Propagate only changes
+to host REALTIME-minus-MONOTONIC through ADJ_SETOFFSET. Both syscall and vDSO
+observe the generic timekeeper's atomic updates. harddind_clock_sync=0
+allows A/B and independent guest NTP; synchronization defaults on with TSC.
+Poll every 100 ms with a one-second phase time constant. A 32-second poll
+measured 575 us of error across a real 23 ppm host rate change; direct rate
+tracking avoids the extra lag from smoothing. Each sample uses host vDSO
+reads, and the guest vDSO remains entirely local to the generic timekeeper.
+Discard cross timestamps spanning over 5 us. /sys/kernel/harddind_clock is a
+read-only live cross timestamp, including when discipline is disabled, for
+independent drift checks without host privileges or a network time server.
 
 Design (b) was rejected: exec gives each broker a host vDSO/vvar, but
 init_new_context and cached-broker scrubbing unmap everything below
@@ -101,9 +113,182 @@ pages, and broker reuse refaults the newly installed guest mappings.
  
  /* skas/mem.c */
  int syscall_stub_flush(struct mm_id *mm_idp);
+--- a/arch/um/kernel/Makefile
++++ b/arch/um/kernel/Makefile
+@@ -19,6 +19,7 @@
+ 	signal.o sysrq.o time.o tlb.o trap.o \
+ 	um_arch.o umid.o kmsg_dump.o capflags.o skas/
+ obj-y += load_file.o gpu.o
++obj-$(CONFIG_X86_64) += clock_sync.o
+ 
+ obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
+ obj-$(CONFIG_GPROF)	+= gprof_syms.o
+--- a/arch/um/kernel/clock_sync.c
++++ b/arch/um/kernel/clock_sync.c
+@@ -0,0 +1,160 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <linux/delay.h>
++#include <linux/init.h>
++#include <linux/kobject.h>
++#include <linux/kthread.h>
++#include <linux/math64.h>
++#include <linux/sysfs.h>
++#include <linux/timekeeping.h>
++#include <linux/timex.h>
++#include <os.h>
++
++extern bool uml_vdso_clock_enabled;
++extern s64 uml_host_wall_offset;
++static bool harddind_clock_sync = true;
++static long sync_ppb;
++static unsigned long sync_updates, sync_steps;
++
++static int __init clock_sync_setup(char *str)
++{
++	return !kstrtobool(str, &harddind_clock_sync);
++}
++__setup("harddind_clock_sync=", clock_sync_setup);
++
++struct clock_sample {
++	s64 host_mono, guest_mono, host_real, guest_real, raw;
++	u64 span;
++};
++
++/* Independent live host reads, never a copy of the servo's last observation.
++ * Reject preemption/host descheduling rather than treating it as clock error.
++ */
++static bool clock_sample(struct clock_sample *best)
++{
++	int i;
++
++	best->span = U64_MAX;
++	for (i = 0; i < 8; i++) {
++		struct clock_sample s;
++		s64 a, b, raw;
++		unsigned long flags;
++
++		local_irq_save(flags);
++		raw = ktime_get_raw_ns();
++		a = ktime_get_ns();
++		s.host_mono = os_nsecs();
++		b = ktime_get_ns();
++		s.guest_mono = a + (b - a) / 2;
++		s.raw = raw + (ktime_get_raw_ns() - raw) / 2;
++		a = ktime_get_real_ns();
++		s.host_real = os_persistent_clock_emulation();
++		b = ktime_get_real_ns();
++		s.guest_real = a + (b - a) / 2;
++		s.span = ktime_get_raw_ns() - raw;
++		local_irq_restore(flags);
++		if (b >= a && b - a <= s.span + 1000 && s.span < best->span)
++			*best = s;
++	}
++	return best->span <= 5000;
++}
++
++/* Read-only cross timestamps for ./hd probe, including with sync disabled. */
++static ssize_t harddind_clock_show(struct kobject *kobj,
++				  struct kobj_attribute *attr, char *buf)
++{
++	struct clock_sample s;
++
++	if (!clock_sample(&s))
++		return -EAGAIN;
++	return sysfs_emit(buf, "%lld %lld %lld %lld %lld %llu %d %ld %lu %lu\n",
++			  s.host_mono, s.guest_mono, s.host_real, s.guest_real,
++			  s.raw, s.span,
++			  uml_vdso_clock_enabled && harddind_clock_sync,
++			  READ_ONCE(sync_ppb), READ_ONCE(sync_updates),
++			  READ_ONCE(sync_steps));
++}
++static struct kobj_attribute clock_attr = __ATTR_RO(harddind_clock);
++
++static int clock_sync_thread(void *unused)
++{
++	struct clock_sample prev = {}, s;
++	s64 wall = 0;
++	bool sampled = false;
++
++	while (!kthread_should_stop()) {
++		struct __kernel_timex tx = {};
++		s64 elapsed, error, rate, phase, wall_now;
++
++		if (!clock_sample(&s))
++			goto sleep;
++		wall_now = s.host_real - s.host_mono;
++		if (!sampled) {
++			/* Include host steps between boot seeding and this thread. */
++			wall = uml_host_wall_offset;
++			prev = s;
++			sampled = true;
++			goto sleep;
++		}
++		/* Host REALTIME steps change wall-minus-mono; NTP slew does not.
++		 * Only propagate the host step, never step MONOTONIC or correct a
++		 * guest-only settimeofday by stepping it back behind the caller.
++		 */
++		if (abs(wall_now - wall) > 20000) {
++			struct timespec64 delta = ns_to_timespec64(wall_now - wall);
++
++			tx.modes = ADJ_SETOFFSET | ADJ_NANO;
++			tx.time.tv_sec = delta.tv_sec;
++			tx.time.tv_usec = delta.tv_nsec;
++			if (do_adjtimex(&tx) < 0)
++				goto sleep;
++			wall = wall_now;
++			WRITE_ONCE(sync_steps, sync_steps + 1);
++		}
++		elapsed = s.raw - prev.raw;
++		if (elapsed < 50 * NSEC_PER_MSEC || elapsed > 120LL * NSEC_PER_SEC) {
++			prev = s;
++			goto sleep;
++		}
++		/* RAW is independent of ADJ_FREQUENCY, so this measures host slew
++		 * plus TSC calibration error without feeding back our correction.
++		 */
++		error = (s.host_mono - prev.host_mono) - elapsed;
++		rate = div64_s64(error * 1000000, div_s64(elapsed, 1000));
++		rate = clamp(rate, -500000LL, 500000LL);
++		phase = s.host_mono - s.guest_mono;
++		memset(&tx, 0, sizeof(tx));
++		tx.modes = ADJ_FREQUENCY;
++		/* One-second phase time constant. Follow measured rate directly:
++		 * smoothing delays host NTP frequency changes and accumulates error.
++		 */
++		rate = clamp(rate + phase, -500000LL, 500000LL);
++		tx.freq = div_s64(rate * 65536, 1000);
++		if (do_adjtimex(&tx) < 0)
++			goto sleep;
++		WRITE_ONCE(sync_ppb, (long)rate);
++		WRITE_ONCE(sync_updates, sync_updates + 1);
++		prev = s;
++sleep:
++		/* A 32-second poll accumulated 575 us across a real 23 ppm host
++		 * frequency change. At 100 ms even a 500 ppm change adds only 50 us
++		 * before detection. Sampling uses host vDSO reads in kernel context.
++		 */
++		msleep_interruptible(100);
++	}
++	return 0;
++}
++
++static int __init clock_sync_init(void)
++{
++	struct task_struct *task;
++	int ret = sysfs_create_file(kernel_kobj, &clock_attr.attr);
++
++	if (ret || !uml_vdso_clock_enabled || !harddind_clock_sync)
++		return ret;
++	task = kthread_run(clock_sync_thread, NULL, "uml-clock-sync");
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	pr_info("HARDDIND_VDSO host clock discipline enabled\n");
++	return 0;
++}
++late_initcall(clock_sync_init);
 --- a/arch/um/kernel/time.c
 +++ b/arch/um/kernel/time.c
-@@ -8,6 +8,10 @@
+@@ -8,11 +8,16 @@
   */
  
  #include <linux/clockchips.h>
@@ -114,12 +299,20 @@ pages, and broker reuse refaults the newly installed guest mappings.
  #include <linux/init.h>
  #include <linux/interrupt.h>
  #include <linux/jiffies.h>
-@@ -912,6 +916,30 @@
+ #include <linux/mm.h>
+ #include <linux/sched.h>
++#include <linux/sched/clock.h>
+ #include <linux/spinlock.h>
+ #include <linux/threads.h>
+ #include <asm/irq.h>
+@@ -912,6 +917,32 @@
  	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
  };
  
 +#ifdef CONFIG_X86_64
 +static bool harddind_vdso_clock;
++bool uml_vdso_clock_enabled;
++s64 uml_host_wall_offset;
 +
 +static int __init vdso_clock_setup(char *str)
 +{
@@ -145,7 +338,7 @@ pages, and broker reuse refaults the newly installed guest mappings.
  int um_setup_timer(void)
  {
  	int cpu = raw_smp_processor_id();
-@@ -944,6 +972,17 @@
+@@ -944,6 +975,18 @@
  		return;
  	}
  
@@ -154,17 +347,50 @@ pages, and broker reuse refaults the newly installed guest mappings.
 +		unsigned long khz = os_vdso_tsc_khz();
 +
 +		if (khz && khz <= UINT_MAX &&
-+		    !clocksource_register_khz(&vdso_tsc_clocksource, khz))
++		    !clocksource_register_khz(&vdso_tsc_clocksource, khz)) {
++			uml_vdso_clock_enabled = true;
 +			pr_info("HARDDIND_VDSO clock=tsc khz=%lu\n", khz);
-+		else
++		} else
 +			pr_warn("HARDDIND_VDSO unavailable; using syscall clocks\n");
 +	}
 +#endif
  	err = clocksource_register_hz(&timer_clocksource, NSEC_PER_SEC/TIMER_MULTIPLIER);
  	if (err) {
  		printk(KERN_ERR "clocksource_register_hz returned %d\n", err);
-@@ -968,6 +1007,9 @@
+@@ -966,8 +1009,41 @@
+ 				  nsecs % NSEC_PER_SEC);
+ }
  
++/* Containers share the host's monotonic epoch as well as its wall clock. */
++void __init read_persistent_wall_and_boot_offset(struct timespec64 *wall,
++					   struct timespec64 *boot)
++{
++#ifdef CONFIG_X86_64
++	if (harddind_vdso_clock && time_travel_mode == TT_MODE_OFF) {
++		s64 best = S64_MAX, mono = 0, real = 0;
++		int i;
++
++		for (i = 0; i < 16; i++) {
++			s64 before = os_nsecs();
++			s64 now = os_persistent_clock_emulation();
++			s64 span = os_nsecs() - before;
++
++			if (span < best) {
++				best = span;
++				mono = before + span / 2;
++				real = now;
++			}
++		}
++		*wall = ns_to_timespec64(real);
++		*boot = ns_to_timespec64(mono);
++		uml_host_wall_offset = real - mono;
++		return;
++	}
++#endif
++	read_persistent_clock64(wall);
++	*boot = ns_to_timespec64(local_clock());
++}
++
  void __init time_init(void)
  {
 +#ifdef CONFIG_GENERIC_GETTIMEOFDAY

@@ -6,6 +6,7 @@ Every rep runs: native, guest A, [guest B]. Guest B is the same kernel booted wi
 --ab parameters, so a default-off candidate is compared against itself.
 """
 import io
+import hashlib
 import json
 import os
 import pathlib
@@ -48,6 +49,10 @@ def last_json(text):
     return None
 
 
+def instance_path(run_id, side):
+    return config.INSTANCES / ('p' + side.lower() + hashlib.sha256(run_id.encode()).hexdigest()[:12])
+
+
 def run(a):
     binary = program(a.program)
     artifacts = build.everything(a.with_)
@@ -64,9 +69,9 @@ def run(a):
         records = []
         try:
             for side, args in guests.items():
-                path = config.INSTANCES / f'p{side.lower()}{run_id[-12:].replace("-", "")}'[:30]
-                instance.start(path, **runs.instance_options(artifacts, cpuset=bench_cpus, kernel_args=args))
+                path = instance_path(run_id, side)
                 paths[side] = path
+                instance.start(path, **runs.instance_options(artifacts, cpuset=bench_cpus, kernel_args=args))
                 argv, env = instance.docker_env(path)
                 subprocess.run([*argv, 'import', '-', 'hd-probe:latest'], input=image_tar(binary), env=env,
                                check=True, capture_output=True, timeout=120)
@@ -90,8 +95,13 @@ def run(a):
                         rc, out, err = 'timeout', error.stdout or '', error.stderr or ''
                         out = out.decode(errors='replace') if isinstance(out, bytes) else out
                         err = err.decode(errors='replace') if isinstance(err, bytes) else err
+                    stdout_file = f'probe-{rep}-{side}.stdout'
+                    stderr_file = f'probe-{rep}-{side}.stderr'
+                    (run_dir / stdout_file).write_text(out)
+                    (run_dir / stderr_file).write_text(err)
                     record = {'rep': rep, 'side': side, 'rc': rc, 'wall': round(time.monotonic() - started, 4),
                               'result': last_json(out), 'stdout_tail': out[-2000:], 'stderr_tail': err[-2000:],
+                              'stdout_file': stdout_file, 'stderr_file': stderr_file,
                               'load1': os.getloadavg()[0]}
                     records.append(record)
                     with open(run_dir / 'probe.jsonl', 'a') as f:
