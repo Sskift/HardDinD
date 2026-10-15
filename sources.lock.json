@@ -321,10 +321,10 @@
     "sha256": "4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae"
   },
   "net_passt_source": {
-    "version": "2026_01_20.386b5f5",
-    "url": "https://passt.top/passt/snapshot/passt-2026_01_20.386b5f5.tar.gz",
-    "sha256": "b378b36cc6d17988fd8efdc9e432495afc96787c3ee231aee55bc7e50c4edf6d",
-    "purpose": "Evaluated network replacement; not enabled (namespace and fragment support gaps)"
+    "version": "2026_05_26.038c51e",
+    "url": "https://passt.top/passt/snapshot/passt-2026_05_26.038c51e.tar.gz",
+    "sha256": "91df73b3d5a9bd6cac70087a5592414598d4be282e5d4f314dd03bf6d6e5e771",
+    "purpose": "Evaluated network replacement with pesto runtime forwarding; not enabled"
   },
   "core_gvisor_reference": {
     "version": "release-20261005.0",

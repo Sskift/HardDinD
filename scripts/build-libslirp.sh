@@ -62,7 +62,8 @@ srcdir = stage / 'libslirp-v4.6.1'
 for name in ('0001-ipv6-fragmentation.patch',
              '0002-cve-2026-9539-urgent-data-bounds.patch',
              '0003-net-vnet-mru.patch',
-             '0004-net-window-scale.patch'):
+             '0004-net-window-scale.patch',
+             '0005-net-large-tcp.patch'):
     patch_file = repo / 'third_party' / 'patches' / name
     r = subprocess.run(['patch', '-p1', '--batch', '--fuzz=0', '-d', srcdir,
                         '-i', patch_file], capture_output=True, text=True)
@@ -136,6 +137,8 @@ manifest = {
          'purpose': 'Use configured receive limit for IPv6 GSO input'},
         {'file': '0004-net-window-scale.patch',
          'purpose': 'Negotiate larger TCP windows only for the virtual offload link'},
+        {'file': '0005-net-large-tcp.patch',
+         'purpose': 'Build TCP GSO superframes with guest MSS, preserve non-TCP MTU'},
     ],
     'objects': len(objects),
     'host': {'arch': _platform.machine(), 'compiler': 'gcc'},

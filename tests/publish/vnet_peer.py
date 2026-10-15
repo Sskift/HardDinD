@@ -8,6 +8,7 @@ class VnetPeer:
     def __init__(self, link):
         self.link = link
         self.gso_sent = self.gso_received = 0
+        self.gso_sizes = []
 
     def __getattr__(self, name):
         return getattr(self.link, name)
@@ -43,6 +44,8 @@ class VnetPeer:
             raise ValueError('short virtio header')
         if data[1]:
             self.gso_received += 1
+            if len(self.gso_sizes) < 256:
+                self.gso_sizes.append(struct.unpack_from('<H', data, 4)[0])
         frame = data[10:]
         if data[0] & 1:
             _, _, _, _, start, offset = struct.unpack('<BBHHHH', data[:10])

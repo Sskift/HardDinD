@@ -13,6 +13,5 @@
 | `core-fp-compare` | `uml_fp_compare=1` 恢复 runner 浮点状态前比较完整 xstate；相同才省去复制 | 默认关闭；原生 SSE/AVX 线程切换及信号/ptrace 修改 YMM 上半部通过；不省略入口保存、不使用脏标记；guest 和性能待测 |
 | `core-syscall-patch` | `uml_syscall_patch=1`：私有文本 COW 后改写 7/9 字节 syscall；无 GS 占用，TID 查找 runner 后直接交接/恢复，信号与单步走完整 sigreturn | 默认关闭、独立候选；首版已构建，原生并发/信号/fork/exec/ptrace/重映射检查通过；guest、完整功能和性能待测。文本自读、PEEKTEXT、/proc/pid/mem 可见改写，自校验程序可能不兼容；每个被改写文本页多一页私有匿名内存，另有每 mm 64 KiB RX trampoline VMA 和宿主 4 MiB 稀疏 TID 表；fork 继承私有页，exec 丢弃 |
 | `gpu-usercopy-lock-order` | GPU ioctl 与 mmap 锁顺序修复 | 可应用；多上下文仍有失败 |
-| `net-fd-vnet` | fd 网络传输的 vnet 头：GSO、校验和卸载；流水线检测到该候选时打开后端 vnet 和批量 16 | 出站 0.04→0.28，发布 0.08→0.12；HTTPS 偶发超时未查清 |
 | `share-poll` | virtio-uml 完成轮询（`virtio_uml.poll_iters=N`），保留中断后备 | 未证明元数据收益，不建议开启 |
 | `share-profile` | FUSE 每种请求的往返计时与 tracepoint（诊断用） | 可应用 |

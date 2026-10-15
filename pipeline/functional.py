@@ -996,6 +996,15 @@ def egress(c):
              'echo "$3  /tmp/download" | sha256sum -c -', 'sh', host, item['url'], item['sha256'])
 
 
+@check('network.egress_local_http_tls', 'run', timeout=180)
+def local_egress(c):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('local_egress', config.REPO / 'tests/publish/local_egress.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.run(c)
+
+
 @check('system.context', 'context create|context ls|context inspect|context rm|system info', base=False)
 def context(c):
     _, env = c.ctx.docker_cmd()
