@@ -13,7 +13,7 @@ HOLD = textwrap.dedent('''
     sys.path.insert(0, sys.argv[1])
     from pipeline import locks
     with locks.measure(shared=sys.argv[2] == 'shared'):
-        print('got', sys.argv[2], time.monotonic(), flush=True)
+        print('got', sys.argv[2], time.time(), flush=True)
         time.sleep(float(sys.argv[3]))
 ''')
 
@@ -24,10 +24,10 @@ class MeasureLockTests(unittest.TestCase):
             env = {**os.environ, 'HD_ROOT': root}
             spawn = lambda mode, hold: subprocess.Popen([sys.executable, '-c', HOLD, str(REPO), mode, str(hold)],
                                                         env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-            first = spawn('shared', 0.6)
-            time.sleep(0.2)
+            first = spawn("shared", 2.0)
+            time.sleep(0.7)
             writer = spawn('exclusive', 0.1)
-            time.sleep(0.2)
+            time.sleep(0.7)
             late = spawn('shared', 0.1)
             got = {name: float(p.communicate(timeout=10)[0].split()[2]) for name, p in
                    (('first', first), ('writer', writer), ('late', late))}
