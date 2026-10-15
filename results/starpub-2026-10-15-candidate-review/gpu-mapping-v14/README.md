@@ -1,5 +1,9 @@
 # Mapping v14: real CUDA computation inside Docker on all four GPUs
 
+**Follow-up limitation:** the [first uninstrumented run](../gpu-plain-perf-v1/README.md)
+fails with CUDA 304 during context creation. The successes below are the
+recorded LD_PRELOAD + strace run; ordinary execution stability remains open.
+
 The actual internal Docker process successfully initialized CUDA and computed
 on each of Starpub's four GPUs. For every card it allocated three 4 MiB device
 buffers, uploaded two arrays, loaded PTX, launched an addition kernel,
