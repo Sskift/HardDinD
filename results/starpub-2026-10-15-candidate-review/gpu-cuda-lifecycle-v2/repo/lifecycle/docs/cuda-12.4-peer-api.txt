@@ -1,0 +1,36 @@
+CUDA 12.4 Driver API signatures used by cuda_cuda_lifecycle_probe.c
+(driver target 550.120; https://docs.nvidia.com/cuda/archive/12.4.0/
+cuda-driver-api/, fetched 2026-10-15; no CUDA toolkit/headers used)
+
+Context:
+  CUresult cuCtxCreate_v2(CUcontext * pctx, unsigned int flags,
+                          CUdevice dev)
+  CUresult cuCtxDestroy_v2(CUcontext ctx)
+  CUresult cuCtxSetCurrent(CUcontext ctx)
+
+Peer access (group__CUDA__PEER__ACCESS.html / MEM.html, verbatim):
+  CUresult cuDeviceCanAccessPeer(int * canAccessPeer, CUdevice dev,
+                                 CUdevice peerDev)
+    -- Queries if a device may directly access a peer device's memory.
+  CUresult cuCtxEnablePeerAccess(CUcontext peerContext,
+                                 unsigned int Flags)
+    -- Enables direct access to memory allocations in a peer context.
+  CUresult cuCtxDisablePeerAccess(CUcontext peerContext)
+  CUresult cuMemcpyDtoD(CUdeviceptr dstDevice, CUdeviceptr srcDevice,
+                        size_t ByteCount)
+    -- Copies memory from Device to Device.
+
+Probe use (no event notification, no async streams):
+  * create ctxA(devA) and ctxB(devB); allocate dst in ctxB;
+  * set current ctxA; cuCtxEnablePeerAccess(ctxB, 0);
+  * HtoD into a ctxA buffer, cuMemcpyDtoD(dst_on_B, src_on_A, n);
+  * DtoH of the peer pointer from ctxA and byte-compare.
+
+cuDeviceCanAccessPeer decides whether the transfer is attempted; a false
+result is recorded as supported=false with null transfer rc fields and is
+honest unsupported evidence, never a skipped-as-pass success.
+
+All other entry points (Init/Device/Mem/Module/Launch/Synchronize) have
+the same signatures documented in ../docs/cuda-12.4-driver-api-signatures.txt.
+PTX remains pinned at .version 7.0 .target sm_70 as in the accepted
+src/cuda_probe.c.

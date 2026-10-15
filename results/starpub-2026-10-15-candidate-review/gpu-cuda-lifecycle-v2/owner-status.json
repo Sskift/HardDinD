@@ -1,0 +1,291 @@
+{
+  "status": "finished",
+  "stage": "native-before",
+  "commands": [
+    {
+      "label": "compile",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=gnu11",
+        "-pthread",
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/src/cuda_cuda_lifecycle_probe.c",
+        "-lm",
+        "-ldl",
+        "-o",
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/build/cuda-lifecycle-probe"
+      ],
+      "started_at": "2026-10-15T01:47:43.795447+00:00",
+      "pid": 3369773,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3369773,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "fixture-compile",
+      "command": [
+        "gcc",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=gnu11",
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/tests/args_fixture.c",
+        "-lm",
+        "-ldl",
+        "-o",
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/build/cuda-lifecycle-args-fixture"
+      ],
+      "started_at": "2026-10-15T01:47:44.919805+00:00",
+      "pid": 3370268,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3370268,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "args-fixture",
+      "command": [
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/build/cuda-lifecycle-args-fixture"
+      ],
+      "started_at": "2026-10-15T01:47:45.819501+00:00",
+      "pid": 3370464,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3370464,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "checker-tests",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_cuda_lifecycle_checks.py",
+        "-v"
+      ],
+      "started_at": "2026-10-15T01:47:45.837757+00:00",
+      "pid": 3370473,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3370473,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "inventory",
+      "command": [
+        "nvidia-smi",
+        "--query-gpu=uuid",
+        "--format=csv,noheader,nounits"
+      ],
+      "started_at": "2026-10-15T01:47:58.448571+00:00",
+      "pid": 3373216,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3373216,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before",
+      "command": [
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/build/cuda-lifecycle-probe",
+        "--gpus",
+        "0,1,2,3",
+        "--iterations",
+        "8",
+        "--thread-cycles",
+        "4",
+        "--child-cycles",
+        "2",
+        "--threads",
+        "4",
+        "--children",
+        "4",
+        "--elements",
+        "262144",
+        "--deadline-ms",
+        "30000"
+      ],
+      "started_at": "2026-10-15T01:47:58.588567+00:00",
+      "pid": 3373249,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 3373249,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-check",
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/scripts/cuda_lifecycle_checks.py",
+        "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/native-before.stdout",
+        "--uuids",
+        "GPU-aa90a0c1-f2dc-5c66-bf77-bec9f70c7ff2,GPU-669c9c93-9024-f06e-35ae-a82cf2e6811c,GPU-f3db2d6e-93f3-60df-a45b-46f5789f05b3,GPU-83b3bae3-c011-7a0f-0b68-245fc1c70b9f"
+      ],
+      "started_at": "2026-10-15T01:48:17.536414+00:00",
+      "pid": 3377363,
+      "exit_code": 1,
+      "cleanup": {
+        "process_group": 3377363,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "phase_pass": {
+    "native-before": false
+  },
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "library_sha256": {
+    "/bin/true": "1d20d8b1bbc861a2e9e0216efb7945fba664a5e6ba5f6a93febd6612a92551a8",
+    "/lib/x86_64-linux-gnu/libc.so.6": "2e15e345ccba1e1e8bf3bc58938d13eb7ccc17044942f0376cd5bc771f429b79",
+    "/lib/x86_64-linux-gnu/libcuda.so.1": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+    "/lib/x86_64-linux-gnu/libdl.so.2": "0b81164b45b35a571bf0beafda3e7dd8c8488cb901090f50c082e96116b883e7",
+    "/lib/x86_64-linux-gnu/liblzma.so.5": "493cb401ab4aa3bba611ca464d12996afb3b327940d29476f535f999e167439b",
+    "/lib/x86_64-linux-gnu/libm.so.6": "ec93672ba45de8a12ff774c9bcd993fa5c00155f0a64dfe1c4e984282eaf236e",
+    "/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.1": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d",
+    "/lib/x86_64-linux-gnu/libpthread.so.0": "fdfd7d83a335ba12bd73e857f95a798dae0355f37935231966fd088647978e23",
+    "/lib/x86_64-linux-gnu/librt.so.1": "782662dd5d8b96dd7ecddbba71c8399024c8e72e0ede115aa7643e6050c27920",
+    "/lib/x86_64-linux-gnu/libunwind-ptrace.so.0": "f791a9b0b01faa13a65ee066d2351d2e38a23d6c3752f75eebeaf0fc5c7d56f4",
+    "/lib/x86_64-linux-gnu/libunwind-x86_64.so.8": "1077e265bdd76ed4f2d628ea29150eb98f5c7c8f5a30004a561e6e93a2a6f097",
+    "/lib/x86_64-linux-gnu/libunwind.so.8": "5d1f6f104f79698e137c9f17c4b0317dfd96816c0eb6a87c50619a41472ca382",
+    "/lib64/ld-linux-x86-64.so.2": "e833bd99168bea158d2f2e5d32462479cacfb624003304a9ea74a1607a144f1f",
+    "/usr/bin/strace": "38a5c75cb29dd85ddd7780d54f5bf595554d7a1b5c42524b23065f5dc4c4b01d"
+  },
+  "sources_before": {
+    "tests/args_fixture.c": "a63fa88afebfc4520839a9a9e4a52fa72a4f285e933a18ddfa0c920480292c63",
+    "tests/test_cuda_lifecycle_checks.py": "7a47d5bb0a852c4ddec94949a026461e80333169ee67d4b3384e36f7631f01db",
+    "tests/fixtures/v2-native-failed.jsonl": "d845a39065af04e10f712b2d618bbc7982874f13dc60f1678a91fbbd6aaa81e4",
+    "tests/fixtures/proven_cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "src/cuda_cuda_lifecycle_probe.c": "ab1b16f0140f95ee36ea04e45477719645b80a3ad2abb8df935bf5484195408f",
+    "docs/cuda-12.4-peer-api.txt": "646a40317aa43e87f30fdf4e7be0a908b134ca25163a1d0909003ca3a56cce57",
+    "docs/proven_add_ptx.txt": "70a5d0431e88fa316b8f72e388cef1d61b67e5827526692e9f0c347709968e89",
+    "scripts/cuda_lifecycle_checks.py": "34250c7c52c09080ae937ae936fa57503cbbf000aa22f79bacd88d99d0e24eb1"
+  },
+  "input_sha256": {
+    "/root/harddind-rebuild/gpu-completion-owner-v1/kernel": "b8a58b855edb97bb8cf06bd99ef26fb7a63f08e0e38ba07fa1dcb8f915c1b502",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/lifecycle/build/cuda-lifecycle-probe": "8423edbb50085f050b252a962f6ac923b3727f57d50c38fa3505f8d1239d38c9",
+    "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/rootfs.tar": "086c3e8d2d75d6a7c2a8cb65f1dbbccfe739f6114381203ce547be71c3708d54",
+    "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/repo/scripts/harddind.py": "67b6a5e10b504db5e09d9ac951fd4116b00fb37785c3298d9e0f9b829d5e970c",
+    "/root/harddind-rebuild/network-backend": "8ba554ff42eb0f50096ae1299a119ba9a85e88c73ec0bc83e2a7a782970ef5b1",
+    "/root/harddind-rebuild/client/docker": "60c81ddca5ac1b3cb64cfcbe9444a263db642ed74cd0e28e512edbf012dd312f",
+    "/root/harddind-rebuild/client/ld-musl-x86_64.so.1": "38d022ce7425ff105ccfb53598f606e6e5f5f0a34bfbc793d65e6f34c9d72806"
+  },
+  "expected_uuids": [
+    "GPU-aa90a0c1-f2dc-5c66-bf77-bec9f70c7ff2",
+    "GPU-669c9c93-9024-f06e-35ae-a82cf2e6811c",
+    "GPU-f3db2d6e-93f3-60df-a45b-46f5789f05b3",
+    "GPU-83b3bae3-c011-7a0f-0b68-245fc1c70b9f"
+  ],
+  "error": "Traceback (most recent call last):\n  File \"/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v2/supervisor.py\", line 62, in <module>\n    if phase=='native-before':assert r['phase_pass'][phase],'native baseline calibration failed'\nAssertionError: native baseline calibration failed\n",
+  "final_state": {},
+  "normal_shutdown": false,
+  "groups": {
+    "3369773": [
+      [],
+      []
+    ],
+    "3370268": [
+      [],
+      []
+    ],
+    "3370464": [
+      [],
+      []
+    ],
+    "3370473": [
+      [],
+      []
+    ],
+    "3373216": [
+      [],
+      []
+    ],
+    "3373249": [
+      [],
+      []
+    ],
+    "3377363": [
+      [],
+      []
+    ]
+  },
+  "groups_empty": true,
+  "sources_after": {
+    "tests/args_fixture.c": "a63fa88afebfc4520839a9a9e4a52fa72a4f285e933a18ddfa0c920480292c63",
+    "tests/test_cuda_lifecycle_checks.py": "7a47d5bb0a852c4ddec94949a026461e80333169ee67d4b3384e36f7631f01db",
+    "tests/fixtures/v2-native-failed.jsonl": "d845a39065af04e10f712b2d618bbc7982874f13dc60f1678a91fbbd6aaa81e4",
+    "tests/fixtures/proven_cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "src/cuda_cuda_lifecycle_probe.c": "ab1b16f0140f95ee36ea04e45477719645b80a3ad2abb8df935bf5484195408f",
+    "docs/cuda-12.4-peer-api.txt": "646a40317aa43e87f30fdf4e7be0a908b134ca25163a1d0909003ca3a56cce57",
+    "docs/proven_add_ptx.txt": "70a5d0431e88fa316b8f72e388cef1d61b67e5827526692e9f0c347709968e89",
+    "scripts/cuda_lifecycle_checks.py": "34250c7c52c09080ae937ae936fa57503cbbf000aa22f79bacd88d99d0e24eb1"
+  },
+  "inputs_unchanged": true,
+  "exit_code": 1,
+  "finished_at": "2026-10-15T01:48:34.761838+00:00"
+}

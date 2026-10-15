@@ -1,0 +1,14 @@
+{
+  "candidate_source": "/root/harddind-rebuild/arkclaude/round11/gpu-lifecycle-probe/cuda-lifecycle-v3",
+  "scope": "Owner snapshot of source under development, before final v3 agent report. Known PTX/JSON/current-context/accounting fixes present. Native calibration must pass before guest; no final v3 producer-fixture proof claimed.",
+  "source_sha256": {
+    "src/cuda_cuda_lifecycle_probe.c": "ab1b16f0140f95ee36ea04e45477719645b80a3ad2abb8df935bf5484195408f",
+    "scripts/cuda_lifecycle_checks.py": "34250c7c52c09080ae937ae936fa57503cbbf000aa22f79bacd88d99d0e24eb1",
+    "tests/args_fixture.c": "a63fa88afebfc4520839a9a9e4a52fa72a4f285e933a18ddfa0c920480292c63",
+    "tests/test_cuda_lifecycle_checks.py": "7a47d5bb0a852c4ddec94949a026461e80333169ee67d4b3384e36f7631f01db",
+    "tests/fixtures/v2-native-failed.jsonl": "d845a39065af04e10f712b2d618bbc7982874f13dc60f1678a91fbbd6aaa81e4",
+    "tests/fixtures/proven_cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c",
+    "docs/cuda-12.4-peer-api.txt": "646a40317aa43e87f30fdf4e7be0a908b134ca25163a1d0909003ca3a56cce57",
+    "docs/proven_add_ptx.txt": "70a5d0431e88fa316b8f72e388cef1d61b67e5827526692e9f0c347709968e89"
+  }
+}
