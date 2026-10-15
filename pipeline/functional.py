@@ -952,8 +952,9 @@ def publish_dynamic(c):
 def egress(c):
     item = build.LOCK['functional_https']
     host = item['url'].split('/')[2]
-    c.output('sh', '-ec', 'nslookup "$1"; wget -T 30 -qO /tmp/download "$2"; echo "$3  /tmp/download" | sha256sum -c -',
-             'sh', host, item['url'], item['sha256'])
+    # One retry: the outer internet path is shared and occasionally stalls.
+    c.output('sh', '-ec', 'nslookup "$1"; wget -T 20 -qO /tmp/download "$2" || wget -T 20 -qO /tmp/download "$2"; '
+             'echo "$3  /tmp/download" | sha256sum -c -', 'sh', host, item['url'], item['sha256'])
 
 
 @check('system.context', 'context create|context ls|context inspect|context rm|system info', base=False)
