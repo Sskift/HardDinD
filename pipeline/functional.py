@@ -1107,9 +1107,9 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
     elif program == 'core_patch':
         require(row['schema'] == 'hd.core-patch/1' and row['sites'] == 32 and row['calls'] == 131072, row)
         require(type(row['signals']) is int and row['signals'] > 0, row)
-        require(row['enabled'] is patch_enabled, row)
+        require(row['enabled'] is patch_enabled and row['trampoline_lifetime'] is patch_enabled, row)
         require(all(row[k] is True for k in ('fork', 'exec_clean', 'file_clean', 'ptrace',
-                    'restart', 'long_form', 'ambiguous_fallback', 'discard_remap_write', 'verified')), row)
+                    'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')), row)
     elif program == 'core_fpstate':
         require(row == {'schema': 'hd.core-fpstate/1', 'sse_calls': count * 2,
                         'avx_calls': count * 2, 'signal_upper_edit': True,

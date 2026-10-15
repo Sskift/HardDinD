@@ -161,6 +161,31 @@ static void ambiguous_instructions(void) {
         CHECK(!munmap(p, page_size));
     }
 }
+static void trampoline_lifetime(void) {
+    if (!enabled) return;
+    for (int mode = 0; mode < 3; mode++) {
+        pid_t child = fork(); CHECK(child >= 0);
+        if (!child) {
+            void *table = (void *)0x60000;
+            if (mode == 0) {
+                void *target = mmap(NULL, 65536, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                CHECK(target != MAP_FAILED);
+                CHECK(mremap(table, 65536, 65536, MREMAP_MAYMOVE | MREMAP_FIXED, target) == target);
+            } else if (mode == 1) {
+                CHECK(!madvise(table, 65536, MADV_DONTNEED));
+            } else {
+                CHECK(!mprotect(table, 65536, PROT_READ | PROT_WRITE));
+                CHECK(is_original((void *)core_patch_site));
+                CHECK(!munmap(table, 65536));
+            }
+            CHECK(is_original((void *)core_patch_site));
+            CHECK(core_patch_site() == getpid());
+            CHECK(is_original((void *)core_patch_site));
+            _exit(0);
+        }
+        wait_ok(child);
+    }
+}
 int main(int argc, char **argv) {
     read_enabled();
     if (argc == 2 && !strcmp(argv[1], "fresh")) {
@@ -235,6 +260,13 @@ int main(int argc, char **argv) {
     ptrace_after_patch();
     restart_and_long_form();
     ambiguous_instructions();
+    trampoline_lifetime();
+    void *target = mmap(NULL, SITES * page_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    CHECK(target != MAP_FAILED);
+    mapping = mremap(mapping, SITES * page_size, SITES * page_size, MREMAP_MAYMOVE | MREMAP_FIXED, target);
+    CHECK(mapping == target && is_original(mapping + OFFSET));
+    CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
+    verify_site(mapping + OFFSET);
     CHECK(!madvise(mapping, page_size, MADV_DONTNEED));
     CHECK(is_original(mapping + OFFSET));
     CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
@@ -251,7 +283,7 @@ int main(int argc, char **argv) {
     CHECK(!munmap(mapping, SITES * page_size) && !close(fd));
     printf("{\"schema\":\"hd.core-patch/1\",\"enabled\":%s,\"sites\":%d,\"calls\":%d,"
            "\"signals\":%u,\"fork\":true,\"exec_clean\":true,\"file_clean\":true,"
-           "\"ptrace\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"discard_remap_write\":true,\"verified\":true}\n",
-           enabled ? "true" : "false", SITES, SITES * CALLS * 4, atomic_load(&delivered));
+           "\"ptrace\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"mremap\":true,\"trampoline_lifetime\":%s,\"discard_remap_write\":true,\"verified\":true}\n",
+           enabled ? "true" : "false", SITES, SITES * CALLS * 4, atomic_load(&delivered), enabled ? "true" : "false");
     return 0;
 }

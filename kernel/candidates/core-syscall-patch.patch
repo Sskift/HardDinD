@@ -77,7 +77,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,40 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
@@ -112,6 +112,8 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +void uml_patch_enter(struct mm_struct *mm);
 +void uml_patch_exit(struct mm_struct *mm);
 +void uml_patch_count(void);
++int uml_patch_prepare(int syscall, struct uml_pt_regs *r);
++void uml_patch_done(void);
 +void uml_patch_forget(struct mm_struct *mm, unsigned long start, unsigned long end);
 +int uml_patch_setup(void);
 +#endif
@@ -149,7 +151,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,313 @@
+@@ -0,0 +1,416 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -384,6 +386,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	value = slot + 8; memcpy(code, &value, 8);
 +	memcpy(code + 40, &imm, 4);
 +	value = end; memcpy(code + 48, &value, 8);
++	code[88] = len; memcpy(code + 89, old + sizeof(old) - len, len);
 +	value = STUB_TID_TABLE; memcpy(code + 64, &value, 8);
 +	value = STUB_THREAD_DATA(0) - STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE;
 +	memcpy(code + 72, &value, 8);
@@ -416,6 +419,108 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	mmap_read_unlock(mm);
 +unlock:
 +	mutex_unlock(&mm->context.patch_lock);
++}
++
++/* Keep the patch mutex through a mapping syscall so another thread cannot
++ * install a new site after restoration but before the VMA is moved. */
++int uml_patch_prepare(int syscall, struct uml_pt_regs *r)
++{
++    struct mm_struct *mm = current->mm;
++    struct patch_header h;
++    unsigned long start = UPT_SYSCALL_ARG1(r), size = UPT_SYSCALL_ARG2(r), end;
++    bool all = false;
++    int error = 0;
++
++    if (!uml_syscall_patch || !parallel_userspace || !mm)
++        return 0;
++    end = size > ULONG_MAX - start ? ULONG_MAX : start + size;
++    switch (syscall) {
++    case __NR_mremap:
++        if ((UPT_SYSCALL_ARG4(r) & MREMAP_FIXED) &&
++            UPT_SYSCALL_ARG5(r) < UML_PATCH_END &&
++            UPT_SYSCALL_ARG3(r) > UML_PATCH_BASE - min(UPT_SYSCALL_ARG5(r), (unsigned long)UML_PATCH_BASE))
++            all = true;
++        break;
++    case __NR_mmap:
++        if (!(UPT_SYSCALL_ARG4(r) & MAP_FIXED))
++            return 0;
++        fallthrough;
++    case __NR_munmap: case __NR_mprotect: case __NR_pkey_mprotect: case __NR_madvise:
++        if (start >= UML_PATCH_END || end <= UML_PATCH_BASE)
++            return 0;
++        break;
++    default:
++        return 0;
++    }
++    all |= start < UML_PATCH_END && end > UML_PATCH_BASE;
++    mutex_lock(&mm->context.patch_lock);
++    if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
++        h.magic != PATCH_MAGIC || h.next < 1 || h.next > (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
++        return 1;
++    for (unsigned long i = 1; i < h.next; i++) {
++        unsigned char code[UML_PATCH_SLOT], jump[9] = {0xff,0x24,0x25,0,0,0,0,0x06,0x06};
++        unsigned long slot = UML_PATCH_BASE + i * UML_PATCH_SLOT, addr;
++        unsigned int len;
++        struct vm_area_struct *vma;
++        struct page *page = NULL;
++        u64 return_ip;
++        u32 imm = slot, nr;
++        void *bytes;
++
++        if (access_process_vm(current, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
++            continue;
++        memcpy(&return_ip, code + 48, 8);
++        memcpy(&nr, code + 40, 4);
++        len = code[88];
++        if (!uml_patch_pattern(code + 89, len, nr) || return_ip < UML_PATCH_END + len ||
++            return_ip >= TASK_SIZE)
++            continue;
++        addr = return_ip - len;
++        if ((!all && (addr < start || addr >= end)) || offset_in_page(addr) + len > PAGE_SIZE)
++            continue;
++        memcpy(jump + 3, &imm, 4);
++        mmap_read_lock(mm);
++        vma = find_vma(mm, addr);
++        if (!vma || vma->vm_start > addr || (vma->vm_flags & VM_SHARED) ||
++            !(vma->vm_flags & VM_MAYWRITE))
++            goto next;
++        if (get_user_pages_remote(mm, addr & PAGE_MASK, 1, FOLL_FORCE | FOLL_WRITE, &page, NULL) != 1) {
++            error = -ENOMEM;
++            goto next;
++        }
++        stop_mm(mm);
++        bytes = kmap_local_page(page);
++        if (!memcmp(bytes + offset_in_page(addr), jump, len)) {
++            unsigned char trap = 0x06;
++            kunmap_local(bytes);
++            write_bytes(mm, page, addr, &trap, 1);
++            smp_wmb();
++            write_bytes(mm, page, addr + 1, code + 90, len - 1);
++            smp_wmb();
++            write_bytes(mm, page, addr, code + 89, 1);
++            uml_patch_forget(mm, addr, return_ip);
++            for (int cpu = 0; cpu < NR_CPUS; cpu++) {
++                struct stub_data *d = (void *)mm->context.cpu_ids[cpu].stack;
++                if (d) WRITE_ONCE(d->fast_enabled, READ_ONCE(d->fast_enabled) | 2);
++            }
++        } else {
++            kunmap_local(bytes);
++        }
++        resume_mm(mm);
++next:
++        if (page) put_page(page);
++        mmap_read_unlock(mm);
++        if (error) {
++            mutex_unlock(&mm->context.patch_lock);
++            return error;
++        }
++    }
++    return 1;
++}
++
++void uml_patch_done(void)
++{
++    mutex_unlock(&current->mm->context.patch_lock);
 +}
 +
 +int uml_patch_fault(struct uml_pt_regs *r)
@@ -835,6 +940,28 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  	/* Initialize the syscall number and default return value. */
  	UPT_SYSCALL_NR(r) = PT_SYSCALL_NR(r->gp);
+@@ -45,7 +48,12 @@
+ 
+ 	if (syscall >= 0 && syscall < __NR_syscalls) {
+ 		unsigned long ret;
++		int patch = uml_patch_prepare(syscall, r);
+ 
++		if (patch < 0) {
++			PT_REGS_SET_SYSCALL_RETURN(regs, patch);
++			goto out;
++		}
+ 		ret = (*sys_call_table[syscall])(UPT_SYSCALL_ARG1(&regs->regs),
+ 						 UPT_SYSCALL_ARG2(&regs->regs),
+ 						 UPT_SYSCALL_ARG3(&regs->regs),
+@@ -53,6 +61,8 @@
+ 						 UPT_SYSCALL_ARG5(&regs->regs),
+ 						 UPT_SYSCALL_ARG6(&regs->regs));
+ 
++		if (patch)
++			uml_patch_done();
+ 		PT_REGS_SET_SYSCALL_RETURN(regs, ret);
+ 
+ 		/*
 --- a/arch/um/kernel/tlb.c
 +++ b/arch/um/kernel/tlb.c
 @@ -263,6 +263,8 @@
