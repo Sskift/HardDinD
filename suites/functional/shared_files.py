@@ -1,13 +1,13 @@
 """Shared file effects ported from archive/evidence-20261015."""
-import ctypes
 import errno
 import fcntl
 import os
-import select
 
 from suites.functional.peer import Peer as ProbePeer
 
-NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'guest_inotify_to_outer', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks']
+# Guest->outer inotify is checked with an outer UID 1001 watcher only: outer root
+# shares its 128 inotify instances with every root process on the Starpub host.
+NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks']
 
 def run(c, name):
     share = c.ctx.run_dir / "share" / c.id
@@ -87,13 +87,5 @@ def run(c, name):
                 elif name in ['outer_inotify_to_guest','outer_inotify_to_guest_uid1001']:
                     peer.ask('watch');host_write(path,66)
                     c.eventually(lambda: peer.ask('events')['bytes'] > 0, timeout=3)
-                elif name=='guest_inotify_to_outer':
-                    libc=ctypes.CDLL(None,use_errno=True);fd=libc.inotify_init1(os.O_NONBLOCK|os.O_CLOEXEC)
-                    if fd<0:raise OSError(ctypes.get_errno(),'outer inotify_init1')
-                    try:
-                        assert libc.inotify_add_watch(fd,os.fsencode(path),2)>=0
-                        peer.ask('write 66');assert select.select([fd],[],[],2)[0],'no outer inotify event'
-                        assert os.read(fd,4096)
-                    finally:os.close(fd)
         finally:os.chmod(share,0o755)
     one("docker", name)
