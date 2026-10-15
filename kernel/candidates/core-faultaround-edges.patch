@@ -1,0 +1,91 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: clip anonymous prefault windows at VMA boundaries
+
+Apply after anon-faultaround. Default off: uml_faultaround_edges=1 opts
+into clipping each aligned window to its VMA. The existing empty-PTE,
+private-anonymous, userfaultfd and stack exclusions still apply. Negative
+TLB changes remain synchronous. One-page clipped windows do no extra work.
+
+--- a/arch/um/kernel/trap.c
++++ b/arch/um/kernel/trap.c
+@@ -170,6 +170,46 @@
+  * to the caller with an unbalanced lock.
+  */
+ static unsigned int uml_faultaround_order;
++static unsigned int uml_faultaround_edges;
++
++static int __init uml_faultaround_edges_setup(char *line, int *add)
++{
++	unsigned int enable;
++
++	*add = 0;
++	if (kstrtouint(line, 10, &enable) || enable > 1) {
++		pr_warn("uml_faultaround_edges requires 0 or 1\n");
++		return 0;
++	}
++	uml_faultaround_edges = enable;
++	return 0;
++}
++__uml_setup("uml_faultaround_edges=", uml_faultaround_edges_setup,
++"uml_faultaround_edges=<0|1>\n"
++"    Default 0. Clip anonymous faultaround windows to their VMA bounds\n"
++"    instead of skipping partial windows. Requires uml_faultaround>0.\n"
++"    The same prefault residency and memory charging tradeoff applies.\n\n");
++
++static bool um_faultaround_window(unsigned long address,
++				  unsigned long vma_start, unsigned long vma_end,
++				  unsigned int order, bool clip,
++				  unsigned long *from, unsigned long *to)
++{
++	unsigned long size = (unsigned long)PAGE_SIZE << order;
++	unsigned long start = ALIGN_DOWN(address, size), end = start + size;
++
++	if (clip) {
++		start = max(start, vma_start);
++		end = min(end, vma_end);
++	}
++	if (start < vma_start || end > vma_end || end - start < 2 * PAGE_SIZE)
++		return false;
++	if ((start & PMD_MASK) != ((end - PAGE_SIZE) & PMD_MASK))
++		return false;
++	*from = start;
++	*to = end;
++	return true;
++}
+ 
+ /* 32 pages * 4 KiB = 128 KiB, and always below the stub queue depth. */
+ #define UM_FAULTAROUND_MAX_ORDER	5
+@@ -229,7 +269,7 @@
+ 				unsigned long address)
+ {
+ 	unsigned int order = READ_ONCE(uml_faultaround_order);
+-	unsigned long size, start, end, addr;
++	unsigned long start, end, addr;
+ 	vm_fault_t fault;
+ 
+ 	if (!order)
+@@ -237,19 +277,11 @@
+ 	if (!um_faultaround_vma_ok(vma))
+ 		return;
+ 
+-	size = (unsigned long)PAGE_SIZE << order;
+-	start = ALIGN_DOWN(address, size);
+-	end = start + size;
+-
+-	/*
+-	 * Mirror filemap faultaround/THP containment rules: the whole
+-	 * window must be aligned, live inside one VMA and one PMD and
+-	 * never touch the stack guard region.  Staying inside the fault's
+-	 * PMD also guarantees its PTE page already exists.
+-	 */
+-	if (start < vma->vm_start || end > vma->vm_end)
+-		return;
+-	if ((start & PMD_MASK) != ((end - PAGE_SIZE) & PMD_MASK))
++	/* The mmap read lock pins the VMA; clipping cannot enter a guard or
++	 * a different VMA. Stay in the fault's PMD, whose PTE table exists.
++	 * No COW, permissions or invalidation paths are changed. */
++	if (!um_faultaround_window(address, vma->vm_start, vma->vm_end, order,
++				  READ_ONCE(uml_faultaround_edges), &start, &end))
+ 		return;
+ 
+ 	for (addr = start; addr < end; addr += PAGE_SIZE) {
