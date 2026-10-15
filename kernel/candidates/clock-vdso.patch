@@ -23,16 +23,15 @@ Use the generic timekeeper update and namespace datastore, not tick-time
 sampling. Its seqcounts publish base/mult/shift/cycle_last atomically
 before the syscall timekeeper becomes visible. settimeofday/adjtimex,
 clocksource changes and coarse time updates use the same publication.
-Non-root time namespaces always trap, including realtime and time().
-Unknown clocks, unavailable mode and oversized/backwards deltas trap too.
-Vvar has no VM_MAYWRITE and is sealed; CLONE_VM shares read-only pages,
-and broker reuse refaults the newly installed guest mappings.
-
-The checked Docker runtime puts ordinary and privileged containers in a
-non-initial time namespace with zero offsets. They intentionally fall
-back under this policy. The checker can explicitly setns to guest PID 1
-(--initial-time with --pid=host --privileged) to measure the fast path;
-this is a diagnostic, not a fix for default-container performance.
+Use the generic timens layout: the first page holds immutable namespace
+offsets and the next page holds real timekeeper data. Apply the kernel's
+offset table after interpolation (MONOTONIC, RAW, COARSE and BOOTTIME;
+REALTIME remains unshifted). Generic vdso_join_timens zaps the mapping on
+fork/setns so the next access refaults the correct namespace and real pages.
+Check the real page's clock mode to preserve the boot gate in every
+namespace. Unknown clocks, unavailable mode and oversized/backwards deltas
+still trap. Vvar has no VM_MAYWRITE and is sealed; CLONE_VM shares read-only
+pages, and broker reuse refaults the newly installed guest mappings.
 
 --- a/arch/um/include/asm/processor-generic.h
 +++ b/arch/um/include/asm/processor-generic.h
@@ -115,21 +114,18 @@ this is a diagnostic, not a fix for default-container performance.
  #include <linux/init.h>
  #include <linux/interrupt.h>
  #include <linux/jiffies.h>
-@@ -912,6 +916,33 @@
+@@ -912,6 +916,30 @@
  	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
  };
  
 +#ifdef CONFIG_X86_64
 +static bool harddind_vdso_clock;
 +
-+static int __init vdso_clock_setup(char *str, int *add)
++static int __init vdso_clock_setup(char *str)
 +{
-+	*add = 0;
-+	return kstrtobool(str, &harddind_vdso_clock);
++	return !kstrtobool(str, &harddind_vdso_clock);
 +}
-+__uml_setup("harddind_vdso_clock=", vdso_clock_setup,
-+"harddind_vdso_clock=<0|1>\n"
-+"    Use an invariant Intel TSC clocksource and the guest clock vDSO.\n");
++__setup("harddind_vdso_clock=", vdso_clock_setup);
 +
 +static u64 vdso_tsc_read(struct clocksource *cs)
 +{
@@ -149,7 +145,7 @@ this is a diagnostic, not a fix for default-container performance.
  int um_setup_timer(void)
  {
  	int cpu = raw_smp_processor_id();
-@@ -944,6 +975,17 @@
+@@ -944,6 +972,17 @@
  		return;
  	}
  
@@ -167,7 +163,7 @@ this is a diagnostic, not a fix for default-container performance.
  	err = clocksource_register_hz(&timer_clocksource, NSEC_PER_SEC/TIMER_MULTIPLIER);
  	if (err) {
  		printk(KERN_ERR "clocksource_register_hz returned %d\n", err);
-@@ -968,6 +1010,9 @@
+@@ -968,6 +1007,9 @@
  
  void __init time_init(void)
  {
@@ -243,7 +239,7 @@ this is a diagnostic, not a fix for default-container performance.
  	def_bool !64BIT
 --- a/arch/x86/um/vdso/um_vdso.c
 +++ b/arch/x86/um/vdso/um_vdso.c
-@@ -1,27 +1,97 @@
+@@ -1,27 +1,121 @@
  // SPDX-License-Identifier: GPL-2.0-only
  /*
   * Copyright (C) 2011 Richard Weinberger <richrd@nod.at>
@@ -263,17 +259,27 @@ this is a diagnostic, not a fix for default-container performance.
  #include <asm/unistd.h>
 +#include <asm/vdso/tsc.h>
 +
-+/* Do not wait on a namespace's permanently odd seq: all its clocks trap. */
++/* The generic datastore maps real time data one page after a timens page.
++ * Offsets are frozen before first use; vdso_join_timens zaps both mappings.
++ */
++static __always_inline const struct vdso_clock *real_clock(const struct vdso_clock *vc)
++{
++	if (READ_ONCE(vc->clock_mode) == VDSO_CLOCKMODE_TIMENS)
++		return (const void *)vc + VDSO_TIMENS_PAGE_OFFSET * PAGE_SIZE;
++	return vc;
++}
 +static __always_inline int read_clock(clockid_t clock, struct __kernel_timespec *ts)
 +{
-+	const struct vdso_clock *vc;
-+	u64 sec, ns, cycles, delta;
++	const struct vdso_clock *vc, *vcns;
++	s64 sec;
++	u64 ns, cycles, delta;
 +	u32 seq, mode;
 +
 +	if (clock != CLOCK_REALTIME && clock != CLOCK_MONOTONIC &&
 +	    clock != CLOCK_BOOTTIME && clock != CLOCK_MONOTONIC_RAW)
 +		return -1;
-+	vc = &vdso_u_time_data.clock_data[clock == CLOCK_MONOTONIC_RAW ? CS_RAW : CS_HRES_COARSE];
++	vcns = &vdso_u_time_data.clock_data[clock == CLOCK_MONOTONIC_RAW ? CS_RAW : CS_HRES_COARSE];
++	vc = real_clock(vcns);
 +	for (;;) {
 +		seq = READ_ONCE(vc->seq);
 +		barrier();
@@ -296,6 +302,10 @@ this is a diagnostic, not a fix for default-container performance.
 +		if (seq == READ_ONCE(vc->seq))
 +			break;
 +	}
++	if (vc != vcns) {
++		sec += vcns->offset[clock].sec;
++		ns += vcns->offset[clock].nsec;
++	}
 +	ts->tv_sec = sec + ns / NSEC_PER_SEC;
 +	ts->tv_nsec = ns % NSEC_PER_SEC;
 +	return 0;
@@ -304,9 +314,11 @@ this is a diagnostic, not a fix for default-container performance.
 +/* A tail-called leaf keeps TSC register saves out of coarse reads. */
 +static noinline int clock_coarse(clockid_t clock, struct __kernel_timespec *ts)
 +{
-+	const struct vdso_clock *vc = &vdso_u_time_data.clock_data[CS_HRES_COARSE];
++	const struct vdso_clock *vcns = &vdso_u_time_data.clock_data[CS_HRES_COARSE];
++	const struct vdso_clock *vc = real_clock(vcns);
 +	u32 seq;
-+	u64 sec, ns;
++	s64 sec;
++	u64 ns;
 +	long ret;
 +
 +	for (;;) {
@@ -322,6 +334,14 @@ this is a diagnostic, not a fix for default-container performance.
 +		ns = vc->basetime[clock].nsec;
 +		barrier();
 +		if (seq == READ_ONCE(vc->seq)) {
++			if (vc != vcns) {
++				sec += vcns->offset[clock].sec;
++				ns += vcns->offset[clock].nsec;
++				if (ns >= NSEC_PER_SEC) {
++					ns -= NSEC_PER_SEC;
++					sec++;
++				}
++			}
 +			ts->tv_sec = sec;
 +			ts->tv_nsec = ns;
 +			return 0;
@@ -350,7 +370,7 @@ this is a diagnostic, not a fix for default-container performance.
  	return ret;
  }
  int clock_gettime(clockid_t, struct __kernel_timespec *)
-@@ -29,13 +99,20 @@
+@@ -29,13 +123,20 @@
  
  int __vdso_gettimeofday(struct __kernel_old_timeval *tv, struct timezone *tz)
  {
@@ -374,11 +394,11 @@ this is a diagnostic, not a fix for default-container performance.
  	return ret;
  }
  int gettimeofday(struct __kernel_old_timeval *, struct timezone *)
-@@ -43,12 +120,19 @@
+@@ -43,12 +144,19 @@
  
  __kernel_old_time_t __vdso_time(__kernel_old_time_t *t)
  {
-+	const struct vdso_clock *vc = &vdso_u_time_data.clock_data[CS_HRES_COARSE];
++	const struct vdso_clock *vc = real_clock(&vdso_u_time_data.clock_data[CS_HRES_COARSE]);
  	long secs;
  
 -	asm volatile("syscall"
