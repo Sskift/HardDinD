@@ -7,12 +7,37 @@ from suites.functional.peer import Peer as ProbePeer
 
 # Guest->outer inotify is checked with an outer UID 1001 watcher only: outer root
 # shares its 128 inotify instances with every root process on the Starpub host.
-NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks']
+NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks', 'outer_metadata_churn', 'outer_replace_churn', 'outer_negative_lookup', 'outer_mtime', 'outer_permission_revoked']
+
+
+def expect_metadata(row, size, mode):
+    assert row.get('rc') == 0 and (row.get('size'), row.get('mode')) == (size, mode), row
+
+
+def metadata_churn(peer, path, rounds=32):
+    """Require the first fstat after each outer change to see the new values."""
+    for i in range(rounds):
+        size, mode = 4096 + i, (0o640 if i % 2 else 0o600)
+        peer.ask('stat')
+        os.truncate(path, size)
+        os.chmod(path, mode)
+        expect_metadata(peer.ask('stat'), size, mode)
 
 def run(c, name):
     share = c.ctx.share / c.id
     share.mkdir(parents=True, exist_ok=True)
     os.chmod(share, 0o755)
+    if name == 'outer_mtime':
+        path = share / 'timestamp'
+        path.write_bytes(b'timestamp')
+        container = c.container('sleep', '120', detached=True,
+                                opts=('--mount', f'type=bind,src={share},dst=/share'))
+        for seconds in range(1700000000, 1700000008):
+            c.d('exec', container, 'stat', '-c', '%Y', '/share/timestamp')
+            os.utime(path, ns=(seconds * 1000000000, seconds * 1000000000))
+            actual = c.d('exec', container, 'stat', '-c', '%Y', '/share/timestamp').strip()
+            assert actual == str(seconds), (seconds, actual)
+        return
     def Peer(mode, path, uid=None, readonly=False):
         return ProbePeer(c, mode, path, uid=uid, readonly=readonly)
     def host_write(path,byte):
@@ -21,7 +46,7 @@ def run(c, name):
         row=peer.ask(op);assert row.get('byte')==byte,row
     def one(mode,name):
         path=share/(mode+'-'+name);path.write_bytes(b'A'*8192);os.chmod(path,0o666)
-        uid=1001 if name in ['user_permission_denied','user_create_owner','outer_inotify_to_guest_uid1001'] else None
+        uid=1001 if name in ['user_permission_denied','user_create_owner','outer_inotify_to_guest_uid1001','outer_permission_revoked'] else None
         if name=='user_permission_denied':os.chmod(path,0o600)
         if name=='user_create_owner':
             path.unlink();os.chmod(share,0o777)
@@ -55,6 +80,34 @@ def run(c, name):
                     expect_byte(peer,'read',66)
                 elif name=='outer_truncate_fstat':
                     peer.ask('stat');os.truncate(path,16384);row=peer.ask('stat');assert row['size']==16384,row
+                elif name=='outer_permission_revoked':
+                    for _ in range(16):
+                        peer.ask('reopen')
+                        os.chmod(path, 0o600)
+                        row = peer.ask('reopen', ok=False)
+                        assert row['rc'] == -1 and row['errno'] == errno.EACCES, row
+                        expect_byte(peer, 'read', 65)
+                        os.chmod(path, 0o666)
+                        peer.ask('reopen')
+                elif name=='outer_metadata_churn':
+                    metadata_churn(peer, path)
+                elif name=='outer_replace_churn':
+                    for i in range(32):
+                        byte = 66 + i
+                        replacement = path.with_suffix('.new')
+                        replacement.write_bytes(bytes([byte]) * (8192 + i))
+                        os.chmod(replacement, 0o640)
+                        replacement.replace(path)
+                        peer.ask('close');peer.ask('open')
+                        expect_byte(peer, 'read', byte)
+                        expect_metadata(peer.ask('stat'), 8192 + i, 0o640)
+                elif name=='outer_negative_lookup':
+                    for i in range(16):
+                        peer.ask('close');path.unlink()
+                        row = peer.ask('open', ok=False)
+                        assert row['rc'] == -1 and row['errno'] == errno.ENOENT, row
+                        path.write_bytes(bytes([66 + i]) * 8192)
+                        peer.ask('open');expect_byte(peer, 'read', 66 + i)
                 elif name=='outer_chmod_fstat':
                     peer.ask('stat');os.chmod(path,0o640);row=peer.ask('stat');assert row['mode']==0o640,row
                 elif name=='guest_write_outer_read':

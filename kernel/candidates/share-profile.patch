@@ -1,0 +1,169 @@
+Subject: [PATCH] virtio-fs: optional request and completion-work timing
+
+Disabled unless virtiofs.profile_requests=1. Pair the FUSE end tracepoint
+with a send event and dump per-opcode sums on orderly shutdown, including
+forced poweroff without unmount. Diagnostic output uses emergency priority
+because the guest deliberately suppresses ordinary kernel console messages.
+Instrumentation includes its own overhead; use only for diagnostics.
+
+--- a/fs/fuse/fuse_dev_i.h
++++ b/fs/fuse/fuse_dev_i.h
+@@ -118,6 +118,9 @@
+ #endif
+ 	/** @create_time: When (in jiffies) the request was created */
+ 	unsigned long create_time;
++
++	/* Optional virtio-fs transport profiling. */
++	u64 share_sent_ns;
+ };
+ 
+ /* One forget request */
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -18,10 +18,12 @@
+ #include <linux/fs_parser.h>
+ #include <linux/highmem.h>
+ #include <linux/cleanup.h>
++#include <linux/reboot.h>
+ #include <linux/uio.h>
+ #include "dev.h"
+ #include "fuse_i.h"
+ #include "fuse_dev_i.h"
++#include "fuse_trace.h"
+ 
+ /* Used to help calculate the FUSE connection's max_pages limit for a request's
+  * size. Parts of the struct fuse_req are sliced into scattergather lists in
+@@ -44,6 +46,16 @@
+ };
+ 
+ #define VQ_NAME_LEN	24
++
++static bool profile_requests;
++module_param(profile_requests, bool, 0444);
++MODULE_PARM_DESC(profile_requests, "Aggregate virtio-fs round-trip timing at shutdown");
++
++struct share_request_stats {
++	atomic64_t count;
++	atomic64_t total_ns;
++	atomic64_t reply_bytes;
++};
+ 
+ /* Per-virtqueue state */
+ struct virtio_fs_vq {
+@@ -59,6 +71,10 @@
+ 	struct completion in_flight_zero; /* No inflight requests */
+ 	struct kobject *kobj;
+ 	char name[VQ_NAME_LEN];
++	struct share_request_stats profile[64];
++	atomic64_t irq_ns;
++	atomic64_t work_delay_ns;
++	atomic64_t work_count;
+ } ____cacheline_aligned_in_smp;
+ 
+ /* A virtio-fs device instance */
+@@ -829,6 +846,14 @@
+ 	unsigned int len, i, thislen;
+ 	struct folio *folio;
+ 
++	if (profile_requests && req->share_sent_ns &&
++	    req->in.h.opcode < ARRAY_SIZE(fsvq->profile)) {
++		struct share_request_stats *s = &fsvq->profile[req->in.h.opcode];
++
++		atomic64_inc(&s->count);
++		atomic64_add(ktime_get_ns() - req->share_sent_ns, &s->total_ns);
++		atomic64_add(req->out.h.len, &s->reply_bytes);
++	}
+ 	args = req->args;
+ 	copy_args_from_argbuf(args, req);
+ 
+@@ -876,6 +901,14 @@
+ 	unsigned int len;
+ 	LIST_HEAD(reqs);
+ 
++	if (profile_requests) {
++		u64 irq_ns = atomic64_xchg(&fsvq->irq_ns, 0);
++
++		if (irq_ns) {
++			atomic64_inc(&fsvq->work_count);
++			atomic64_add(ktime_get_ns() - irq_ns, &fsvq->work_delay_ns);
++		}
++	}
+ 	/* Collect completed requests off the virtqueue */
+ 	spin_lock(&fsvq->lock);
+ 	do {
+@@ -963,6 +996,8 @@
+ 
+ 	dev_dbg(&vq->vdev->dev, "%s %s\n", __func__, fsvq->name);
+ 
++	if (profile_requests)
++		atomic64_cmpxchg(&fsvq->irq_ns, 0, ktime_get_ns());
+ 	schedule_work(&fsvq->done_work);
+ }
+ 
+@@ -1586,6 +1621,9 @@
+ 	int ret;
+ 
+ 	fuse_request_assign_unique(fiq, req);
++	trace_fuse_request_send(req);
++	if (profile_requests)
++		req->share_sent_ns = ktime_get_ns();
+ 
+ 	clear_bit(FR_PENDING, &req->flags);
+ 
+@@ -1896,6 +1934,38 @@
+ 	virtio_fs_kset = NULL;
+ }
+ 
++static int share_profile_reboot(struct notifier_block *nb, unsigned long event,
++				void *unused)
++{
++	struct virtio_fs *fs;
++	unsigned int q, op;
++
++	mutex_lock(&virtio_fs_mutex);
++	list_for_each_entry(fs, &virtio_fs_instances, list) {
++		for (q = 0; q < fs->nvqs; q++) {
++			struct virtio_fs_vq *vq = &fs->vqs[q];
++
++			for (op = 0; op < ARRAY_SIZE(vq->profile); op++) {
++				struct share_request_stats *s = &vq->profile[op];
++
++				if (atomic64_read(&s->count))
++					pr_emerg("HARDDIND_FUSE_PROFILE tag=%s queue=%s opcode=%u count=%lld total_ns=%lld reply_bytes=%lld\n",
++						fs->tag, vq->name, op, atomic64_read(&s->count),
++						atomic64_read(&s->total_ns), atomic64_read(&s->reply_bytes));
++			}
++			pr_emerg("HARDDIND_FUSE_WORK tag=%s queue=%s count=%lld delay_ns=%lld\n",
++				fs->tag, vq->name, atomic64_read(&vq->work_count),
++				atomic64_read(&vq->work_delay_ns));
++		}
++	}
++	mutex_unlock(&virtio_fs_mutex);
++	return NOTIFY_DONE;
++}
++
++static struct notifier_block share_profile_notifier = {
++	.notifier_call = share_profile_reboot,
++};
++
+ static int __init virtio_fs_init(void)
+ {
+ 	int ret;
+@@ -1912,6 +1982,8 @@
+ 	if (ret < 0)
+ 		goto unregister_virtio_driver;
+ 
++	if (profile_requests)
++		register_reboot_notifier(&share_profile_notifier);
+ 	return 0;
+ 
+ unregister_virtio_driver:
+@@ -1924,6 +1996,8 @@
+ 
+ static void __exit virtio_fs_exit(void)
+ {
++	if (profile_requests)
++		unregister_reboot_notifier(&share_profile_notifier);
+ 	unregister_filesystem(&virtio_fs_type);
+ 	unregister_virtio_driver(&virtio_fs_driver);
+ 	virtio_fs_sysfs_exit();

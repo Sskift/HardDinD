@@ -1,0 +1,16 @@
+Subject: [PATCH] Allow up to 2 MiB in one FUSE request
+
+Still bounded by the guest's negotiated page and virtqueue limits. The
+default UML queue stays at 256 entries unless explicitly overridden.
+
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -22,7 +22,7 @@
+ use vm_memory::ByteValued;
+ 
+ const FUSE_BUFFER_HEADER_SIZE: u32 = 0x1000;
+-const MAX_BUFFER_SIZE: u32 = 1 << 20;
++const MAX_BUFFER_SIZE: u32 = 2 << 20;
+ const DIRENT_PADDING: [u8; 8] = [0; 8];
+ 
+ const CURRENT_DIR_CSTR: &[u8] = b".";
