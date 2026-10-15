@@ -23,6 +23,7 @@ class CoreFaultsTests(unittest.TestCase):
             result = subprocess.run([str(binary), 'semantics'], cwd=d, capture_output=True,
                                     text=True, timeout=60, check=True)
             self.assertIn('CORE_SEMANTICS_END status=0', result.stdout)
+            self.assertIn('CORE_CHECK parallel_syscall_handshake pass', result.stdout)
             self.assertTrue(json.loads(result.stdout.splitlines()[-1])['verified'])
             for mode in ('anon', 'file', 'cow', 'small', 'fork', 'exec', 'mmap', 'mprotect', 'getpid', 'getpid4'):
                 with self.subTest(mode=mode):

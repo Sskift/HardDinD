@@ -28,6 +28,7 @@ static const char *self;
 static int grouped, group_items;
 static sigjmp_buf recovery;
 static volatile sig_atomic_t expected, caught;
+static void measure(const char *mode, size_t count);
 
 struct syscall_work { pthread_barrier_t barrier; size_t count; };
 struct syscall_thread { struct syscall_work *work; int cpu; };
@@ -246,6 +247,8 @@ static void semantics(void) {
     for (size_t i = 0; i < bytes; i++) CHECK(p[i] == 0);
     CHECK(!munmap(p, bytes));
     puts("CORE_CHECK file_cow_dirty_truncate_fixed pass");
+    measure("getpid4", 8);
+    puts("CORE_CHECK parallel_syscall_handshake pass");
     puts("CORE_SEMANTICS_END status=0");
     puts("{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}");
 }
