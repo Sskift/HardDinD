@@ -1,0 +1,61 @@
+{
+  "schema": "hd.summary/1",
+  "run_id": "20261015-102451-3c33ac7b-test-pipeline-smoke",
+  "kind": "test",
+  "revision": {
+    "git": "3c33ac7b6ca48efad37b8ee1adce63ce1f612ad5",
+    "dirty": false,
+    "subject": "Refuse remote commands while the jump-host master is down; sync in one connection",
+    "diff_sha256": null,
+    "synced_at": "2026-10-15T10:24:35Z"
+  },
+  "candidates": [],
+  "kernel_args": [],
+  "started": 1792059891.0934303,
+  "host": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      35.083984375,
+      54.23828125,
+      60.92529296875
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  },
+  "only": null,
+  "quick": false,
+  "artifacts": {
+    "kernel": "cc2d81792c5059edbcdd",
+    "rootfs": "2e686367368301e00a60",
+    "network_backend": "52f5c212e8510cb12da4",
+    "network_probe": "52f5c212e8510cb12da4",
+    "client": "8b092aa35fde7efc002a",
+    "virtiofsd": "a57c2af7f64dea0873a8"
+  },
+  "test": {
+    "schema": "hd.test/1",
+    "checks": [
+      {
+        "id": "daemon_version",
+        "status": "pass",
+        "covers": [
+          "version"
+        ],
+        "detail": "29.8.2-harddind.1\n"
+      }
+    ]
+  },
+  "finished": 1792059970.6468234,
+  "host_end": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      40.2353515625,
+      51.74951171875,
+      59.5205078125
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  }
+}
