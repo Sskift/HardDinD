@@ -182,10 +182,10 @@
     "sha256": "46faa9a1ae6813194b53921a370f2f4f8c5e1aae228a89bceafef5847a6a3278"
   },
   "functional_https": {
-    "version": "3.24.2",
-    "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-minirootfs-3.24.2-x86_64.tar.gz",
-    "sha256": "c5ca053cfe1d85c5b96dff8b9bc57045f7f184a30ffb6b65776409ca90388677",
-    "purpose": "Container DNS and HTTPS transfer; verify the downloaded bytes against this digest"
+    "version": "7.2.10",
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/ChangeLog-7.2.10",
+    "sha256": "bb8f0999cb43b2cf4c3640bf9ed467c73ffc997fb27aae241f9ce7933a0d7197",
+    "purpose": "Container DNS and HTTPS transfer of an immutable 700 KB file; the outer path to dl-cdn often takes 10-60 s for 3.7 MB"
   },
   "bench_apk_binutils": {
     "package": "binutils",
