@@ -1,0 +1,1005 @@
+Subject: [CANDIDATE] UML private syscall sites and GS-free runner trampoline
+
+Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
+
+--- a/arch/um/include/asm/mmu.h
++++ b/arch/um/include/asm/mmu.h
+@@ -10,6 +10,8 @@
+ #include <linux/completion.h>
+ #include <linux/list.h>
+ #include <linux/mutex.h>
++#include <linux/rwsem.h>
++#include <linux/wait.h>
+ #include <linux/spinlock.h>
+ #include <mm_id.h>
+ 
+@@ -20,6 +22,11 @@
+ 	/* Parallel seccomp runners share the broker's host address space. */
+ 	struct mm_id cpu_ids[NR_CPUS];
+ 	struct mutex turnstile;
++	struct mutex patch_lock;
++	struct rw_semaphore patch_run;
++	wait_queue_head_t patch_wait;
++	int patch_stopping;
++	unsigned long patch_miss[64];
+ 	struct mm_id gpu_id;
+ 	struct mutex gpu_lock;
+ 	struct pid *gpu_owner;
+--- a/arch/um/include/asm/tlbflush.h
++++ b/arch/um/include/asm/tlbflush.h
+@@ -7,6 +7,7 @@
+ #define __UM_TLBFLUSH_H
+ 
+ #include <linux/mm.h>
++#include <core-patch.h>
+ 
+ /*
+  * In UML, we need to sync the TLB over by using mmap/munmap syscalls from
+@@ -39,6 +40,7 @@
+ static inline void flush_tlb_page(struct vm_area_struct *vma,
+ 				  unsigned long address)
+ {
++	uml_patch_forget(vma->vm_mm, address, address + PAGE_SIZE);
+ 	um_tlb_mark_sync(vma->vm_mm, address, address + PAGE_SIZE);
+ 	um_tlb_sync_if_parallel(vma->vm_mm);
+ }
+@@ -46,6 +48,7 @@
+ static inline void flush_tlb_range(struct vm_area_struct *vma,
+ 				   unsigned long start, unsigned long end)
+ {
++	uml_patch_forget(vma->vm_mm, start, end);
+ 	um_tlb_mark_sync(vma->vm_mm, start, end);
+ 	um_tlb_sync_if_parallel(vma->vm_mm);
+ }
+--- a/arch/um/include/shared/as-layout.h
++++ b/arch/um/include/shared/as-layout.h
+@@ -22,7 +22,8 @@
+  */
+ #define STUB_START stub_start
+ #define STUB_CODE STUB_START
+-#define STUB_DATA (STUB_CODE + UM_KERN_PAGE_SIZE)
++#define STUB_CODE_PAGES 4
++#define STUB_DATA (STUB_CODE + STUB_CODE_PAGES * UM_KERN_PAGE_SIZE)
+ #define STUB_DATA_PAGES 2
+ /* Each CPU owns two data/signal pages and two bootstrap stack pages.
+  * Slot 64 is the per-mm GPU worker, slot 65 its event relay thread (the
+@@ -38,7 +39,10 @@
+ #define STUB_GPU_SHADOW_PAGES 4
+ #define STUB_THREAD_PAGES 4
+ #define STUB_THREAD_DATA(cpu) (STUB_DATA + (STUB_DATA_PAGES + (cpu) * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
+-#define STUB_SIZE ((1 + STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
++#define STUB_TID_SLOTS 4194304
++#define STUB_TID_SIZE STUB_TID_SLOTS
++#define STUB_TID_TABLE (STUB_DATA + (STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
++#define STUB_SIZE ((STUB_CODE_PAGES + STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE + STUB_TID_SIZE)
+ #define STUB_END (STUB_START + STUB_SIZE)
+ 
+ #ifndef __ASSEMBLER__
+--- a/arch/um/include/shared/core-patch.h
++++ b/arch/um/include/shared/core-patch.h
+@@ -0,0 +1,37 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef UML_CORE_PATCH_H
++#define UML_CORE_PATCH_H
++#define UML_PATCH_BASE 0x60000
++#define UML_PATCH_END 0x70000
++#define UML_PATCH_SLOT 128
++#define UML_FAST_UC 8200
++#define UML_FAST_MC 8240
++#define UML_FAST_FP 9216
++#define UML_FAST_TOP 16384
++#define UML_FAST_FP_MAX 4096
++#ifndef __ASSEMBLER__
++static inline int uml_patch_pattern(const unsigned char *p, unsigned int len, unsigned long nr)
++{
++    unsigned long imm;
++    if (len == 7) {
++        if (*p++ != 0xb8) return 0;
++    } else if (len == 9) {
++        if (p[0] != 0x48 || p[1] != 0xc7 || p[2] != 0xc0) return 0;
++        p += 3;
++    } else return 0;
++    imm = p[0] | ((unsigned long)p[1] << 8) | ((unsigned long)p[2] << 16) |
++          ((unsigned long)p[3] << 24);
++    return imm == nr && p[4] == 0x0f && p[5] == 0x05;
++}
++extern int uml_syscall_patch;
++struct uml_pt_regs;
++struct mm_struct;
++void uml_patch_syscall(struct uml_pt_regs *r);
++int uml_patch_fault(struct uml_pt_regs *r);
++void uml_patch_enter(struct mm_struct *mm);
++void uml_patch_exit(struct mm_struct *mm);
++void uml_patch_count(void);
++void uml_patch_forget(struct mm_struct *mm, unsigned long start, unsigned long end);
++int uml_patch_setup(void);
++#endif
++#endif
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -19,6 +19,7 @@
+ struct stub_init_data {
+ 	int seccomp;
+ 	int gpu_bridge;
++	int syscall_patch;
+ 	/* Permit the GPU completion-byte write(); 0017 async GPU wait. */
+ 	int gpu_async;
+ 
+@@ -170,6 +171,9 @@
+ 	int syscall_fd_num;
+ 
+ 	int syscall_data_len;
++	unsigned int fast_enabled;
++	unsigned int fast_active;
++	unsigned long long fast_xfeatures;
+ 
+ 	/* Bounded RM blocks, including a snapshotted 40-byte child. */
+ 	unsigned char gpu_payload[STUB_GPU_PAYLOAD_SIZE] __aligned(64);
+--- a/arch/um/kernel/Makefile
++++ b/arch/um/kernel/Makefile
+@@ -18,7 +18,7 @@
+ 	physmem.o process.o ptrace.o reboot.o sigio.o \
+ 	signal.o sysrq.o time.o tlb.o trap.o \
+ 	um_arch.o umid.o kmsg_dump.o capflags.o skas/
+-obj-y += load_file.o gpu.o
++obj-y += load_file.o gpu.o core-patch.o
+ 
+ obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
+ obj-$(CONFIG_GPROF)	+= gprof_syms.o
+--- a/arch/um/kernel/core-patch.c
++++ b/arch/um/kernel/core-patch.c
+@@ -0,0 +1,276 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <linux/init.h>
++#include <linux/mm.h>
++#include <linux/mman.h>
++#include <linux/highmem.h>
++#include <linux/sched/mm.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/atomic.h>
++#include <asm/cacheflush.h>
++#include <asm/unistd.h>
++#include <as-layout.h>
++#include <core-patch.h>
++#include <os.h>
++#include <skas.h>
++#include <stub-data.h>
++#include <sysdep/ptrace.h>
++
++int uml_syscall_patch;
++static atomic64_t patched, calls;
++extern char __syscall_stub_start[], stub_fast_entry[];
++
++static int __init patch_setup(char *s)
++{
++	int value;
++	if (kstrtoint(s, 0, &value) || (value != 0 && value != 1))
++		return 0;
++	uml_syscall_patch = value;
++	return 1;
++}
++__setup("uml_syscall_patch=", patch_setup);
++
++void uml_patch_enter(struct mm_struct *mm)
++{
++	if (!uml_syscall_patch)
++		return;
++	for (;;) {
++		wait_event(mm->context.patch_wait, !READ_ONCE(mm->context.patch_stopping));
++		down_read(&mm->context.patch_run);
++		if (!READ_ONCE(mm->context.patch_stopping))
++			break;
++		up_read(&mm->context.patch_run);
++	}
++}
++
++void uml_patch_exit(struct mm_struct *mm)
++{
++	if (uml_syscall_patch)
++		up_read(&mm->context.patch_run);
++}
++
++void uml_patch_forget(struct mm_struct *mm, unsigned long start, unsigned long end)
++{
++    if (!uml_syscall_patch)
++        return;
++    for (unsigned int i = 0; i < ARRAY_SIZE(mm->context.patch_miss); i++) {
++        unsigned long ip = READ_ONCE(mm->context.patch_miss[i]);
++        if (ip && ip - 1 >= start && ip - 1 < end)
++            WRITE_ONCE(mm->context.patch_miss[i], 0);
++    }
++}
++
++static void stop_mm(struct mm_struct *mm)
++{
++	WRITE_ONCE(mm->context.patch_stopping, 1);
++	smp_mb();
++	for (int cpu = 0; cpu < NR_CPUS; cpu++) {
++		int pid = READ_ONCE(mm->context.cpu_ids[cpu].pid);
++		if (pid > 1)
++			os_alarm_process(pid);
++	}
++	down_write(&mm->context.patch_run);
++}
++
++static void resume_mm(struct mm_struct *mm)
++{
++	up_write(&mm->context.patch_run);
++	WRITE_ONCE(mm->context.patch_stopping, 0);
++	wake_up_all(&mm->context.patch_wait);
++}
++
++#define PATCH_MAGIC 0x554d4c5041544348ULL
++struct patch_header { u64 magic; u64 next; };
++
++int uml_patch_setup(void)
++{
++	struct patch_header h = { PATCH_MAGIC, 1 };
++	unsigned long addr;
++
++	if (!uml_syscall_patch || !parallel_userspace)
++		return 0;
++	addr = vm_mmap(NULL, UML_PATCH_BASE, UML_PATCH_END - UML_PATCH_BASE,
++		       PROT_READ | PROT_EXEC,
++		       MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, 0);
++	if (addr != UML_PATCH_BASE)
++		return 0;
++	if (access_process_vm(current, addr, &h, sizeof(h), FOLL_FORCE | FOLL_WRITE) != sizeof(h))
++		vm_munmap(addr, UML_PATCH_END - UML_PATCH_BASE);
++	return 0;
++}
++
++static bool eligible(unsigned long nr)
++{
++	switch (nr) {
++	case __NR_clone: case __NR_clone3: case __NR_fork: case __NR_vfork:
++	case __NR_execve: case __NR_execveat: case __NR_rt_sigreturn:
++	case __NR_exit: case __NR_exit_group: case __NR_restart_syscall:
++		return false;
++	default:
++		return nr < __NR_syscalls;
++	}
++}
++
++/* All writes hold mmap_lock and a FOLL_FORCE|FOLL_WRITE reference. This is
++ * the access_process_vm COW path, with one lock covering the whole rewrite. */
++static struct page *write_page(struct mm_struct *mm, unsigned long addr)
++{
++	struct vm_area_struct *vma = find_vma(mm, addr);
++	struct page *page;
++	if (!vma || vma->vm_start > addr || (vma->vm_flags & (VM_SHARED | VM_WRITE)) ||
++	    !(vma->vm_flags & VM_EXEC) || !(vma->vm_flags & VM_MAYWRITE))
++		return NULL;
++	if (get_user_pages_remote(mm, addr & PAGE_MASK, 1,
++				  FOLL_FORCE | FOLL_WRITE, &page, NULL) != 1)
++		return NULL;
++	return page;
++}
++
++static void write_bytes(struct mm_struct *mm, struct page *page, unsigned long addr,
++			const void *src, unsigned int len)
++{
++	void *dst = kmap_local_page(page);
++	copy_to_user_page(find_vma(mm, addr), page, addr, dst + offset_in_page(addr), src, len);
++	kunmap_local(dst);
++	set_page_dirty_lock(page);
++}
++
++void uml_patch_syscall(struct uml_pt_regs *r)
++{
++	struct mm_struct *mm = current->mm;
++	unsigned long end = UPT_IP(r), addr, slot, nr = PT_SYSCALL_NR(r->gp);
++	unsigned char old[9], jump[9] = { 0xff, 0x24, 0x25, 0, 0, 0, 0, 0x06, 0x06 };
++	/* gettid; scale/add lookup base; load runner; jump to common save code. */
++	unsigned char code[UML_PATCH_SLOT] = {
++		[8] = 0xb8, 186, 0, 0, 0, 0x0f, 0x05,
++		0x48, 0x03, 0x41, 49, 0x0f, 0xb6, 0x00,
++		0x48, 0xc1, 0xe0, 14, 0x48, 0x03, 0x41, 57,
++		0xff, 0x61, 65,
++	};
++	struct patch_header h;
++	struct page *text = NULL, *entry = NULL, *header = NULL;
++	void *bytes;
++	u64 value;
++	u32 imm;
++	unsigned int len = 7;
++
++    if (!uml_syscall_patch || r->fast_syscall || !parallel_userspace || !mm || !eligible(nr) ||
++        end < UML_PATCH_END + sizeof(old) || end >= TASK_SIZE)
++        return;
++    if (READ_ONCE(mm->context.patch_miss[(end >> 3) & 63]) == end)
++        return;
++    WRITE_ONCE(mm->context.patch_miss[(end >> 3) & 63], end);
++    /* A seven-byte site may begin at a VMA boundary: do not read before it. */
++    if (access_process_vm(current, end - 7, old + 2, 7, FOLL_FORCE) != 7)
++        return;
++    if (!uml_patch_pattern(old + 2, 7, nr)) {
++        if (access_process_vm(current, end - 9, old, 9, FOLL_FORCE) != 9 ||
++            !uml_patch_pattern(old, 9, nr))
++            return;
++        len = 9;
++    }
++    imm = nr;
++	addr = end - len;
++	if (offset_in_page(addr) + len > PAGE_SIZE)
++		return;
++	mutex_lock(&mm->context.patch_lock);
++	if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
++	    h.magic != PATCH_MAGIC || h.next < 1 || h.next >= (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
++		goto unlock;
++	slot = UML_PATCH_BASE + h.next * UML_PATCH_SLOT;
++	mmap_read_lock(mm);
++	text = write_page(mm, addr);
++	entry = write_page(mm, slot);
++	if (entry && (slot & PAGE_MASK) == UML_PATCH_BASE) {
++		header = entry;
++		get_page(header);
++	} else {
++		header = write_page(mm, UML_PATCH_BASE);
++	}
++	if (!text || !entry || !header)
++		goto out;
++	stop_mm(mm);
++	bytes = kmap_local_page(text);
++	if (memcmp(bytes + offset_in_page(addr), old + sizeof(old) - len, len)) {
++		kunmap_local(bytes);
++		resume_mm(mm);
++		goto out;
++	}
++	kunmap_local(bytes);
++	value = slot + 8; memcpy(code, &value, 8);
++	memcpy(code + 40, &imm, 4);
++	value = end; memcpy(code + 48, &value, 8);
++	value = STUB_TID_TABLE; memcpy(code + 64, &value, 8);
++	value = STUB_THREAD_DATA(0) - STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE;
++	memcpy(code + 72, &value, 8);
++	value = STUB_CODE + (unsigned long)stub_fast_entry - (unsigned long)__syscall_stub_start;
++	memcpy(code + 80, &value, 8);
++	write_bytes(mm, entry, slot, code, sizeof(code));
++	h.next++;
++	write_bytes(mm, header, UML_PATCH_BASE, &h, sizeof(h));
++	imm = slot; memcpy(jump + 3, &imm, 4);
++	/* Stop-before-write also covers a runner already past the original MOV.
++	 * The byte at its old SYSCALL remains invalid in the final jump. */
++	old[0] = 0x06;
++	write_bytes(mm, text, addr, old, 1);
++	smp_wmb();
++	write_bytes(mm, text, addr + 1, jump + 1, len - 1);
++	smp_wmb();
++	write_bytes(mm, text, addr, jump, 1);
++	for (int cpu = 0; cpu < NR_CPUS; cpu++) {
++        struct stub_data *d = (void *)mm->context.cpu_ids[cpu].stack;
++        if (d)
++            WRITE_ONCE(d->fast_enabled, READ_ONCE(d->fast_enabled) | 2);
++    }
++    atomic64_inc(&patched);
++	resume_mm(mm);
++out:
++	if (header) put_page(header);
++	if (entry) put_page(entry);
++	if (text) put_page(text);
++	mmap_read_unlock(mm);
++unlock:
++	mutex_unlock(&mm->context.patch_lock);
++}
++
++int uml_patch_fault(struct uml_pt_regs *r)
++{
++	unsigned char code[9];
++	unsigned long ip = UPT_IP(r);
++	u32 slot;
++	u64 end;
++
++	if (!uml_syscall_patch || !parallel_userspace || ip < UML_PATCH_END + 7)
++		return 0;
++	for (int offset = 5; offset <= 7; offset += 2) {
++		if (access_process_vm(current, ip - offset, code, offset + 2, FOLL_FORCE) != offset + 2 ||
++		    code[0] != 0xff || code[1] != 0x24 || code[2] != 0x25 || code[offset] != 0x06)
++			continue;
++		memcpy(&slot, code + 3, 4);
++		if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT)
++			continue;
++		if (access_process_vm(current, slot + 48, &end, sizeof(end), FOLL_FORCE) != sizeof(end) || end != ip + 2)
++			continue;
++		r->fast_syscall = 1;
++		UPT_IP(r) = end;
++		PT_SYSCALL_NR(r->gp) = UPT_AX(r);
++		return 1;
++	}
++	return 0;
++}
++
++void uml_patch_count(void) { atomic64_inc(&calls); }
++
++static int patch_show(struct seq_file *m, void *v)
++{
++	seq_printf(m, "enabled %d\npatched %lld\nfast_calls %lld\n", uml_syscall_patch,
++		   atomic64_read(&patched), atomic64_read(&calls));
++	return 0;
++}
++
++static int __init patch_init(void)
++{
++	proc_create_single("uml_syscall_patch", 0400, NULL, patch_show);
++	return 0;
++}
++late_initcall(patch_init);
+--- a/arch/um/kernel/dyn.lds.S
++++ b/arch/um/kernel/dyn.lds.S
+@@ -89,6 +89,7 @@
+ 	__syscall_stub_start = .;
+ 	*(.__syscall_stub*)
+ 	__syscall_stub_end = .;
++	. = __syscall_stub_start + 4 * PAGE_SIZE;
+   }
+   .fini           : {
+     KEEP (*(.fini))
+@@ -178,5 +179,5 @@
+   DISCARDS
+ }
+ 
+-ASSERT(__syscall_stub_end - __syscall_stub_start <= PAGE_SIZE,
+-       "STUB code must not be larger than one page");
++ASSERT(__syscall_stub_end - __syscall_stub_start <= 4 * PAGE_SIZE,
++       "STUB code must fit its four mapped pages");
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -84,7 +84,7 @@
+ 	err = unmap(&ctx->id, 0, STUB_START);
+ 	if (!err)
+ 		err = unmap(&ctx->id, STUB_THREAD_DATA(0),
+-			    STUB_END - STUB_THREAD_DATA(0));
++			    STUB_TID_TABLE - STUB_THREAD_DATA(0));
+ 	if (!err)
+ 		err = syscall_stub_flush(&ctx->id);
+ 	if (err || ctx->id.pid < 2)
+@@ -161,6 +161,11 @@
+ 
+ 	memset(mm->context.cpu_ids, 0, sizeof(mm->context.cpu_ids));
+ 	mutex_init(&mm->context.turnstile);
++	mutex_init(&mm->context.patch_lock);
++	init_rwsem(&mm->context.patch_run);
++	init_waitqueue_head(&mm->context.patch_wait);
++	mm->context.patch_stopping = 0;
++	memset(mm->context.patch_miss, 0, sizeof(mm->context.patch_miss));
+ 	mutex_init(&mm->context.gpu_lock);
+ 	memset(&mm->context.gpu_id, 0, sizeof(mm->context.gpu_id));
+ 	mm->context.gpu_owner = NULL;
+--- a/arch/um/kernel/skas/process.c
++++ b/arch/um/kernel/skas/process.c
+@@ -12,6 +12,7 @@
+ #include <asm/tlbflush.h>
+ 
+ #include <as-layout.h>
++#include <core-patch.h>
+ #include <kern.h>
+ #include <os.h>
+ #include <skas.h>
+@@ -72,6 +73,7 @@
+ 		enter_turnstile(id);
+ 		return id;
+ 	}
++	uml_patch_enter(mm);
+ 	/* Allocate before pinning; allocation can schedule onto another CPU. */
+ 	for (;;) {
+ 		preempt_disable();
+@@ -100,8 +102,10 @@
+ 
+ void current_mm_exit(struct mm_id *id)
+ {
+-	if (parallel_userspace)
++	if (parallel_userspace) {
+ 		preempt_enable();
++		uml_patch_exit(current->mm);
++	}
+ 	else
+ 		exit_turnstile(id);
+ }
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -4,6 +4,7 @@
+  */
+ 
+ #include <sysdep/stub.h>
++#include <core-patch.h>
+ 
+ #include <linux/futex.h>
+ #include <sys/socket.h>
+@@ -54,7 +55,17 @@
+ 			  (unsigned long)&mask, 0, sizeof(mask)) < 0)
+ 		stub_syscall1(__NR_exit, 40);
+ 
+-	/* This particular stub syscall deliberately traps for initial handoff. */
++	if (d->fast_enabled) {
++        long tid = stub_syscall0(__NR_gettid);
++        unsigned char *table = (void *)get_stub_data() +
++            (STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE;
++        if (tid < 1 || tid >= STUB_TID_SLOTS)
++            stub_syscall1(__NR_exit, 43);
++        table[tid] = 1 + ((unsigned long)d - (unsigned long)get_stub_data() -
++            STUB_DATA_PAGES * UM_KERN_PAGE_SIZE) / (STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE);
++    }
++
++    /* This particular stub syscall deliberately traps for initial handoff. */
+ 	stub_syscall0(__NR_getpid);
+ 	stub_syscall1(__NR_exit, 41);
+ 	__builtin_unreachable();
+@@ -434,6 +445,16 @@
+ 	int notify = 0;
+ 	long res;
+ 
++#ifdef __x86_64__
++    if (d->fast_enabled && sig == SIGALRM) {
++        unsigned long ip = uc->uc_mcontext.gregs[REG_RIP];
++        unsigned long code = (unsigned long)get_stub_data() - STUB_CODE_PAGES * UM_KERN_PAGE_SIZE;
++        if (d->fast_active || (ip >= UML_PATCH_BASE && ip < UML_PATCH_END) ||
++            (ip >= code && ip < code + STUB_CODE_PAGES * UM_KERN_PAGE_SIZE))
++            return;
++    }
++#endif
++    d->fast_active = 0;
+ 	d->signal = sig;
+ 	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
+ 	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
+@@ -549,3 +570,124 @@
+ 	/* We must not have anything on the stack when doing rt_sigreturn */
+ 	stub_syscall0(__NR_rt_sigreturn);
+ }
++
++#ifdef __x86_64__
++void *stub_fast_handoff(struct stub_data *d);
++void *__attribute__((used, section(".__syscall_stub")))
++stub_fast_handoff(struct stub_data *d)
++{
++    ucontext_t *uc = (void *)d + UML_FAST_UC;
++    long res;
++
++    d->signal = SIGSYS;
++    if (stub_futex_handoff(&d->futex, FUTEX_IN_KERN)) {
++        do { res = stub_syscall3(__NR_futex, (unsigned long)&d->futex, FUTEX_WAKE, 1); }
++        while (res == -EINTR);
++    }
++    for (unsigned int spin = 0; spin < d->spin_limit && spin < 10000; spin++) {
++        if (stub_futex_phase(&d->futex) != FUTEX_IN_KERN)
++            break;
++        asm volatile("pause" ::: "memory");
++    }
++    while (stub_futex_phase(&d->futex) == FUTEX_IN_KERN) {
++        if (!stub_futex_prepare_wait(&d->futex, FUTEX_IN_KERN))
++            break;
++        res = stub_syscall4(__NR_futex, (unsigned long)&d->futex,
++            FUTEX_WAIT, FUTEX_IN_KERN | STUB_FUTEX_WAITING, 0);
++        if (res < 0 && res != -EINTR && res != -EAGAIN)
++            stub_syscall1(__NR_exit, 44);
++    }
++    if (d->syscall_data_len || d->restart_wait)
++        stub_syscall1(__NR_exit, 45);
++    if (d->fast_enabled & 2) {
++        unsigned int a = 0, b, c, e;
++        asm volatile("cpuid" : "+a"(a), "=b"(b), "=c"(c), "=d"(e) :: "memory");
++        d->fast_enabled &= ~2U;
++    }
++    stub_seccomp_restore_state(&d->arch_data);
++    d->fast_active = 0;
++    /* Preserve nonstandard ptrace edits and signal/restart transitions using
++     * the host's full context validation. Normal syscall returns need no signal. */
++    if ((unsigned long)uc->uc_mcontext.gregs[REG_RIP] != *(unsigned long *)((void *)d + UML_FAST_UC - 8) ||
++        uc->uc_mcontext.gregs[REG_RCX] != uc->uc_mcontext.gregs[REG_RIP] ||
++        (uc->uc_mcontext.gregs[REG_EFL] & 0x100) ||
++        uc->uc_mcontext.gregs[REG_CSGSFS] != 0x002b000000000033ULL) {
++        asm volatile("mov %0,%%rsp; mov $15,%%eax; syscall; ud2"
++                     :: "r"(uc) : "rax", "rcx", "r11", "memory");
++        __builtin_unreachable();
++    }
++    return d;
++}
++
++_Static_assert(offsetof(struct stub_data, fast_active) == 52, "fast active offset");
++_Static_assert(offsetof(struct stub_data, fast_xfeatures) == 56, "fast xsave offset");
++asm(
++    ".pushsection .__syscall_stub,\"ax\",@progbits\n"
++    ".global stub_fast_entry\n"
++    "stub_fast_entry:\n"
++    "movq %r8,8240(%rax)\n"
++    "movq %r9,8248(%rax)\n"
++    "movq %r10,8256(%rax)\n"
++    "movq %r11,8264(%rax)\n"
++    "movq %r12,8272(%rax)\n"
++    "movq %r13,8280(%rax)\n"
++    "movq %r14,8288(%rax)\n"
++    "movq %r15,8296(%rax)\n"
++    "movq %rdi,8304(%rax)\n"
++    "movq %rsi,8312(%rax)\n"
++    "movq %rbp,8320(%rax)\n"
++    "movq %rbx,8328(%rax)\n"
++    "movq %rdx,8336(%rax)\n"
++    "movq %rsp,8360(%rax)\n"
++    "movq %r11,8376(%rax)\n"
++    "movl 25(%rcx),%edx\n"
++    "movq %rdx,8344(%rax)\n"
++    "movq 33(%rcx),%rdx\n"
++    "movq %rdx,8192(%rax)\n"
++    "movq %rdx,8368(%rax)\n"
++    "movq %rdx,8352(%rax)\n"
++    "movl $1,52(%rax)\n"
++    "movq %rax,%rdi\n"
++    "leaq 16384(%rdi),%rsp\n"
++    "cld\n"
++    "movq 56(%rdi),%rax\n"
++    "testq %rax,%rax\n"
++    "jz 1f\n"
++    "movq %rax,%rdx\n"
++    "shrq $32,%rdx\n"
++    "xsave64 9216(%rdi)\n"
++    "jmp 2f\n"
++    "1: fxsave64 9216(%rdi)\n"
++    "2: call stub_fast_handoff\n"
++    "movq %rax,%rdi\n"
++    "movq 56(%rdi),%rax\n"
++    "testq %rax,%rax\n"
++    "jz 3f\n"
++    "movq %rax,%rdx\n"
++    "shrq $32,%rdx\n"
++    "xrstor64 9216(%rdi)\n"
++    "jmp 4f\n"
++    "3: fxrstor64 9216(%rdi)\n"
++    "4: movq %rdi,%rax\n"
++    "pushq 8376(%rax)\n"
++    "popfq\n"
++    "movq 8240(%rax),%r8\n"
++    "movq 8248(%rax),%r9\n"
++    "movq 8256(%rax),%r10\n"
++    "movq 8264(%rax),%r11\n"
++    "movq 8272(%rax),%r12\n"
++    "movq 8280(%rax),%r13\n"
++    "movq 8288(%rax),%r14\n"
++    "movq 8296(%rax),%r15\n"
++    "movq 8304(%rax),%rdi\n"
++    "movq 8312(%rax),%rsi\n"
++    "movq 8320(%rax),%rbp\n"
++    "movq 8328(%rax),%rbx\n"
++    "movq 8336(%rax),%rdx\n"
++    "movq 8352(%rax),%rcx\n"
++    "movq 8360(%rax),%rsp\n"
++    "movq 8344(%rax),%rax\n"
++    "jmp *%rcx\n"
++    ".popsection\n"
++);
++#endif
+--- a/arch/um/kernel/skas/stub_exe.c
++++ b/arch/um/kernel/skas/stub_exe.c
+@@ -3,6 +3,7 @@
+ #include <sys/fcntl.h>
+ #include <asm/unistd.h>
+ #include <sysdep/stub.h>
++#include <core-patch.h>
+ #include <stub-data.h>
+ #include <linux/filter.h>
+ #include <linux/seccomp.h>
+@@ -54,21 +55,30 @@
+ 
+ 	/* map stub code + data */
+ 	res = stub_syscall6(STUB_MMAP_NR,
+-			    init_data.stub_start, UM_KERN_PAGE_SIZE,
++			    init_data.stub_start, STUB_CODE_PAGES * UM_KERN_PAGE_SIZE,
+ 			    PROT_READ | PROT_EXEC, MAP_FIXED | MAP_SHARED,
+ 			    init_data.stub_code_fd, init_data.stub_code_offset);
+ 	if (res != init_data.stub_start)
+ 		stub_syscall1(__NR_exit, 11);
+ 
+ 	res = stub_syscall6(STUB_MMAP_NR,
+-			    init_data.stub_start + UM_KERN_PAGE_SIZE,
++			    init_data.stub_start + STUB_CODE_PAGES * UM_KERN_PAGE_SIZE,
+ 			    STUB_DATA_PAGES * UM_KERN_PAGE_SIZE,
+ 			    PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED,
+ 			    init_data.stub_data_fd, init_data.stub_data_offset);
+-	if (res != init_data.stub_start + UM_KERN_PAGE_SIZE)
++	if (res != init_data.stub_start + STUB_CODE_PAGES * UM_KERN_PAGE_SIZE)
+ 		stub_syscall1(__NR_exit, 12);
+ 
+-	/* In SECCOMP mode, we only need the signalling FD from now on */
++	if (init_data.syscall_patch) {
++        unsigned long table = init_data.stub_start + STUB_SIZE - STUB_TID_SIZE;
++        res = stub_syscall6(STUB_MMAP_NR, table, STUB_TID_SIZE,
++                           PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
++                           -1, 0);
++        if (res != table)
++            stub_syscall1(__NR_exit, 42);
++    }
++
++    /* In SECCOMP mode, we only need the signalling FD from now on */
+ 	if (init_data.seccomp) {
+ 		res = stub_syscall3(__NR_close_range, 1, ~0U, 0);
+ 		if (res != 0)
+@@ -76,7 +86,7 @@
+ 	}
+ 
+ 	/* setup signal stack inside stub data */
+-	stack.ss_sp = (void *)init_data.stub_start + UM_KERN_PAGE_SIZE;
++	stack.ss_sp = (void *)init_data.stub_start + STUB_CODE_PAGES * UM_KERN_PAGE_SIZE;
+ 	stub_syscall2(__NR_sigaltstack, (unsigned long)&stack, 0);
+ 
+ 	/* register signal handlers */
+@@ -131,6 +141,18 @@
+ 	 */
+ 	if (init_data.seccomp) {
+ 		struct sock_filter filter[] = {
++#ifdef __x86_64__
++            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, UM_SECCOMP_ARCH_NATIVE, 0, 8),
++            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, instruction_pointer) + 4),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 0, 6),
++            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, instruction_pointer)),
++            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_BASE, 0, 4),
++            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_END, 3, 0),
++            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, init_data.syscall_patch ? __NR_gettid : ~0U, 0, 1),
++            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
++#endif
+ #if __BITS_PER_LONG > 32
+ 			/* [0] Load upper 32bit of instruction pointer from seccomp_data */
+ 			BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+@@ -144,10 +166,10 @@
+ 				 (offsetof(struct seccomp_data, instruction_pointer))),
+ 
+ 			/* [3] Mask out lower bits */
+-			BPF_STMT(BPF_ALU | BPF_AND | BPF_K, 0xfffff000),
++			BPF_STMT(BPF_ALU | BPF_AND | BPF_K, 0xffffc000),
+ 
+ 			/* [4] Jump to [6] if the lower bits are not on the expected page */
+-			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, (init_data.stub_start) & 0xfffff000, 1, 0),
++			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, (init_data.stub_start) & 0xffffc000, 1, 0),
+ 
+ 			/* [5] Trap call, allow */
+ 			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
+@@ -174,7 +196,9 @@
+ 				 SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS),
+ 			/* Each match is followed by its action: no fragile jump counts. */
+ 			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
+-			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
++			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, init_data.syscall_patch ? __NR_gettid : ~0U, 0, 1),
++            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
++            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
+ 			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_futex, 0, 1),
+ 			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+ 			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_recvmsg, 0, 1),
+--- a/arch/um/kernel/skas/syscall.c
++++ b/arch/um/kernel/skas/syscall.c
+@@ -14,11 +14,14 @@
+ #include <asm/syscall.h>
+ #include <asm/unistd.h>
+ #include <asm/delay.h>
++#include <core-patch.h>
+ 
+ void handle_syscall(struct uml_pt_regs *r)
+ {
+ 	struct pt_regs *regs = container_of(r, struct pt_regs, regs);
+ 	int syscall;
++
++	uml_patch_syscall(r);
+ 
+ 	/* Initialize the syscall number and default return value. */
+ 	UPT_SYSCALL_NR(r) = PT_SYSCALL_NR(r->gp);
+--- a/arch/um/kernel/tlb.c
++++ b/arch/um/kernel/tlb.c
+@@ -263,6 +263,8 @@
+ 	struct vm_area_struct *vma;
+ 	VMA_ITERATOR(vmi, mm, 0);
+ 
++	uml_patch_forget(mm, 0, ~0UL);
++
+ 	for_each_vma(vmi, vma)
+ 		um_tlb_mark_sync(mm, vma->vm_start, vma->vm_end);
+ 	um_tlb_sync_if_parallel(mm);
+--- a/arch/um/kernel/um_arch.c
++++ b/arch/um/kernel/um_arch.c
+@@ -328,7 +328,7 @@
+ 
+ 	host_task_size = get_top_address(envp);
+ 	/* reserve a few pages for the stubs */
+-	stub_start = host_task_size - STUB_SIZE;
++	stub_start = (host_task_size - STUB_SIZE) & ~(STUB_CODE_PAGES * PAGE_SIZE - 1);
+ 	host_task_size = stub_start;
+ 
+ 	/* Limit TASK_SIZE to what is addressable by the page table */
+--- a/arch/um/kernel/uml.lds.S
++++ b/arch/um/kernel/uml.lds.S
+@@ -49,6 +49,7 @@
+ 	__syscall_stub_start = .;
+ 	*(.__syscall_stub*)
+ 	__syscall_stub_end = .;
++	. = __syscall_stub_start + 4 * PAGE_SIZE;
+   }
+ 
+   /*
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -16,6 +16,7 @@
+ #include <mem.h>
+ #include <init.h>
+ #include <as-layout.h>
++#include <core-patch.h>
+ #include <mm_id.h>
+ #include <os.h>
+ #include <ptrace_user.h>
+@@ -322,6 +323,7 @@
+ 		return -errno;
+ 	child->sock = sockets[0];
+ 	data->spin_limit = uml_seccomp_spin_limit;
++	data->fast_enabled = uml_syscall_patch;
+ 	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
+ 	map(broker, addr, STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE,
+ 	    UM_PROT_READ | UM_PROT_WRITE, fd, offset);
+--- a/arch/um/os-Linux/skas/process.c
++++ b/arch/um/os-Linux/skas/process.c
+@@ -19,6 +19,7 @@
+ #include <sys/socket.h>
+ #include <asm/unistd.h>
+ #include <as-layout.h>
++#include <core-patch.h>
+ #include <init.h>
+ #include <kern_util.h>
+ #include <mem.h>
+@@ -331,6 +332,7 @@
+ 		 * never widen the filter when gpu_bridge is off. */
+ 		.gpu_async = uml_gpu_async_wait && uml_gpu_bridge,
+ 		.stub_start = STUB_START,
++		.syscall_patch = uml_syscall_patch && parallel_userspace,
+ 	};
+ 	int ret;
+ 
+@@ -609,6 +611,8 @@
+ 
+ 	while (1) {
+ 		struct mm_id *mm_id = current_mm_enter();
++
++		regs->fast_syscall = 0;
+ 
+ 		/*
+ 		 * At any given time, only one CPU thread can enter the
+@@ -695,7 +699,14 @@
+ 				panic("%s - Invalid siginfo offset from child", __func__);
+ 
+ 			si = &si_local;
+-			memcpy(si, &proc_data->sigstack[proc_data->si_offset], sizeof(*si));
++			if (proc_data->fast_active) {
++				regs->fast_syscall = 1;
++				memset(si, 0, sizeof(*si));
++				si->si_syscall = UPT_AX(regs);
++				uml_patch_count();
++			} else {
++				memcpy(si, &proc_data->sigstack[proc_data->si_offset], sizeof(*si));
++			}
+ 
+ 			regs->is_user = 1;
+ 
+@@ -813,6 +824,8 @@
+ 		current_mm_exit(mm_id);
+ 
+ 		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
++		if (sig == SIGILL && uml_patch_fault(regs))
++			sig = SIGSYS;
+ 
+ 		if (sig) {
+ 			switch (sig) {
+--- a/arch/x86/um/os-Linux/mcontext.c
++++ b/arch/x86/um/os-Linux/mcontext.c
+@@ -14,6 +14,7 @@
+ #include <sysdep/ptrace.h>
+ #include <sysdep/mcontext.h>
+ #include <arch.h>
++#include <core-patch.h>
+ 
+ void get_regs_from_mc(struct uml_pt_regs *regs, mcontext_t *mc)
+ {
+@@ -113,7 +114,16 @@
+ {
+ 	struct _fpstate *res;
+ 
+-	/* Assume floating point registers are on the same page */
++	if (data->fast_active) {
++        res = (void *)data + UML_FAST_FP;
++        *fp_size = res->sw_reserved.magic1 == FP_XSTATE_MAGIC1 ?
++            res->sw_reserved.extended_size - FP_XSTATE_MAGIC2_SIZE : sizeof(*res);
++        if (*fp_size < sizeof(*res) || *fp_size > UML_FAST_FP_MAX - FP_XSTATE_MAGIC2_SIZE)
++            return NULL;
++        return res;
++    }
++
++    /* Assume floating point registers are on the same page */
+ 	res = (void *)(((unsigned long)mcontext->fpregs &
+ 			(UM_KERN_PAGE_SIZE - 1)) +
+ 		       (unsigned long)&data->sigstack[0]);
+@@ -157,7 +167,8 @@
+ 	int fp_size, xstate_size;
+ 
+ 	/* mctx_offset is verified by wait_stub_done_seccomp */
+-	mcontext = (void *)&data->sigstack[data->mctx_offset];
++	mcontext = data->fast_active ? (void *)data + UML_FAST_MC :
++		(void *)&data->sigstack[data->mctx_offset];
+ 
+ 	get_regs_from_mc(regs, mcontext);
+ 
+@@ -215,12 +226,13 @@
+ 	int fp_size, xstate_size;
+ 
+ 	/* mctx_offset is verified by wait_stub_done_seccomp */
+-	mcontext = (void *)&data->sigstack[data->mctx_offset];
+-
+-	if ((unsigned long)mcontext < (unsigned long)data->sigstack ||
++	mcontext = data->fast_active ? (void *)data + UML_FAST_MC :
++		(void *)&data->sigstack[data->mctx_offset];
++
++	if (!data->fast_active && ((unsigned long)mcontext < (unsigned long)data->sigstack ||
+ 	    (unsigned long)mcontext >
+ 			(unsigned long) data->sigstack +
+-			sizeof(data->sigstack) - sizeof(*mcontext))
++			sizeof(data->sigstack) - sizeof(*mcontext)))
+ 		return -EINVAL;
+ 
+ 	get_mc_from_regs(regs, mcontext, single_stepping);
+@@ -262,5 +274,21 @@
+ 	}
+ #endif
+ 
++#ifdef __x86_64__
++    if (data->fast_enabled && !data->fast_active) {
++        ucontext_t *fast = (void *)data + UML_FAST_UC;
++        ucontext_t *original = (void *)mcontext - offsetof(ucontext_t, uc_mcontext);
++        if (xstate_size > UML_FAST_FP_MAX - FP_XSTATE_MAGIC2_SIZE)
++            return -ENOSPC;
++        _Static_assert(offsetof(ucontext_t, uc_mcontext) == 40, "fast ucontext layout");
++        _Static_assert(offsetof(ucontext_t, uc_sigmask) == 296, "fast signal mask layout");
++        memcpy(fast, original, 304);
++        fast->uc_mcontext.fpregs = (void *)((unsigned long)original->uc_stack.ss_sp + UML_FAST_FP);
++        memcpy((void *)data + UML_FAST_FP, xstate_stub, xstate_size);
++        *(__u32 *)((void *)data + UML_FAST_FP + xstate_size) = FP_XSTATE_MAGIC2;
++        data->fast_xfeatures = fpstate_stub->sw_reserved.magic1 == FP_XSTATE_MAGIC1 ?
++            fpstate_stub->sw_reserved.xfeatures : 0;
++    }
++#endif
+ 	return 0;
+ }
+--- a/arch/x86/um/shared/sysdep/ptrace.h
++++ b/arch/x86/um/shared/sysdep/ptrace.h
+@@ -51,6 +51,7 @@
+ 	struct faultinfo faultinfo;
+ 	long syscall;
+ 	int is_user;
++	int fast_syscall;
+ 
+ 	/* Dynamically sized FP registers (holds an XSTATE) */
+ 	unsigned long fp[];
+--- a/arch/x86/um/shared/sysdep/stub_64.h
++++ b/arch/x86/um/shared/sysdep/stub_64.h
+@@ -122,8 +122,8 @@
+ 		"andq %1, %0 ;"
+ 		"addq %2, %0 ;"
+ 		: "=a" (ret)
+-		: "g" (~(UM_KERN_PAGE_SIZE - 1)),
+-		  "g" (UM_KERN_PAGE_SIZE));
++		: "g" (~(STUB_CODE_PAGES * UM_KERN_PAGE_SIZE - 1)),
++		  "g" (STUB_CODE_PAGES * UM_KERN_PAGE_SIZE));
+ 
+ 	return (void *)ret;
+ }
+--- a/arch/x86/um/vdso/vma.c
++++ b/arch/x86/um/vdso/vma.c
+@@ -4,6 +4,7 @@
+  */
+ 
+ #include <linux/slab.h>
++#include <core-patch.h>
+ #include <linux/sched.h>
+ #include <linux/mm.h>
+ #include <asm/page.h>
+@@ -44,6 +45,8 @@
+ 		.pages = &um_vdso,
+ 	};
+ 
++	uml_patch_setup();
++
+ 	if (mmap_write_lock_killable(mm))
+ 		return -EINTR;
+ 

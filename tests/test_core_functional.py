@@ -50,6 +50,18 @@ class CoreFunctionalTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(AssertionError):
                 f.core_summary(json.dumps(incomplete), 'core_fpstate', 'state', 4096)
 
+    def test_rewrite_requires_enabled_path_and_every_semantic_result(self):
+        row = {'schema': 'hd.core-patch/1', 'enabled': True, 'sites': 32, 'calls': 131072,
+               'signals': 5, **{key: True for key in ('fork', 'exec_clean', 'file_clean',
+                   'ptrace', 'restart', 'long_form', 'discard_remap_write', 'verified')}}
+        f.core_summary(json.dumps(row), 'core_patch', 'rewrite', patch_enabled=True)
+        for key in row:
+            bad = {k: v for k, v in row.items() if k != key}
+            with self.subTest(key=key), self.assertRaises((AssertionError, KeyError)):
+                f.core_summary(json.dumps(bad), 'core_patch', 'rewrite', patch_enabled=True)
+        with self.assertRaises(AssertionError):
+            f.core_summary(json.dumps(row), 'core_patch', 'rewrite', patch_enabled=False)
+
     def test_registered_helpers_use_privileged_container_and_validate(self):
         checks = [row for row in f.CHECKS if row[0] in ('process.core_faults', 'process.core_fpstate')
                   or row[0].startswith('process.core_syscalls_')]

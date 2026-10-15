@@ -325,5 +325,23 @@
     "url": "https://passt.top/passt/snapshot/passt-2026_01_20.386b5f5.tar.gz",
     "sha256": "b378b36cc6d17988fd8efdc9e432495afc96787c3ee231aee55bc7e50c4edf6d",
     "purpose": "Evaluated network replacement; not enabled (namespace and fragment support gaps)"
+  },
+  "core_gvisor_reference": {
+    "version": "release-20261005.0",
+    "commit": "97e8e896904cb364319cd9758241d3f0bd27a6f4",
+    "url": "https://codeload.github.com/google/gvisor/tar.gz/97e8e896904cb364319cd9758241d3f0bd27a6f4",
+    "sha256": "c5dc39958098af75bfdf25ccab48e4ea41034bdc7f2078a4d3be84d2f235e2bd",
+    "purpose": "Source reference for systrap syscall-site rewriting; not linked into HardDinD"
+  },
+  "core_strace": {
+    "version": "6.13",
+    "url": "https://strace.io/files/6.13/strace-6.13.tar.xz",
+    "sha256": "e209daf0ee038ca5adcc4c277e9273b4d51f46a2ff86da575d36742ac3508a17",
+    "purpose": "Static strace -f correctness gate for patched syscall sites"
+  },
+  "core_go_build": {
+    "version": "go1.26.8",
+    "url": "https://go.dev/dl/go1.26.8.linux-amd64.tar.gz",
+    "sha256": "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b"
   }
 }
