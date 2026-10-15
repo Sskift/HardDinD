@@ -1123,6 +1123,10 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
         require([(s['mode'], s['threads']) for s in samples] == expected, row)
         if patch_enabled is not None:
             require(all(s['patch_enabled'] is patch_enabled for s in samples), row)
+        if patch_enabled:
+            require(all(type(s['profile'].get('patch_fast_calls')) is int
+                        and s['profile']['patch_fast_calls'] >= count * s['threads'] - 1
+                        for s in samples), 'syscall loop did not exercise patched entries')
         require(all(s['verified'] is True and s['operations'] == count * s['threads']
                     and isinstance(s['ns_per_op'], (float, int)) and 0 < s['ns_per_op'] < float('inf')
                     for s in samples), row)

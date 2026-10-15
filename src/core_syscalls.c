@@ -59,6 +59,13 @@ static void report(const char *mode, unsigned int threads, const struct sample *
     CHECK(s->ns && s->operations && s->first.n == s->last.n);
     CHECK(s->first.enabled == s->last.enabled && s->first.khz == s->last.khz);
     CHECK(s->first.patch_enabled == s->last.patch_enabled);
+    if (s->last.patch_enabled) {
+        unsigned int i;
+        for (i = 0; i < s->first.n; i++)
+            if (!strcmp(s->first.names[i], "patch_fast_calls")) break;
+        CHECK(i < s->first.n && s->last.values[i] >= s->first.values[i]);
+        CHECK(s->last.values[i] - s->first.values[i] >= s->operations - 1);
+    }
     printf("{\"mode\":\"%s\",\"threads\":%u,\"operations\":%" PRIu64 ",\"ns_per_op\":%.3f,"
            "\"verified\":true,\"profile_enabled\":%d,\"patch_enabled\":%s,\"tsc_khz\":%" PRIu64 ",\"profile\":{",
            mode, threads, s->operations, (double)s->ns / s->operations, s->last.enabled, s->last.patch_enabled ? "true" : "false", s->last.khz);
@@ -77,7 +84,8 @@ static void barrier(pthread_barrier_t *b) {
 static long raw_getpid(void) {
 #ifdef __x86_64__
     long result;
-    __asm__ volatile("mov $39, %%eax; syscall" : "=a"(result) : : "rcx", "r11", "memory");
+    __asm__ volatile(".rept 14; nop; .endr; mov $39, %%eax; syscall"
+                     : "=a"(result) : : "rcx", "r11", "memory");
     return result;
 #else
     return syscall(SYS_getpid);

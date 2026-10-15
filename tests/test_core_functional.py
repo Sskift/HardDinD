@@ -36,6 +36,18 @@ class CoreFunctionalTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self.validate(rows[:-1], 'threads')
 
+    def test_enabled_syscalls_require_fast_entries(self):
+        rows = [dict(self.sample(mode), patch_enabled=True, profile={'patch_fast_calls': 255})
+                for mode in ('seccomp_allow', 'seccomp_errno')]
+        def validate():
+            f.core_summary(json.dumps({'schema': 'hd.core-syscalls/1', 'samples': rows}),
+                           'core_syscalls', 'filters', patch_enabled=True)
+        validate()
+        for value in ({}, {'patch_fast_calls': 254}, {'patch_fast_calls': True}):
+            rows[1]['profile'] = value
+            with self.subTest(value=value), self.assertRaises(AssertionError):
+                validate()
+
     def test_fault_and_fp_results(self):
         row = {'schema': 'hd.core/1', 'mode': 'semantics', 'verified': True}
         f.core_summary('progress\n' + json.dumps(row), 'core_faults', 'semantics')
