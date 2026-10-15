@@ -12,6 +12,59 @@ from pipeline import config
 
 
 class CorePatchTests(unittest.TestCase):
+    def test_runner_wait_retries_interrupts_and_checks_liveness(self):
+        compiler = shutil.which('cc')
+        if compiler is None:
+            self.skipTest('C compiler unavailable')
+        patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
+        part = patch.split('+++ b/arch/um/os-Linux/skas/process.c\n')[1].split('--- a/')[0]
+        code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
+        body = code.split('static int stub_exited(', 1)[1].split('\n}', 1)[0]
+        source = r'''
+#include <assert.h>
+#include <errno.h>
+#include <signal.h>
+#include <sys/wait.h>
+#ifndef __WALL
+#define __WALL 0x40000000
+#endif
+#define CATCH_EINTR(x) do { x; } while (ret < 0 && errno == EINTR)
+static int interrupts, reaped, live, exited, waits, probes;
+static int test_waitid(int kind, int pid, siginfo_t *state, int flags) {
+    assert(kind == P_PID && pid == 42 && flags == (WEXITED | WNOHANG | WNOWAIT | __WALL));
+    waits++;
+    if (interrupts) { interrupts--; errno = EINTR; return -1; }
+    if (reaped) { errno = ECHILD; return -1; }
+    state->si_pid = exited ? pid : 0;
+    return 0;
+}
+static int test_kill(int pid, int sig) {
+    assert(pid == 42 && !sig);
+    probes++;
+    if (live) return 0;
+    errno = ESRCH; return -1;
+}
+#define waitid test_waitid
+#define kill test_kill
+static int stub_exited(''' + body + r'''
+}
+int main(void) {
+    for (int phase = 0; phase < 4; phase++) {
+        siginfo_t state = {0};
+        interrupts = 3; reaped = phase >= 2; live = phase == 2; exited = phase == 1;
+        waits = probes = 0;
+        assert(stub_exited(42, &state) == (phase == 1 || phase == 3));
+        assert(waits == 4 && probes == reaped);
+    }
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as directory:
+            path = pathlib.Path(directory)
+            (path / 'test.c').write_text(source)
+            subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', path / 'test.c',
+                            '-o', path / 'test'], check=True)
+            subprocess.run([path / 'test'], check=True, timeout=10)
+
     def test_runner_gettid_does_not_bypass_allowlist(self):
         compiler = shutil.which('cc')
         if compiler is None:

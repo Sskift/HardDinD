@@ -161,7 +161,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,465 @@
+@@ -0,0 +1,487 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -184,6 +184,8 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +int uml_syscall_patch;
 +static atomic64_t patched;
 +static DEFINE_PER_CPU(unsigned long, patch_calls);
++struct patch_stats { unsigned long sigsys, excluded, cached, pattern, boundary, debug; };
++static DEFINE_PER_CPU(struct patch_stats, patch_stats);
 +extern char __syscall_stub_start[], stub_fast_entry[];
 +
 +static int __init patch_setup(char *s)
@@ -323,19 +325,29 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +	u32 imm;
 +	unsigned int len = 7;
 +
-+    if (!uml_syscall_patch || r->fast_syscall || !parallel_userspace || !mm || !eligible(nr) ||
-+        end < UML_PATCH_END + sizeof(old) || end >= TASK_SIZE)
++    if (!parallel_userspace || !mm || r->fast_syscall)
 +        return;
-+    if (READ_ONCE(mm->context.patch_miss[(end >> 3) & 63]) == end)
++    this_cpu_inc(patch_stats.sigsys);
++    if (!uml_syscall_patch || end < UML_PATCH_END + sizeof(old) || end >= TASK_SIZE)
 +        return;
++    if (!eligible(nr)) {
++        this_cpu_inc(patch_stats.excluded);
++        return;
++    }
++    if (READ_ONCE(mm->context.patch_miss[(end >> 3) & 63]) == end) {
++        this_cpu_inc(patch_stats.cached);
++        return;
++    }
 +    WRITE_ONCE(mm->context.patch_miss[(end >> 3) & 63], end);
 +    /* A seven-byte site may begin at a VMA boundary: do not read before it. */
 +    if (access_process_vm(current, end - 7, old + 2, 7, FOLL_FORCE) != 7)
 +        return;
 +    if (!uml_patch_pattern(old + 2, 7, nr)) {
 +        if (access_process_vm(current, end - 9, old, 9, FOLL_FORCE) != 9 ||
-+            !uml_patch_pattern(old, 9, nr))
++            !uml_patch_pattern(old, 9, nr)) {
++            this_cpu_inc(patch_stats.pattern);
 +            return;
++        }
 +        len = 9;
 +    }
 +    imm = nr;
@@ -343,8 +355,10 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +	if (offset_in_page(addr) + len > PAGE_SIZE)
 +		return;
 +	mutex_lock(&mm->context.patch_lock);
-+	if (mm->context.patch_debug)
++	if (mm->context.patch_debug) {
++		this_cpu_inc(patch_stats.debug);
 +		goto unlock;
++	}
 +	if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
 +	    h.magic != PATCH_MAGIC || h.next < 1 || h.next >= (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
 +		goto unlock;
@@ -385,6 +399,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +	bytes = kmap_local_page(text);
 +	memcpy(window + split, bytes + (offset + split - before), before + len - split);
 +	if (!uml_patch_boundary(window, before, len)) {
++		this_cpu_inc(patch_stats.boundary);
 +		kunmap_local(bytes);
 +		resume_mm(mm);
 +		goto out;
@@ -618,6 +633,13 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +		calls += READ_ONCE(per_cpu(patch_calls, cpu));
 +	seq_printf(m, "enabled %d\npatched %lld\nfast_calls %llu\n", uml_syscall_patch,
 +		   atomic64_read(&patched), calls);
++#define SHOW(field) do { \
++    u64 total = 0; \
++    for_each_possible_cpu(cpu) total += READ_ONCE(per_cpu(patch_stats, cpu).field); \
++    seq_printf(m, #field " %llu\n", total); \
++} while (0)
++    SHOW(sigsys); SHOW(excluded); SHOW(cached); SHOW(pattern); SHOW(boundary); SHOW(debug);
++#undef SHOW
 +	return 0;
 +}
 +
@@ -1093,6 +1115,28 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
  	map(broker, addr, STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE,
  	    UM_PROT_READ | UM_PROT_WRITE, fd, offset);
+@@ -339,12 +341,20 @@
+ 		goto fail;
+ 	child->pid = parent->clone_pid;
+ 	if (child->pid < 2) {
++		printk(UM_KERN_ERR "UML runner clone missing: broker=%d clone=%ld err=%ld batch=%d phase=%u\n",
++		       broker->pid, parent->clone_pid, parent->err,
++		       parent->syscall_data_len, stub_futex_phase(&parent->futex));
+ 		err = -ECHILD;
+ 		goto fail;
+ 	}
+ 	close(sockets[1]);
+ 	wait_stub_done_seccomp(child, 1, 1);
+-	return child->pid > 0 && data->err == 0 ? 0 : -ECHILD;
++	if (child->pid > 0 && data->err == 0)
++		return 0;
++	printk(UM_KERN_ERR "UML runner startup failed: broker=%d clone=%ld child=%d err=%ld signal=%d phase=%u\n",
++	       broker->pid, parent->clone_pid, child->pid, data->err,
++	       data->signal, stub_futex_phase(&data->futex));
++	return data->err < 0 ? data->err : -ECHILD;
+ fail:
+ 	close(sockets[0]);
+ 	close(sockets[1]);
 --- a/arch/um/os-Linux/skas/process.c
 +++ b/arch/um/os-Linux/skas/process.c
 @@ -19,6 +19,7 @@
@@ -1103,18 +1147,43 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  #include <init.h>
  #include <kern_util.h>
  #include <mem.h>
-@@ -232,6 +233,10 @@
- 						    WEXITED | WNOHANG | WNOWAIT);
- 				if ((status == 0 && state.si_pid) ||
- 				    (status < 0 && errno == ECHILD)) {
-+					printk(UM_KERN_ERR "UML runner died during handoff: pid=%d waitid=%d errno=%d code=%d status=%d signal=%d fast=%u active=%u\n",
-+					       mm_idp->pid, status, status < 0 ? errno : 0,
-+					       state.si_code, state.si_status, data->signal,
-+					       data->fast_enabled, data->fast_active);
+@@ -147,6 +148,20 @@
+ 	fatal_sigsegv();
+ }
+ 
++/* ECHILD is a wait relationship, not a liveness result. A racing reaper
++ * may consume status before publishing pid=-1; never kill a live runner. */
++static int stub_exited(int pid, siginfo_t *state)
++{
++    int ret;
++    CATCH_EINTR(ret = waitid(P_PID, pid, state, WEXITED | WNOHANG | WNOWAIT | __WALL));
++    if (!ret)
++        return state->si_pid != 0;
++    if (errno != ECHILD)
++        return 0;
++    CATCH_EINTR(ret = kill(pid, 0));
++    return ret < 0 && errno == ESRCH;
++}
++
+ void wait_stub_done_seccomp(struct mm_id *mm_idp, int running, int wait_sigsys)
+ {
+ 	struct stub_data *data = (void *)mm_idp->stack;
+@@ -228,10 +243,10 @@
+ 				      NULL, 0);
+ 			if (ret < 0 && errno == ETIMEDOUT && parallel_userspace && wait_sigsys) {
+ 				siginfo_t state = {};
+-				int status = waitid(P_PID, mm_idp->pid, &state,
+-						    WEXITED | WNOHANG | WNOWAIT);
+-				if ((status == 0 && state.si_pid) ||
+-				    (status < 0 && errno == ECHILD)) {
++				if (stub_exited(mm_idp->pid, &state)) {
++					printk(UM_KERN_ERR "UML runner died during handoff: pid=%d errno=%d code=%d status=%d signal=%d fast=%u active=%u\n",
++					       mm_idp->pid, errno, state.si_code, state.si_status,
++					       data->signal, data->fast_enabled, data->fast_active);
  					mm_idp->pid = -1;
  					goto out_kill;
  				}
-@@ -331,6 +336,7 @@
+@@ -331,6 +346,7 @@
  		 * never widen the filter when gpu_bridge is off. */
  		.gpu_async = uml_gpu_async_wait && uml_gpu_bridge,
  		.stub_start = STUB_START,
@@ -1122,7 +1191,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  	};
  	int ret;
  
-@@ -609,6 +615,8 @@
+@@ -609,6 +625,8 @@
  
  	while (1) {
  		struct mm_id *mm_id = current_mm_enter();
@@ -1131,7 +1200,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  
  		/*
  		 * At any given time, only one CPU thread can enter the
-@@ -695,7 +703,14 @@
+@@ -695,7 +713,14 @@
  				panic("%s - Invalid siginfo offset from child", __func__);
  
  			si = &si_local;
@@ -1147,7 +1216,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  
  			regs->is_user = 1;
  
-@@ -813,6 +828,8 @@
+@@ -813,6 +838,8 @@
  		current_mm_exit(mm_id);
  
  		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */

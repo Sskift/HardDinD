@@ -1,5 +1,6 @@
 """Docker command effects, driven by the outer stock CLI."""
 import contextlib
+import concurrent.futures
 import datetime
 import hashlib
 import json
@@ -1156,6 +1157,40 @@ def core_patch_semantic(c):
     output = c.output('/core_patch', image=HELPERS, opts=('--privileged',))
     enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
     core_summary(output, 'core_patch', 'rewrite', patch_enabled=enabled)
+
+
+@check('process.core_startup_pressure', 'run|container exec', helpers=True, timeout=240)
+def core_startup_pressure(c):
+    from pipeline.runs import throttle
+    observer = c.container('sleep', '240', image=HELPERS, opts=('--privileged',), detached=True)
+    def counters():
+        output = c.d('exec', observer, 'sh', '-c',
+                     'if test -r /proc/uml_syscall_patch; then cat /proc/uml_syscall_patch; fi')
+        return {k: int(v) for k, v in (line.split() for line in output.splitlines())}
+    before, cpu_before = counters(), throttle()
+    names = [c.object('container', str(n)) for n in range(32)]
+    burn = subprocess.Popen([c.suite.bins / 'core_pressure', '30'], stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True)
+    c.processes.append(burn)
+    require(re.fullmatch(r'ready [1-9][0-9]*\n', burn.stdout.readline()), 'host pressure did not start')
+    def run(name):
+        result = c.ctx.docker('run', '--rm', '--name', name, '--label', c.label,
+                              BASE, 'sh', '-ec', 'for n in 1 2 3 4; do /bin/true; done; echo startup-ok',
+                              timeout=c.remaining(120))
+        return name, result
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        for name, result in pool.map(run, names):
+            c.write(name + '\n' + result.stdout + result.stderr)
+            require(result.returncode == 0 and result.stdout.strip() == 'startup-ok', 'runner startup failed')
+    output, error = burn.communicate(timeout=c.remaining(40))
+    require(burn.returncode == 0 and not error, 'host pressure failed: ' + error)
+    row = json.loads(output)
+    require(row['schema'] == 'hd.core-pressure/1' and row['verified'] is True and row['threads'] > 0, row)
+    after, cpu_after = counters(), throttle()
+    c.write(json.dumps({'pressure': row, 'throttle_before': cpu_before, 'throttle_after': cpu_after,
+                       'syscalls': {k: after[k] - v for k, v in before.items() if k in after and k != 'enabled'}}))
+    require(cpu_before and cpu_after and cpu_after[1] > cpu_before[1],
+            'host quota pressure was not established')
 
 
 @check('process.core_compat', 'run|container exec', helpers=True, timeout=900)
