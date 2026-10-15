@@ -38,7 +38,7 @@ guest 的上游 DNS：外层有可路由的解析器就用外层的；只有回�
 2. **并行执行稳定化**（0003 起）：并发 fork/exec 下曾丢失宿主进程，根因未证实修复。
 3. **缺页批量映射**：`kernel/candidates/anon-faultaround.patch`，降低 fork/exec 和 mmap 开销。
 4. **系统调用改写**：参考 gVisor systrap，把 `mov sysno,%eax; syscall` 改写为跳到 trampoline，省掉信号投递和 sigreturn。
-5. **网络后端**：评估经 vhost-user 接入的 passt，替换 libslirp。
+5. **网络后端**（进行中）：guest 网卡与后端之间用 vnet 头传 GSO 大段和校验和卸载（补丁 0034），slirp 直接生成 TCP GSO 段，发布端口吞吐 0.17→0.65、请求响应 0.20→0.36、出站 0.03→0.18。容器之间的流量完全在 UML 内核里，受执行核心限制。下一步评估 passt：它可在运行时增删转发（pesto），但缺 IPv4 分片重组、沙箱依赖 namespace，需要补丁。
 6. **GPU**（次要）：控制通道和映射已在四卡上完成真实计算与校验；还缺 `--gpus all` 接入、并发上下文、显存生命周期和性能。辅助进程以 CLONE_VM 共享 guest 地址空间，ioctl 内嵌指针天然有效；NVIDIA ABI 可参考 gVisor nvproxy 中相邻驱动版本的定义。
 
 ## 安全边界
