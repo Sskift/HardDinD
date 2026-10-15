@@ -59,6 +59,8 @@ def parse_sample(output):
 
 
 def metric_budget(name, quick):
+    if name == 'fs.bind_metadata':
+        return 120 if quick else 900
     if name in ('app.compile', 'app.untar'):
         return 240 if quick else 600
     if name.startswith('disk.'):
@@ -273,8 +275,9 @@ class Workloads:
             native_dir, guest_dir = directory / 'native', directory / 'guest'
             native_dir.mkdir(); guest_dir.mkdir()
             command = ['/bench/workload', name, str(int(self.ctx.quick))]
+            timeout = 120 if self.ctx.quick else 240
             yield (lambda: self.native(*command, workdir=native_dir)), (
-                lambda: self.guest(*command, '--workdir', '/bind', options=['-v', f'{guest_dir}:/bind']))
+                lambda: self.guest(*command, '--workdir', '/bind', options=['-v', f'{guest_dir}:/bind'], timeout=timeout))
         finally:
             shutil.rmtree(directory)
 

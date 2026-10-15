@@ -236,6 +236,8 @@ class RunnerTests(unittest.TestCase):
             runner.deadline = 0
             runner.begin_metric('app.compile')
             self.assertGreater(runner.timeout(1000), 239)
+            ctx.quick = False; runner.begin_metric('fs.bind_metadata')
+            self.assertGreater(runner.timeout(1000), 899)
 
     def test_cleanup_missing_allowed_only_for_uncreated_resource(self):
         with tempfile.TemporaryDirectory() as tmp:
