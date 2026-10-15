@@ -1,0 +1,41 @@
+{
+  "1": {
+    "reports": [
+      "wf1-lifecycle"
+    ],
+    "groups": 70,
+    "archive_sha256": "37f4f5319d11ada27659463a17393a08a5d8706843e231d4c076724c74337efc"
+  },
+  "2": {
+    "reports": [
+      "wf2-build",
+      "wf2-image",
+      "wf2-lifecycle",
+      "wf2-net",
+      "wf2-volume"
+    ],
+    "groups": 326,
+    "archive_sha256": "db7320036fbe7abb7ac586628fb590039781143c4ec48a2c140f97d53b2abd51"
+  },
+  "3": {
+    "reports": [
+      "wf3-build"
+    ],
+    "groups": 61,
+    "archive_sha256": "a670cc24e4560e7d95fe457cd3f17df52f2185e2b86b461c49b64ae8d8db9491"
+  },
+  "4": {
+    "reports": [
+      "wf4-net"
+    ],
+    "groups": 61,
+    "archive_sha256": "f7b85c1984d1720dd8c58923a89c5112f57ae9dfe460c35f358b67d827b16136"
+  },
+  "5": {
+    "reports": [
+      "wf5-net"
+    ],
+    "groups": 61,
+    "archive_sha256": "31e22bba44ecfd4f1e88dae6a7c123fca8da8ed6f531eb66185f41c98f72c8c7"
+  }
+}
