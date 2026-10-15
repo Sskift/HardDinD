@@ -389,6 +389,7 @@ class RunnerTests(unittest.TestCase):
                 with self.subTest(metric=metric):
                     runner = bench.Workloads(ctx); runner.image = 'hd-bench:test'
                     runner.native_server = mock.Mock(return_value=contextlib.nullcontext(2345))
+                    runner.native_proxy = mock.Mock(return_value=contextlib.nullcontext(5432))
                     runner.container = mock.Mock(return_value=contextlib.nullcontext('server'))
                     runner.guest_server_ready = mock.Mock(); runner.cleanup = mock.Mock()
                     runner.native = mock.Mock(); runner.guest = mock.Mock()
@@ -401,8 +402,10 @@ class RunnerTests(unittest.TestCase):
                     runner.docker = mock.Mock(side_effect=docker)
                     with runner.network_samples(metric) as (native, guest):
                         native(); guest()
-                    self.assertEqual(runner.native.call_args_list[0].args[2:4], ('127.0.0.1', '2345'))
+                    native_port = '5432' if metric.startswith('net.publish') else '2345'
+                    self.assertEqual(runner.native.call_args_list[0].args[2:4], ('127.0.0.1', native_port))
                     if metric.startswith('net.publish'):
+                        runner.native_proxy.assert_called_once_with(2345)
                         self.assertEqual(runner.native.call_args.args[2:4], ('127.0.0.1', '4321'))
                         self.assertEqual(runner.container.call_args.args[0], ['-p', '127.0.0.1::9000'])
                     elif metric.startswith('net.egress'):

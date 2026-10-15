@@ -247,7 +247,8 @@ def serve(instance):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
         with (instance / f'network-{run}.log').open('x') as log:
             helper = subprocess.Popen([config['network_backend'], str(helper_end.fileno()), str(ctl),
-                                       str(config['network_batch']), str(config['mtu'])],
+                                       str(config['network_batch']), str(config['mtu']),
+                                       *(['vnet'] if config.get('net_vnet') else [])],
                                       pass_fds=(helper_end.fileno(),), stdout=log, stderr=subprocess.STDOUT,
                                       start_new_session=True, preexec_fn=guest_setup)
         helper_end.close()
@@ -270,12 +271,13 @@ def serve(instance):
         uml_dir.mkdir(exist_ok=True)
         tmp = instance / 'tmp'; tmp.mkdir(exist_ok=True)
         mtu = config['mtu']
+        vnet = int(bool(config.get('net_vnet')))
         cmd = [config['kernel'], f'umid={run}', 'uml_dir=uml/', f"mem={config['memory']}", f"ncpus={config['cpus']}",
                *CORE_ARGS,
                f"ubd0={instance / 'root.cow'},{config['disk']}", 'root=/dev/ubda', 'rw',
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
                f"harddind_dns={config['dns']}", f'harddind_mtu={mtu}',
-               f'vec0:transport=fd,fd={guest_end.fileno()},gro=0,mtu={mtu},mac=02:00:00:00:02:15',
+               f'vec0:transport=fd,fd={guest_end.fileno()},gro={vnet},vnet_hdr={vnet},mtu={mtu},mac=02:00:00:00:02:15',
                *config['kernel_args']]
         for _, path, share, _ in filesystems:
             cmd += [f'virtio_uml.device={path}:26', 'harddind_share=' + share_argument(share)]
@@ -398,7 +400,7 @@ def serve(instance):
 
 def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cpus=4, memory='4G',
           cpuset=None, kernel_args=(), shares=(), share_options=None, publish_ports=True,
-          mtu=1500, dns=None, network_batch=1, boot_timeout=180, fresh=True, hold_measure=False):
+          mtu=1500, dns=None, network_batch=1, net_vnet=False, boot_timeout=180, fresh=True, hold_measure=False):
     """Boot a guest in `instance` and wait until dockerd answers.
 
     fresh=True requires a new instance; fresh=False reboots on the existing COW disk."""
@@ -418,7 +420,7 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'client': str(client), 'virtiofsd': str(virtiofsd) if virtiofsd else None,
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
-              'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'boot_timeout': boot_timeout,
+              'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'net_vnet': net_vnet, 'boot_timeout': boot_timeout,
               'hold_measure': hold_measure}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]

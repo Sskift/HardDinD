@@ -14,6 +14,7 @@ import re
 import selectors
 import shutil
 import signal
+import socket
 import stat
 import statistics
 import subprocess
@@ -392,6 +393,38 @@ class Workloads:
             proc.stdout.close(); stderr.seek(0)
             self.record(argv, stderr=stderr.read(), returncode=proc.returncode); stderr.close()
 
+    @contextlib.contextmanager
+    def native_proxy(self, target_port):
+        """Native Docker's path for a loopback client to a published port: docker-proxy.
+
+        dockerd runs it with a pre-bound listener on fd 4 and a status pipe on fd 3."""
+        binary = build.moby() / 'docker-proxy'
+        listener = socket.socket(); listener.bind(('127.0.0.1', 0)); listener.listen(128)
+        status_r, status_w = os.pipe()
+        argv = [str(binary), '-proto', 'tcp', '-host-ip', '127.0.0.1', '-host-port', str(listener.getsockname()[1]),
+                '-container-ip', '127.0.0.1', '-container-port', str(target_port), '-use-listen-fd']
+        def setup():
+            os.sched_setaffinity(0, self.cpus)
+            status, listen = os.dup(status_w), os.dup(listener.fileno())  # either may already be 3 or 4
+            os.dup2(status, 3); os.dup2(listen, 4)
+        # dup2 clears close-on-exec on 3 and 4; every other descriptor Python opened has
+        # it set, so close_fds=False leaks nothing (close_fds would run after preexec_fn).
+        proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                text=True, start_new_session=True, preexec_fn=setup, close_fds=False)
+        os.close(status_w)
+        try:
+            with os.fdopen(status_r) as status:
+                line = status.readline().strip()
+            if line != '0':
+                raise RuntimeError(f'docker-proxy failed to start: {line} {proc.stderr.read() if proc.poll() is not None else ""}')
+            yield listener.getsockname()[1]
+        finally:
+            listener.close()
+            if proc.poll() is None:
+                proc.terminate()
+            proc.wait(timeout=5)
+            self.record(argv, stderr=proc.stderr.read(), returncode=proc.returncode); proc.stderr.close()
+
     def guest_server_ready(self, name):
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
@@ -409,7 +442,10 @@ class Workloads:
         seconds = '0.2' if self.ctx.quick else '1.5'
         with contextlib.ExitStack() as stack:
             native_port = stack.enter_context(self.native_server())
-            native = lambda: self.native('/bench/network', 'client', '127.0.0.1', str(native_port), mode, seconds)
+            # Published ports on native Docker go through docker-proxy for loopback clients.
+            client_port = (stack.enter_context(self.native_proxy(native_port)) if name.startswith('net.publish')
+                           else native_port)
+            native = lambda: self.native('/bench/network', 'client', '127.0.0.1', str(client_port), mode, seconds)
             if name.startswith('net.egress'):
                 guest = lambda: self.guest('/bench/network', 'client', '10.0.2.2', str(native_port), mode, seconds)
             else:

@@ -153,6 +153,8 @@ def instance_options(artifacts, cpuset=None, kernel_args=(), shares=(), cpus=Non
         'memory': memory or config.GUEST_MEMORY, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
         'shares': list(shares),
         'share_options': {'posix_locks': True} if shares else None,
+        # The vnet link (GSO/checksum offload, batched backend I/O) needs the kernel candidate.
+        **({'net_vnet': True, 'network_batch': 16} if 'net-fd-vnet' in artifacts.get('candidates', []) else {}),
     }
 
 

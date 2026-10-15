@@ -62,7 +62,7 @@ run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 
 ### 原生基线
 
 - 负载类指标：同一个基准镜像的 rootfs 在外层容器里解开，用 `chroot` 直接运行，与 guest 里 `docker run` 运行的是同一份二进制。两边绑定同样的宿主 CPU：每次运行开始时从 `/proc/stat` 采样，在同一 CPU 插槽内选最空闲的 4 个物理核（`HD_BENCH_CPUS` 可指定固定列表），记录在 `summary.json` 的 `bench_cpus`。按 原生/guest 交替成对采样，比值取各对比值的中位数（同一对经历相同的宿主负载，可抵消漂移），评分表同时列出每对比值的范围以显示噪声。
-- 网络：原生用回环；guest 分别测外层→发布端口、容器→外层、容器↔容器。
+- 网络：guest 分别测外层→发布端口、容器→外层、容器↔容器。原生对照取原生 Docker 在同一场景下走的路径：外层回环客户端访问发布端口时，原生 Docker 默认由 docker-proxy 转发，所以 `net.publish_*` 的原生侧是 客户端→docker-proxy（同一份固定 Moby 构建）→服务端；容器出站和容器之间在原生 Docker 里是内核 veth/bridge 路径，原生侧直接用回环。
 - Docker 控制面（run、exec、构建缓存等）：Starpub 上没有同机原生 Docker，暂用 `targets.json` 里的参考秒数（服务器上原生 Docker 29 的典型值）。有可用的原生 Docker 主机后再替换。
 
 Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持有 `measure` 排它锁，与其他测试、构建不并行；仍应关注评分表里的成对范围，范围很宽时重测，不要据此下结论。
