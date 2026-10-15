@@ -443,6 +443,22 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 -       "STUB code must not be larger than one page");
 +ASSERT(__syscall_stub_end - __syscall_stub_start <= 4 * PAGE_SIZE,
 +       "STUB code must fit its four mapped pages");
+--- a/arch/um/kernel/physmem.c
++++ b/arch/um/kernel/physmem.c
+@@ -88,7 +88,12 @@
+ 	 * from physmem_fd, so it needs to be written out there.
+ 	 */
+ 	os_seek_file(physmem_fd, __pa(__syscall_stub_start));
+-	os_write_file(physmem_fd, __syscall_stub_start, PAGE_SIZE);
++	err = os_write_file(physmem_fd, __syscall_stub_start,
++                            STUB_CODE_PAGES * PAGE_SIZE);
++    if (err != STUB_CODE_PAGES * PAGE_SIZE) {
++        os_warn("Unable to populate stub code pages: %d\n", err);
++        exit(1);
++    }
+ 
+ 	memblock_add(__pa(start), len);
+ 	memblock_reserve(__pa(start), reserve);
 --- a/arch/um/kernel/skas/mmu.c
 +++ b/arch/um/kernel/skas/mmu.c
 @@ -84,7 +84,7 @@
