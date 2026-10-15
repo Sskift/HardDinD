@@ -17,7 +17,7 @@ git add -A && git commit && git push        # 提交改动和它的评分
 | 位置 | 内容 |
 | --- | --- |
 | 本机仓库 | 源码、补丁、测试定义、`results/runs/` 中的小型摘要 |
-| `starpub-root:/root/harddind-rebuild/hd/src` | `./hd sync` 同步的源码（含 `.hd-revision.json`，记录 git 版本和是否有未提交改动） |
+| `starpub-root:/root/harddind-rebuild/hd/src/<checkout>` | `./hd sync` 同步的源码，每个 checkout/worktree（按目录名）一份，互不覆盖；含 `.hd-revision.json`，记录 git 版本和是否有未提交改动 |
 | `…/hd/work` | 构建暂存：下载缓存、内核源码与目标文件、Go/Rust 工具链 |
 | `…/hd/store/<kind>/<key>` | 构建产物。key 是所有输入的哈希；完成的条目不再修改，输入不变就直接复用 |
 | `…/hd/runs/<run-id>` | 每次运行的原始日志、实例日志、`summary.json`、`scorecard.md` |

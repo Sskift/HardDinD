@@ -19,6 +19,10 @@ from pipeline import config
 
 REPO = config.REPO
 RSYNC_EXCLUDES = ['.git/', '.work/', '__pycache__/', '*.pyc', '/results/runs/']
+# Each checkout (worktree) syncs to its own remote directory; store, runs and
+# locks are shared, so parallel agents never overwrite each other's sources.
+CHECKOUT = os.environ.get('HD_CHECKOUT') or ''.join(c if c.isalnum() or c in '-_' else '-' for c in REPO.name)
+REMOTE_SRC = f'{config.REMOTE_ROOT}/src/{CHECKOUT}'
 
 
 # ---------------------------------------------------------------- local side
@@ -44,16 +48,16 @@ def cmd_sync(_a=None):
            'synced_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
     (REPO / '.hd-revision.json').write_text(json.dumps(rev, indent=2) + '\n')
     cmd = ['rsync', '-az', '--delete', *[f'--exclude={e}' for e in RSYNC_EXCLUDES], f'{REPO}/',
-           f'{config.REMOTE}:{config.REMOTE_ROOT}/src/']
-    subprocess.run(['ssh', config.REMOTE, f'mkdir -p {config.REMOTE_ROOT}/src'], check=True)
+           f'{config.REMOTE}:{REMOTE_SRC}/']
+    subprocess.run(['ssh', config.REMOTE, f'mkdir -p {REMOTE_SRC}'], check=True)
     subprocess.run(cmd, check=True)
-    print(f"synced {rev['git'][:12]}{' (dirty)' if rev['dirty'] else ''} -> {config.REMOTE}:{config.REMOTE_ROOT}/src")
+    print(f"synced {rev['git'][:12]}{' (dirty)' if rev['dirty'] else ''} -> {config.REMOTE}:{REMOTE_SRC}")
 
 
 def cmd_remote(a):
     cmd_sync()
     args = ' '.join(shlex.quote(x) for x in a.args)
-    sys.exit(ssh(f'cd {config.REMOTE_ROOT}/src && ./hd {args}', check=False).returncode)
+    sys.exit(ssh(f'cd {REMOTE_SRC} && ./hd {args}', check=False).returncode)
 
 
 def cmd_job(a):
@@ -63,7 +67,7 @@ def cmd_job(a):
     cmd_sync()
     args = ' '.join(shlex.quote(x) for x in a.args)
     root, name = config.REMOTE_ROOT, a.name
-    inner = f'cd {root}/src && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
+    inner = f'cd {REMOTE_SRC} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
     ssh(f'''set -e
 mkdir -p {root}/logs
 if tmux has-session -t hd-{name} 2>/dev/null; then echo "job {name} is still running" >&2; exit 3; fi
