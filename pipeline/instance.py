@@ -27,7 +27,10 @@ from pipeline.guest_cleanup import cleanup_group, group_members
 from pipeline.port_driver import PortDriver
 
 # Boot parameters of the default execution core (see kernel/series).
-CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1')
+# Guest RAM in a memfd (shmem): a file under TMPDIR would make the host write
+# guest memory back to disk and stall exit in inode writeback.
+CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
+             'memfd_ram=1')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
 

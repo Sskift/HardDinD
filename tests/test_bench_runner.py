@@ -264,59 +264,11 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(metric['guest'], [12, 12])
         self.assertIn('guest fsync not durable', metric['error'])
 
-    def test_ubd_flush_dispatch_analysis(self):
-        source = ('if (op == REQ_OP_FLUSH)\n segs = 0;\nio_req->desc_cnt = segs;\n'
-                  'void *io_thread(void *arg) {\n'
-                  'for (i = 0; !req->error && i < req->desc_cnt; i++)\n do_io(req, desc);\n}')
-        self.assertTrue(bench.ubd_flush_analysis(source)['flush_skipped'])
-        fixed = source.replace('for (i', 'if (req_op(req->req) == REQ_OP_FLUSH) do_io(req, NULL);\nfor (i')
-        self.assertFalse(bench.ubd_flush_analysis(fixed)['flush_skipped'])
-
-    def test_host_sync_counter_requires_success_and_cow_path(self):
-        trace = ('123 10:00:00 fsync(5</x/root.cow>) = 0\n'
-                 '123 10:00:01 fdatasync(5</x/root.cow> <unfinished ...>\n'
-                 '123 10:00:02 <... fdatasync resumed>) = 0\n'
-                 '123 10:00:03 fsync(5</x/root.cow>) = -1 EIO\n'
-                 '123 10:00:04 fsync(6</other>) = 0\n'
-                 '123 10:00:05 sync_file_range(5</x/root.cow>, 0, 0, 0) = 0\n')
-        self.assertEqual(bench.successful_syncs(trace, '/x/root.cow'), 2)
-
-    def test_durability_distinguishes_source_proof_from_denied_trace(self):
-        evidence = {'same_filesystem': True, 'cow_descriptors': [{'synchronous': False}],
-                    'ubd_source': {'matches_running_kernel': True, 'flush_skipped': True},
-                    'native_syncs': 3, 'guest_syncs': 0, 'attached_pids': []}
-        error = bench.durability_error(evidence)
-        self.assertIn('guest fsync not durable', error)
-        self.assertIn('ptrace attach denied', error)
-        self.assertNotIn('0 host COW syncs observed', error)
-        evidence['ubd_source']['matches_running_kernel'] = False
-        self.assertIn('durability unverified', bench.durability_error(evidence))
-        evidence['guest_syncs'] = 3
-        self.assertIsNone(bench.durability_error(evidence))
-
-    def test_ubd_identity_requires_pinned_bytes_untouched_patches_and_kernel_key(self):
-        import tarfile
-        with tempfile.TemporaryDirectory() as tmp:
-            root = pathlib.Path(tmp); relative = 'arch/um/drivers/ubd_kern.c'
-            source = root / ('linux-' + bench.build.LOCK['linux']['version']) / relative
-            source.parent.mkdir(parents=True); source.write_text('pinned source')
-            archive = root / 'linux.tar'
-            with tarfile.open(archive, 'w') as tar:
-                tar.add(source, arcname=str(source.relative_to(root)))
-            patch = root / 'fix.patch'; patch.write_text('another file')
-            ctx = types.SimpleNamespace(artifacts={'kernel': root / 'expected/linux'})
-            with mock.patch.object(bench.config, 'WORK', root), \
-                 mock.patch.object(bench.build, 'fetch', return_value=archive), \
-                 mock.patch.object(bench.build, 'series', return_value=[patch]), \
-                 mock.patch.object(bench.build, 'candidate_paths', return_value=[]), \
-                 mock.patch.object(bench.build, 'key_of', return_value='expected'):
-                self.assertTrue(bench.ubd_source_evidence(ctx)['matches_running_kernel'])
-                patch.write_text(relative)
-                self.assertFalse(bench.ubd_source_evidence(ctx)['matches_running_kernel'])
-                patch.write_text('another file'); source.write_text('untracked change')
-                self.assertFalse(bench.ubd_source_evidence(ctx)['matches_running_kernel'])
-                source.write_text('pinned source'); ctx.artifacts['kernel'] = root / 'different/linux'
-                self.assertFalse(bench.ubd_source_evidence(ctx)['matches_running_kernel'])
+    def test_durability_requires_one_host_flush_per_guest_fsync(self):
+        self.assertIn('unverified', bench.durability_error(None, (5, 0), 3))
+        self.assertIn('2 host flushes', bench.durability_error((5, 0), (7, 0), 3))
+        self.assertIn('failed', bench.durability_error((5, 0), (9, 1), 3))
+        self.assertIsNone(bench.durability_error((5, 0), (9, 0), 3))
 
     def test_network_topologies_use_required_endpoints(self):
         with tempfile.TemporaryDirectory() as tmp:

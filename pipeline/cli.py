@@ -114,14 +114,30 @@ def cmd_fetch(_a):
                     '--include=scorecard.md', '--exclude=*', f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
                    check=True)
     runs = sorted(p.parent.name for p in dest.glob('*/summary.json'))
-    print(f'{len(runs)} run summaries in results/runs; latest: {runs[-1] if runs else "-"}')
-    # The scoreboard is the newest complete ci run: no --only, no --quick, no run error.
-    for name in reversed(runs):
+    print(f'{len(runs)} run summaries in results/runs (not tracked); latest: {runs[-1] if runs else "-"}')
+    # Tracked history: complete ci runs only (no --only, no --quick, no run error).
+    from pipeline import score
+    complete = []
+    for name in runs:
         summary = json.loads((dest / name / 'summary.json').read_text())
         if summary.get('kind') == 'ci' and not summary.get('only') and not summary.get('quick') and not summary.get('error'):
-            shutil.copy2(dest / name / 'scorecard.md', REPO / 'results/SCOREBOARD.md')
-            print(f'results/SCOREBOARD.md <- {name}')
-            break
+            complete.append(name)
+            target = REPO / 'results/ci' / name
+            if not target.exists():
+                target.mkdir(parents=True)
+                for f in ('summary.json', 'scorecard.md'):
+                    shutil.copy2(dest / name / f, target / f)
+                print(f'results/ci/{name} added')
+    if complete:
+        shutil.copy2(dest / complete[-1] / 'scorecard.md', REPO / 'results/SCOREBOARD.md')
+        rows = ['| run | revision | functional | key | important | other |', '|---|---|---|---|---|---|']
+        for name in reversed(complete):
+            card = score.scorecard(score.load(REPO / 'results/ci' / name / 'summary.json'))
+            t, tiers = card.get('test', {}), card.get('tiers', {})
+            rows.append(f"| {name} | {card['revision'].get('git', '?')[:8]} | {t.get('pass', 0)}/{t.get('checks', 0)} | " +
+                        ' | '.join(f"{tiers.get(k, {}).get('pass', 0)}/{tiers.get(k, {}).get('total', 0)}" for k in score.TIER_ORDER) + ' |')
+        (REPO / 'results/HISTORY.md').write_text('# Complete ci runs, newest first\n\n' + '\n'.join(rows) + '\n')
+        print(f'results/SCOREBOARD.md <- {complete[-1]}')
 
 
 def cmd_check(_a):
