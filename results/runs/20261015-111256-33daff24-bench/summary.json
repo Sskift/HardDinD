@@ -1,0 +1,5037 @@
+{
+  "schema": "hd.summary/1",
+  "run_id": "20261015-111256-33daff24-bench",
+  "kind": "bench",
+  "revision": {
+    "git": "33daff2433dbba4d93ec85a88576547065cb1262",
+    "dirty": false,
+    "subject": "Amortize benchmark clocks and isolate metric budgets",
+    "diff_sha256": null,
+    "synced_at": "2026-10-15T11:03:43Z"
+  },
+  "candidates": [],
+  "kernel_args": [],
+  "started": 1792062776.3320665,
+  "host": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      49.41845703125,
+      53.47412109375,
+      53.44189453125
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  },
+  "only": null,
+  "quick": true,
+  "artifacts": {
+    "kernel": "cc2d81792c5059edbcdd",
+    "rootfs": "517c15477940b12b0d5a",
+    "network_backend": "52f5c212e8510cb12da4",
+    "network_probe": "52f5c212e8510cb12da4",
+    "client": "8b092aa35fde7efc002a"
+  },
+  "bench": {
+    "schema": "hd.bench/1",
+    "cpus": "8-11",
+    "pairs": 2,
+    "host_load": [
+      [
+        1792062907.1989474,
+        35.11669921875
+      ],
+      [
+        1792062908.9807734,
+        35.11669921875
+      ],
+      [
+        1792062912.6838117,
+        34.78662109375
+      ],
+      [
+        1792062914.4424255,
+        35.6044921875
+      ],
+      [
+        1792062919.181283,
+        34.9150390625
+      ],
+      [
+        1792062921.603595,
+        34.9150390625
+      ],
+      [
+        1792062926.4047956,
+        34.60107421875
+      ],
+      [
+        1792062929.5971794,
+        34.95361328125
+      ],
+      [
+        1792062945.8888228,
+        35.42138671875
+      ],
+      [
+        1792062951.0745234,
+        34.74658203125
+      ],
+      [
+        1792062965.9826922,
+        36.27392578125
+      ],
+      [
+        1792062972.1209397,
+        36.81298828125
+      ],
+      [
+        1792062987.355484,
+        36.0283203125
+      ],
+      [
+        1792062993.3275726,
+        35.94580078125
+      ],
+      [
+        1792062997.2455647,
+        35.54931640625
+      ],
+      [
+        1792062997.837354,
+        35.54931640625
+      ],
+      [
+        1792063006.361208,
+        37.2646484375
+      ],
+      [
+        1792063010.7981975,
+        37.32373046875
+      ],
+      [
+        1792063016.3521016,
+        40.5810546875
+      ],
+      [
+        1792063018.2139804,
+        40.5810546875
+      ],
+      [
+        1792063082.2991207,
+        43.619140625
+      ],
+      [
+        1792063113.9428697,
+        40.56103515625
+      ],
+      [
+        1792063137.2073438,
+        40.81298828125
+      ],
+      [
+        1792063149.6688855,
+        45.55078125
+      ],
+      [
+        1792063163.4973729,
+        44.68408203125
+      ],
+      [
+        1792063169.8955204,
+        43.31298828125
+      ],
+      [
+        1792063174.3921063,
+        42.08642578125
+      ],
+      [
+        1792063176.676408,
+        42.08642578125
+      ],
+      [
+        1792063178.9293993,
+        42.08642578125
+      ],
+      [
+        1792063179.6192338,
+        44.00146484375
+      ],
+      [
+        1792063185.874334,
+        43.0400390625
+      ],
+      [
+        1792063188.0440567,
+        43.0400390625
+      ],
+      [
+        1792063192.182582,
+        42.55615234375
+      ],
+      [
+        1792063193.4017162,
+        42.55615234375
+      ],
+      [
+        1792063194.795319,
+        44.43359375
+      ],
+      [
+        1792063195.1078086,
+        44.43359375
+      ],
+      [
+        1792063205.5367203,
+        42.876953125
+      ],
+      [
+        1792063206.4456742,
+        42.876953125
+      ],
+      [
+        1792063210.3583355,
+        42.56640625
+      ],
+      [
+        1792063211.984885,
+        42.56640625
+      ],
+      [
+        1792063216.0480967,
+        41.47998046875
+      ],
+      [
+        1792063217.9717295,
+        41.47998046875
+      ],
+      [
+        1792063222.0936944,
+        41.44140625
+      ],
+      [
+        1792063223.9778445,
+        41.44140625
+      ],
+      [
+        1792063227.6187487,
+        42.20703125
+      ],
+      [
+        1792063229.3033385,
+        42.20703125
+      ],
+      [
+        1792063233.568352,
+        41.3095703125
+      ],
+      [
+        1792063235.8206904,
+        40.40380859375
+      ],
+      [
+        1792063240.044834,
+        40.05078125
+      ],
+      [
+        1792063242.5607748,
+        40.05078125
+      ],
+      [
+        1792063246.050449,
+        39.00537109375
+      ],
+      [
+        1792063248.8290923,
+        39.00537109375
+      ],
+      [
+        1792063252.6506343,
+        38.6044921875
+      ],
+      [
+        1792063254.4975984,
+        37.7548828125
+      ]
+    ],
+    "metrics": {
+      "cpu.single": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          4130658950.0,
+          4204457180.0
+        ],
+        "guest": [
+          4158369040.0,
+          4124244630.0
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062903.0460317,
+              "host_load": [
+                35.03955078125,
+                46.33447265625,
+                50.81201171875
+              ],
+              "workload": {
+                "value": 4185527570.0,
+                "verified": 2347471050942558508,
+                "batch": 1024,
+                "clock_reads": 9,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.160335496
+              },
+              "value": 4185527570.0,
+              "wall_seconds": 0.18635298497974873,
+              "finished": 1792062903.232396,
+              "host_load_end": [
+                35.03955078125,
+                46.33447265625,
+                50.81201171875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062903.2324114,
+              "host_load": [
+                35.03955078125,
+                46.33447265625,
+                50.81201171875
+              ],
+              "workload": {
+                "value": 3980642230.0,
+                "verified": 8669831486249959724,
+                "batch": 1024,
+                "clock_reads": 8,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.168588032
+              },
+              "value": 3980642230.0,
+              "wall_seconds": 1.99205513112247,
+              "finished": 1792062905.2244744,
+              "host_load_end": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062905.2244895,
+              "host_load": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ],
+              "workload": {
+                "value": 4130658950.0,
+                "verified": 17633034906998409516,
+                "batch": 1024,
+                "clock_reads": 8,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.152311195
+              },
+              "value": 4130658950.0,
+              "wall_seconds": 0.1786354761570692,
+              "finished": 1792062905.4031298,
+              "host_load_end": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062905.4031582,
+              "host_load": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ],
+              "workload": {
+                "value": 4158369040.0,
+                "verified": 2347471050942558508,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.161382656
+              },
+              "value": 4158369040.0,
+              "wall_seconds": 1.7957655247300863,
+              "finished": 1792062907.198938,
+              "host_load_end": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062907.1989527,
+              "host_load": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ],
+              "workload": {
+                "value": 4204457180.0,
+                "verified": 2347471050942558508,
+                "batch": 1024,
+                "clock_reads": 9,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.159613622
+              },
+              "value": 4204457180.0,
+              "wall_seconds": 0.18458670936524868,
+              "finished": 1792062907.3835442,
+              "host_load_end": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062907.3835607,
+              "host_load": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ],
+              "workload": {
+                "value": 4124244630.0,
+                "verified": 2347471050942558508,
+                "batch": 1024,
+                "clock_reads": 10,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.162717952
+              },
+              "value": 4124244630.0,
+              "wall_seconds": 1.5971964485943317,
+              "finished": 1792062908.9807644,
+              "host_load_end": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ]
+            }
+          ]
+        }
+      },
+      "cpu.multi": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          16285999200.0,
+          15870170700.0
+        ],
+        "guest": [
+          14492282700.0,
+          12435683200.0
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062908.981013,
+              "host_load": [
+                35.11669921875,
+                46.16259765625,
+                50.732421875
+              ],
+              "workload": {
+                "value": 14075423600.0,
+                "verified": 2242729647753335808,
+                "batch": 512,
+                "clock_reads": 38,
+                "calibration_clock_reads": 39,
+                "measurement_seconds": 0.165383209
+              },
+              "value": 14075423600.0,
+              "wall_seconds": 0.20694071054458618,
+              "finished": 1792062909.1879601,
+              "host_load_end": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062909.1879776,
+              "host_load": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ],
+              "workload": {
+                "value": 13939681400.0,
+                "verified": 8658838029891728720,
+                "batch": 256,
+                "clock_reads": 46,
+                "calibration_clock_reads": 33,
+                "measurement_seconds": 0.162456832
+              },
+              "value": 13939681400.0,
+              "wall_seconds": 1.7155568078160286,
+              "finished": 1792062910.903544,
+              "host_load_end": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062910.9035637,
+              "host_load": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ],
+              "workload": {
+                "value": 16285999200.0,
+                "verified": 6395825839616602112,
+                "batch": 1024,
+                "clock_reads": 37,
+                "calibration_clock_reads": 43,
+                "measurement_seconds": 0.164825905
+              },
+              "value": 16285999200.0,
+              "wall_seconds": 0.22166219539940357,
+              "finished": 1792062911.1252322,
+              "host_load_end": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062911.125253,
+              "host_load": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ],
+              "workload": {
+                "value": 14492282700.0,
+                "verified": 49632650587064544,
+                "batch": 512,
+                "clock_reads": 43,
+                "calibration_clock_reads": 35,
+                "measurement_seconds": 0.171433984
+              },
+              "value": 14492282700.0,
+              "wall_seconds": 1.5585410799831152,
+              "finished": 1792062912.6838026,
+              "host_load_end": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062912.6838155,
+              "host_load": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ],
+              "workload": {
+                "value": 15870170700.0,
+                "verified": 16736993947230392320,
+                "batch": 1024,
+                "clock_reads": 40,
+                "calibration_clock_reads": 42,
+                "measurement_seconds": 0.163858885
+              },
+              "value": 15870170700.0,
+              "wall_seconds": 0.2163629401475191,
+              "finished": 1792062912.9001822,
+              "host_load_end": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062912.900202,
+              "host_load": [
+                34.78662109375,
+                45.91064453125,
+                50.6259765625
+              ],
+              "workload": {
+                "value": 12435683200.0,
+                "verified": 18139564651974659072,
+                "batch": 1024,
+                "clock_reads": 38,
+                "calibration_clock_reads": 38,
+                "measurement_seconds": 0.166953472
+              },
+              "value": 12435683200.0,
+              "wall_seconds": 1.5422057565301657,
+              "finished": 1792062914.4424164,
+              "host_load_end": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ]
+            }
+          ]
+        }
+      },
+      "mem.bandwidth": {
+        "unit": "GB/s",
+        "higher_is_better": true,
+        "native": [
+          5.46472035,
+          5.46456427
+        ],
+        "guest": [
+          3.81853318,
+          4.78813752
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062914.442672,
+              "host_load": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ],
+              "workload": {
+                "value": 5.54153119,
+                "verified": 11072962560,
+                "batch": 1,
+                "clock_reads": 13,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.157432161
+              },
+              "value": 5.54153119,
+              "wall_seconds": 0.3151666969060898,
+              "finished": 1792062914.757845,
+              "host_load_end": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062914.7578604,
+              "host_load": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ],
+              "workload": {
+                "value": 5.47972202,
+                "verified": 11072962560,
+                "batch": 1,
+                "clock_reads": 13,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.159207936
+              },
+              "value": 5.47972202,
+              "wall_seconds": 2.228659763932228,
+              "finished": 1792062916.98653,
+              "host_load_end": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062916.9865482,
+              "host_load": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ],
+              "workload": {
+                "value": 5.46472035,
+                "verified": 11072962560,
+                "batch": 1,
+                "clock_reads": 13,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.159644991
+              },
+              "value": 5.46472035,
+              "wall_seconds": 0.306101119145751,
+              "finished": 1792062917.292655,
+              "host_load_end": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062917.2926748,
+              "host_load": [
+                35.6044921875,
+                45.8955078125,
+                50.595703125
+              ],
+              "workload": {
+                "value": 3.81853318,
+                "verified": 11072962560,
+                "batch": 1,
+                "clock_reads": 9,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.158170624
+              },
+              "value": 3.81853318,
+              "wall_seconds": 1.8885901607573032,
+              "finished": 1792062919.1812737,
+              "host_load_end": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062919.1812875,
+              "host_load": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ],
+              "workload": {
+                "value": 5.46456427,
+                "verified": 11072962560,
+                "batch": 1,
+                "clock_reads": 13,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.159649551
+              },
+              "value": 5.46456427,
+              "wall_seconds": 0.30534319393336773,
+              "finished": 1792062919.4866347,
+              "host_load_end": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062919.486654,
+              "host_load": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ],
+              "workload": {
+                "value": 4.78813752,
+                "verified": 11072962560,
+                "batch": 1,
+                "clock_reads": 11,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.15417216
+              },
+              "value": 4.78813752,
+              "wall_seconds": 2.1169226076453924,
+              "finished": 1792062921.6035843,
+              "host_load_end": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ]
+            }
+          ]
+        }
+      },
+      "mem.touch": {
+        "unit": "GB/s",
+        "higher_is_better": true,
+        "native": [
+          1.47798312,
+          1.47364352
+        ],
+        "guest": [
+          0.323372676,
+          0.251851339
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062921.6039,
+              "host_load": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ],
+              "workload": {
+                "value": 1.58739449,
+                "verified": 81920,
+                "batch": 1,
+                "clock_reads": 4,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.16910444
+              },
+              "value": 1.58739449,
+              "wall_seconds": 0.2178903091698885,
+              "finished": 1792062921.8217978,
+              "host_load_end": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062921.8218174,
+              "host_load": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ],
+              "workload": {
+                "value": 0.285584178,
+                "verified": 32768,
+                "batch": 1,
+                "clock_reads": 1,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.234988032
+              },
+              "value": 0.285584178,
+              "wall_seconds": 2.0852692257612944,
+              "finished": 1792062923.9070992,
+              "host_load_end": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062923.9071193,
+              "host_load": [
+                34.9150390625,
+                45.58154296875,
+                50.46875
+              ],
+              "workload": {
+                "value": 1.47798312,
+                "verified": 81920,
+                "batch": 1,
+                "clock_reads": 4,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.181622816
+              },
+              "value": 1.47798312,
+              "wall_seconds": 0.3912249319255352,
+              "finished": 1792062924.2983506,
+              "host_load_end": [
+                34.60107421875,
+                45.33935546875,
+                50.36376953125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062924.2983756,
+              "host_load": [
+                34.60107421875,
+                45.33935546875,
+                50.36376953125
+              ],
+              "workload": {
+                "value": 0.323372676,
+                "verified": 32768,
+                "batch": 1,
+                "clock_reads": 1,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.207527936
+              },
+              "value": 0.323372676,
+              "wall_seconds": 2.1063958443701267,
+              "finished": 1792062926.4047813,
+              "host_load_end": [
+                34.60107421875,
+                45.33935546875,
+                50.36376953125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062926.4048038,
+              "host_load": [
+                34.60107421875,
+                45.33935546875,
+                50.36376953125
+              ],
+              "workload": {
+                "value": 1.47364352,
+                "verified": 81920,
+                "batch": 1,
+                "clock_reads": 4,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.18215766
+              },
+              "value": 1.47364352,
+              "wall_seconds": 0.2385616321116686,
+              "finished": 1792062926.6433752,
+              "host_load_end": [
+                34.60107421875,
+                45.33935546875,
+                50.36376953125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062926.6434102,
+              "host_load": [
+                34.60107421875,
+                45.33935546875,
+                50.36376953125
+              ],
+              "workload": {
+                "value": 0.251851339,
+                "verified": 32768,
+                "batch": 1,
+                "clock_reads": 1,
+                "calibration_clock_reads": 1,
+                "measurement_seconds": 0.266462208
+              },
+              "value": 0.251851339,
+              "wall_seconds": 2.9537433218210936,
+              "finished": 1792062929.5971684,
+              "host_load_end": [
+                34.95361328125,
+                45.23388671875,
+                50.30224609375
+              ]
+            }
+          ]
+        }
+      },
+      "disk.seq_write": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          76.6201787,
+          117.435429
+        ],
+        "guest": [
+          481.367803,
+          376.038828
+        ],
+        "error": "guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; 0 host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC",
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 180,
+          "durability": {
+            "error": "guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; 0 host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC",
+            "filesystems": [
+              {
+                "path": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native/work",
+                "device": 2048,
+                "mount": {
+                  "filesystems": [
+                    {
+                      "source": "/dev/sda[/starpub/liushiao]",
+                      "fstype": "ext4",
+                      "target": "/root",
+                      "options": "rw,relatime"
+                    }
+                  ]
+                }
+              },
+              {
+                "path": "/root/harddind-rebuild/hd/instances/b489e2b2fce/root.cow",
+                "device": 2048,
+                "mount": {
+                  "filesystems": [
+                    {
+                      "source": "/dev/sda[/starpub/liushiao]",
+                      "fstype": "ext4",
+                      "target": "/root",
+                      "options": "rw,relatime"
+                    }
+                  ]
+                }
+              }
+            ],
+            "same_filesystem": true,
+            "ubd_source": {
+              "path": "/root/harddind-rebuild/hd/work/linux-7.2.10/arch/um/drivers/ubd_kern.c",
+              "sha256": "9eac55372f14a7c8e6454462d3aca02cb2b9568cbf28e9ec7d3eb81e19fbe5e2",
+              "zero_segment_flush": true,
+              "segment_only_dispatch": true,
+              "flush_skipped": true
+            },
+            "os_sync_file": "int os_sync_file(int fd)\n{\n\tint n = fdatasync(fd);\n\n\tif (n < 0)\n\t\treturn -errno;\n\treturn n;\n}",
+            "traced_pids": [
+              3112928,
+              3112992,
+              3112994,
+              3113005,
+              3113041,
+              3113052,
+              3113056,
+              3113061,
+              3113062,
+              3113065,
+              3113068,
+              3113069,
+              3113070,
+              3113266,
+              3113277,
+              3113285,
+              3113301,
+              3113345,
+              3113636,
+              3113661,
+              3113662,
+              3113663,
+              3113851,
+              3113942,
+              3132189,
+              3132979,
+              3134047,
+              3134613,
+              3140532,
+              3141034,
+              3141535,
+              3142537,
+              3142539,
+              3142690,
+              3142873
+            ],
+            "cow_descriptors": [
+              {
+                "pid": 3112928,
+                "fd": 18,
+                "flags": "0o2100002",
+                "synchronous": false
+              }
+            ],
+            "native_probe": {
+              "value": 3,
+              "verified": 12288,
+              "fsync_calls": 3
+            },
+            "native_syncs": 3,
+            "attached_pids": [],
+            "guest_probe": {
+              "value": 3,
+              "verified": 12288,
+              "fsync_calls": 3
+            },
+            "guest_syncs": 0,
+            "tracer_log": "scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113065): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113068): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113069): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113070): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113266): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113277): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113285): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113301): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113345): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113636): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113661): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113662): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113663): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113851): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113942): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3132189): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3132979): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3134047): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3134613): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3140532): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3141034): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3141535): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142537): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142539): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142690): Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142873): No such process\n",
+            "trace_files": [
+              "fsync-native.strace",
+              "fsync-guest.strace",
+              "fsync-tracer.log"
+            ]
+          },
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062934.9725132,
+              "host_load": [
+                34.876953125,
+                45.04736328125,
+                50.21435546875
+              ],
+              "workload": {
+                "value": 134.033565,
+                "verified": 268435456
+              },
+              "value": 134.033565,
+              "wall_seconds": 2.116882000118494,
+              "finished": 1792062937.0894077,
+              "host_load_end": [
+                34.876953125,
+                45.04736328125,
+                50.21435546875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062937.0894203,
+              "host_load": [
+                34.876953125,
+                45.04736328125,
+                50.21435546875
+              ],
+              "workload": {
+                "value": 276.855112,
+                "verified": 268435456
+              },
+              "value": 276.855112,
+              "wall_seconds": 3.019139552488923,
+              "finished": 1792062940.1085672,
+              "host_load_end": [
+                34.326171875,
+                44.76416015625,
+                50.0947265625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062940.1085854,
+              "host_load": [
+                34.326171875,
+                44.76416015625,
+                50.0947265625
+              ],
+              "workload": {
+                "value": 76.6201787,
+                "verified": 268435456
+              },
+              "value": 76.6201787,
+              "wall_seconds": 3.649151625111699,
+              "finished": 1792062943.7577424,
+              "host_load_end": [
+                34.326171875,
+                44.76416015625,
+                50.0947265625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062943.7577612,
+              "host_load": [
+                34.326171875,
+                44.76416015625,
+                50.0947265625
+              ],
+              "workload": {
+                "value": 481.367803,
+                "verified": 268435456
+              },
+              "value": 481.367803,
+              "wall_seconds": 2.1310444995760918,
+              "finished": 1792062945.888815,
+              "host_load_end": [
+                35.42138671875,
+                44.818359375,
+                50.0830078125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062945.8888264,
+              "host_load": [
+                35.42138671875,
+                44.818359375,
+                50.0830078125
+              ],
+              "workload": {
+                "value": 117.435429,
+                "verified": 268435456
+              },
+              "value": 117.435429,
+              "wall_seconds": 2.4252197686582804,
+              "finished": 1792062948.3140526,
+              "host_load_end": [
+                35.42138671875,
+                44.818359375,
+                50.0830078125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062948.3140872,
+              "host_load": [
+                35.42138671875,
+                44.818359375,
+                50.0830078125
+              ],
+              "workload": {
+                "value": 376.038828,
+                "verified": 268435456
+              },
+              "value": 376.038828,
+              "wall_seconds": 2.76041005179286,
+              "finished": 1792062951.0745149,
+              "host_load_end": [
+                34.74658203125,
+                44.5224609375,
+                49.958984375
+              ]
+            }
+          ]
+        }
+      },
+      "disk.seq_read": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          4238.84869,
+          1590.74611
+        ],
+        "guest": [
+          2979.78948,
+          3601.20066
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 180,
+          "read_policy": "write+fsync then warm page-cache read with byte comparison; no cache drop",
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062951.0747578,
+              "host_load": [
+                34.74658203125,
+                44.5224609375,
+                49.958984375
+              ],
+              "workload": {
+                "value": 3553.9158,
+                "verified": 268435456
+              },
+              "value": 3553.9158,
+              "wall_seconds": 2.805967051535845,
+              "finished": 1792062953.8807313,
+              "host_load_end": [
+                34.74658203125,
+                44.5224609375,
+                49.958984375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062953.8807466,
+              "host_load": [
+                34.74658203125,
+                44.5224609375,
+                49.958984375
+              ],
+              "workload": {
+                "value": 3598.74113,
+                "verified": 268435456
+              },
+              "value": 3598.74113,
+              "wall_seconds": 6.716780208051205,
+              "finished": 1792062960.597536,
+              "host_load_end": [
+                36.7333984375,
+                44.634765625,
+                49.93798828125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062960.5975637,
+              "host_load": [
+                36.7333984375,
+                44.634765625,
+                49.93798828125
+              ],
+              "workload": {
+                "value": 4238.84869,
+                "verified": 268435456
+              },
+              "value": 4238.84869,
+              "wall_seconds": 2.973570842295885,
+              "finished": 1792062963.571143,
+              "host_load_end": [
+                36.7333984375,
+                44.634765625,
+                49.93798828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062963.5711637,
+              "host_load": [
+                36.7333984375,
+                44.634765625,
+                49.93798828125
+              ],
+              "workload": {
+                "value": 2979.78948,
+                "verified": 268435456
+              },
+              "value": 2979.78948,
+              "wall_seconds": 2.411503303796053,
+              "finished": 1792062965.982677,
+              "host_load_end": [
+                36.27392578125,
+                44.408203125,
+                49.8359375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062965.9826999,
+              "host_load": [
+                36.27392578125,
+                44.408203125,
+                49.8359375
+              ],
+              "workload": {
+                "value": 1590.74611,
+                "verified": 268435456
+              },
+              "value": 1590.74611,
+              "wall_seconds": 4.251216119155288,
+              "finished": 1792062970.2339225,
+              "host_load_end": [
+                36.81298828125,
+                44.384765625,
+                49.798828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062970.2339418,
+              "host_load": [
+                36.81298828125,
+                44.384765625,
+                49.798828125
+              ],
+              "workload": {
+                "value": 3601.20066,
+                "verified": 268435456
+              },
+              "value": 3601.20066,
+              "wall_seconds": 1.88697162643075,
+              "finished": 1792062972.1209254,
+              "host_load_end": [
+                36.81298828125,
+                44.384765625,
+                49.798828125
+              ]
+            }
+          ]
+        }
+      },
+      "disk.volume_write": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          99.3035479,
+          77.5108973
+        ],
+        "guest": [
+          469.110098,
+          461.857152
+        ],
+        "error": "guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; 0 host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC",
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 180,
+          "durability": {
+            "error": "guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; 0 host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC",
+            "filesystems": [
+              {
+                "path": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native/work",
+                "device": 2048,
+                "mount": {
+                  "filesystems": [
+                    {
+                      "source": "/dev/sda[/starpub/liushiao]",
+                      "fstype": "ext4",
+                      "target": "/root",
+                      "options": "rw,relatime"
+                    }
+                  ]
+                }
+              },
+              {
+                "path": "/root/harddind-rebuild/hd/instances/b489e2b2fce/root.cow",
+                "device": 2048,
+                "mount": {
+                  "filesystems": [
+                    {
+                      "source": "/dev/sda[/starpub/liushiao]",
+                      "fstype": "ext4",
+                      "target": "/root",
+                      "options": "rw,relatime"
+                    }
+                  ]
+                }
+              }
+            ],
+            "same_filesystem": true,
+            "ubd_source": {
+              "path": "/root/harddind-rebuild/hd/work/linux-7.2.10/arch/um/drivers/ubd_kern.c",
+              "sha256": "9eac55372f14a7c8e6454462d3aca02cb2b9568cbf28e9ec7d3eb81e19fbe5e2",
+              "zero_segment_flush": true,
+              "segment_only_dispatch": true,
+              "flush_skipped": true
+            },
+            "os_sync_file": "int os_sync_file(int fd)\n{\n\tint n = fdatasync(fd);\n\n\tif (n < 0)\n\t\treturn -errno;\n\treturn n;\n}",
+            "traced_pids": [
+              3112928,
+              3112992,
+              3112994,
+              3113005,
+              3113041,
+              3113052,
+              3113056,
+              3113061,
+              3113062,
+              3113065,
+              3113068,
+              3113069,
+              3113070,
+              3113266,
+              3113277,
+              3113285,
+              3113301,
+              3113345,
+              3113636,
+              3113661,
+              3113662,
+              3113663,
+              3113851,
+              3113942,
+              3132189,
+              3132979,
+              3134047,
+              3134613,
+              3140532,
+              3141034,
+              3141535,
+              3142537,
+              3142539,
+              3142690,
+              3142873
+            ],
+            "cow_descriptors": [
+              {
+                "pid": 3112928,
+                "fd": 18,
+                "flags": "0o2100002",
+                "synchronous": false
+              }
+            ],
+            "native_probe": {
+              "value": 3,
+              "verified": 12288,
+              "fsync_calls": 3
+            },
+            "native_syncs": 3,
+            "attached_pids": [],
+            "guest_probe": {
+              "value": 3,
+              "verified": 12288,
+              "fsync_calls": 3
+            },
+            "guest_syncs": 0,
+            "tracer_log": "scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113065): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113068): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113069): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113070): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113266): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113277): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113285): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113301): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113345): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113636): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113661): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113662): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113663): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113851): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113942): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3132189): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3132979): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3134047): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3134613): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3140532): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3141034): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3141535): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142537): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142539): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142690): Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142873): No such process\n",
+            "trace_files": [
+              "fsync-native.strace",
+              "fsync-guest.strace",
+              "fsync-tracer.log"
+            ]
+          },
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062972.1561127,
+              "host_load": [
+                36.81298828125,
+                44.384765625,
+                49.798828125
+              ],
+              "workload": {
+                "value": 88.1809291,
+                "verified": 268435456
+              },
+              "value": 88.1809291,
+              "wall_seconds": 3.1926973909139633,
+              "finished": 1792062975.3488214,
+              "host_load_end": [
+                36.34716796875,
+                44.162109375,
+                49.69775390625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062975.348837,
+              "host_load": [
+                36.34716796875,
+                44.162109375,
+                49.69775390625
+              ],
+              "workload": {
+                "value": 350.159823,
+                "verified": 268435456
+              },
+              "value": 350.159823,
+              "wall_seconds": 7.020353276282549,
+              "finished": 1792062982.3691983,
+              "host_load_end": [
+                36.64013671875,
+                44.0927734375,
+                49.6455078125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062982.3692188,
+              "host_load": [
+                36.64013671875,
+                44.0927734375,
+                49.6455078125
+              ],
+              "workload": {
+                "value": 99.3035479,
+                "verified": 268435456
+              },
+              "value": 99.3035479,
+              "wall_seconds": 2.878557648509741,
+              "finished": 1792062985.2477834,
+              "host_load_end": [
+                36.0283203125,
+                43.841796875,
+                49.5341796875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062985.2478085,
+              "host_load": [
+                36.0283203125,
+                43.841796875,
+                49.5341796875
+              ],
+              "workload": {
+                "value": 469.110098,
+                "verified": 268435456
+              },
+              "value": 469.110098,
+              "wall_seconds": 2.107647430151701,
+              "finished": 1792062987.3554683,
+              "host_load_end": [
+                36.0283203125,
+                43.841796875,
+                49.5341796875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062987.3554957,
+              "host_load": [
+                36.0283203125,
+                43.841796875,
+                49.5341796875
+              ],
+              "workload": {
+                "value": 77.5108973,
+                "verified": 268435456
+              },
+              "value": 77.5108973,
+              "wall_seconds": 3.6399859562516212,
+              "finished": 1792062990.9954917,
+              "host_load_end": [
+                35.94580078125,
+                43.69482421875,
+                49.4560546875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062990.995509,
+              "host_load": [
+                35.94580078125,
+                43.69482421875,
+                49.4560546875
+              ],
+              "workload": {
+                "value": 461.857152,
+                "verified": 268435456
+              },
+              "value": 461.857152,
+              "wall_seconds": 2.332044456154108,
+              "finished": 1792062993.3275614,
+              "host_load_end": [
+                35.94580078125,
+                43.69482421875,
+                49.4560546875
+              ]
+            }
+          ]
+        }
+      },
+      "net.publish_stream": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          2925.08067,
+          3169.90942
+        ],
+        "guest": [
+          37.6072702,
+          156.022567
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062994.7510843,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 3419.04658,
+                "verified": 738197504,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.215907414
+              },
+              "value": 3419.04658,
+              "wall_seconds": 0.2603870388120413,
+              "finished": 1792062995.0114846,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062995.0114985,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 122.284897,
+                "verified": 41943040,
+                "batch": 256,
+                "clock_reads": 4,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.342994442
+              },
+              "value": 122.284897,
+              "wall_seconds": 0.47175899893045425,
+              "finished": 1792062995.4832664,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062995.4832883,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 2925.08067,
+                "verified": 620756992,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.21221876
+              },
+              "value": 2925.08067,
+              "wall_seconds": 0.2497189473360777,
+              "finished": 1792062995.7330172,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792062995.733036,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 37.6072702,
+                "verified": 46137344,
+                "batch": 128,
+                "clock_reads": 7,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 1.22681981
+              },
+              "value": 37.6072702,
+              "wall_seconds": 1.512499550357461,
+              "finished": 1792062997.2455451,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062997.2455723,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 3169.90942,
+                "verified": 637534208,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.201120639
+              },
+              "value": 3169.90942,
+              "wall_seconds": 0.22642111778259277,
+              "finished": 1792062997.4720054,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792062997.4720337,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 156.022567,
+                "verified": 41943040,
+                "batch": 256,
+                "clock_reads": 4,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.268826753
+              },
+              "value": 156.022567,
+              "wall_seconds": 0.36528498120605946,
+              "finished": 1792062997.837333,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            }
+          ]
+        }
+      },
+      "net.egress_stream": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          3301.97077,
+          3422.21095
+        ],
+        "guest": [
+          88.6976127,
+          85.4776617
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062998.7764146,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 3418.27584,
+                "verified": 738197504,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.215956096
+              },
+              "value": 3418.27584,
+              "wall_seconds": 0.25660925917327404,
+              "finished": 1792062999.0330439,
+              "host_load_end": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792062999.033057,
+              "host_load": [
+                35.54931640625,
+                43.48388671875,
+                49.3564453125
+              ],
+              "workload": {
+                "value": 117.374827,
+                "verified": 25165824,
+                "batch": 32,
+                "clock_reads": 13,
+                "calibration_clock_reads": 6,
+                "measurement_seconds": 0.214405632
+              },
+              "value": 117.374827,
+              "wall_seconds": 1.62610868178308,
+              "finished": 1792063000.6591744,
+              "host_load_end": [
+                35.0244140625,
+                43.2431640625,
+                49.2470703125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063000.6591942,
+              "host_load": [
+                35.0244140625,
+                43.2431640625,
+                49.2470703125
+              ],
+              "workload": {
+                "value": 3301.97077,
+                "verified": 671088640,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.203238819
+              },
+              "value": 3301.97077,
+              "wall_seconds": 0.2474847473204136,
+              "finished": 1792063000.906684,
+              "host_load_end": [
+                35.0244140625,
+                43.2431640625,
+                49.2470703125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063000.9067037,
+              "host_load": [
+                35.0244140625,
+                43.2431640625,
+                49.2470703125
+              ],
+              "workload": {
+                "value": 88.6976127,
+                "verified": 18350080,
+                "batch": 32,
+                "clock_reads": 11,
+                "calibration_clock_reads": 4,
+                "measurement_seconds": 0.206883584
+              },
+              "value": 88.6976127,
+              "wall_seconds": 5.454484134912491,
+              "finished": 1792063006.3611968,
+              "host_load_end": [
+                37.2646484375,
+                43.5712890625,
+                49.3212890625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063006.361214,
+              "host_load": [
+                37.2646484375,
+                43.5712890625,
+                49.3212890625
+              ],
+              "workload": {
+                "value": 3422.21095,
+                "verified": 704643072,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.205902874
+              },
+              "value": 3422.21095,
+              "wall_seconds": 0.23164533637464046,
+              "finished": 1792063006.5928645,
+              "host_load_end": [
+                37.2646484375,
+                43.5712890625,
+                49.3212890625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063006.5928855,
+              "host_load": [
+                37.2646484375,
+                43.5712890625,
+                49.3212890625
+              ],
+              "workload": {
+                "value": 85.4776617,
+                "verified": 22020096,
+                "batch": 32,
+                "clock_reads": 12,
+                "calibration_clock_reads": 5,
+                "measurement_seconds": 0.257612288
+              },
+              "value": 85.4776617,
+              "wall_seconds": 4.2052891962230206,
+              "finished": 1792063010.7981834,
+              "host_load_end": [
+                37.32373046875,
+                43.478515625,
+                49.26025390625
+              ]
+            }
+          ]
+        }
+      },
+      "net.bridge_stream": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          3462.41074,
+          3120.55275
+        ],
+        "guest": [
+          1601.30966,
+          1782.95511
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063012.0993972,
+              "host_load": [
+                37.32373046875,
+                43.478515625,
+                49.26025390625
+              ],
+              "workload": {
+                "value": 3418.42081,
+                "verified": 738197504,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.215946937
+              },
+              "value": 3418.42081,
+              "wall_seconds": 0.2585730366408825,
+              "finished": 1792063012.357986,
+              "host_load_end": [
+                37.32373046875,
+                43.478515625,
+                49.26025390625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063012.3580031,
+              "host_load": [
+                37.32373046875,
+                43.478515625,
+                49.26025390625
+              ],
+              "workload": {
+                "value": 1423.78773,
+                "verified": 301989888,
+                "batch": 512,
+                "clock_reads": 12,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.212103168
+              },
+              "value": 1423.78773,
+              "wall_seconds": 1.8654795195907354,
+              "finished": 1792063014.2234955,
+              "host_load_end": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063014.223519,
+              "host_load": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ],
+              "workload": {
+                "value": 3462.41074,
+                "verified": 738197504,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.213203331
+              },
+              "value": 3462.41074,
+              "wall_seconds": 0.3520799297839403,
+              "finished": 1792063014.5756059,
+              "host_load_end": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063014.5756261,
+              "host_load": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ],
+              "workload": {
+                "value": 1601.30966,
+                "verified": 335544320,
+                "batch": 512,
+                "clock_reads": 11,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.20954368
+              },
+              "value": 1601.30966,
+              "wall_seconds": 1.7764594312757254,
+              "finished": 1792063016.352093,
+              "host_load_end": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063016.3521066,
+              "host_load": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ],
+              "workload": {
+                "value": 3120.55275,
+                "verified": 671088640,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.215054413
+              },
+              "value": 3120.55275,
+              "wall_seconds": 0.2576868459582329,
+              "finished": 1792063016.6097977,
+              "host_load_end": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063016.609819,
+              "host_load": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ],
+              "workload": {
+                "value": 1782.95511,
+                "verified": 369098752,
+                "batch": 512,
+                "clock_reads": 12,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.207015168
+              },
+              "value": 1782.95511,
+              "wall_seconds": 1.6041395124047995,
+              "finished": 1792063018.2139673,
+              "host_load_end": [
+                40.5810546875,
+                44.0517578125,
+                49.4150390625
+              ]
+            }
+          ]
+        }
+      },
+      "app.compile": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [
+          3.8016513,
+          4.35300342
+        ],
+        "guest": [
+          26.364351,
+          24.5805571
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 240,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063019.362584,
+              "host_load": [
+                40.85498046875,
+                44.05078125,
+                49.3857421875
+              ],
+              "workload": {
+                "value": 3.59400411,
+                "verified": 1
+              },
+              "value": 3.59400411,
+              "wall_seconds": 3.6380951460450888,
+              "finished": 1792063023.0006902,
+              "host_load_end": [
+                40.85498046875,
+                44.05078125,
+                49.3857421875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063023.0007045,
+              "host_load": [
+                40.85498046875,
+                44.05078125,
+                49.3857421875
+              ],
+              "workload": {
+                "value": 25.4617554,
+                "verified": 1
+              },
+              "value": 25.4617554,
+              "wall_seconds": 27.350003795698285,
+              "finished": 1792063050.3507168,
+              "host_load_end": [
+                41.228515625,
+                43.837890625,
+                49.14453125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063050.3507397,
+              "host_load": [
+                41.228515625,
+                43.837890625,
+                49.14453125
+              ],
+              "workload": {
+                "value": 3.8016513,
+                "verified": 1
+              },
+              "value": 3.8016513,
+              "wall_seconds": 3.9128026738762856,
+              "finished": 1792063054.263548,
+              "host_load_end": [
+                43.29248046875,
+                44.22265625,
+                49.24072265625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063054.263566,
+              "host_load": [
+                43.29248046875,
+                44.22265625,
+                49.24072265625
+              ],
+              "workload": {
+                "value": 26.364351,
+                "verified": 1
+              },
+              "value": 26.364351,
+              "wall_seconds": 28.035537663847208,
+              "finished": 1792063082.2991116,
+              "host_load_end": [
+                43.619140625,
+                44.2978515625,
+                49.1357421875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063082.2991283,
+              "host_load": [
+                43.619140625,
+                44.2978515625,
+                49.1357421875
+              ],
+              "workload": {
+                "value": 4.35300342,
+                "verified": 1
+              },
+              "value": 4.35300342,
+              "wall_seconds": 4.384582674130797,
+              "finished": 1792063086.68372,
+              "host_load_end": [
+                43.2490234375,
+                44.20947265625,
+                49.0810546875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063086.6837652,
+              "host_load": [
+                43.2490234375,
+                44.20947265625,
+                49.0810546875
+              ],
+              "workload": {
+                "value": 24.5805571,
+                "verified": 1
+              },
+              "value": 24.5805571,
+              "wall_seconds": 27.259074931964278,
+              "finished": 1792063113.942861,
+              "host_load_end": [
+                40.56103515625,
+                43.50048828125,
+                48.716796875
+              ]
+            }
+          ]
+        }
+      },
+      "app.untar": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [
+          8.34652323,
+          9.34561796
+        ],
+        "guest": [
+          0.366748416,
+          0.467828736
+        ],
+        "error": "guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; 0 host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC",
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 240,
+          "durability": {
+            "error": "guest fsync not durable: UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; 0 host COW syncs observed for 3 guest fsyncs; COW lacks O_DSYNC/O_SYNC",
+            "filesystems": [
+              {
+                "path": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native/work",
+                "device": 2048,
+                "mount": {
+                  "filesystems": [
+                    {
+                      "source": "/dev/sda[/starpub/liushiao]",
+                      "fstype": "ext4",
+                      "target": "/root",
+                      "options": "rw,relatime"
+                    }
+                  ]
+                }
+              },
+              {
+                "path": "/root/harddind-rebuild/hd/instances/b489e2b2fce/root.cow",
+                "device": 2048,
+                "mount": {
+                  "filesystems": [
+                    {
+                      "source": "/dev/sda[/starpub/liushiao]",
+                      "fstype": "ext4",
+                      "target": "/root",
+                      "options": "rw,relatime"
+                    }
+                  ]
+                }
+              }
+            ],
+            "same_filesystem": true,
+            "ubd_source": {
+              "path": "/root/harddind-rebuild/hd/work/linux-7.2.10/arch/um/drivers/ubd_kern.c",
+              "sha256": "9eac55372f14a7c8e6454462d3aca02cb2b9568cbf28e9ec7d3eb81e19fbe5e2",
+              "zero_segment_flush": true,
+              "segment_only_dispatch": true,
+              "flush_skipped": true
+            },
+            "os_sync_file": "int os_sync_file(int fd)\n{\n\tint n = fdatasync(fd);\n\n\tif (n < 0)\n\t\treturn -errno;\n\treturn n;\n}",
+            "traced_pids": [
+              3112928,
+              3112992,
+              3112994,
+              3113005,
+              3113041,
+              3113052,
+              3113056,
+              3113061,
+              3113062,
+              3113065,
+              3113068,
+              3113069,
+              3113070,
+              3113266,
+              3113277,
+              3113285,
+              3113301,
+              3113345,
+              3113636,
+              3113661,
+              3113662,
+              3113663,
+              3113851,
+              3113942,
+              3132189,
+              3132979,
+              3134047,
+              3134613,
+              3140532,
+              3141034,
+              3141535,
+              3142537,
+              3142539,
+              3142690,
+              3142873
+            ],
+            "cow_descriptors": [
+              {
+                "pid": 3112928,
+                "fd": 18,
+                "flags": "0o2100002",
+                "synchronous": false
+              }
+            ],
+            "native_probe": {
+              "value": 3,
+              "verified": 12288,
+              "fsync_calls": 3
+            },
+            "native_syncs": 3,
+            "attached_pids": [],
+            "guest_probe": {
+              "value": 3,
+              "verified": 12288,
+              "fsync_calls": 3
+            },
+            "guest_syncs": 0,
+            "tracer_log": "scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113065): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113068): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113069): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113070): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113266): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113277): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113285): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113301): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113345): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113636): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113661): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113662): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113663): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113851): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3113942): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3132189): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3132979): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3134047): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3134613): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3140532): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3141034): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3141535): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142537): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142539): Operation not permitted\nstrace: Could not attach to process. If your uid matches the uid of the target process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try again as the root user. For more details, see /etc/sysctl.d/10-ptrace.conf: Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142690): Operation not permitted\nstrace: attach: ptrace(PTRACE_SEIZE, 3142873): No such process\n",
+            "trace_files": [
+              "fsync-native.strace",
+              "fsync-guest.strace",
+              "fsync-tracer.log"
+            ]
+          },
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063113.9431124,
+              "host_load": [
+                40.56103515625,
+                43.50048828125,
+                48.716796875
+              ],
+              "workload": {
+                "value": 10.6650324,
+                "verified": 2000
+              },
+              "value": 10.6650324,
+              "wall_seconds": 10.721415925770998,
+              "finished": 1792063124.6645346,
+              "host_load_end": [
+                39.7490234375,
+                43.154296875,
+                48.51904296875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063124.6645522,
+              "host_load": [
+                39.7490234375,
+                43.154296875,
+                48.51904296875
+              ],
+              "workload": {
+                "value": 0.327741696,
+                "verified": 2000
+              },
+              "value": 0.327741696,
+              "wall_seconds": 1.95139567181468,
+              "finished": 1792063126.6159585,
+              "host_load_end": [
+                39.7490234375,
+                43.154296875,
+                48.51904296875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063126.6159794,
+              "host_load": [
+                39.7490234375,
+                43.154296875,
+                48.51904296875
+              ],
+              "workload": {
+                "value": 8.34652323,
+                "verified": 2000
+              },
+              "value": 8.34652323,
+              "wall_seconds": 8.484607420861721,
+              "finished": 1792063135.1005926,
+              "host_load_end": [
+                40.81298828125,
+                43.25244140625,
+                48.49267578125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063135.1006155,
+              "host_load": [
+                40.81298828125,
+                43.25244140625,
+                48.49267578125
+              ],
+              "workload": {
+                "value": 0.366748416,
+                "verified": 2000
+              },
+              "value": 0.366748416,
+              "wall_seconds": 2.1067065335810184,
+              "finished": 1792063137.2073328,
+              "host_load_end": [
+                40.81298828125,
+                43.25244140625,
+                48.49267578125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063137.2073524,
+              "host_load": [
+                40.81298828125,
+                43.25244140625,
+                48.49267578125
+              ],
+              "workload": {
+                "value": 9.34561796,
+                "verified": 2000
+              },
+              "value": 9.34561796,
+              "wall_seconds": 9.752964811399579,
+              "finished": 1792063146.9603224,
+              "host_load_end": [
+                41.59423828125,
+                43.3291015625,
+                48.4609375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063146.960342,
+              "host_load": [
+                41.59423828125,
+                43.3291015625,
+                48.4609375
+              ],
+              "workload": {
+                "value": 0.467828736,
+                "verified": 2000
+              },
+              "value": 0.467828736,
+              "wall_seconds": 2.7085239086300135,
+              "finished": 1792063149.6688747,
+              "host_load_end": [
+                45.55078125,
+                44.12060546875,
+                48.689453125
+              ]
+            }
+          ]
+        }
+      },
+      "app.gzip": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [
+          0.514987811,
+          0.516195338
+        ],
+        "guest": [
+          0.854256896,
+          0.93111936
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063149.6691086,
+              "host_load": [
+                45.55078125,
+                44.12060546875,
+                48.689453125
+              ],
+              "workload": {
+                "value": 0.560634712,
+                "verified": 67108864
+              },
+              "value": 0.560634712,
+              "wall_seconds": 1.4668623078614473,
+              "finished": 1792063151.1359773,
+              "host_load_end": [
+                45.55078125,
+                44.12060546875,
+                48.689453125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063151.1359937,
+              "host_load": [
+                45.55078125,
+                44.12060546875,
+                48.689453125
+              ],
+              "workload": {
+                "value": 0.922495488,
+                "verified": 67108864
+              },
+              "value": 0.922495488,
+              "wall_seconds": 6.040206855162978,
+              "finished": 1792063157.176209,
+              "host_load_end": [
+                45.26611328125,
+                44.0849609375,
+                48.6533203125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063157.1762347,
+              "host_load": [
+                45.26611328125,
+                44.0849609375,
+                48.6533203125
+              ],
+              "workload": {
+                "value": 0.514987811,
+                "verified": 67108864
+              },
+              "value": 0.514987811,
+              "wall_seconds": 1.3426292426884174,
+              "finished": 1792063158.5188706,
+              "host_load_end": [
+                45.26611328125,
+                44.0849609375,
+                48.6533203125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063158.5188913,
+              "host_load": [
+                45.26611328125,
+                44.0849609375,
+                48.6533203125
+              ],
+              "workload": {
+                "value": 0.854256896,
+                "verified": 67108864
+              },
+              "value": 0.854256896,
+              "wall_seconds": 4.978455448523164,
+              "finished": 1792063163.4973567,
+              "host_load_end": [
+                44.68408203125,
+                43.98388671875,
+                48.595703125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063163.4973884,
+              "host_load": [
+                44.68408203125,
+                43.98388671875,
+                48.595703125
+              ],
+              "workload": {
+                "value": 0.516195338,
+                "verified": 67108864
+              },
+              "value": 0.516195338,
+              "wall_seconds": 1.2947482280433178,
+              "finished": 1792063164.792143,
+              "host_load_end": [
+                43.427734375,
+                43.73486328125,
+                48.490234375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063164.7921612,
+              "host_load": [
+                43.427734375,
+                43.73486328125,
+                48.490234375
+              ],
+              "workload": {
+                "value": 0.93111936,
+                "verified": 67108864
+              },
+              "value": 0.93111936,
+              "wall_seconds": 5.103339720517397,
+              "finished": 1792063169.8955114,
+              "host_load_end": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ]
+            }
+          ]
+        }
+      },
+      "fs.metadata": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          44049.4693,
+          64069.7609
+        ],
+        "guest": [
+          19244.815,
+          15452.4197
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063169.8957672,
+              "host_load": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ],
+              "workload": {
+                "value": 64314.0411,
+                "verified": 2000,
+                "batch": 8000,
+                "clock_reads": 2,
+                "calibration_clock_reads": 0,
+                "measurement_seconds": 0.124389634
+              },
+              "value": 64314.0411,
+              "wall_seconds": 0.13167734071612358,
+              "finished": 1792063170.0274527,
+              "host_load_end": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063170.0274713,
+              "host_load": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ],
+              "workload": {
+                "value": 12505.5675,
+                "verified": 2000,
+                "batch": 8000,
+                "clock_reads": 2,
+                "calibration_clock_reads": 0,
+                "measurement_seconds": 0.639715072
+              },
+              "value": 12505.5675,
+              "wall_seconds": 2.024929879233241,
+              "finished": 1792063172.0524113,
+              "host_load_end": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063172.0524278,
+              "host_load": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ],
+              "workload": {
+                "value": 44049.4693,
+                "verified": 2000,
+                "batch": 8000,
+                "clock_reads": 2,
+                "calibration_clock_reads": 0,
+                "measurement_seconds": 0.181613993
+              },
+              "value": 44049.4693,
+              "wall_seconds": 0.18909322284162045,
+              "finished": 1792063172.2415254,
+              "host_load_end": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063172.241544,
+              "host_load": [
+                43.31298828125,
+                43.7060546875,
+                48.455078125
+              ],
+              "workload": {
+                "value": 19244.815,
+                "verified": 2000,
+                "batch": 8000,
+                "clock_reads": 2,
+                "calibration_clock_reads": 0,
+                "measurement_seconds": 0.415696384
+              },
+              "value": 19244.815,
+              "wall_seconds": 2.1505420356988907,
+              "finished": 1792063174.3920944,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063174.3921113,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 64069.7609,
+                "verified": 2000,
+                "batch": 8000,
+                "clock_reads": 2,
+                "calibration_clock_reads": 0,
+                "measurement_seconds": 0.124863897
+              },
+              "value": 64069.7609,
+              "wall_seconds": 0.13082983158528805,
+              "finished": 1792063174.5229466,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063174.5229647,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 15452.4197,
+                "verified": 2000,
+                "batch": 8000,
+                "clock_reads": 2,
+                "calibration_clock_reads": 0,
+                "measurement_seconds": 0.517718272
+              },
+              "value": 15452.4197,
+              "wall_seconds": 2.1534227803349495,
+              "finished": 1792063176.6763966,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            }
+          ]
+        }
+      },
+      "net.publish_rr": {
+        "unit": "round trips/s",
+        "higher_is_better": true,
+        "native": [
+          52315.1958,
+          48262.7563
+        ],
+        "guest": [
+          7517.49282,
+          5428.00902
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063177.8447814,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 46951.5935,
+                "verified": 10240,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.218096964
+              },
+              "value": 46951.5935,
+              "wall_seconds": 0.25861313566565514,
+              "finished": 1792063178.103414,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063178.103448,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 8575.34401,
+                "verified": 1856,
+                "batch": 128,
+                "clock_reads": 16,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.216434466
+              },
+              "value": 8575.34401,
+              "wall_seconds": 0.24249801598489285,
+              "finished": 1792063178.3459694,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063178.3459992,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 52315.1958,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.21531029
+              },
+              "value": 52315.1958,
+              "wall_seconds": 0.2662870530039072,
+              "finished": 1792063178.6122975,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063178.6123247,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 7517.49282,
+                "verified": 2048,
+                "batch": 256,
+                "clock_reads": 16,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.272431254
+              },
+              "value": 7517.49282,
+              "wall_seconds": 0.3170429803431034,
+              "finished": 1792063178.92938,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063178.929409,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 48262.7563,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.233389074
+              },
+              "value": 48262.7563,
+              "wall_seconds": 0.2920857612043619,
+              "finished": 1792063179.221506,
+              "host_load_end": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063179.2215304,
+              "host_load": [
+                42.08642578125,
+                43.44482421875,
+                48.3447265625
+              ],
+              "workload": {
+                "value": 5428.00902,
+                "verified": 1136,
+                "batch": 128,
+                "clock_reads": 12,
+                "calibration_clock_reads": 5,
+                "measurement_seconds": 0.20928484
+              },
+              "value": 5428.00902,
+              "wall_seconds": 0.39767709746956825,
+              "finished": 1792063179.6192176,
+              "host_load_end": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ]
+            }
+          ]
+        }
+      },
+      "net.bridge_rr": {
+        "unit": "round trips/s",
+        "higher_is_better": true,
+        "native": [
+          49313.2084,
+          56081.7163
+        ],
+        "guest": [
+          9992.30592,
+          13019.5379
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063181.815441,
+              "host_load": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ],
+              "workload": {
+                "value": 55178.6997,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.204136742
+              },
+              "value": 55178.6997,
+              "wall_seconds": 0.24353151954710484,
+              "finished": 1792063182.058988,
+              "host_load_end": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063182.0590053,
+              "host_load": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ],
+              "workload": {
+                "value": 8507.66698,
+                "verified": 1728,
+                "batch": 256,
+                "clock_reads": 10,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.203110912
+              },
+              "value": 8507.66698,
+              "wall_seconds": 1.7548423688858747,
+              "finished": 1792063183.813857,
+              "host_load_end": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063183.813874,
+              "host_load": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ],
+              "workload": {
+                "value": 49313.2084,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.228417505
+              },
+              "value": 49313.2084,
+              "wall_seconds": 0.27603926695883274,
+              "finished": 1792063184.0899177,
+              "host_load_end": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063184.0899389,
+              "host_load": [
+                44.00146484375,
+                43.8193359375,
+                48.43994140625
+              ],
+              "workload": {
+                "value": 9992.30592,
+                "verified": 2048,
+                "batch": 256,
+                "clock_reads": 10,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.204957696
+              },
+              "value": 9992.30592,
+              "wall_seconds": 1.7843692153692245,
+              "finished": 1792063185.8743167,
+              "host_load_end": [
+                43.0400390625,
+                43.623046875,
+                48.3515625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063185.8743427,
+              "host_load": [
+                43.0400390625,
+                43.623046875,
+                48.3515625
+              ],
+              "workload": {
+                "value": 56081.7163,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.200849773
+              },
+              "value": 56081.7163,
+              "wall_seconds": 0.24617507681250572,
+              "finished": 1792063186.1205235,
+              "host_load_end": [
+                43.0400390625,
+                43.623046875,
+                48.3515625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063186.1205459,
+              "host_load": [
+                43.0400390625,
+                43.623046875,
+                48.3515625
+              ],
+              "workload": {
+                "value": 13019.5379,
+                "verified": 2814,
+                "batch": 256,
+                "clock_reads": 18,
+                "calibration_clock_reads": 2,
+                "measurement_seconds": 0.216136704
+              },
+              "value": 13019.5379,
+              "wall_seconds": 1.923491571098566,
+              "finished": 1792063188.0440457,
+              "host_load_end": [
+                43.0400390625,
+                43.623046875,
+                48.3515625
+              ]
+            }
+          ]
+        }
+      },
+      "docker.run": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [],
+        "guest": [
+          1.5192507468163967,
+          1.2191152926534414
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063189.0725458,
+              "host_load": [
+                43.0400390625,
+                43.623046875,
+                48.3515625
+              ],
+              "value": 1.5907407868653536,
+              "wall_seconds": 1.5907438080757856,
+              "finished": 1792063190.6632993,
+              "host_load_end": [
+                42.55615234375,
+                43.5126953125,
+                48.29052734375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063190.6633146,
+              "host_load": [
+                42.55615234375,
+                43.5126953125,
+                48.29052734375
+              ],
+              "value": 1.5192507468163967,
+              "wall_seconds": 1.5192540157586336,
+              "finished": 1792063192.1825721,
+              "host_load_end": [
+                42.55615234375,
+                43.5126953125,
+                48.29052734375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063192.182587,
+              "host_load": [
+                42.55615234375,
+                43.5126953125,
+                48.29052734375
+              ],
+              "value": 1.2191152926534414,
+              "wall_seconds": 1.219117471948266,
+              "finished": 1792063193.4017072,
+              "host_load_end": [
+                42.55615234375,
+                43.5126953125,
+                48.29052734375
+              ]
+            }
+          ]
+        }
+      },
+      "docker.exec": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [],
+        "guest": [
+          0.36104894801974297,
+          0.31245947256684303
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063194.1073592,
+              "host_load": [
+                42.55615234375,
+                43.5126953125,
+                48.29052734375
+              ],
+              "value": 0.3268587440252304,
+              "wall_seconds": 0.32686184346675873,
+              "finished": 1792063194.4342313,
+              "host_load_end": [
+                44.43359375,
+                43.88623046875,
+                48.3857421875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063194.434247,
+              "host_load": [
+                44.43359375,
+                43.88623046875,
+                48.3857421875
+              ],
+              "value": 0.36104894801974297,
+              "wall_seconds": 0.36105276830494404,
+              "finished": 1792063194.7953036,
+              "host_load_end": [
+                44.43359375,
+                43.88623046875,
+                48.3857421875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063194.7953272,
+              "host_load": [
+                44.43359375,
+                43.88623046875,
+                48.3857421875
+              ],
+              "value": 0.31245947256684303,
+              "wall_seconds": 0.31246249191462994,
+              "finished": 1792063195.1077943,
+              "host_load_end": [
+                44.43359375,
+                43.88623046875,
+                48.3857421875
+              ]
+            }
+          ]
+        }
+      },
+      "docker.build_cached": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [],
+        "guest": [
+          0.7768870517611504,
+          0.908929567784071
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063203.7985718,
+              "host_load": [
+                43.998046875,
+                43.8046875,
+                48.3349609375
+              ],
+              "value": 0.9612147007137537,
+              "wall_seconds": 0.9612179901450872,
+              "finished": 1792063204.7597983,
+              "host_load_end": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063204.7598124,
+              "host_load": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ],
+              "value": 0.7768870517611504,
+              "wall_seconds": 0.77689029276371,
+              "finished": 1792063205.5367074,
+              "host_load_end": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063205.536726,
+              "host_load": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ],
+              "value": 0.908929567784071,
+              "wall_seconds": 0.9089319668710232,
+              "finished": 1792063206.4456623,
+              "host_load_end": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ]
+            }
+          ]
+        }
+      },
+      "docker.lifecycle": {
+        "unit": "seconds",
+        "higher_is_better": false,
+        "native": [],
+        "guest": [
+          1.653401181101799,
+          1.6265274081379175
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063206.658668,
+              "host_load": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ],
+              "value": 2.0462180953472853,
+              "wall_seconds": 2.046221937984228,
+              "finished": 1792063208.7048998,
+              "host_load_end": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063208.7049172,
+              "host_load": [
+                42.876953125,
+                43.5751953125,
+                48.236328125
+              ],
+              "value": 1.653401181101799,
+              "wall_seconds": 1.6534042973071337,
+              "finished": 1792063210.3583262,
+              "host_load_end": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063210.35834,
+              "host_load": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ],
+              "value": 1.6265274081379175,
+              "wall_seconds": 1.6265310104936361,
+              "finished": 1792063211.9848747,
+              "host_load_end": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ]
+            }
+          ]
+        }
+      },
+      "micro.syscall": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          1850989.86,
+          2045292.74
+        ],
+        "guest": [
+          243282.283,
+          242932.601
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063211.9851015,
+              "host_load": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ],
+              "workload": {
+                "value": 1987984.33,
+                "verified": 393215,
+                "batch": 32768,
+                "clock_reads": 10,
+                "calibration_clock_reads": 16,
+                "measurement_seconds": 0.164830273
+              },
+              "value": 1987984.33,
+              "wall_seconds": 0.20189292170107365,
+              "finished": 1792063212.1870003,
+              "host_load_end": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063212.187014,
+              "host_load": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ],
+              "workload": {
+                "value": 262710.168,
+                "verified": 47103,
+                "batch": 4096,
+                "clock_reads": 11,
+                "calibration_clock_reads": 12,
+                "measurement_seconds": 0.163708928
+              },
+              "value": 262710.168,
+              "wall_seconds": 2.118403721600771,
+              "finished": 1792063214.3054268,
+              "host_load_end": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063214.305458,
+              "host_load": [
+                42.56640625,
+                43.4990234375,
+                48.1865234375
+              ],
+              "workload": {
+                "value": 1850989.86,
+                "verified": 360447,
+                "batch": 32768,
+                "clock_reads": 9,
+                "calibration_clock_reads": 16,
+                "measurement_seconds": 0.159326643
+              },
+              "value": 1850989.86,
+              "wall_seconds": 0.1962596047669649,
+              "finished": 1792063214.501723,
+              "host_load_end": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063214.5017433,
+              "host_load": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ],
+              "workload": {
+                "value": 243282.283,
+                "verified": 45055,
+                "batch": 4096,
+                "clock_reads": 9,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.15152768
+              },
+              "value": 243282.283,
+              "wall_seconds": 1.5463305674493313,
+              "finished": 1792063216.0480843,
+              "host_load_end": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063216.0481014,
+              "host_load": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ],
+              "workload": {
+                "value": 2045292.74,
+                "verified": 393215,
+                "batch": 32768,
+                "clock_reads": 10,
+                "calibration_clock_reads": 16,
+                "measurement_seconds": 0.160211785
+              },
+              "value": 2045292.74,
+              "wall_seconds": 0.202188141644001,
+              "finished": 1792063216.2502933,
+              "host_load_end": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063216.25031,
+              "host_load": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ],
+              "workload": {
+                "value": 242932.601,
+                "verified": 45055,
+                "batch": 4096,
+                "clock_reads": 9,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.151745792
+              },
+              "value": 242932.601,
+              "wall_seconds": 1.7213919945061207,
+              "finished": 1792063217.9717102,
+              "host_load_end": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ]
+            }
+          ]
+        }
+      },
+      "micro.forkexec": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          1477.3553,
+          3190.95585
+        ],
+        "guest": [
+          438.576214,
+          390.117197
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063218.0165796,
+              "host_load": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ],
+              "workload": {
+                "value": 3609.07346,
+                "verified": 703,
+                "batch": 64,
+                "clock_reads": 9,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.159597749
+              },
+              "value": 3609.07346,
+              "wall_seconds": 0.19385550543665886,
+              "finished": 1792063218.2104564,
+              "host_load_end": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063218.210472,
+              "host_load": [
+                41.47998046875,
+                43.25830078125,
+                48.0830078125
+              ],
+              "workload": {
+                "value": 272.925764,
+                "verified": 45,
+                "batch": 8,
+                "clock_reads": 7,
+                "calibration_clock_reads": 2,
+                "measurement_seconds": 0.153888
+              },
+              "value": 272.925764,
+              "wall_seconds": 1.9350891876965761,
+              "finished": 1792063220.145571,
+              "host_load_end": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063220.14559,
+              "host_load": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ],
+              "workload": {
+                "value": 1477.3553,
+                "verified": 383,
+                "batch": 64,
+                "clock_reads": 4,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.173282621
+              },
+              "value": 1477.3553,
+              "wall_seconds": 0.20673335529863834,
+              "finished": 1792063220.352329,
+              "host_load_end": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063220.3523483,
+              "host_load": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ],
+              "workload": {
+                "value": 438.576214,
+                "verified": 75,
+                "batch": 8,
+                "clock_reads": 9,
+                "calibration_clock_reads": 3,
+                "measurement_seconds": 0.155047168
+              },
+              "value": 438.576214,
+              "wall_seconds": 1.7413276266306639,
+              "finished": 1792063222.0936828,
+              "host_load_end": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063222.0936985,
+              "host_load": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ],
+              "workload": {
+                "value": 3190.95585,
+                "verified": 575,
+                "batch": 64,
+                "clock_reads": 9,
+                "calibration_clock_reads": 6,
+                "measurement_seconds": 0.160453489
+              },
+              "value": 3190.95585,
+              "wall_seconds": 0.20287417247891426,
+              "finished": 1792063222.296577,
+              "host_load_end": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063222.2966003,
+              "host_load": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ],
+              "workload": {
+                "value": 390.117197,
+                "verified": 67,
+                "batch": 8,
+                "clock_reads": 8,
+                "calibration_clock_reads": 3,
+                "measurement_seconds": 0.153799936
+              },
+              "value": 390.117197,
+              "wall_seconds": 1.681221952661872,
+              "finished": 1792063223.9778326,
+              "host_load_end": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ]
+            }
+          ]
+        }
+      },
+      "micro.mmap": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          192386.562,
+          179240.67
+        ],
+        "guest": [
+          15648.9135,
+          21917.6481
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063223.9781017,
+              "host_load": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ],
+              "workload": {
+                "value": 191048.811,
+                "verified": 36863,
+                "batch": 4096,
+                "clock_reads": 11,
+                "calibration_clock_reads": 12,
+                "measurement_seconds": 0.171516377
+              },
+              "value": 191048.811,
+              "wall_seconds": 0.19963828474283218,
+              "finished": 1792063224.1777456,
+              "host_load_end": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063224.1777585,
+              "host_load": [
+                41.44140625,
+                43.220703125,
+                48.044921875
+              ],
+              "workload": {
+                "value": 13646.7848,
+                "verified": 2815,
+                "batch": 512,
+                "clock_reads": 8,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.168830976
+              },
+              "value": 13646.7848,
+              "wall_seconds": 1.448938487097621,
+              "finished": 1792063225.6267054,
+              "host_load_end": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063225.626721,
+              "host_load": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ],
+              "workload": {
+                "value": 192386.562,
+                "verified": 40959,
+                "batch": 4096,
+                "clock_reads": 8,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.170323746
+              },
+              "value": 192386.562,
+              "wall_seconds": 0.21461299248039722,
+              "finished": 1792063225.8413386,
+              "host_load_end": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063225.8413582,
+              "host_load": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ],
+              "workload": {
+                "value": 15648.9135,
+                "verified": 3583,
+                "batch": 512,
+                "clock_reads": 5,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.163589632
+              },
+              "value": 15648.9135,
+              "wall_seconds": 1.77736902423203,
+              "finished": 1792063227.6187353,
+              "host_load_end": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063227.6187527,
+              "host_load": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ],
+              "workload": {
+                "value": 179240.67,
+                "verified": 32767,
+                "batch": 2048,
+                "clock_reads": 14,
+                "calibration_clock_reads": 12,
+                "measurement_seconds": 0.159963695
+              },
+              "value": 179240.67,
+              "wall_seconds": 0.1864010225981474,
+              "finished": 1792063227.8051577,
+              "host_load_end": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063227.8051782,
+              "host_load": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ],
+              "workload": {
+                "value": 21917.6481,
+                "verified": 4351,
+                "batch": 512,
+                "clock_reads": 8,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.17520128
+              },
+              "value": 21917.6481,
+              "wall_seconds": 1.4981266856193542,
+              "finished": 1792063229.3033128,
+              "host_load_end": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ]
+            }
+          ]
+        }
+      },
+      "micro.clock": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          39645650.0,
+          38953844.8
+        ],
+        "guest": [
+          238079.098,
+          180758.864
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063229.3036447,
+              "host_load": [
+                42.20703125,
+                43.35009765625,
+                48.06103515625
+              ],
+              "workload": {
+                "value": 35545810.8,
+                "verified": 6815743,
+                "batch": 524288,
+                "clock_reads": 11,
+                "calibration_clock_reads": 20,
+                "measurement_seconds": 0.162246067
+              },
+              "value": 35545810.8,
+              "wall_seconds": 0.20571636408567429,
+              "finished": 1792063229.5093687,
+              "host_load_end": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063229.5093832,
+              "host_load": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ],
+              "workload": {
+                "value": 237834.517,
+                "verified": 45055,
+                "batch": 4096,
+                "clock_reads": 9,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.154998528
+              },
+              "value": 237834.517,
+              "wall_seconds": 2.2508718129247427,
+              "finished": 1792063231.760263,
+              "host_load_end": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063231.7602754,
+              "host_load": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ],
+              "workload": {
+                "value": 39645650,
+                "verified": 7340031,
+                "batch": 524288,
+                "clock_reads": 12,
+                "calibration_clock_reads": 20,
+                "measurement_seconds": 0.158692215
+              },
+              "value": 39645650.0,
+              "wall_seconds": 0.19166836701333523,
+              "finished": 1792063231.9519503,
+              "host_load_end": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063231.9519763,
+              "host_load": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ],
+              "workload": {
+                "value": 238079.098,
+                "verified": 45055,
+                "batch": 4096,
+                "clock_reads": 9,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.154839296
+              },
+              "value": 238079.098,
+              "wall_seconds": 1.616351518779993,
+              "finished": 1792063233.5683415,
+              "host_load_end": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063233.5683553,
+              "host_load": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ],
+              "workload": {
+                "value": 38953844.8,
+                "verified": 7340031,
+                "batch": 524288,
+                "clock_reads": 12,
+                "calibration_clock_reads": 20,
+                "measurement_seconds": 0.161510527
+              },
+              "value": 38953844.8,
+              "wall_seconds": 0.19165346771478653,
+              "finished": 1792063233.7600129,
+              "host_load_end": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063233.760032,
+              "host_load": [
+                41.3095703125,
+                43.14501953125,
+                47.96923828125
+              ],
+              "workload": {
+                "value": 180758.864,
+                "verified": 36863,
+                "batch": 4096,
+                "clock_reads": 7,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.15862016
+              },
+              "value": 180758.864,
+              "wall_seconds": 2.0606381483376026,
+              "finished": 1792063235.8206775,
+              "host_load_end": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ]
+            }
+          ]
+        }
+      },
+      "micro.thread": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          29200.5319,
+          27433.8025
+        ],
+        "guest": [
+          5916.01157,
+          8705.52925
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063235.820932,
+              "host_load": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ],
+              "workload": {
+                "value": 18836.413,
+                "verified": 4607,
+                "batch": 512,
+                "clock_reads": 7,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.190269772
+              },
+              "value": 18836.413,
+              "wall_seconds": 0.23383833281695843,
+              "finished": 1792063236.0547755,
+              "host_load_end": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063236.0547915,
+              "host_load": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ],
+              "workload": {
+                "value": 3401.59486,
+                "verified": 579,
+                "batch": 128,
+                "clock_reads": 9,
+                "calibration_clock_reads": 3,
+                "measurement_seconds": 0.168156416
+              },
+              "value": 3401.59486,
+              "wall_seconds": 1.5890596266835928,
+              "finished": 1792063237.6438606,
+              "host_load_end": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063237.6438758,
+              "host_load": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ],
+              "workload": {
+                "value": 29200.5319,
+                "verified": 5247,
+                "batch": 512,
+                "clock_reads": 11,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.17095579
+              },
+              "value": 29200.5319,
+              "wall_seconds": 0.2124427855014801,
+              "finished": 1792063237.856324,
+              "host_load_end": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063237.8563442,
+              "host_load": [
+                40.40380859375,
+                42.9267578125,
+                47.87255859375
+              ],
+              "workload": {
+                "value": 5916.01157,
+                "verified": 1087,
+                "batch": 128,
+                "clock_reads": 8,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.162271488
+              },
+              "value": 5916.01157,
+              "wall_seconds": 2.1884675286710262,
+              "finished": 1792063240.044822,
+              "host_load_end": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063240.0448382,
+              "host_load": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ],
+              "workload": {
+                "value": 27433.8025,
+                "verified": 5631,
+                "batch": 512,
+                "clock_reads": 9,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.167967966
+              },
+              "value": 27433.8025,
+              "wall_seconds": 0.3039119001477957,
+              "finished": 1792063240.3487544,
+              "host_load_end": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063240.3487718,
+              "host_load": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ],
+              "workload": {
+                "value": 8705.52925,
+                "verified": 1471,
+                "batch": 128,
+                "clock_reads": 11,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.15438464
+              },
+              "value": 8705.52925,
+              "wall_seconds": 2.2119729928672314,
+              "finished": 1792063242.560754,
+              "host_load_end": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ]
+            }
+          ]
+        }
+      },
+      "micro.pipe": {
+        "unit": "round trips/s",
+        "higher_is_better": true,
+        "native": [
+          116319.96,
+          135269.383
+        ],
+        "guest": [
+          14879.3209,
+          11816.1408
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063242.5611498,
+              "host_load": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ],
+              "workload": {
+                "value": 91215.9792,
+                "verified": 18431,
+                "batch": 2048,
+                "clock_reads": 7,
+                "calibration_clock_reads": 12,
+                "measurement_seconds": 0.157165445
+              },
+              "value": 91215.9792,
+              "wall_seconds": 0.20064702257514,
+              "finished": 1792063242.7618065,
+              "host_load_end": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063242.7618196,
+              "host_load": [
+                40.05078125,
+                42.8115234375,
+                47.80859375
+              ],
+              "workload": {
+                "value": 15926.6102,
+                "verified": 2943,
+                "batch": 512,
+                "clock_reads": 8,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.168774144
+              },
+              "value": 15926.6102,
+              "wall_seconds": 1.7273956891149282,
+              "finished": 1792063244.489224,
+              "host_load_end": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063244.4892442,
+              "host_load": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ],
+              "workload": {
+                "value": 116319.96,
+                "verified": 22527,
+                "batch": 2048,
+                "clock_reads": 9,
+                "calibration_clock_reads": 12,
+                "measurement_seconds": 0.158459477
+              },
+              "value": 116319.96,
+              "wall_seconds": 0.20443839766085148,
+              "finished": 1792063244.693689,
+              "host_load_end": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063244.6937144,
+              "host_load": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ],
+              "workload": {
+                "value": 14879.3209,
+                "verified": 2687,
+                "batch": 512,
+                "clock_reads": 10,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.16344832
+              },
+              "value": 14879.3209,
+              "wall_seconds": 1.3567135110497475,
+              "finished": 1792063246.0504386,
+              "host_load_end": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063246.0504525,
+              "host_load": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ],
+              "workload": {
+                "value": 135269.383,
+                "verified": 24575,
+                "batch": 2048,
+                "clock_reads": 10,
+                "calibration_clock_reads": 12,
+                "measurement_seconds": 0.151401592
+              },
+              "value": 135269.383,
+              "wall_seconds": 0.18394336104393005,
+              "finished": 1792063246.234403,
+              "host_load_end": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063246.2344427,
+              "host_load": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ],
+              "workload": {
+                "value": 11816.1408,
+                "verified": 2303,
+                "batch": 256,
+                "clock_reads": 7,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.15165696
+              },
+              "value": 11816.1408,
+              "wall_seconds": 2.5946159176528454,
+              "finished": 1792063248.8290787,
+              "host_load_end": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ]
+            }
+          ]
+        }
+      },
+      "micro.signal": {
+        "unit": "ops/s",
+        "higher_is_better": true,
+        "native": [
+          427688.472,
+          396932.046
+        ],
+        "guest": [
+          97469.0536,
+          94195.378
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "871e2112905cad11db4d",
+          "image": "hd-bench:871e2112905cad11db4d",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-111256-33daff24-bench/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063248.8293846,
+              "host_load": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ],
+              "workload": {
+                "value": 374412.933,
+                "verified": 69631,
+                "batch": 8192,
+                "clock_reads": 9,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.164096896
+              },
+              "value": 374412.933,
+              "wall_seconds": 0.21572006680071354,
+              "finished": 1792063249.0451124,
+              "host_load_end": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792063249.045129,
+              "host_load": [
+                39.00537109375,
+                42.548828125,
+                47.69677734375
+              ],
+              "workload": {
+                "value": 94851.9125,
+                "verified": 16383,
+                "batch": 2048,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.151140864
+              },
+              "value": 94851.9125,
+              "wall_seconds": 1.2965287622064352,
+              "finished": 1792063250.3416672,
+              "host_load_end": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063250.3416858,
+              "host_load": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ],
+              "workload": {
+                "value": 427688.472,
+                "verified": 81919,
+                "batch": 8192,
+                "clock_reads": 8,
+                "calibration_clock_reads": 14,
+                "measurement_seconds": 0.153233029
+              },
+              "value": 427688.472,
+              "wall_seconds": 0.20083468034863472,
+              "finished": 1792063250.5425298,
+              "host_load_end": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792063250.5425775,
+              "host_load": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ],
+              "workload": {
+                "value": 97469.0536,
+                "verified": 17407,
+                "batch": 2048,
+                "clock_reads": 10,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.15758848
+              },
+              "value": 97469.0536,
+              "wall_seconds": 2.1080219727009535,
+              "finished": 1792063252.650621,
+              "host_load_end": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063252.6506424,
+              "host_load": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ],
+              "workload": {
+                "value": 396932.046,
+                "verified": 73727,
+                "batch": 8192,
+                "clock_reads": 9,
+                "calibration_clock_reads": 13,
+                "measurement_seconds": 0.165106347
+              },
+              "value": 396932.046,
+              "wall_seconds": 0.1937903817743063,
+              "finished": 1792063252.8444383,
+              "host_load_end": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792063252.8444612,
+              "host_load": [
+                38.6044921875,
+                42.40673828125,
+                47.623046875
+              ],
+              "workload": {
+                "value": 94195.378,
+                "verified": 16383,
+                "batch": 2048,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.152194304
+              },
+              "value": 94195.378,
+              "wall_seconds": 1.6531156823039055,
+              "finished": 1792063254.497586,
+              "host_load_end": [
+                37.7548828125,
+                42.16748046875,
+                47.517578125
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "finished": 1792063258.2819352,
+  "host_end": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      37.7548828125,
+      42.16748046875,
+      47.517578125
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  }
+}
