@@ -1,408 +1,85 @@
---- a/arch/um/kernel/trap.c
-+++ b/arch/um/kernel/trap.c
-@@ -17,6 +17,7 @@
- #include <os.h>
- #include <init.h>
- #include <skas.h>
-+#include <faultstat.h>
- 
- /*
-  * NOTE: UML does not have exception tables. As such, this is almost a copy
-@@ -234,8 +235,10 @@
- 
- 	if (!order)
- 		return;
--	if (!um_faultaround_vma_ok(vma))
-+	if (!um_faultaround_vma_ok(vma)) {
-+		uml_fs_inc(&uml_fs_window_skip);
- 		return;
-+	}
- 
- 	size = (unsigned long)PAGE_SIZE << order;
- 	start = ALIGN_DOWN(address, size);
-@@ -247,11 +250,16 @@
- 	 * never touch the stack guard region.  Staying inside the fault's
- 	 * PMD also guarantees its PTE page already exists.
- 	 */
--	if (start < vma->vm_start || end > vma->vm_end)
-+	if (start < vma->vm_start || end > vma->vm_end) {
-+		uml_fs_inc(&uml_fs_window_skip);
- 		return;
--	if ((start & PMD_MASK) != ((end - PAGE_SIZE) & PMD_MASK))
-+	}
-+	if ((start & PMD_MASK) != ((end - PAGE_SIZE) & PMD_MASK)) {
-+		uml_fs_inc(&uml_fs_window_skip);
- 		return;
-+	}
- 
-+	uml_fs_inc(&uml_fs_window);
- 	for (addr = start; addr < end; addr += PAGE_SIZE) {
- 		pmd_t *pmd;
- 		pte_t *ptep;
-@@ -283,6 +291,7 @@
- 		if (!empty)
- 			continue;
- 
-+		uml_fs_inc(&uml_fs_window_page);
- 		fault = handle_mm_fault(vma, addr, UM_FAULTAROUND_FLAGS, NULL);
- 		/*
- 		 * VM_FAULT_RETRY/COMPLETED cannot occur with the flags
-@@ -377,8 +386,10 @@
- 	err = 0;
- 	/* Exploratory: resolve the rest of the aligned anon window
- 	 * now, so their host mappings ride this same fault rendezvous. */
--	if (is_user && is_write)
-+	if (is_user && is_write) {
-+		uml_fs_inc(&uml_fs_write_fault);
- 		um_anon_faultaround(mm, vma, address);
-+	}
- 	/*
- 	 * The below warning was added in place of
- 	 *	pte_mkyoung(); if (is_write) pte_mkdirty();
---- a/arch/um/kernel/tlb.c
-+++ b/arch/um/kernel/tlb.c
-@@ -14,6 +14,32 @@
- #include <os.h>
- #include <skas.h>
- #include <kern_util.h>
-+#include <faultstat.h>
-+
-+/*
-+ * Instrumented map/unmap records.  They are only wired into the walk
-+ * when uml_faultstat_enabled is set; otherwise __um_tlb_sync() uses the
-+ * original map()/unmap() operations directly, i.e. zero wrapper calls.
-+ * The operation's result is returned byte for byte: observation cannot
-+ * change a driver/syscall result.
-+ */
-+static int fs_map(struct mm_id *mm_idp, unsigned long virt, unsigned long len,
-+		  int prot, int phys_fd, unsigned long long offset)
-+{
-+	int ret = map(mm_idp, virt, len, prot, phys_fd, offset);
-+
-+	uml_fs_inc(&uml_fs_map);
-+	return ret;
-+}
-+
-+static int fs_unmap(struct mm_id *mm_idp, unsigned long virt,
-+		    unsigned long len)
-+{
-+	int ret = unmap(mm_idp, virt, len);
-+
-+	uml_fs_inc(&uml_fs_unmap);
-+	return ret;
-+}
- 
- struct vm_ops {
- 	struct mm_id *mm_idp;
-@@ -184,11 +210,15 @@
- 	if (mm == &init_mm) {
- 		ops.mmap = kern_map;
- 		ops.unmap = kern_unmap;
-+	} else if (__builtin_expect(uml_faultstat_enabled, 0)) {
-+		ops.mmap = fs_map;
-+		ops.unmap = fs_unmap;
- 	} else {
- 		ops.mmap = map;
- 		ops.unmap = unmap;
- 	}
- 
-+	uml_fs_inc(&uml_fs_sync);
- 	addr = mm->context.sync_tlb_range_from;
- 	pgd = pgd_offset(mm, addr);
- 	do {
-@@ -206,8 +236,15 @@
- 	} while (pgd++, addr = next,
- 		 ((addr < mm->context.sync_tlb_range_to) && !ret));
- 
--	if (!ret && parallel_userspace && mm != &init_mm)
-+	if (!ret && parallel_userspace && mm != &init_mm) {
-+		unsigned long long fs_t0 = uml_fs_time_begin();
-+
- 		ret = syscall_stub_flush(&mm->context.id);
-+		/* begin() returns 0 without touching the clock when off;
-+		 * end() is then a pure enabled-check, no clock, no atomic. */
-+		uml_fs_time_end(&uml_fs_flush_ns, fs_t0);
-+		uml_fs_inc(&uml_fs_flush);
-+	}
- 
- 	if (ret == -ENOMEM)
- 		report_enomem();
---- a/arch/um/kernel/Makefile
-+++ b/arch/um/kernel/Makefile
-@@ -17,7 +17,7 @@
- obj-y = config.o exec.o exitcode.o irq.o ksyms.o mem.o \
- 	physmem.o process.o ptrace.o reboot.o sigio.o \
- 	signal.o sysrq.o time.o tlb.o trap.o \
--	um_arch.o umid.o kmsg_dump.o capflags.o skas/
-+	um_arch.o umid.o kmsg_dump.o capflags.o faultstat.o skas/
- obj-y += load_file.o gpu.o
- 
- obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
---- a/arch/um/os-Linux/skas/process.c
-+++ b/arch/um/os-Linux/skas/process.c
-@@ -33,6 +33,7 @@
- #include <timetravel.h>
- #include <asm-generic/rwonce.h>
- #include "../internal.h"
-+#include <faultstat.h>
- 
- int is_skas_winch(int pid, int fd, void *data)
- {
-@@ -663,13 +664,29 @@
- 			proc_data->syscall_data_len = mm_id->syscall_data_len;
- 			proc_data->syscall_fd_num = mm_id->syscall_fd_num;
- 
--			wait_stub_done_seccomp(mm_id, 0, 0);
-+			/*
-+			 * Bracket the whole userspace round.  When the
-+			 * counters are disabled begin()/end() execute no
-+			 * clock read and no atomic; the measured interval
-+			 * includes guest user execution until the runner
-+			 * traps, not only fault handling.
-+			 */
-+			{
-+				unsigned long long fs_t0 = uml_fs_time_begin();
-+
-+				wait_stub_done_seccomp(mm_id, 0, 0);
-+				uml_fs_time_end(&uml_fs_run_ns, fs_t0);
-+				uml_fs_inc(&uml_fs_run);
-+			}
- 			if (parallel_userspace && (mm_id->pid < 0 || proc_data->err < 0)) {
- 				current_mm_exit(mm_id);
- 				fatal_sigsegv();
- 			}
- 
- 			sig = proc_data->signal;
-+			uml_fs_inc(&uml_fs_trap);
-+			if (sig == SIGSEGV)
-+				uml_fs_inc(&uml_fs_segv);
- 
- 			if (sig == SIGTRAP && proc_data->err != 0) {
- 				printk(UM_KERN_ERR "%s - Error flushing stub syscalls",
+From: HardDinD developers
+Subject: [DIAGNOSTIC] um: count coalesced mapping batches and runner traps
+
+Standalone, default off (uml_faultstat=1). No dependency on anon-faultaround.
+Counts before and after map coalescing; counts real nonempty stub batches,
+including queue-capacity flushes. These are submitted commands, not successful
+host syscalls when stub_failed is nonzero. Machine-wide snapshots include
+background tasks and the snapshot reader. No hot-path clock reads.
+
 --- /dev/null
 +++ b/arch/um/include/shared/faultstat.h
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,30 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Minimal UML fault/rendezvous counters (optional, default off).
-+ *
-+ * This header is shared between proper kernel code and os-Linux
-+ * user-space style code, so it deliberately contains no kernel includes:
-+ * GCC atomics work in both compilation environments.
-+ *
-+ * Overhead contract (verified by tests/faultstat_unit.c and the static
-+ * contract check in tests/run_faultstat_checks.py):
-+ *
-+ *  - When uml_faultstat_enabled is 0, uml_fs_inc/uml_fs_add are a single
-+ *    predicted-not-taken branch and NO atomic instruction is emitted;
-+ *    uml_fs_time_begin/end do not read any clock at all (the gate runs
-+ *    before the clock call).
-+ *  - When enabled, all timestamps come from ONE source,
-+ *    uml_fs_clock_ns() (host CLOCK_MONOTONIC ns via os_nsecs()), in
-+ *    both kernel and host compilation contexts.  Local jiffies clocks
-+ *    are deliberately not used.
-+ *  - Counter helpers return void and have no errno.  The map/unmap
-+ *    wrappers in tlb.c return the underlying operation's result byte for
-+ *    byte, so instrumentation can never change a driver/syscall result.
-+ *
-+ * Counters are per-machine and approximate under multi-CPU updates.
-+ */
 +#ifndef __UM_SHARED_FAULTSTAT_H
 +#define __UM_SHARED_FAULTSTAT_H
 +
-+/*
-+ * No includes on purpose: this header is compiled both by the kernel
-+ * (-nostdinc) and by os-Linux user objects.  Only built-in integer
-+ * types are used, which need no header in either environment.
-+ */
++/* Shared by kernel and os-Linux objects; deliberately no Linux includes. */
++#define UML_FS_COUNTERS(X) \
++	X(trap) X(segv) X(sigsys) X(user_fault) X(write_fault) \
++	X(tlb_sync) X(map_requests) X(map_pages) X(map_coalesced) \
++	X(unmap_requests) X(stub_batches) X(stub_failed) \
++	X(stub_mmap) X(stub_mmap_pages) X(stub_munmap) X(stub_clone) \
++	X(stub_memfd) X(runner_start) X(broker_start) \
++	X(wait_poll_done) X(wait_futex)
++#define UML_FS_ENUM(name) UML_FS_##name,
++enum { UML_FS_COUNTERS(UML_FS_ENUM) UML_FS_COUNT };
++#undef UML_FS_ENUM
++extern int uml_faultstat_enabled;
++extern unsigned long long uml_fs_values[UML_FS_COUNT];
 +
-+extern volatile int uml_faultstat_enabled;
-+
-+/* Userspace reports handled (per userspace() round, any signal). */
-+extern volatile unsigned long long uml_fs_trap;
-+/* SIGSEGV reports specifically. */
-+extern volatile unsigned long long uml_fs_segv;
-+/* Successful user write faults resolved by handle_page_fault(). */
-+extern volatile unsigned long long uml_fs_write_fault;
-+/* Faultaround windows entered/skipped and neighbour faults issued. */
-+extern volatile unsigned long long uml_fs_window;
-+extern volatile unsigned long long uml_fs_window_page;
-+extern volatile unsigned long long uml_fs_window_skip;
-+/* TLB sync walks with dirty ranges; mmap/unmap records generated. */
-+extern volatile unsigned long long uml_fs_sync;
-+extern volatile unsigned long long uml_fs_map;
-+extern volatile unsigned long long uml_fs_unmap;
-+/* Broker stub batches completed and ns spent inside the flush call. */
-+extern volatile unsigned long long uml_fs_flush;
-+extern volatile unsigned long long uml_fs_flush_ns;
-+/*
-+ * userspace() rounds and ns spent in them.  This interval STARTS when
-+ * the vCPU hands the runner off (resume) and ENDS when the runner traps
-+ * back.  It therefore INCLUDES guest user execution time up to the
-+ * trap; it is NOT pure fault-handling overhead.
-+ */
-+extern volatile unsigned long long uml_fs_run;
-+extern volatile unsigned long long uml_fs_run_ns;
-+
-+/* One host CLOCK_MONOTONIC source for both compilation contexts. */
-+unsigned long long uml_fs_clock_ns(void);
-+
-+static inline void uml_fs_inc(volatile unsigned long long *p)
++/* No clocks at all; no atomic instructions when disabled. */
++static inline void uml_fs_add(unsigned int id, unsigned long long value)
 +{
 +	if (__builtin_expect(uml_faultstat_enabled, 0))
-+		__atomic_add_fetch(p, 1ULL, __ATOMIC_RELAXED);
++		__atomic_fetch_add(&uml_fs_values[id], value, __ATOMIC_RELAXED);
 +}
 +
-+static inline void uml_fs_add(volatile unsigned long long *p,
-+			      unsigned long long n)
++static inline void uml_fs_inc(unsigned int id)
 +{
-+	if (__builtin_expect(uml_faultstat_enabled, 0))
-+		__atomic_add_fetch(p, n, __ATOMIC_RELAXED);
++	uml_fs_add(id, 1);
 +}
-+
-+/* Consistent (torn-free) snapshot for /proc readers. */
-+static inline unsigned long long uml_fs_read(
-+		const volatile unsigned long long *p)
-+{
-+	return __atomic_load_n(p, __ATOMIC_ACQUIRE);
-+}
-+
-+/*
-+ * Timing brackets.  The enabled check happens BEFORE any clock access;
-+ * a disabled probe returns 0 and uml_fs_time_end() is a no-op, so zero
-+ * clock syscalls and zero atomics occur on the default-off path.
-+ */
-+static inline unsigned long long uml_fs_time_begin(void)
-+{
-+	if (__builtin_expect(!uml_faultstat_enabled, 1))
-+		return 0;
-+	return uml_fs_clock_ns();
-+}
-+
-+static inline void uml_fs_time_end(volatile unsigned long long *sum,
-+				   unsigned long long t0)
-+{
-+	unsigned long long now;
-+
-+	if (__builtin_expect(!uml_faultstat_enabled, 1))
-+		return;
-+	now = uml_fs_clock_ns();
-+	/* Ignore non-monotonic samples instead of recording garbage. */
-+	if (now >= t0)
-+		__atomic_add_fetch(sum, now - t0, __ATOMIC_RELAXED);
-+}
-+
 +#endif
 --- /dev/null
 +++ b/arch/um/kernel/faultstat.c
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,52 @@
 +// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Optional per-fault rendezvous counters for the UML seccomp thread
-+ * machinery.  Enabled with uml_faultstat=1; read /proc/uml_faultstat.
-+ *
-+ * The instrumentation is bounded, purely observational and off by
-+ * default: it never returns an error and never alters the result of a
-+ * mapping/syscall path.  Timestamps use the host CLOCK_MONOTONIC via the
-+ * os layer (same clock the os-Linux side uses), never the coarse guest
-+ * jiffies clock.
-+ */
-+
++/* Optional machine-wide counters. Snapshots are not multi-counter atomic. */
 +#include <linux/init.h>
 +#include <linux/kernel.h>
 +#include <linux/kstrtox.h>
-+#include <linux/module.h>
 +#include <linux/proc_fs.h>
 +#include <linux/seq_file.h>
 +#include <init.h>
-+#include <os.h>
 +#include <faultstat.h>
 +
-+volatile int uml_faultstat_enabled;
-+
-+volatile unsigned long long uml_fs_trap;
-+volatile unsigned long long uml_fs_segv;
-+volatile unsigned long long uml_fs_write_fault;
-+volatile unsigned long long uml_fs_window;
-+volatile unsigned long long uml_fs_window_page;
-+volatile unsigned long long uml_fs_window_skip;
-+volatile unsigned long long uml_fs_sync;
-+volatile unsigned long long uml_fs_map;
-+volatile unsigned long long uml_fs_unmap;
-+volatile unsigned long long uml_fs_flush;
-+volatile unsigned long long uml_fs_flush_ns;
-+volatile unsigned long long uml_fs_run;
-+volatile unsigned long long uml_fs_run_ns;
-+
-+unsigned long long uml_fs_clock_ns(void)
-+{
-+	/* os_nsecs() is host CLOCK_MONOTONIC; shared by kernel- and
-+	 * os-Linux-compiled callers so timestamps are comparable. */
-+	return (unsigned long long)os_nsecs();
-+}
++int uml_faultstat_enabled;
++unsigned long long uml_fs_values[UML_FS_COUNT];
 +
 +static int faultstat_show(struct seq_file *m, void *v)
 +{
-+	/*
-+	 * Torn-free point reads of each counter.  The set is not a
-+	 * multi-counter transaction; machine-wide counters from several
-+	 * vCPUs can interleave between lines, which the header states.
-+	 */
-+	seq_puts(m,
-+"# UML fault rendezvous counters (machine-wide, approximate; one ns clock:\n"
-+"# host CLOCK_MONOTONIC via os_nsecs)\n"
-+"# trap          userspace() rounds (runner resume until next trap)\n"
-+"# segv          rounds whose report was SIGSEGV\n"
-+"# write_fault   successful user write faults\n"
-+"# window        faultaround windows entered\n"
-+"# window_page   neighbour faults issued inside windows\n"
-+"# window_skip   faultaround attempts gated off\n"
-+"# sync          TLB range syncs with pending work\n"
-+"# map           host mmap records queued\n"
-+"# unmap         host munmap records queued\n"
-+"# flush         broker stub batches completed\n"
-+"# flush_ns      ns spent inside broker stub flushes\n"
-+"# run           userspace() rounds timed\n"
-+"# run_ns        ns per round INCLUDING guest user execution until the\n"
-+"#               next trap; NOT pure fault-handling overhead\n");
-+	seq_printf(m, "enabled %u\n", __atomic_load_n(&uml_faultstat_enabled,
-+						      __ATOMIC_ACQUIRE));
-+	seq_printf(m, "trap %llu\n", uml_fs_read(&uml_fs_trap));
-+	seq_printf(m, "segv %llu\n", uml_fs_read(&uml_fs_segv));
-+	seq_printf(m, "write_fault %llu\n", uml_fs_read(&uml_fs_write_fault));
-+	seq_printf(m, "window %llu\n", uml_fs_read(&uml_fs_window));
-+	seq_printf(m, "window_page %llu\n", uml_fs_read(&uml_fs_window_page));
-+	seq_printf(m, "window_skip %llu\n", uml_fs_read(&uml_fs_window_skip));
-+	seq_printf(m, "sync %llu\n", uml_fs_read(&uml_fs_sync));
-+	seq_printf(m, "map %llu\n", uml_fs_read(&uml_fs_map));
-+	seq_printf(m, "unmap %llu\n", uml_fs_read(&uml_fs_unmap));
-+	seq_printf(m, "flush %llu\n", uml_fs_read(&uml_fs_flush));
-+	seq_printf(m, "flush_ns %llu\n", uml_fs_read(&uml_fs_flush_ns));
-+	seq_printf(m, "run %llu\n", uml_fs_read(&uml_fs_run));
-+	seq_printf(m, "run_ns %llu\n", uml_fs_read(&uml_fs_run_ns));
++	seq_puts(m, "# machine-wide counters; includes other guest tasks and snapshot overhead\n"
++		 "# map_requests/pages: before coalescing; stub_mmap/pages: submitted after coalescing\n"
++		 "# stub_*: do_syscall_stub batches, including auto-flushes; failed batches may be partial\n"
++		 "# wait_*: kernel side only; poll_done also includes already-ready peers\n");
++	seq_printf(m, "enabled %d\n", uml_faultstat_enabled);
++#define UML_FS_SHOW(name) seq_printf(m, #name " %llu\n", \
++	__atomic_load_n(&uml_fs_values[UML_FS_##name], __ATOMIC_RELAXED));
++	UML_FS_COUNTERS(UML_FS_SHOW)
++#undef UML_FS_SHOW
 +	return 0;
 +}
-+
-+static int faultstat_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, faultstat_show, NULL);
-+}
-+
-+static const struct proc_ops faultstat_proc_ops = {
-+	.proc_open	= faultstat_open,
-+	.proc_read	= seq_read,
-+	.proc_lseek	= seq_lseek,
-+	.proc_release	= single_release,
-+};
++DEFINE_PROC_SHOW_ATTRIBUTE(faultstat);
 +
 +static int __init faultstat_init(void)
 +{
-+	proc_create("uml_faultstat", 0400, NULL, &faultstat_proc_ops);
++	if (!proc_create("uml_faultstat", 0400, NULL, &faultstat_proc_ops))
++		return -ENOMEM;
 +	return 0;
 +}
 +__initcall(faultstat_init);
 +
-+static int __init uml_faultstat_setup(char *line, int *add)
++static int __init faultstat_setup(char *line, int *add)
 +{
 +	unsigned int enable;
 +
@@ -414,9 +91,191 @@
 +	uml_faultstat_enabled = enable;
 +	return 0;
 +}
-+__uml_setup("uml_faultstat=", uml_faultstat_setup,
++__uml_setup("uml_faultstat=", faultstat_setup,
 +"uml_faultstat=<0|1>\n"
-+"    Default 0.  Count anonymous fault rendezvous, TLB syncs, broker\n"
-+"    stub flushes and runner rounds; read them from /proc/uml_faultstat.\n"
-+"    When disabled no clock is read and no atomic is executed; timings\n"
-+"    use host CLOCK_MONOTONIC ns (os_nsecs), not guest jiffies.\n\n");
++"    Default 0. Count runner traps, PTE mappings, coalesced stub commands\n"
++"    and kernel-side waits. Read /proc/uml_faultstat; no clock probes.\n\n");
+--- a/arch/um/kernel/Makefile
++++ b/arch/um/kernel/Makefile
+@@ -18,7 +18,7 @@
+ 	physmem.o process.o ptrace.o reboot.o sigio.o \
+ 	signal.o sysrq.o time.o tlb.o trap.o \
+ 	um_arch.o umid.o kmsg_dump.o capflags.o skas/
+-obj-y += load_file.o gpu.o
++obj-y += load_file.o gpu.o faultstat.o
+ 
+ obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
+ obj-$(CONFIG_GPROF)	+= gprof_syms.o
+--- a/arch/um/kernel/tlb.c
++++ b/arch/um/kernel/tlb.c
+@@ -14,6 +14,7 @@
+ #include <os.h>
+ #include <skas.h>
+ #include <kern_util.h>
++#include <faultstat.h>
+ 
+ struct vm_ops {
+ 	struct mm_id *mm_idp;
+@@ -180,6 +181,8 @@
+ 		return parallel_userspace && mm != &init_mm ?
+ 			syscall_stub_flush(&mm->context.id) : 0;
+ 
++	if (mm != &init_mm)
++		uml_fs_inc(UML_FS_tlb_sync);
+ 	ops.mm_idp = &mm->context.id;
+ 	if (mm == &init_mm) {
+ 		ops.mmap = kern_map;
+--- a/arch/um/kernel/trap.c
++++ b/arch/um/kernel/trap.c
+@@ -6,6 +6,7 @@
+ #include <linux/mm.h>
+ #include <linux/sched/signal.h>
+ #include <linux/hardirq.h>
++#include <faultstat.h>
+ #include <linux/module.h>
+ #include <linux/uaccess.h>
+ #include <linux/sched/debug.h>
+@@ -220,6 +221,11 @@
+ #endif
+ 
+ out:
++	if (!err && is_user) {
++		uml_fs_inc(UML_FS_user_fault);
++		if (is_write)
++			uml_fs_inc(UML_FS_write_fault);
++	}
+ 	mmap_read_unlock(mm);
+ out_nosemaphore:
+ 	return err;
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -14,6 +14,7 @@
+ #include <sys/socket.h>
+ #include <mem_user.h>
+ #include <mem.h>
++#include <faultstat.h>
+ #include <init.h>
+ #include <as-layout.h>
+ #include <mm_id.h>
+@@ -97,6 +98,33 @@
+ 	int n, i;
+ 	int err, pid = mm_idp->pid;
+ 
++	/* Observe the final coalesced queue, including capacity-triggered flushes.
++	 * Submitted commands are not successes: a failed batch may stop early. */
++	if (__builtin_expect(uml_faultstat_enabled, 0)) {
++		uml_fs_inc(UML_FS_stub_batches);
++		for (i = 0; i < mm_idp->syscall_data_len; i++) {
++			struct stub_syscall *sc = &proc_data->syscall_data[i];
++
++			switch (sc->syscall) {
++			case STUB_SYSCALL_MMAP:
++				uml_fs_inc(UML_FS_stub_mmap);
++				uml_fs_add(UML_FS_stub_mmap_pages,
++					   sc->mem.length / UM_KERN_PAGE_SIZE);
++				break;
++			case STUB_SYSCALL_MUNMAP:
++				uml_fs_inc(UML_FS_stub_munmap);
++				break;
++			case STUB_SYSCALL_CLONE:
++				uml_fs_inc(UML_FS_stub_clone);
++				break;
++			case STUB_SYSCALL_MEMFD:
++				uml_fs_inc(UML_FS_stub_memfd);
++				break;
++			default:
++				break;
++			}
++		}
++	}
+ 	/* Inform process how much we have filled in. */
+ 	proc_data->syscall_data_len = mm_idp->syscall_data_len;
+ 	proc_data->syscall_fd_num = mm_idp->syscall_fd_num;
+@@ -128,6 +156,7 @@
+ 	 * otherwise it will be zero (but we do not need to rely on that).
+ 	 */
+ 	if (proc_data->err < 0) {
++		uml_fs_inc(UML_FS_stub_failed);
+ 		syscall_stub_dump_error(mm_idp);
+ 
+ 		/* Store error code in case someone tries to add more syscalls */
+@@ -244,6 +273,8 @@
+ {
+ 	struct stub_syscall *sc;
+ 
++	uml_fs_inc(UML_FS_map_requests);
++	uml_fs_add(UML_FS_map_pages, len / UM_KERN_PAGE_SIZE);
+ 	/* Compress with previous syscall if that is possible */
+ 	sc = syscall_stub_get_previous(mm_idp, STUB_SYSCALL_MMAP, virt);
+ 	if (sc && sc->mem.prot == prot &&
+@@ -255,6 +286,7 @@
+ 				mm_idp->cached_phys_fd : mm_idp->syscall_fd_map[sc->mem.fd];
+ 
+ 		if (phys_fd == prev_fd) {
++			uml_fs_inc(UML_FS_map_coalesced);
+ 			sc->mem.length += len;
+ 			return 0;
+ 		}
+@@ -293,6 +325,8 @@
+ {
+ 	struct stub_syscall *sc;
+ 
++	uml_fs_inc(UML_FS_unmap_requests);
++
+ 	/* Compress with previous syscall if that is possible */
+ 	sc = syscall_stub_get_previous(mm_idp, STUB_SYSCALL_MUNMAP, addr);
+ 	if (sc) {
+@@ -320,6 +354,7 @@
+ 
+ 	if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, sockets))
+ 		return -errno;
++	uml_fs_inc(UML_FS_runner_start);
+ 	child->sock = sockets[0];
+ 	data->spin_limit = uml_seccomp_spin_limit;
+ 	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
+--- a/arch/um/os-Linux/skas/process.c
++++ b/arch/um/os-Linux/skas/process.c
+@@ -33,6 +33,7 @@
+ #include <timetravel.h>
+ #include <asm-generic/rwonce.h>
+ #include "../internal.h"
++#include <faultstat.h>
+ 
+ int is_skas_winch(int pid, int fd, void *data)
+ {
+@@ -217,11 +218,14 @@
+ 					break;
+ 				asm volatile("pause" ::: "memory");
+ 			}
+-			if (stub_futex_phase(&data->futex) != FUTEX_IN_CHILD)
++			if (stub_futex_phase(&data->futex) != FUTEX_IN_CHILD) {
++				uml_fs_inc(UML_FS_wait_poll_done);
+ 				break;
++			}
+ #endif
+ 			if (!stub_futex_prepare_wait(&data->futex, FUTEX_IN_CHILD))
+ 				break;
++			uml_fs_inc(UML_FS_wait_futex);
+ 			ret = syscall(__NR_futex, &data->futex,
+ 				      FUTEX_WAIT, FUTEX_IN_CHILD | STUB_FUTEX_WAITING,
+ 				      parallel_userspace && wait_sigsys ? &timeout : NULL,
+@@ -528,6 +532,7 @@
+ 		proc_data->futex = FUTEX_IN_CHILD;
+ 	}
+ 
++	uml_fs_inc(UML_FS_broker_start);
+ 	mm_id->pid = clone(userspace_tramp, (void *) sp,
+ 		    CLONE_VFORK | CLONE_VM | SIGCHLD,
+ 		    (void *)&tramp_data);
+@@ -670,6 +675,11 @@
+ 			}
+ 
+ 			sig = proc_data->signal;
++			uml_fs_inc(UML_FS_trap);
++			if (sig == SIGSEGV)
++				uml_fs_inc(UML_FS_segv);
++			if (sig == SIGSYS)
++				uml_fs_inc(UML_FS_sigsys);
+ 
+ 			if (sig == SIGTRAP && proc_data->err != 0) {
+ 				printk(UM_KERN_ERR "%s - Error flushing stub syscalls",
