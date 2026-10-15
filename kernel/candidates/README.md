@@ -8,5 +8,6 @@
 | `fault-rendezvous-counters` | 缺页交接计数（诊断用，需叠加在 `anon-faultaround` 之后） | 可应用 |
 | `gpu-usercopy-lock-order` | GPU ioctl 与 mmap 锁顺序修复 | 可应用；多上下文仍有失败 |
 | `net-fd-vnet` | fd 网络传输的 vnet 头：GSO、校验和卸载；流水线检测到该候选时打开后端 vnet 和批量 16 | 出站 0.04→0.28，发布 0.08→0.12；HTTPS 偶发超时未查清 |
+| `rseq` | 开启 0029 的 rseq ABI，供 sched_getcpu、信号和迁移校验 | 语义验证通过；功能套件仍有 3 项基线失败，默认关闭 |
 | `share-poll` | virtio-uml 完成轮询（`virtio_uml.poll_iters=N`），保留中断后备 | 未证明元数据收益，不建议开启 |
 | `share-profile` | FUSE 每种请求的往返计时与 tracepoint（诊断用） | 可应用 |

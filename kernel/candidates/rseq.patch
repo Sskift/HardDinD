@@ -1,0 +1,18 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: enable the existing rseq ABI for validation
+
+Use the opt-in architecture hooks from 0029 without changing their code.
+This candidate lets the same pipeline run the disabled and enabled builds
+before CONFIG_UML_X86_RSEQ is selected in the production configuration.
+
+--- a/arch/um/Kconfig
++++ b/arch/um/Kconfig
+@@ -50,7 +50,7 @@
+ 	bool "Experimental x86-64 restartable sequences"
+ 	depends on X86_64
+ 	select HAVE_RSEQ
+-	default n
++	default y
+ 	help
+ 	  Enable the generic rseq ABI for x86-64 UML tasks. CPU IDs come
+ 	  from the guest scheduler; scheduling and signal return use the

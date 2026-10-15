@@ -1,10 +1,12 @@
+import io
 import json
 import pathlib
+import tarfile
 import tempfile
 import unittest
 from unittest import mock
 
-from pipeline import functional, probe
+from pipeline import functional, probe, rseq
 from suites.functional import clocks
 
 
@@ -36,3 +38,31 @@ class ClockResultTests(unittest.TestCase):
                 self.assertEqual(case.output.call_args.kwargs['opts'], ())
                 clocks.run(case, 'clock_privileged')
                 self.assertEqual(case.output.call_args.kwargs['opts'], ('--privileged',))
+
+
+class RseqArchiveTests(unittest.TestCase):
+    def archive(self, path, names):
+        with tarfile.open(path, 'w') as tar:
+            for name in names:
+                info = tarfile.TarInfo(name)
+                info.size = 4
+                tar.addfile(info, io.BytesIO(b'data'))
+
+    def test_extracts_selftests_and_required_headers_only(self):
+        names = ['tools/testing/selftests/rseq/rseq.c', 'tools/testing/selftests/kselftest.h',
+                 'tools/include/linux/compiler.h', 'tools/arch/x86/include/asm/barrier.h',
+                 'include/uapi/linux/auxvec.h']
+        with tempfile.TemporaryDirectory() as root:
+            root = pathlib.Path(root)
+            self.archive(root / 'source.tar', ['linux-7.2.10/' + p for p in names + ['kernel/time/ntp.c']])
+            rseq.extract_sources(root / 'source.tar', root / 'out')
+            found = {p.relative_to(root / 'out').as_posix() for p in (root / 'out').rglob('*') if p.is_file()}
+            self.assertEqual(found, set(names))
+
+    def test_rejects_absolute_paths_and_parent_traversal(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = pathlib.Path(root)
+            for name in ('/tools/include/bad.h', 'linux-7.2.10/tools/include/../../../../escape'):
+                self.archive(root / 'source.tar', [name])
+                with self.assertRaisesRegex(ValueError, 'invalid kernel archive path'):
+                    rseq.extract_sources(root / 'source.tar', root / 'out')

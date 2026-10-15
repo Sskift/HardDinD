@@ -24,6 +24,9 @@ def program(path):
     source = path if path.is_absolute() else config.REPO / path
     if source.suffix != '.c':
         return source.resolve()
+    if source.resolve() == config.REPO / 'src/rseq_check.c':
+        from pipeline import rseq
+        return rseq.program(source)
     key = build.key_of('probe/1', FLAGS, source)
     def compile_(tmp, _final):
         build.run(['gcc', *FLAGS, source, '-o', tmp / source.stem, '-lm'], log_file=tmp / 'build.log')

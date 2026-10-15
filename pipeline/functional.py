@@ -1213,7 +1213,7 @@ def manual_forward_ownership(c):
 
 from suites.functional import clocks, shared_files, shared_locks
 
-for _name in ('clock_ordinary', 'clock_privileged'):
+for _name in ('clock_ordinary', 'clock_privileged', 'rseq'):
     check('kernel.' + _name, 'run', timeout=300)(lambda c, name=_name: clocks.run(c, name))
 
 for _group, _module in [('files', shared_files), ('locks', shared_locks)]:
