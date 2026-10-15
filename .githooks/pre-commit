@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refuse commits that break ./hd check (enable: git config core.hooksPath .githooks).
+exec ./hd check >/dev/null 2>&1 || { echo "pre-commit: ./hd check failed; run it to see why" >&2; exit 1; }

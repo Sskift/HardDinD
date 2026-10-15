@@ -144,7 +144,7 @@ def cmd_fetch(_a):
 
 
 def cmd_check(_a):
-    """Fast local checks; no Linux host needed."""
+    """Fast local checks; no Linux host needed. Exits non-zero on any failure."""
     steps = [[sys.executable, '-m', 'unittest', 'discover', '-q', '-s', str(REPO / 'tests')],
              [sys.executable, '-m', 'compileall', '-q', str(REPO / 'pipeline'), str(REPO / 'scripts')]]
     steps += [['bash', '-n', str(p)] for p in sorted((REPO / 'scripts').glob('*.sh'))]

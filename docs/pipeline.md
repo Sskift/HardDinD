@@ -20,6 +20,8 @@ git add -A && git commit && git push        # 提交改动和它的评分
 
 原始记录在 `runs/<id>/probe.jsonl`（每次运行的退出码、耗时、程序最后一行 JSON 输出）。probe 持有测量排它锁。
 
+提交前钩子：`git config core.hooksPath .githooks` 后，`./hd check` 不通过的提交会被拒绝（新 worktree 需各自执行一次）。
+
 ## 位置
 
 | 位置 | 内容 |
