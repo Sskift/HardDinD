@@ -23,6 +23,7 @@ from pipeline import build, config
 
 TARGETS = json.loads((config.REPO / 'bench/targets.json').read_text())['metrics']
 METRICS = [name for name, spec in TARGETS.items() if spec.get('suite') != 'gpu']
+BIND_METRICS = ('disk.bind_write', 'disk.bind_read', 'fs.bind_metadata')
 
 
 def cpuset(value):
@@ -108,6 +109,16 @@ def small_archive(path, count=20000):
             archive.addfile(entry, io.BytesIO(data))
 
 
+def verify_bind_probe(path):
+    """Check all three guest-written probe blocks from the outer filesystem."""
+    block = bytes((j * 131 + j // 251) % 256 for j in range(4096))
+    expected = b''.join(bytes([i]) + block[1:] for i in range(3))
+    actual = path.read_bytes()
+    if actual != expected:
+        raise RuntimeError('guest bind write differs on outer filesystem')
+    return {'bytes': len(actual), 'sha256': hashlib.sha256(actual).hexdigest()}
+
+
 def bench_root(alpine_tar=None):
     """Build once from checksum-locked APKs, then verify the complete manifest."""
     lock = build.LOCK
@@ -166,6 +177,7 @@ class Workloads:
         self.log_path = ctx.run_dir / 'bench.log'
         self.deadline = None
         self.disk_evidence = None
+        self.bind_evidence = None
 
     def begin_metric(self, name):
         budget = metric_budget(name, self.ctx.quick)
@@ -214,9 +226,55 @@ class Workloads:
             raise RuntimeError(f'command exited {proc.returncode}: {argv[:4]}: {stderr[-800:]}')
         return stdout
 
-    def native(self, *args, timeout=120):
-        return self.process(['chroot', self.root, *args], timeout=timeout,
-                            preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
+    def native(self, *args, timeout=120, workdir=None):
+        """A directory FD reaches the outer share without native bind mounts."""
+        fd = os.open(workdir, os.O_RDONLY | os.O_DIRECTORY) if workdir is not None else None
+        try:
+            command = [*args, '--work-fd', str(fd)] if fd is not None else list(args)
+            return self.process(['chroot', self.root, *command], timeout=timeout,
+                                pass_fds=() if fd is None else (fd,),
+                                preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
+        finally:
+            if fd is not None:
+                os.close(fd)
+
+    def bind_visibility(self):
+        """Once per run, verify guest file bytes through the outer path."""
+        if self.bind_evidence is None:
+            self.bind_evidence = {'error': None}
+            directory = None; created = False
+            try:
+                if self.ctx.share is None:
+                    raise RuntimeError('bench guest has no outer share')
+                directory = self.ctx.share / 'bench-verify'; directory.mkdir()
+                created = True
+                output = self.guest('/bench/workload', 'disk.fsync_probe', '1', '--workdir', '/bind',
+                                    '--keep-data', options=['-v', f'{directory}:/bind'])
+                self.bind_evidence.update(guest=parse_output(output), path=str(directory),
+                                          **verify_bind_probe(directory / 'fsync-probe'))
+            except Exception as error:
+                self.bind_evidence['error'] = f'bind visibility: {type(error).__name__}: {error}'
+            finally:
+                if created:
+                    try:
+                        shutil.rmtree(directory)
+                    except OSError as error:
+                        self.bind_evidence['error'] = self.bind_evidence['error'] or f'bind cleanup: {error}'
+        return self.bind_evidence
+
+    @contextlib.contextmanager
+    def bind_samples(self, name):
+        if self.ctx.share is None:
+            raise RuntimeError('bench guest has no outer share')
+        directory = self.ctx.share / ('bench-' + name); directory.mkdir()
+        try:
+            native_dir, guest_dir = directory / 'native', directory / 'guest'
+            native_dir.mkdir(); guest_dir.mkdir()
+            command = ['/bench/workload', name, str(int(self.ctx.quick))]
+            yield (lambda: self.native(*command, workdir=native_dir)), (
+                lambda: self.guest(*command, '--workdir', '/bind', options=['-v', f'{guest_dir}:/bind']))
+        finally:
+            shutil.rmtree(directory)
 
     def flush_counters(self):
         try:
@@ -359,7 +417,10 @@ class Workloads:
 
     @contextlib.contextmanager
     def samples(self, name):
-        if name.startswith('net.'):
+        if name in BIND_METRICS:
+            with self.bind_samples(name) as pair:
+                yield pair
+        elif name.startswith('net.'):
             with self.network_samples(name) as pair:
                 yield pair
         elif name.startswith('docker.'):
@@ -502,15 +563,19 @@ def run(ctx):
         for name, metric in result['metrics'].items():
             metric['detail'] = dict(detail)
             metric['detail']['budget_seconds'] = runner.begin_metric(name)
-            if name == 'disk.seq_read':
+            if name in ('disk.seq_read', 'disk.bind_read'):
                 metric['detail']['read_policy'] = 'write+fsync then warm page-cache read with byte comparison; no cache drop'
             ctx.log(f'bench {name}: warmup + {pairs} pairs')
             try:
                 if name in ('disk.seq_write', 'disk.volume_write', 'app.untar'):
                     metric['detail']['durability'] = runner.durability()
+                if name in BIND_METRICS:
+                    metric['detail']['bind_visibility'] = runner.bind_visibility()
+                    metric['detail']['storage'] = 'outer share: native directory FD; guest /bind via virtiofs'
                 measure_pair(ctx, runner, name, metric, result['host_load'], pairs)
-                if metric['detail'].get('durability', {}).get('error'):
-                    metric['error'] = metric['detail']['durability']['error']
+                for check in ('durability', 'bind_visibility'):
+                    if metric['detail'].get(check, {}).get('error'):
+                        metric['error'] = metric['detail'][check]['error']
             except Exception as error:
                 metric['error'] = f'{type(error).__name__}: {error}'
                 ctx.log(f'bench {name}: {metric["error"]}')

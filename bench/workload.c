@@ -11,6 +11,7 @@
 #define MIB (1024UL * 1024)
 static double duration;
 static int quick;
+static int keep_data;
 static volatile uint64_t sink;
 
 static void child_ok(pid_t pid) {
@@ -270,21 +271,36 @@ static void fsync_probe(void) {
         require(lseek(fd, -(off_t)sizeof(buffer), SEEK_CUR) >= 0, "fsync probe rewind");
         read_all(fd, actual, sizeof(actual)); require(memcmp(buffer, actual, sizeof(buffer)) == 0, "fsync probe data");
     }
-    require(close(fd) == 0 && unlink("fsync-probe") == 0, "fsync probe cleanup");
+    require(close(fd) == 0, "fsync probe close");
+    if (!keep_data) require(unlink("fsync-probe") == 0, "fsync probe cleanup");
     printf("{\"value\":3,\"verified\":12288,\"fsync_calls\":3}\n");
 }
 int main(int argc, char **argv) {
-    require(argc == 3, "usage: workload METRIC QUICK"); quick = atoi(argv[2]); duration = quick ? 0.15 : 1.0;
-    require(chdir("/work") == 0, "work directory");
+    require(argc >= 3, "usage: workload METRIC QUICK [--workdir PATH | --work-fd FD] [--keep-data]");
+    quick = atoi(argv[2]); duration = quick ? 0.15 : 1.0;
+    const char *directory = "/work"; int directory_fd = -1;
+    for (int i = 3; i < argc; i++) {
+        if (!strcmp(argv[i], "--keep-data")) keep_data = 1;
+        else if (!strcmp(argv[i], "--workdir")) {
+            require(++i < argc, "workdir argument"); directory = argv[i];
+        } else if (!strcmp(argv[i], "--work-fd")) {
+            require(++i < argc, "work-fd argument");
+            char *end; long fd = strtol(argv[i], &end, 10);
+            require(*argv[i] && !*end && fd >= 3 && fd <= 1048576, "work-fd value"); directory_fd = (int)fd;
+        } else require(0, "unknown argument");
+    }
+    if (directory_fd >= 0) {
+        require(fchdir(directory_fd) == 0 && close(directory_fd) == 0, "work directory fd");
+    } else require(chdir(directory) == 0, "work directory");
     const char *name = argv[1];
     if (!strcmp(name, "cpu.single")) cpu(1);
     else if (!strcmp(name, "cpu.multi")) cpu(4);
     else if (!strcmp(name, "mem.bandwidth")) memory(0);
     else if (!strcmp(name, "mem.touch")) memory(1);
-    else if (!strcmp(name, "disk.seq_write") || !strcmp(name, "disk.volume_write")) disk(0);
-    else if (!strcmp(name, "disk.seq_read")) disk(1);
+    else if (!strcmp(name, "disk.seq_write") || !strcmp(name, "disk.volume_write") || !strcmp(name, "disk.bind_write")) disk(0);
+    else if (!strcmp(name, "disk.seq_read") || !strcmp(name, "disk.bind_read")) disk(1);
     else if (!strcmp(name, "disk.fsync_probe")) fsync_probe();
-    else if (!strcmp(name, "fs.metadata")) metadata();
+    else if (!strcmp(name, "fs.metadata") || !strcmp(name, "fs.bind_metadata")) metadata();
     else if (!strncmp(name, "app.", 4)) applications(name);
     else if (!strncmp(name, "micro.", 6)) micro(name);
     else require(0, "unknown metric");

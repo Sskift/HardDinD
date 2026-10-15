@@ -49,6 +49,7 @@ class NativeTests(unittest.TestCase):
                                         bench_cpus=config.BENCH_CPUS, quick=True, log=print)
         cls.runner = bench.Workloads(cls.ctx)
         build.run(['cp', '-a', cls.artifact / 'root', cls.runner.root])
+        cls.ctx.share = cls.ctx.run_dir / 'share'; cls.ctx.share.mkdir()
 
     @classmethod
     def tearDownClass(cls):
@@ -60,9 +61,10 @@ class NativeTests(unittest.TestCase):
             if name.startswith(('docker.', 'net.')):
                 continue
             with self.subTest(metric=name):
-                samples[name] = bench.parse_sample(self.runner.native('/bench/workload', name, '1'))
+                directory = self.ctx.share if name in bench.BIND_METRICS else None
+                samples[name] = bench.parse_sample(self.runner.native('/bench/workload', name, '1', workdir=directory))
         print('native samples: ' + json.dumps(samples, sort_keys=True), flush=True)
-        self.assertEqual(len(samples), 18)
+        self.assertEqual(len(samples), 21)
 
     def test_native_network(self):
         with self.runner.native_server() as port:
