@@ -1,6 +1,8 @@
 # Unified diffs contain context-prefix spaces before kernel tabs.
 kernel/patches/*.patch -whitespace
 kernel/experiments/*.patch -whitespace
+moby/patches/*.patch -whitespace
+third_party/patches/*.patch -whitespace
 # Keep console evidence byte-for-byte, including guest CRLF output.
 results/**/*.log -text -whitespace
 # Archived patches and objdump output retain their original formatting.
