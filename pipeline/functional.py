@@ -1052,6 +1052,44 @@ for _mode in ('threads', 'processes', 'signals', 'exec', 'syscall'):
         lambda c, mode=_mode: semantic(c, 'corebench', (mode, '4')))
 
 
+def core_summary(output, program, mode, count=256):
+    row = json.loads(output.strip().splitlines()[-1])
+    if program == 'core_faults':
+        require(row == {'schema': 'hd.core/1', 'mode': 'semantics', 'verified': True}, row)
+    elif program == 'core_fpstate':
+        require(row == {'schema': 'hd.core-fpstate/1', 'sse_calls': count * 2,
+                        'avx_calls': count * 2, 'signal_upper_edit': True,
+                        'ptrace_upper_edit': True, 'verified': True}, row)
+    else:
+        expected = {'filters': [('seccomp_allow', 1), ('seccomp_errno', 1)],
+                    'ptrace': [('ptraced_getpid', 1)], 'signals': [('local_sigsys', 1)],
+                    'threads': [('getpid', n) for n in range(1, 5)]}[mode]
+        require(row['schema'] == 'hd.core-syscalls/1', row)
+        samples = row['samples']
+        require([(s['mode'], s['threads']) for s in samples] == expected, row)
+        require(all(s['verified'] is True and s['operations'] == count * s['threads']
+                    and isinstance(s['ns_per_op'], (float, int)) and 0 < s['ns_per_op'] < float('inf')
+                    for s in samples), row)
+    return row
+
+
+def core_semantic(c, program, mode, count=256):
+    args = (mode,) if program == 'core_faults' else ((str(count),) if program == 'core_fpstate'
+                                                  else (mode, str(count)))
+    # Ptrace and nested seccomp are guest semantics, independent of Docker's default filter.
+    output = c.output('/' + program, *args, image=HELPERS, opts=('--privileged',))
+    core_summary(output, program, mode, count)
+
+
+check('process.core_faults', 'run', helpers=True, timeout=180)(
+    lambda c: core_semantic(c, 'core_faults', 'semantics'))
+check('process.core_fpstate', 'run', helpers=True, timeout=180)(
+    lambda c: core_semantic(c, 'core_fpstate', 'state', 4096))
+for _mode in ('filters', 'ptrace', 'signals', 'threads'):
+    check('process.core_syscalls_' + _mode, 'run', helpers=True, timeout=180)(
+        lambda c, mode=_mode: core_semantic(c, 'core_syscalls', mode))
+
+
 def parse_time(value):
     return datetime.datetime.fromisoformat(re.sub(r'(\.\d{6})\d+', r'\1', value.replace('Z', '+00:00'))).timestamp()
 
