@@ -66,7 +66,8 @@ int main(void) {
             binary = pathlib.Path(d) / 'probe'
             subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread',
                             str(config.REPO / 'src/core_syscalls.c'), '-o', str(binary)], check=True)
-            for mode, expected in [('all', [1, 2, 3, 4, 1]), ('threads', [1, 2, 3, 4]), ('signals', [1])]:
+            for mode, expected in [('all', [1, 2, 3, 4, 1, 1, 1, 1]), ('threads', [1, 2, 3, 4]),
+                                   ('signals', [1]), ('filters', [1, 1]), ('ptrace', [1])]:
                 r = subprocess.run([str(binary), mode, '256'], capture_output=True, text=True, timeout=60, check=True)
                 rows = json.loads(r.stdout)['samples']
                 self.assertEqual([r['threads'] for r in rows], expected)

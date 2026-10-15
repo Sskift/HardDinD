@@ -14,7 +14,9 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <sys/syscall.h>
+#include <sys/user.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <ucontext.h>
@@ -150,17 +152,88 @@ static void signal_cost(size_t count) {
     report("local_sigsys", 1, s);
     CHECK(!munmap(s, sizeof(*s)));
 }
+static void filter_cost(size_t count, int deny) {
+    struct sample *s = mmap(NULL, sizeof(*s), PROT_READ | PROT_WRITE,
+                           MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    CHECK(s != MAP_FAILED);
+    memset(s, 0, sizeof(*s));
+    pid_t child = fork(); CHECK(child >= 0);
+    if (!child) {
+        long expected = deny ? -EPERM : syscall(SYS_getpid);
+        struct sock_filter code[] = {
+            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_getpid, 0, 1),
+            BPF_STMT(BPF_RET | BPF_K, deny ? SECCOMP_RET_ERRNO | EPERM : SECCOMP_RET_ALLOW),
+            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+        };
+        struct sock_fprog filter = {.len = sizeof(code) / sizeof(code[0]), .filter = code};
+        CHECK(!prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0));
+        CHECK(!prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &filter));
+        snapshot(&s->first);
+        uint64_t started = now();
+        for (size_t i = 0; i < count; i++) CHECK(raw_getpid() == expected);
+        s->ns = now() - started;
+        snapshot(&s->last); s->operations = count;
+        _exit(0);
+    }
+    int status; CHECK(waitpid(child, &status, 0) == child);
+    CHECK(WIFEXITED(status) && !WEXITSTATUS(status));
+    report(deny ? "seccomp_errno" : "seccomp_allow", 1, s);
+    CHECK(!munmap(s, sizeof(*s)));
+}
+static void ptrace_cost(size_t count) {
+#ifdef __x86_64__
+    pid_t child = fork(); CHECK(child >= 0);
+    if (!child) {
+        long pid = syscall(SYS_getpid);
+        CHECK(!ptrace(PTRACE_TRACEME, 0, NULL, NULL));
+        CHECK(!raise(SIGSTOP));
+        for (size_t i = 0; i < count; i++) CHECK(raw_getpid() == pid);
+        _exit(0);
+    }
+    int status; CHECK(waitpid(child, &status, 0) == child);
+    CHECK(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP);
+    CHECK(!ptrace(PTRACE_SETOPTIONS, child, NULL, PTRACE_O_TRACESYSGOOD | PTRACE_O_EXITKILL));
+    struct sample *s = calloc(1, sizeof(*s)); CHECK(s != NULL);
+    snapshot(&s->first);
+    uint64_t started = now(), stops = 0;
+    for (;;) {
+        CHECK(!ptrace(PTRACE_SYSCALL, child, NULL, NULL));
+        CHECK(waitpid(child, &status, 0) == child);
+        if (WIFEXITED(status)) { CHECK(!WEXITSTATUS(status)); break; }
+        CHECK(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
+        struct user_regs_struct regs;
+        CHECK(!ptrace(PTRACE_GETREGS, child, NULL, &regs));
+        if (regs.orig_rax == SYS_getpid) {
+            if (stops & 1) CHECK(regs.rax == (unsigned long long)child);
+            stops++;
+        } else CHECK(regs.orig_rax == SYS_exit_group && stops == count * 2);
+    }
+    s->ns = now() - started;
+    snapshot(&s->last); s->operations = count;
+    CHECK(stops == count * 2);
+    report("ptraced_getpid", 1, s); free(s);
+#else
+    (void)count; CHECK(0);
+#endif
+}
 int main(int argc, char **argv) {
     CHECK(argc == 3);
     char *end; errno = 0;
     unsigned long count = strtoul(argv[2], &end, 10);
     CHECK(!errno && *argv[2] && !*end && count > 0 && count <= 1048576);
     int all = !strcmp(argv[1], "all");
-    CHECK(all || !strcmp(argv[1], "threads") || !strcmp(argv[1], "signals"));
+    CHECK(all || !strcmp(argv[1], "threads") || !strcmp(argv[1], "signals") ||
+          !strcmp(argv[1], "filters") || !strcmp(argv[1], "ptrace"));
     printf("{\"schema\":\"hd.core-syscalls/1\",\"samples\":[");
     if (all || !strcmp(argv[1], "threads"))
         for (unsigned int n = 1; n <= 4; n++) { if (n > 1) putchar(','); parallel(n, count); }
     if (all || !strcmp(argv[1], "signals")) { if (all) putchar(','); signal_cost(count); }
+    if (all || !strcmp(argv[1], "filters")) {
+        if (all) putchar(',');
+        filter_cost(count, 0); putchar(','); filter_cost(count, 1);
+    }
+    if (all || !strcmp(argv[1], "ptrace")) { if (all) putchar(','); ptrace_cost(count); }
     puts("]}");
     return 0;
 }
