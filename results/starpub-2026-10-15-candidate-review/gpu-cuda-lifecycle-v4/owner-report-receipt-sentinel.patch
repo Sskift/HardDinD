@@ -1,0 +1,11 @@
+--- a/src/cuda_cuda_lifecycle_probe.c
++++ b/src/cuda_cuda_lifecycle_probe.c
+@@ -896,7 +896,7 @@
+                 if(!p){record_failure("child_line_realloc");break;}
+                 lines[i2]=p;memcpy(p+old,chunk,(size_t)r);line_len[i2]=old+(size_t)r;
+                 p[line_len[i2]]='\0';
+-                if(memchr(chunk,'\n',(size_t)r)&&!obs[i2].firstbyte_ns)obs[i2].firstbyte_ns=now_ns();}
++                if(memchr(chunk,'\n',(size_t)r)&&obs[i2].firstbyte_ns<0)obs[i2].firstbyte_ns=now_ns();}
+             if(r==0)pfds[i2].fd=-1;
+             else if(r<0&&errno!=EAGAIN&&errno!=EWOULDBLOCK)pfds[i2].fd=-1;
+             pfds[i2].revents=0;}}

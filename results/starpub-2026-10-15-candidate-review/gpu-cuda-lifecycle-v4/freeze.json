@@ -1,0 +1,6 @@
+{
+  "base_owner": "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v3",
+  "base_probe_sha256": "f944fe5f2895f379cdca84c28dba4f4a6fbfac97cf27777b4fbb5158310707f9",
+  "extra": "proc_snapshot.c: bounded read-only guest task state observer; no workload/probe changes",
+  "created_at": "2026-10-15T02:04:44.001053+00:00"
+}
