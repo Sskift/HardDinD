@@ -1,6 +1,10 @@
 # CUDA lifecycle: native controls pass, Docker thread phase times out
 
 This is an unsuccessful internal-container acceptance run, preserved unchanged.
+Later [native v5](../gpu-cuda-lifecycle-v5/README.md) exposes two start-gate bugs
+in this frozen probe. The positive overlap measured in the v3 native streams
+remains real, but the gate did not enforce that all four workers were ready
+before release. The thread stall and missing internal phases remain failures.
 Both native controls pass the frozen strict checker: four GPUs, eight solo
 cycles per GPU, four concurrent threads with four cycles each, four fresh-exec
 children with two cycles each, and all 12 directed peer transfers. Every
