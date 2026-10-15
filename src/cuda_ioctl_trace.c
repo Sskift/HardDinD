@@ -48,20 +48,23 @@ int ioctl(int fd, unsigned long command, ...) {
     if(limit>sizeof(before))limit=sizeof(before);
     if(trace&&arg&&limit)a=snapshot(arg,before,limit);
     struct nvos54_header control={0};
-    unsigned char nested_before[64],nested_after[64];size_t na=0,nb=0,nlimit=0;
+    unsigned char nested_before[1024],nested_after[1024];size_t na=0,nb=0,nlimit=0;
     int nested=trace&&command==_IOWR('F',0x2a,struct nvos54_header)&&a==sizeof(control);
     if(nested){
         memcpy(&control,before,sizeof(control));
-        nlimit=control.size<sizeof(nested_before)?control.size:sizeof(nested_before);
+        size_t cap = ((control.command == 0x20808159 && control.size == 332) ||
+                      (control.command == 0x20810108 && control.size == 992) ||
+                      (control.command == 0x20808162 && control.size == 1)) ? 1024 : 64;
+        nlimit=control.size<cap?control.size:cap;
         if(control.params&&nlimit)na=snapshot((void*)(uintptr_t)control.params,nested_before,nlimit);
     }
     errno=saved_errno;
     int result=(int)syscall(SYS_ioctl,fd,command,arg),result_errno=errno;
     if(trace){
         if(arg&&limit)b=snapshot(arg,after,limit);
-        char ah[129],bh[129],detail[512]={0},line[1536];hex(ah,before,a);hex(bh,after,b);
+        char ah[129],bh[129],detail[4608]={0},line[6144];hex(ah,before,a);hex(bh,after,b);
         if(nested){
-            char nh[129],mh[129];
+            char nh[2049],mh[2049];
             if(control.params&&nlimit)nb=snapshot((void*)(uintptr_t)control.params,nested_after,nlimit);
             hex(nh,nested_before,na);hex(mh,nested_after,nb);
             snprintf(detail,sizeof(detail)," rm_command=0x%x params_size=%u params_limit=%zu params_before=%s params_after=%s",
