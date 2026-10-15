@@ -106,6 +106,13 @@ def cmd_fetch(_a):
                    check=True)
     runs = sorted(p.parent.name for p in dest.glob('*/summary.json'))
     print(f'{len(runs)} run summaries in results/runs; latest: {runs[-1] if runs else "-"}')
+    # The scoreboard is the newest complete ci run: no --only, no --quick, no run error.
+    for name in reversed(runs):
+        summary = json.loads((dest / name / 'summary.json').read_text())
+        if summary.get('kind') == 'ci' and not summary.get('only') and not summary.get('quick') and not summary.get('error'):
+            shutil.copy2(dest / name / 'scorecard.md', REPO / 'results/SCOREBOARD.md')
+            print(f'results/SCOREBOARD.md <- {name}')
+            break
 
 
 def cmd_check(_a):
@@ -211,7 +218,7 @@ def run_suite(kind, a):
         print(f'run {run_id}', flush=True)
         summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
                    'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
-                   'host': runs.host_info(), 'only': a.only}
+                   'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
         try:
             artifacts = build.everything(a.with_, shares=kind in ('test', 'ci'))
             summary['artifacts'] = artifacts['ids']
