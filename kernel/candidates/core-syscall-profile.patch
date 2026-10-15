@@ -6,7 +6,8 @@ One TSC sample per 256 calls; counts are machine-wide, split by receiving CPU.
 Return-gap includes sigreturn, guest instructions and the next SIGSYS entry,
 not just host signal delivery. Totals include scheduling delays. Getpid entry,
 seccomp, body and exit phases are sampled together; prepare and state-copy
-samples are independent. Receive includes get_state; clock_pair measures
+samples are independent. Receive includes get_state and suppresses its nested
+sample instrumentation; clock_pair measures
 back-to-back timer overhead. Log2 cycle histograms expose scheduling tails.
 Accounting is outside the next measured interval. Profiling changes queue capacity to reserve space;
 compare enabled and disabled on this same kernel to quantify perturbation.
@@ -148,8 +149,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	unsigned int cpu = raw_smp_processor_id();
 +	__atomic_fetch_add(&stats[cpu].count[stage], 1, __ATOMIC_RELAXED);
 +	if (cycles) {
-+		__atomic_fetch_add(&stats[cpu].cycles[stage], cycles, __ATOMIC_RELAXED);
 +		unsigned int bin = min_t(unsigned int, 63 - __builtin_clzll(cycles), 31);
++		__atomic_fetch_add(&stats[cpu].cycles[stage], cycles, __ATOMIC_RELAXED);
 +		__atomic_fetch_add(&histogram[stage][bin], 1, __ATOMIC_RELAXED);
 +	}
 +}
@@ -437,7 +438,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  			mm_id->syscall_data_len = 0;
  			mm_id->syscall_fd_num = 0;
  
-+			get_state = uml_sp_begin(UML_SP_get_state);
++			get_state = receive ? 0 : uml_sp_begin(UML_SP_get_state);
  			err = get_stub_state(regs, proc_data, NULL);
 +			uml_sp_mark(UML_SP_get_state, &get_state);
  			if (err) {
