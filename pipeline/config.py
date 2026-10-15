@@ -27,3 +27,5 @@ RUST_TOOLCHAIN = os.environ.get('HD_RUST_TOOLCHAIN', str(ROOT / 'toolchains/rust
 BENCH_CPUS = os.environ.get('HD_BENCH_CPUS', 'auto')
 GUEST_CPUS = int(os.environ.get('HD_GUEST_CPUS', '4'))
 GUEST_MEMORY = os.environ.get('HD_GUEST_MEMORY', '4G')
+# Seconds a bench may wait for the outer container to stop being CPU-throttled.
+QUIET_WAIT = float(os.environ.get('HD_QUIET_WAIT', '2700'))

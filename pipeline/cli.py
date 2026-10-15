@@ -259,6 +259,7 @@ def run_suite(kind, a):
             summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
         if kind in ('bench', 'ci'):
             with locks.measure():
+                summary['quiet'] = runs.wait_quiet(max_wait=0 if getattr(a, 'quick', False) else None)
                 cpus = runs.pick_cpus(config.GUEST_CPUS)
                 summary['bench_cpus'] = cpus
                 summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=cpus)

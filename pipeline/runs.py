@@ -35,6 +35,31 @@ def throttle():
         return None
 
 
+def throttled_fraction(seconds=20):
+    a = throttle(); time.sleep(seconds); b = throttle()
+    if not a or not b or b[0] <= a[0]:
+        return 0.0
+    return (b[1] - a[1]) / (b[0] - a[0])
+
+
+def wait_quiet(limit=0.10, max_wait=None, log=print):
+    """Wait until the outer container is rarely throttled; returns what was observed.
+
+    Benchmarks taken while the 36-CPU container quota throttles us mostly
+    measure other tenants. Gives up after max_wait seconds (HD_QUIET_WAIT)."""
+    max_wait = config.QUIET_WAIT if max_wait is None else max_wait
+    started = time.monotonic(); observed = []
+    while True:
+        fraction = throttled_fraction()
+        observed.append(round(fraction, 3))
+        if fraction <= limit:
+            return {'quiet': True, 'waited': round(time.monotonic() - started), 'throttled': observed}
+        if time.monotonic() - started > max_wait:
+            return {'quiet': False, 'waited': round(time.monotonic() - started), 'throttled': observed}
+        log(f'host throttled in {fraction:.0%} of quota periods; waiting for a quieter window')
+        time.sleep(40)
+
+
 def host_info():
     info = {'node': platform.node(), 'kernel': platform.release(), 'nproc': os.cpu_count(),
             'loadavg': os.getloadavg(), 'throttle': throttle()}
