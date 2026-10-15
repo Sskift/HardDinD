@@ -1,0 +1,988 @@
+{
+  "results_dir": "/root/harddind-rebuild/cpu-shares-owner-v6/run/results/shares-v6",
+  "labels_indexed": 46,
+  "labels_in_commands_log": 46,
+  "commands_meta": [
+    {
+      "label": "build-share-probe",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 2
+    },
+    {
+      "label": "gcc-version",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 4
+    },
+    {
+      "label": "probe-static-check",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 6
+    },
+    {
+      "label": "probe-selftest",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 8
+    },
+    {
+      "label": "instance-start",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 10
+    },
+    {
+      "label": "daemon-info",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 12
+    },
+    {
+      "label": "image-import",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 14
+    },
+    {
+      "label": "prerm-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 16
+    },
+    {
+      "label": "start-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 18
+    },
+    {
+      "label": "poll-a-0",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 20
+    },
+    {
+      "label": "prerm-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 22
+    },
+    {
+      "label": "start-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 24
+    },
+    {
+      "label": "poll-b-0",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 26
+    },
+    {
+      "label": "snapshot-a-0",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 28
+    },
+    {
+      "label": "inspect-a-0",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 30
+    },
+    {
+      "label": "snapshot-b-0",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 32
+    },
+    {
+      "label": "inspect-b-0",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 34
+    },
+    {
+      "label": "preupd-a-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 36
+    },
+    {
+      "label": "preupd-b-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 38
+    },
+    {
+      "label": "update-a-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 40
+    },
+    {
+      "label": "update-b-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 42
+    },
+    {
+      "label": "postupd-a-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 44
+    },
+    {
+      "label": "postupd-b-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 46
+    },
+    {
+      "label": "snapshot-a-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 48
+    },
+    {
+      "label": "inspect-a-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 50
+    },
+    {
+      "label": "snapshot-b-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 52
+    },
+    {
+      "label": "inspect-b-1",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 54
+    },
+    {
+      "label": "preupd-b-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 56
+    },
+    {
+      "label": "update-b-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 58
+    },
+    {
+      "label": "postupd-b-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 60
+    },
+    {
+      "label": "snapshot-a-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 62
+    },
+    {
+      "label": "inspect-a-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 64
+    },
+    {
+      "label": "snapshot-b-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 66
+    },
+    {
+      "label": "inspect-b-2",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 68
+    },
+    {
+      "label": "stop-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 70
+    },
+    {
+      "label": "stop-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 72
+    },
+    {
+      "label": "wait-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 74
+    },
+    {
+      "label": "final-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 76
+    },
+    {
+      "label": "logs-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 78
+    },
+    {
+      "label": "rm-a",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 80
+    },
+    {
+      "label": "wait-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 82
+    },
+    {
+      "label": "final-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 84
+    },
+    {
+      "label": "logs-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 86
+    },
+    {
+      "label": "rm-b",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 88
+    },
+    {
+      "label": "ps-leftovers",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 90
+    },
+    {
+      "label": "instance-stop",
+      "exit_code": 0,
+      "timed_out": false,
+      "commands_log_line": 92
+    }
+  ],
+  "index": [
+    {
+      "kind": "empty",
+      "nonempty_lines": 0,
+      "errors": [],
+      "label": "build-share-probe",
+      "expected_kind": "text",
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "daemon-info",
+      "expected_kind": "text",
+      "stdout_bytes": 72,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "final-a",
+      "expected_kind": "text",
+      "stdout_bytes": 83,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "final-b",
+      "expected_kind": "text",
+      "stdout_bytes": 83,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 4,
+      "errors": [],
+      "label": "gcc-version",
+      "expected_kind": "text",
+      "stdout_bytes": 244,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "image-import",
+      "expected_kind": "text",
+      "stdout_bytes": 72,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "inspect-a-0",
+      "expected_kind": "text",
+      "stdout_bytes": 83,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "inspect-a-1",
+      "expected_kind": "text",
+      "stdout_bytes": 82,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "inspect-a-2",
+      "expected_kind": "text",
+      "stdout_bytes": 82,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "inspect-b-0",
+      "expected_kind": "text",
+      "stdout_bytes": 82,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "inspect-b-1",
+      "expected_kind": "text",
+      "stdout_bytes": 83,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "inspect-b-2",
+      "expected_kind": "text",
+      "stdout_bytes": 82,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": true,
+      "top_level_keys": [
+        "api_port",
+        "command",
+        "config",
+        "filesystems",
+        "guest_pid",
+        "mconsole",
+        "network_pid",
+        "phase",
+        "ready_at",
+        "run",
+        "runtime_sha256",
+        "supervisor_pid"
+      ],
+      "event": null,
+      "nonempty_lines": 54,
+      "errors": [],
+      "label": "instance-start",
+      "expected_kind": "json_object",
+      "stdout_bytes": 1826,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": true,
+      "top_level_keys": [
+        "api_port",
+        "command",
+        "config",
+        "filesystem_cleanup",
+        "filesystems",
+        "forced_shutdown",
+        "guest_cleanup",
+        "guest_exit_code",
+        "guest_pid",
+        "mconsole",
+        "network_cleanup",
+        "network_exit_code"
+      ],
+      "event": null,
+      "nonempty_lines": 81,
+      "errors": [],
+      "label": "instance-stop",
+      "expected_kind": "json_object",
+      "stdout_bytes": 2558,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "probe_jsonl",
+      "nonempty_lines": 187,
+      "events": 187,
+      "parse_errors": [],
+      "first_events": [
+        "start",
+        "sample",
+        "sample"
+      ],
+      "last_event": "end",
+      "label": "logs-a",
+      "expected_kind": "probe_jsonl",
+      "stdout_bytes": 121696,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "probe_jsonl",
+      "nonempty_lines": 159,
+      "events": 159,
+      "parse_errors": [],
+      "first_events": [
+        "start",
+        "sample",
+        "sample"
+      ],
+      "last_event": "end",
+      "label": "logs-b",
+      "expected_kind": "probe_jsonl",
+      "stdout_bytes": 103549,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "poll-a-0",
+      "expected_kind": "text",
+      "stdout_bytes": 70,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "poll-b-0",
+      "expected_kind": "text",
+      "stdout_bytes": 70,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "postupd-a-1",
+      "expected_kind": "json_object",
+      "stdout_bytes": 598,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "postupd-b-1",
+      "expected_kind": "json_object",
+      "stdout_bytes": 598,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "postupd-b-2",
+      "expected_kind": "json_object",
+      "stdout_bytes": 597,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "empty",
+      "nonempty_lines": 0,
+      "errors": [],
+      "label": "prerm-a",
+      "expected_kind": "text",
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "empty",
+      "nonempty_lines": 0,
+      "errors": [],
+      "label": "prerm-b",
+      "expected_kind": "text",
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "preupd-a-1",
+      "expected_kind": "json_object",
+      "stdout_bytes": 599,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "preupd-b-1",
+      "expected_kind": "json_object",
+      "stdout_bytes": 594,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "preupd-b-2",
+      "expected_kind": "json_object",
+      "stdout_bytes": 598,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "affinity",
+        "event",
+        "parse_cpu_max",
+        "parse_stat",
+        "parse_steal",
+        "parse_weight",
+        "status"
+      ],
+      "event": "selftest",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "probe-selftest",
+      "expected_kind": "json_object",
+      "stdout_bytes": 141,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 38,
+      "errors": [],
+      "label": "probe-static-check",
+      "expected_kind": "text",
+      "stdout_bytes": 2275,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "empty",
+      "nonempty_lines": 0,
+      "errors": [],
+      "label": "ps-leftovers",
+      "expected_kind": "text",
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "rm-a",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "rm-b",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "snapshot-a-0",
+      "expected_kind": "json_object",
+      "stdout_bytes": 596,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "snapshot-a-1",
+      "expected_kind": "json_object",
+      "stdout_bytes": 597,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "snapshot-a-2",
+      "expected_kind": "json_object",
+      "stdout_bytes": 597,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "snapshot-b-0",
+      "expected_kind": "json_object",
+      "stdout_bytes": 594,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "snapshot-b-1",
+      "expected_kind": "json_object",
+      "stdout_bytes": 598,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_object",
+      "multiline": false,
+      "top_level_keys": [
+        "cgroup",
+        "event",
+        "pid",
+        "proc_cpu_ns",
+        "steal_errno",
+        "steal_ns",
+        "wall_ns"
+      ],
+      "event": "snapshot",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "snapshot-b-2",
+      "expected_kind": "json_object",
+      "stdout_bytes": 597,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "start-a",
+      "expected_kind": "text",
+      "stdout_bytes": 65,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "start-b",
+      "expected_kind": "text",
+      "stdout_bytes": 65,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "stop-a",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "stop-b",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "update-a-1",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "update-b-1",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "text",
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "update-b-2",
+      "expected_kind": "text",
+      "stdout_bytes": 11,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_scalar",
+      "json_type": "number",
+      "value": 0,
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "wait-a",
+      "expected_kind": "scalar_or_text",
+      "stdout_bytes": 2,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    },
+    {
+      "kind": "json_scalar",
+      "json_type": "number",
+      "value": 0,
+      "nonempty_lines": 1,
+      "errors": [],
+      "label": "wait-b",
+      "expected_kind": "scalar_or_text",
+      "stdout_bytes": 2,
+      "stderr_bytes": 0,
+      "stderr_nonempty_lines": 0,
+      "in_commands_log": true
+    }
+  ],
+  "errors": [],
+  "missing_stdout": [],
+  "missing_stderr": [],
+  "integrity_ok": true
+}

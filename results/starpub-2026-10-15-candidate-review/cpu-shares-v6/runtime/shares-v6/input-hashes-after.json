@@ -1,0 +1,42 @@
+[
+  {
+    "role": "kernel",
+    "path": "/root/harddind-rebuild/cpu-cpuset-kernel-v1",
+    "sha256": "fb5e56e48240f96a997aa0f1d234992f128d23dd428eb8256dfccccc4d217fca"
+  },
+  {
+    "role": "disk",
+    "path": "/root/harddind-rebuild/runtime-shares-v1.ext4",
+    "sha256": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c"
+  },
+  {
+    "role": "probe_source",
+    "path": "/root/harddind-rebuild/cpu-shares-owner-v6/repo/src/cpu_share_probe.c",
+    "sha256": "3ecabf9eef99b10aef23f8fe4b2376135905501c69f9ea470f76e4001207cd2e"
+  },
+  {
+    "role": "probe_binary",
+    "path": "/root/harddind-rebuild/cpu-shares-owner-v6/run/results/shares-v6/cpu-share-probe",
+    "sha256": "532c8a30e5e4f6362b7d91b5b8048338e8ddf32d86ac0e0b8b9520285babd0e1"
+  },
+  {
+    "role": "runner",
+    "path": "/root/harddind-rebuild/cpu-shares-owner-v6/repo/scripts/run-cpu-shares.py",
+    "sha256": "ad70305c874f41c29d58040fc23c62cd748116196d0d9c1c9a370310d3e9d191"
+  },
+  {
+    "role": "checker",
+    "path": "/root/harddind-rebuild/cpu-shares-owner-v6/repo/scripts/cpu_share_checks.py",
+    "sha256": "1c8073d9b22ad97e65fad95cc1b49399409931ea39ae713d75e3d15637a685b2"
+  },
+  {
+    "role": "harddind",
+    "path": "/root/harddind-rebuild/cpu-shares-owner-v6/repo/scripts/harddind.py",
+    "sha256": "1a45d334ed79858e9b4d37e68b5215c4c875d16eacf2f77b6e37e8fd4f9b6b1d"
+  },
+  {
+    "role": "guest_cleanup",
+    "path": "/root/harddind-rebuild/cpu-shares-owner-v6/repo/scripts/guest_cleanup.py",
+    "sha256": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14"
+  }
+]

@@ -1,0 +1,50 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+mount -t proc proc /proc || exit 1
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in docker_checks=*) export HARDDIND_CHECK_FILTER=${arg#docker_checks=} ;; esac
+done
+mount -t sysfs sysfs /sys || exit 1
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev || exit 1
+mkdir -p /dev/pts /dev/shm /run /sys/fs/cgroup
+mount -t devpts devpts /dev/pts || exit 1
+mount -t tmpfs tmpfs /run || exit 1
+mount -t tmpfs tmpfs /dev/shm || exit 1
+mount -t cgroup2 cgroup2 /sys/fs/cgroup || exit 1
+echo '1 4 1 7' > /proc/sys/kernel/printk
+hostname harddind-lab
+ip link set lo up
+# Exercise the stock daemon, including its normal bridge and firewall setup.
+# This isolated test disk has no external uplink. External networking remains
+# explicitly untested, rather than disabling Docker's networking subsystem.
+dockerd --host=unix:///run/docker.sock > /run/dockerd.log 2>&1 &
+daemon=$!
+ready=0
+for i in $(seq 60); do
+    if docker info >/dev/null 2>&1; then ready=1; break; fi
+    kill -0 "$daemon" 2>/dev/null || break
+    sleep 1
+done
+echo HARDDIND_DOCKER_BEGIN
+failed=1
+if [ "$ready" = 1 ]; then
+    docker info --format 'server={{.ServerVersion}} kernel={{.KernelVersion}} cpus={{.NCPU}} storage={{.Driver}}'
+    echo "HARDDIND_SUITE_SHA256=$(sha256sum /docker-suite.sh | cut -d' ' -f1)"
+    sh /docker-suite.sh
+    failed=$?
+    # Swarm failure dumps include unstructured goroutine stacks. Filtering
+    # only warning/error lines discards the evidence needed to diagnose them.
+    if [ "$failed" != 0 ]; then
+        echo HARDDIND_DAEMON_FAILURE_LOG_BEGIN
+        cat /run/dockerd.log
+        echo HARDDIND_DAEMON_FAILURE_LOG_END
+    fi
+else
+    echo 'HARDDIND_RESULT {"name":"daemon_start","status":"fail"}'
+    tail -70 /run/dockerd.log
+fi
+echo "HARDDIND_DOCKER_END status=$failed"
+kill -TERM "$daemon" 2>/dev/null
+wait "$daemon"
+sync
+poweroff -f
