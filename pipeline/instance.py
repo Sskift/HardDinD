@@ -182,10 +182,10 @@ def serve(instance):
     lock = (instance / 'instance.lock').open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     config = json.loads((instance / 'config.json').read_text())
-    if config.get('measure_lock'):
+    if config.get('hold_measure'):
         # Interactive guests block exclusive measurements for their whole life.
-        measure = open(config['measure_lock'], 'a')
-        fcntl.flock(measure, fcntl.LOCK_SH)
+        from pipeline import locks
+        measure = locks.acquire_shared()
     run = uuid.uuid4().hex[:12]
     state = {'phase': 'starting', 'run': run, 'supervisor_pid': os.getpid(),
              'supervisor_start': start_time(os.getpid()), 'config': config}
@@ -396,7 +396,7 @@ def serve(instance):
 
 def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cpus=4, memory='4G',
           cpuset=None, kernel_args=(), shares=(), share_options=None, publish_ports=True,
-          mtu=1500, dns=None, network_batch=1, boot_timeout=180, fresh=True, measure_lock=None):
+          mtu=1500, dns=None, network_batch=1, boot_timeout=180, fresh=True, hold_measure=False):
     """Boot a guest in `instance` and wait until dockerd answers.
 
     fresh=True requires a new instance; fresh=False reboots on the existing COW disk."""
@@ -417,7 +417,7 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
               'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'boot_timeout': boot_timeout,
-              'measure_lock': str(measure_lock) if measure_lock else None}
+              'hold_measure': hold_measure}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]
     with (instance / 'supervisor.log').open('a') as log:
