@@ -27,9 +27,12 @@
 #define MAX_VALUES 4096
 struct snapshot { unsigned int n; int enabled, patch_enabled; uint64_t khz; char names[MAX_VALUES][64]; uint64_t values[MAX_VALUES]; };
 struct sample { uint64_t ns, operations; struct snapshot first, last; };
-struct worker { pthread_barrier_t *barrier; size_t count; int cpu; long pid; };
+struct worker { pthread_barrier_t *barrier; size_t count; int cpu; long pid; int registers; };
 static volatile sig_atomic_t trapped;
 static long process_id;
+#ifdef __x86_64__
+extern unsigned char core_syscall_register_site[];
+#endif
 
 static uint64_t now(void) {
     struct timespec ts;
@@ -60,11 +63,15 @@ static void report(const char *mode, unsigned int threads, const struct sample *
     CHECK(s->first.enabled == s->last.enabled && s->first.khz == s->last.khz);
     CHECK(s->first.patch_enabled == s->last.patch_enabled);
     if (s->last.patch_enabled) {
+        int registers = !strcmp(mode, "register_getpid");
         unsigned int i;
         for (i = 0; i < s->first.n; i++)
-            if (!strcmp(s->first.names[i], "patch_fast_calls")) break;
+            if (!strcmp(s->first.names[i], registers ? "patch_dynamic" : "patch_fast_calls")) break;
         CHECK(i < s->first.n && s->last.values[i] >= s->first.values[i]);
-        CHECK(s->last.values[i] - s->first.values[i] >= s->operations - 1);
+        CHECK(s->last.values[i] - s->first.values[i] >= (registers ? s->operations > 1 : s->operations - 1));
+#ifdef __x86_64__
+        if (registers) CHECK(core_syscall_register_site[0] == 0xff && core_syscall_register_site[3] == 6);
+#endif
     }
     printf("{\"mode\":\"%s\",\"threads\":%u,\"operations\":%" PRIu64 ",\"ns_per_op\":%.3f,"
            "\"verified\":true,\"profile_enabled\":%d,\"patch_enabled\":%s,\"tsc_khz\":%" PRIu64 ",\"profile\":{",
@@ -91,17 +98,31 @@ static long raw_getpid(void) {
     return syscall(SYS_getpid);
 #endif
 }
+static __attribute__((noinline, noclone)) long register_getpid(long nr) {
+#ifdef __x86_64__
+    long result;
+    __asm__ volatile(".rept 14; nop; .endr\n.global core_syscall_register_site\n"
+        "core_syscall_register_site: mov %%rsi,%%r10; mov %%rdi,%%rdx; mov %%rcx,%%rsi; mov %%rbx,%%rdi; syscall"
+        : "=a"(result) : "0"(nr) : "rcx", "r11", "r10", "rsi", "rdi", "rdx", "memory");
+    return result;
+#else
+    return syscall(nr);
+#endif
+}
 static void *calls(void *arg) {
     struct worker *w = arg;
     cpu_set_t cpus;
     CPU_ZERO(&cpus); CPU_SET(w->cpu, &cpus);
     CHECK(!pthread_setaffinity_np(pthread_self(), sizeof(cpus), &cpus));
     barrier(w->barrier); barrier(w->barrier);
-    for (size_t i = 0; i < w->count; i++) CHECK(raw_getpid() == w->pid);
+    if (w->registers)
+        for (size_t i = 0; i < w->count; i++) CHECK(register_getpid(SYS_getpid) == w->pid);
+    else
+        for (size_t i = 0; i < w->count; i++) CHECK(raw_getpid() == w->pid);
     barrier(w->barrier); barrier(w->barrier);
     return NULL;
 }
-static void parallel(unsigned int threads, size_t count) {
+static void parallel(unsigned int threads, size_t count, int registers) {
     struct sample *s = calloc(1, sizeof(*s));
     CHECK(s != NULL);
     pthread_t ids[4]; struct worker w[4]; pthread_barrier_t b;
@@ -111,7 +132,7 @@ static void parallel(unsigned int threads, size_t count) {
     CHECK(n > 0 && !pthread_barrier_init(&b, NULL, threads + 1));
     long pid = syscall(SYS_getpid);
     for (unsigned int i = 0; i < threads; i++) {
-        w[i] = (struct worker){&b, count, cpus[i % n], pid};
+        w[i] = (struct worker){&b, count, cpus[i % n], pid, registers};
         CHECK(!pthread_create(&ids[i], NULL, calls, &w[i]));
     }
     barrier(&b); snapshot(&s->first);
@@ -122,7 +143,7 @@ static void parallel(unsigned int threads, size_t count) {
     for (unsigned int i = 0; i < threads; i++) CHECK(!pthread_join(ids[i], NULL));
     CHECK(!pthread_barrier_destroy(&b));
     s->operations = count * threads;
-    report("getpid", threads, s); free(s);
+    report(registers ? "register_getpid" : "getpid", threads, s); free(s);
 }
 static void signal_handler(int sig, siginfo_t *info, void *context) {
 #ifdef __x86_64__
@@ -238,11 +259,12 @@ int main(int argc, char **argv) {
     unsigned long count = strtoul(argv[2], &end, 10);
     CHECK(!errno && *argv[2] && !*end && count > 0 && count <= 1048576);
     int all = !strcmp(argv[1], "all");
-    CHECK(all || !strcmp(argv[1], "threads") || !strcmp(argv[1], "signals") ||
+    int registers = !strcmp(argv[1], "registers");
+    CHECK(all || registers || !strcmp(argv[1], "threads") || !strcmp(argv[1], "signals") ||
           !strcmp(argv[1], "filters") || !strcmp(argv[1], "ptrace"));
     printf("{\"schema\":\"hd.core-syscalls/1\",\"samples\":[");
-    if (all || !strcmp(argv[1], "threads"))
-        for (unsigned int n = 1; n <= 4; n++) { if (n > 1) putchar(','); parallel(n, count); }
+    if (all || registers || !strcmp(argv[1], "threads"))
+        for (unsigned int n = 1; n <= 4; n++) { if (n > 1) putchar(','); parallel(n, count, registers); }
     if (all || !strcmp(argv[1], "signals")) { if (all) putchar(','); signal_cost(count); }
     if (all || !strcmp(argv[1], "filters")) {
         if (all) putchar(',');
