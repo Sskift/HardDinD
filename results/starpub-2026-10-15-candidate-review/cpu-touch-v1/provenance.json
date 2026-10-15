@@ -1,0 +1,10 @@
+{
+  "prior_gpu_first_touch": "/root/harddind-rebuild/gpu-phase-owner-v2",
+  "cpu_only": true,
+  "changes": "fresh anonymous mappings 1/4/16MiB, onebyteperpage cold/warm, getrusage faultdeltas outside timedloops",
+  "limitations": [
+    "guest and host fault counters are separate accounting domains",
+    "page-stride CPUcontrol, not CUDAcopy orfullmemorybandwidth",
+    "no performance tolerance"
+  ]
+}
