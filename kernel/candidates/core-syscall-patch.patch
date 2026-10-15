@@ -156,9 +156,9 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  	um_arch.o umid.o kmsg_dump.o capflags.o skas/
 -obj-y += load_file.o gpu.o
 +obj-y += load_file.o gpu.o core-patch.o
+ obj-$(CONFIG_X86_64) += clock_sync.o
  
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
- obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
 @@ -0,0 +1,465 @@
