@@ -3,10 +3,11 @@ import socket
 import struct
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(__file__))
 from backend import Backend, reserve_port
-from slirp_peer import SlirpPeer, MAC, IP4, IP6, csum
+from slirp_peer import SlirpPeer, MAC, IP4, IP6, TCP_ACK, csum, recv_exact
 import test_forwarded_flows as flows
 
 
@@ -48,6 +49,43 @@ class VnetFlows(flows.ForwardedFlows):
                     limit = min(mss, 1460 if ':' not in addr else 1440)
                     self.assertTrue(all(size <= limit for size in sizes), sizes)
         self.assertEqual(self.b.command('stats')['dropped_packets'], 0)
+
+    def test_bad_partial_seed_drops_until_valid_retransmission(self):
+        for addr, guest in (('127.0.0.1', '10.0.2.15'), ('::1', 'fd00::15')):
+            with self.subTest(address=addr):
+                port = reserve_port(addr)
+                self.command_ok(f'add tcp {addr} {port} 7777 {guest}')
+                with socket.create_connection((addr, port), timeout=5) as host:
+                    host.sendall(b'ready')
+                    self.assertEqual(recv_exact(host, 5), b'ready')
+                    session = next(s for s in self.peer.sessions.values()
+                                   if s.v6 == (':' in addr) and not s.closed)
+                    raw = self.b.link_host.link
+                    captured = []
+                    def corrupt(frame):
+                        if frame[1] not in (1, 4):
+                            return raw.send(frame)
+                        captured.append(frame)
+                        start = struct.unpack_from('<H', frame, 6)[0]
+                        bad = bytearray(frame)
+                        bad[10 + start + 16] ^= 1
+                        return raw.send(bad)
+                    before = self.b.command('stats')['rx_csum_packets']
+                    body = bytes(range(250)) * 240
+                    adapter = mock.Mock(wraps=raw)
+                    adapter.send.side_effect = corrupt
+                    with mock.patch.object(self.b.link_host, 'link', adapter):
+                        session.send_segment(TCP_ACK, body)
+                    self.assertEqual(len(captured), 1)
+                    host.settimeout(0.2)
+                    with self.assertRaises(socket.timeout):
+                        host.recv(1)
+                    self.assertEqual(self.b.command('stats')['rx_csum_packets'], before)
+                    raw.send(captured[0])
+                    host.settimeout(5)
+                    self.assertEqual(recv_exact(host, len(body)), body)
+                    self.assertGreater(self.b.command('stats')['rx_csum_packets'], before)
+                self.command_ok(f'del tcp {addr} {port} 7777 {guest}')
 
     def test_invalid_vnet_headers_are_dropped(self):
         raw = self.b.link_host.link
