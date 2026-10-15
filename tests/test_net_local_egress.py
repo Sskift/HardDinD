@@ -1,6 +1,9 @@
 import hashlib
 import importlib.util
 import pathlib
+import socket
+import ssl
+import threading
 import unittest
 
 
@@ -10,6 +13,30 @@ spec.loader.exec_module(local)
 
 
 class LocalTransferTests(unittest.TestCase):
+    def test_stalled_tls_handshake_times_out_before_cleanup(self):
+        class TLS:
+            started = threading.Event()
+            timed_out = threading.Event()
+
+            def wrap_socket(self, connection, **kwargs):
+                self.started.set()
+                try:
+                    return ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER).wrap_socket(connection, **kwargs)
+                except (socket.timeout, TimeoutError):
+                    self.timed_out.set()
+                    raise
+
+        tls = TLS()
+        with local.server(b'body', [], tls, timeout=0.1) as port:
+            client = socket.create_connection(('127.0.0.1', port), timeout=1)
+            self.addCleanup(client.close)
+            fallback = threading.Timer(2, client.close)
+            fallback.daemon = True
+            fallback.start()
+            self.addCleanup(fallback.cancel)
+            self.assertTrue(tls.started.wait(1))
+        self.assertTrue(tls.timed_out.is_set())
+
     def test_payload_tail_and_prefix_are_stable(self):
         large = local.payload(65536 + 17)
         self.assertEqual(len(large), 65553)

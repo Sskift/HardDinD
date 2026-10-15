@@ -27,7 +27,19 @@ def request_chunk(path):
 
 
 @contextlib.contextmanager
-def server(body, events, tls=None):
+def server(body, events, tls=None, timeout=10):
+    class Server(http.server.ThreadingHTTPServer):
+        def get_request(self):
+            connection, address = super().get_request()
+            connection.settimeout(timeout)
+            try:
+                if tls:
+                    connection = tls.wrap_socket(connection, server_side=True)
+                return connection, address
+            except Exception:
+                connection.close()
+                raise
+
     class Handler(http.server.BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.1'
 
@@ -37,7 +49,6 @@ def server(body, events, tls=None):
         def do_GET(self):
             row = {'path': self.path, 'tls': tls is not None, 'started': time.time(), 'sent': 0}
             events.append(row)
-            self.connection.settimeout(10)
             try:
                 chunk = request_chunk(self.path)
                 self.send_response(200)
@@ -55,10 +66,8 @@ def server(body, events, tls=None):
                 row['finished'] = time.time()
                 self.close_connection = True
 
-    host = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    host = Server(('127.0.0.1', 0), Handler)
     host.daemon_threads = True
-    if tls:
-        host.socket = tls.wrap_socket(host.socket, server_side=True)
     thread = threading.Thread(target=host.serve_forever, daemon=True)
     thread.start()
     try:
