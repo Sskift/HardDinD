@@ -30,6 +30,7 @@ git add -A && git commit && git push        # 提交改动和它的评分
 | `…/hd/store/<kind>/<key>` | 构建产物。key 是所有输入的哈希；完成的条目不再修改，输入不变就直接复用 |
 | `…/hd/runs/<run-id>` | 每次运行的原始日志、实例日志、`summary.json`、`scorecard.md` |
 | `…/hd/instances/<name>` | 运行中的 guest，含 COW 磁盘；测试结束即删除，`--keep` 可保留 |
+| `…/hd/jobs/<job>` | `./hd job` 启动时复制的源码快照，任务只从这里运行，之后的同步不影响它 |
 | `…/hd/logs/<job>.log` | `./hd job` 的输出 |
 
 run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 版本、是否带未提交改动和运行类型。

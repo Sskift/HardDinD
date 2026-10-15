@@ -75,11 +75,14 @@ def cmd_job(a):
     cmd_sync()
     args = ' '.join(shlex.quote(x) for x in a.args)
     root, name = config.REMOTE_ROOT, a.name
-    inner = f'cd {REMOTE_SRC} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
+    # Each job runs from its own copy so later syncs cannot change code under it.
+    snapshot = f'{root}/jobs/{name}'
+    inner = f'cd {snapshot} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
     ssh(f'''set -e
-mkdir -p {root}/logs
+mkdir -p {root}/logs {root}/jobs
 if tmux has-session -t hd-{name} 2>/dev/null; then echo "job {name} is still running" >&2; exit 3; fi
 [ ! -e {root}/logs/{name}.log ] || mv {root}/logs/{name}.log {root}/logs/{name}.log.1
+rm -rf {snapshot} && cp -a {REMOTE_SRC} {snapshot}
 tmux new-session -d -s hd-{name} {shlex.quote(inner)}
 echo "started job {name}: ./hd {args}"
 ''')
