@@ -1,0 +1,606 @@
+Subject: [PATCH] Add opt-in shared-tree invalidation and event notifications
+
+Use the virtio 1.2 notification queue and a separately negotiated experimental
+event extension. Keep --notify-changes off unless the matching kernel is used.
+
+--- /dev/null
++++ b/src/change_notify.rs
+@@ -0,0 +1,307 @@
++// SPDX-License-Identifier: Apache-2.0
++//! Experimental outer changes; enabled only by --notify-changes.
++use std::convert::TryInto;
++use std::collections::{BTreeMap, BTreeSet, VecDeque};
++use std::ffi::CStr;
++use std::io;
++use std::os::unix::io::AsRawFd;
++use std::sync::{Arc, Mutex};
++use std::thread::JoinHandle;
++use vmm_sys_util::eventfd::EventFd;
++
++pub const FEATURES: u64 = 3; // virtio-fs notification + experimental event extension
++pub const BUFFER_SIZE: u32 = 512;
++const EVENT: i32 = 0x4844;
++const FAILED: i32 = 0x4845;
++const LIMIT: usize = 65536;
++const MASK: u32 = libc::IN_MODIFY | libc::IN_ATTRIB | libc::IN_CREATE | libc::IN_DELETE
++    | libc::IN_MOVED_FROM | libc::IN_MOVED_TO | libc::IN_DELETE_SELF | libc::IN_MOVE_SELF;
++type Sink = Box<dyn Fn(&[u8]) -> io::Result<bool> + Send + Sync>;
++
++#[derive(Default)]
++struct State {
++    watches: BTreeMap<i32, BTreeSet<u64>>,
++    inodes: BTreeMap<u64, i32>,
++    pending: VecDeque<Vec<u8>>,
++    failed: bool,
++    sink: Option<Sink>,
++}
++
++pub struct ChangeNotify {
++    fd: std::fs::File,
++    wake: Arc<EventFd>,
++    stop: Arc<EventFd>,
++    state: Arc<Mutex<State>>,
++    worker: Mutex<Option<JoinHandle<()>>>,
++}
++
++impl std::fmt::Debug for ChangeNotify {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.debug_struct("ChangeNotify").finish_non_exhaustive()
++    }
++}
++
++fn packet(code: i32, payload: &[u8]) -> Vec<u8> {
++    let mut out = Vec::with_capacity(16 + payload.len());
++    out.extend_from_slice(&((16 + payload.len()) as u32).to_ne_bytes());
++    out.extend_from_slice(&code.to_ne_bytes());
++    out.extend_from_slice(&0u64.to_ne_bytes());
++    out.extend_from_slice(payload);
++    out
++}
++
++fn messages(inode: u64, mask: u32, cookie: u32, name: &[u8]) -> Vec<Vec<u8>> {
++    let mut out = Vec::new();
++    let mut payload = inode.to_ne_bytes().to_vec();
++    let namespace = mask & (libc::IN_CREATE | libc::IN_DELETE | libc::IN_MOVED_FROM | libc::IN_MOVED_TO) != 0;
++    // Drop directory pages even when the writer preserves the directory mtime.
++    let data_changed = namespace || (name.is_empty() && mask & libc::IN_MODIFY != 0);
++    let offset: i64 = if data_changed { 0 } else { -1 };
++    payload.extend_from_slice(&offset.to_ne_bytes());
++    payload.extend_from_slice(&0i64.to_ne_bytes());
++    if name.is_empty() || namespace {
++        out.push(packet(2, &payload)); // FUSE_NOTIFY_INVAL_INODE
++    }
++    if !name.is_empty() && namespace {
++        payload = inode.to_ne_bytes().to_vec();
++        payload.extend_from_slice(&(name.len() as u32).to_ne_bytes());
++        payload.extend_from_slice(&0u32.to_ne_bytes());
++        payload.extend_from_slice(name);
++        payload.push(0);
++        out.push(packet(3, &payload)); // FUSE_NOTIFY_INVAL_ENTRY
++    }
++    payload = inode.to_ne_bytes().to_vec();
++    payload.extend_from_slice(&mask.to_ne_bytes());
++    payload.extend_from_slice(&cookie.to_ne_bytes());
++    payload.extend_from_slice(&(name.len() as u32).to_ne_bytes());
++    payload.extend_from_slice(&0u32.to_ne_bytes());
++    payload.extend_from_slice(name);
++    payload.push(0);
++    out.push(packet(EVENT, &payload));
++    out
++}
++
++impl State {
++    fn fail(&mut self) {
++        self.failed = true;
++        self.pending.clear();
++        self.pending.push_back(packet(FAILED, &[]));
++    }
++
++    fn events(&mut self, bytes: &[u8]) -> io::Result<()> {
++        let mut offset = 0;
++        while offset < bytes.len() {
++            if bytes.len() - offset < 16 { return Err(io::ErrorKind::InvalidData.into()); }
++            let b = &bytes[offset..];
++            let wd = i32::from_ne_bytes(b[0..4].try_into().unwrap());
++            let mask = u32::from_ne_bytes(b[4..8].try_into().unwrap());
++            let cookie = u32::from_ne_bytes(b[8..12].try_into().unwrap());
++            let len = u32::from_ne_bytes(b[12..16].try_into().unwrap()) as usize;
++            if len > b.len() - 16 { return Err(io::ErrorKind::InvalidData.into()); }
++            let name = b[16..16 + len].split(|c| *c == 0).next().unwrap();
++            if name.len() > 255 || name.contains(&b'/') { return Err(io::ErrorKind::InvalidData.into()); }
++            if mask & (libc::IN_Q_OVERFLOW | libc::IN_UNMOUNT) != 0 { self.fail(); }
++            if mask & libc::IN_IGNORED != 0 {
++                if let Some(ids) = self.watches.remove(&wd) {
++                    for id in ids { self.inodes.remove(&id); }
++                }
++            } else if !self.failed && mask & MASK != 0 {
++                if let Some(ids) = self.watches.get(&wd) {
++                    for id in ids {
++                        self.pending.extend(messages(*id, mask & (MASK | libc::IN_ISDIR), cookie, name));
++                    }
++                }
++                if self.pending.len() > LIMIT { self.fail(); }
++            }
++            offset += 16 + len;
++        }
++        Ok(())
++    }
++
++    fn flush(&mut self) -> io::Result<()> {
++        if let Some(sink) = &self.sink {
++            while let Some(message) = self.pending.front() {
++                if !sink(message)? { break; }
++                self.pending.pop_front();
++            }
++        }
++        Ok(())
++    }
++}
++
++impl ChangeNotify {
++    pub fn new(account_uid: u32) -> io::Result<Self> {
++        // Inotify accounts instances to euid. Root's quota is shared with other
++        // tenants. Change only this short-lived thread, never process credentials.
++        let fd = std::thread::spawn(move || -> io::Result<std::fs::File> {
++            use std::os::unix::io::FromRawFd;
++            if unsafe { libc::geteuid() } == 0 && unsafe {
++                libc::syscall(libc::SYS_setresuid, -1i32, account_uid, -1i32)
++            } != 0 { return Err(io::Error::last_os_error()); }
++            let fd = unsafe { libc::inotify_init1(libc::IN_NONBLOCK | libc::IN_CLOEXEC) };
++            if fd < 0 { return Err(io::Error::last_os_error()); }
++            Ok(unsafe { std::fs::File::from_raw_fd(fd) })
++        }).join().map_err(|_| io::Error::new(io::ErrorKind::Other, "inotify init thread"))??;
++        Ok(Self {
++            fd,
++            wake: Arc::new(EventFd::new(libc::EFD_NONBLOCK)?),
++            stop: Arc::new(EventFd::new(libc::EFD_NONBLOCK)?),
++            state: Arc::new(Mutex::new(State::default())),
++            worker: Mutex::new(None),
++        })
++    }
++
++    pub fn watched(&self, inode: u64) -> bool {
++        let state = self.state.lock().unwrap();
++        !state.failed && state.inodes.contains_key(&inode)
++    }
++
++    pub fn watch(&self, inode: u64, path: &CStr) -> io::Result<()> {
++        let mut state = self.state.lock().unwrap();
++        if state.failed { return Err(io::Error::from_raw_os_error(libc::EIO)); }
++        if state.inodes.contains_key(&inode) { return Ok(()); }
++        let wd = unsafe { libc::inotify_add_watch(self.fd.as_raw_fd(), path.as_ptr(), MASK) };
++        if wd < 0 { return Err(io::Error::last_os_error()); }
++        state.watches.entry(wd).or_default().insert(inode);
++        state.inodes.insert(inode, wd);
++        Ok(())
++    }
++
++    pub fn forget(&self, inode: u64) {
++        let mut state = self.state.lock().unwrap();
++        if let Some(wd) = state.inodes.remove(&inode) {
++            let ids = state.watches.get_mut(&wd).unwrap();
++            ids.remove(&inode);
++            if ids.is_empty() {
++                state.watches.remove(&wd);
++                unsafe { libc::inotify_rm_watch(self.fd.as_raw_fd(), wd); }
++            }
++        }
++    }
++
++    pub fn clear(&self) {
++        let mut state = self.state.lock().unwrap();
++        for wd in state.watches.keys() {
++            unsafe { libc::inotify_rm_watch(self.fd.as_raw_fd(), *wd); }
++        }
++        state.inodes.clear();
++        state.watches.clear();
++        state.pending.clear();
++    }
++
++    pub fn attach(&self, sink: Sink) -> io::Result<()> {
++        self.state.lock().unwrap().sink = Some(sink);
++        let mut worker = self.worker.lock().unwrap();
++        if worker.is_none() {
++            let fd = self.fd.try_clone()?;
++            let wake = self.wake.clone();
++            let stop = self.stop.clone();
++            let state = self.state.clone();
++            *worker = Some(std::thread::Builder::new().name("share-notify".into()).spawn(move || {
++                let mut fds = [
++                    libc::pollfd { fd: fd.as_raw_fd(), events: libc::POLLIN, revents: 0 },
++                    libc::pollfd { fd: wake.as_raw_fd(), events: libc::POLLIN, revents: 0 },
++                    libc::pollfd { fd: stop.as_raw_fd(), events: libc::POLLIN, revents: 0 },
++                ];
++                let mut buf = [0u8; 65536];
++                loop {
++                    let rc = unsafe { libc::poll(fds.as_mut_ptr(), 3, -1) };
++                    if rc < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted { continue; }
++                    if rc < 0 || fds[2].revents != 0 { break; }
++                    let _ = wake.read();
++                    let mut state = state.lock().unwrap();
++                    loop {
++                        let n = unsafe { libc::read(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
++                        if n < 0 && io::Error::last_os_error().kind() == io::ErrorKind::WouldBlock { break; }
++                        if n <= 0 || state.events(&buf[..n as usize]).is_err() { state.fail(); break; }
++                    }
++                    if let Err(e) = state.flush() { log::error!("share notification delivery: {e}"); state.fail(); }
++                }
++            })?);
++        }
++        self.wake.write(1)?;
++        Ok(())
++    }
++}
++
++impl Drop for ChangeNotify {
++    fn drop(&mut self) {
++        let _ = self.stop.write(1);
++        if let Some(worker) = self.worker.get_mut().unwrap().take() { let _ = worker.join(); }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn harddind_notify_real_watch_and_forget() {
++        use std::io::Write;
++        use std::time::{Duration, Instant};
++        let path = std::env::temp_dir().join(format!("harddind-notify-{}", std::process::id()));
++        let mut file = std::fs::File::create(&path).unwrap();
++        let changes = ChangeNotify::new(1001).unwrap();
++        let name = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
++        changes.watch(12, &name).unwrap();
++        let received = Arc::new(Mutex::new(Vec::new()));
++        let sink = received.clone();
++        changes.attach(Box::new(move |message| {
++            sink.lock().unwrap().push(message.to_vec());
++            Ok(true)
++        })).unwrap();
++        file.write_all(b"changed").unwrap();
++        let end = Instant::now() + Duration::from_secs(2);
++        loop {
++            if received.lock().unwrap().iter().any(|p| p[4..8] == EVENT.to_ne_bytes()) { break; }
++            assert!(Instant::now() < end, "no event delivered");
++            std::thread::sleep(Duration::from_millis(1));
++        }
++        changes.forget(12);
++        assert!(!changes.watched(12));
++        std::fs::remove_file(path).unwrap();
++    }
++
++    #[test]
++    fn harddind_notify_backpressure_and_event_types() {
++        let mut state = State::default();
++        state.pending.extend(messages(8, libc::IN_ATTRIB, 0, b""));
++        state.sink = Some(Box::new(|_| Ok(false)));
++        state.flush().unwrap();
++        assert_eq!(state.pending.len(), 2);
++        let count = Arc::new(Mutex::new(0));
++        let calls = count.clone();
++        state.sink = Some(Box::new(move |_| { *calls.lock().unwrap() += 1; Ok(true) }));
++        state.flush().unwrap();
++        assert_eq!(*count.lock().unwrap(), 2);
++        assert!(state.pending.is_empty());
++        // Child data updates affect its inode, not the parent/name identity.
++        assert_eq!(messages(8, libc::IN_MODIFY, 0, b"child").len(), 1);
++        let renamed = messages(8, libc::IN_MOVED_FROM, 123, b"child");
++        assert_eq!(renamed.len(), 3);
++        assert_eq!(&renamed[0][24..32], &0i64.to_ne_bytes());
++        assert_eq!(&messages(8, libc::IN_ATTRIB, 0, b"")[0][24..32], &(-1i64).to_ne_bytes());
++        let mut bad = [0u8; 16];
++        bad[12..16].copy_from_slice(&u32::MAX.to_ne_bytes());
++        assert!(state.events(&bad).is_err());
++    }
++
++    #[test]
++    fn harddind_notify_wire_and_overflow() {
++        let packets = messages(19, libc::IN_MODIFY, 0, b"");
++        assert_eq!(packets.len(), 2);
++        assert_eq!(i64::from_ne_bytes(packets[0][24..32].try_into().unwrap()), 0);
++        for p in messages(19, libc::IN_CREATE, 23, b"child") {
++            assert_eq!(u32::from_ne_bytes(p[..4].try_into().unwrap()) as usize, p.len());
++            assert!(p.len() <= BUFFER_SIZE as usize);
++        }
++        let mut state = State::default();
++        assert!(state.events(&[0; 15]).is_err());
++        let mut event = (-1i32).to_ne_bytes().to_vec();
++        event.extend_from_slice(&libc::IN_Q_OVERFLOW.to_ne_bytes());
++        event.extend_from_slice(&[0; 8]);
++        state.events(&event).unwrap();
++        assert!(state.failed);
++        assert_eq!(state.pending.len(), 1);
++        assert_eq!(i32::from_ne_bytes(state.pending[0][4..8].try_into().unwrap()), FAILED);
++    }
++}
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -75,3 +75,5 @@
+ }
+ 
+ pub type Result<T> = ::std::result::Result<T, Error>;
++
++pub mod change_notify;
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -168,6 +168,14 @@
+     /// Aggregate request timings for diagnostics; adds measurement overhead.
+     #[arg(long)]
+     profile_requests: bool,
++
++    /// Experimental outer change notifications (requires matching guest driver).
++    #[arg(long)]
++    notify_changes: bool,
++
++    /// UID accounting for notification watches when started as root.
++    #[arg(long, default_value_t = 1001)]
++    notify_uid: u32,
+ 
+     /// Experimental inline nonblocking flock dispatch.
+     #[arg(long, requires = "shared_flock")]
+@@ -840,7 +848,11 @@
+         process::exit(1)
+     });
+ 
++    let notify_uid = opt.notify_uid;
++    let changes = opt.notify_changes.then(|| Arc::new(virtiofsd::change_notify::ChangeNotify::new(notify_uid)
++        .expect("cannot watch shared tree")));
+     let fs_cfg = passthrough::Config {
++        changes: changes.clone(),
+         entry_timeout: timeout,
+         attr_timeout: timeout,
+         cache_policy: opt.cache,
+@@ -890,13 +902,13 @@
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock, opt.inline_metadata);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock, opt.inline_metadata, changes);
+     } else {
+         let fs = PassthroughFs::new(fs_cfg).unwrap_or_else(|e| {
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock, opt.inline_metadata);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock, opt.inline_metadata, changes);
+     }
+ }
+ 
+@@ -909,6 +921,7 @@
+     profile_requests: bool,
+     inline_flock: bool,
+     inline_metadata: bool,
++    changes: Option<Arc<virtiofsd::change_notify::ChangeNotify>>,
+ ) {
+     let fs_backend = Arc::new(
+         VhostUserFsBackendBuilder::default()
+@@ -916,6 +929,7 @@
+             .set_profile_requests(profile_requests)
+             .set_inline_flock(inline_flock)
+             .set_inline_metadata(inline_metadata)
++            .set_changes(changes)
+             .set_tag(tag)
+             .build(fs)
+             .unwrap_or_else(|error| {
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -219,6 +219,7 @@
+ /// Options that configure the behavior of the file system.
+ #[derive(Debug)]
+ pub struct Config {
++    pub changes: Option<Arc<crate::change_notify::ChangeNotify>>,
+     /// How long the FUSE client should consider directory entries to be valid. If the contents of a
+     /// directory can only be modified by the FUSE client (i.e., the file system has exclusive
+     /// access), then this should be a large value.
+@@ -416,6 +417,7 @@
+             entry_timeout: Duration::from_secs(5),
+             attr_timeout: Duration::from_secs(5),
+             cache_policy: Default::default(),
++            changes: None,
+             writeback: false,
+             root_dir: String::from("/"),
+             mountinfo_prefix: None,
+@@ -994,8 +996,23 @@
+             .map(|result| result.0)
+     }
+ 
++    fn watch_inode(&self, inode: &InodeData) -> io::Result<()> {
++        if let Some(changes) = &self.cfg.changes {
++            if changes.watched(inode.inode) { return Ok(()); }
++            if inode.mode & libc::S_IFMT != libc::S_IFREG && inode.mode & libc::S_IFMT != libc::S_IFDIR {
++                return Ok(());
++            }
++            let file = inode.get_file()?;
++            let name = CString::new(format!("{}", file.as_raw_fd())).unwrap();
++            let _cwd = set_working_directory(self.proc_self_fd.as_raw_fd(), self.root_fd.as_raw_fd());
++            changes.watch(inode.inode, &name)?;
++        }
++        Ok(())
++    }
++
+     fn do_lookup(&self, parent: Inode, name: &CStr) -> io::Result<Entry> {
+         let p = self.inodes.get(parent).ok_or_else(ebadf)?;
++        self.watch_inode(&p)?;
+         let (existing_inode, path_fd, st, handle) = self.try_lookup_implementation(&p, name)?;
+ 
+         let mut attr_flags: u32 = 0;
+@@ -1043,6 +1060,7 @@
+             self.inodes.get_or_insert(inode_data)?
+         };
+ 
++        self.watch_inode(inode.get())?;
+         let attr = fuse::Attr::try_with_flags(
+             st.st,
+             attr_flags,
+@@ -1446,6 +1464,7 @@
+             mode: st.st.st_mode,
+             migration_info: Mutex::new(migration_info),
+         };
++        self.watch_inode(&inode)?;
+         self.inodes.new_inode(inode)?;
+         Ok(())
+     }
+@@ -1726,6 +1745,7 @@
+     }
+ 
+     fn destroy(&self) {
++        if let Some(changes) = &self.cfg.changes { changes.clear(); }
+         self.posix_locks.clear();
+         self.handles.write().unwrap().clear();
+         self.inodes.clear();
+@@ -1759,6 +1779,7 @@
+         // Only drop owner fds once no lookup reference to the inode remains.
+         if self.inodes.get(inode).is_none() {
+             self.posix_locks.forget_inode(inode);
++            if let Some(changes) = &self.cfg.changes { changes.forget(inode); }
+         }
+     }
+ 
+@@ -1768,6 +1789,7 @@
+         for inode in inodes {
+             if self.inodes.get(inode).is_none() {
+                 self.posix_locks.forget_inode(inode);
++            if let Some(changes) = &self.cfg.changes { changes.forget(inode); }
+             }
+         }
+     }
+--- a/src/seccomp.rs
++++ b/src/seccomp.rs
+@@ -90,6 +90,9 @@
+     ))]
+     allow_syscall!(ctx, libc::SYS_epoll_wait);
+     allow_syscall!(ctx, libc::SYS_eventfd2);
++    allow_syscall!(ctx, libc::SYS_inotify_add_watch);
++    allow_syscall!(ctx, libc::SYS_inotify_rm_watch);
++    allow_syscall!(ctx, libc::SYS_poll);
+     allow_syscall!(ctx, libc::SYS_exit);
+     allow_syscall!(ctx, libc::SYS_exit_group);
+     allow_syscall!(ctx, libc::SYS_fallocate);
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -4,6 +4,8 @@
+ 
+ use std::convert::TryInto;
+ use std::fs::File;
++use std::io::Write;
++use crate::change_notify::{ChangeNotify, FEATURES, BUFFER_SIZE};
+ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+ use std::sync::{Arc, Mutex, RwLock};
+ use std::thread::{self, JoinHandle};
+@@ -472,6 +474,7 @@
+ struct VirtioFsConfig {
+     tag: [u8; MAX_TAG_LEN],
+     num_request_queues: Le32,
++    notify_buf_size: Le32,
+ }
+ 
+ // vm-memory needs a Default implementation even though these values are never
+@@ -481,6 +484,7 @@
+         Self {
+             tag: [0; MAX_TAG_LEN],
+             num_request_queues: Le32::default(),
++            notify_buf_size: Le32::default(),
+         }
+     }
+ }
+@@ -499,10 +503,15 @@
+     profile_requests: bool,
+     inline_flock: bool,
+     inline_metadata: bool,
++    changes: Option<Arc<ChangeNotify>>,
+     tag: Option<String>,
+ }
+ 
+ impl VhostUserFsBackendBuilder {
++    pub fn set_changes(mut self, changes: Option<Arc<ChangeNotify>>) -> Self {
++        self.changes = changes;
++        self
++    }
+     /// Keep ordinary I/O and lock waits asynchronous during this experiment.
+     pub fn set_inline_metadata(mut self, enabled: bool) -> Self {
+         self.inline_metadata = enabled;
+@@ -548,6 +557,7 @@
+             premigration_thread: None.into(),
+             migration_thread: None.into(),
+             tag: self.tag,
++            changes: self.changes,
+         })
+     }
+ }
+@@ -557,6 +567,7 @@
+     premigration_thread: Mutex<Option<PremigrationThread>>,
+     migration_thread: Mutex<Option<JoinHandle<io::Result<()>>>>,
+     tag: Option<String>,
++    changes: Option<Arc<ChangeNotify>>,
+ }
+ 
+ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFsBackend<F> {
+@@ -576,7 +587,7 @@
+     type Vring = VringMutex<LoggedMemoryAtomic>;
+ 
+     fn num_queues(&self) -> usize {
+-        NUM_QUEUES
++        NUM_QUEUES + usize::from(self.changes.is_some())
+     }
+ 
+     fn max_queue_size(&self) -> usize {
+@@ -584,7 +595,8 @@
+     }
+ 
+     fn features(&self) -> u64 {
+-        (1 << VIRTIO_F_VERSION_1)
++        (if self.changes.is_some() { FEATURES } else { 0 })
++            | (1 << VIRTIO_F_VERSION_1)
+             | (1 << VIRTIO_RING_F_INDIRECT_DESC)
+             | (1 << VIRTIO_RING_F_EVENT_IDX)
+             | VhostUserVirtioFeatures::PROTOCOL_FEATURES.bits()
+@@ -625,6 +637,7 @@
+         let config = VirtioFsConfig {
+             tag: fixed_len_tag,
+             num_request_queues: Le32::from(REQUEST_QUEUES),
++            notify_buf_size: Le32::from(if self.changes.is_some() { BUFFER_SIZE } else { 0 }),
+         };
+ 
+         let offset = offset as usize;
+@@ -642,6 +655,8 @@
+     }
+ 
+     fn acked_features(&self, features: u64) {
++        assert!(self.changes.is_none() || features & FEATURES == FEATURES,
++                "--notify-changes requires matching experimental guest features");
+         if features & VhostUserVirtioFeatures::LOG_ALL.bits() != 0 {
+             // F_LOG_ALL set: Prepare for migration (unless we're already doing that)
+             let mut premigration_thread = self.premigration_thread.lock().unwrap();
+@@ -698,7 +713,31 @@
+         }
+ 
+         let thread = self.thread.read().unwrap();
+-
++        if let Some(changes) = &self.changes {
++            if device_event == 1 {
++                let memory = thread.mem.clone().ok_or(Error::NoMemoryConfigured)?;
++                let vring = vrings[1].clone();
++                let event_idx = thread.event_idx;
++                return changes.attach(Box::new(move |message| {
++                    let mem = memory.memory();
++                    let mut state = vring.get_mut();
++                    // Arm first, then inspect: a refill racing an empty ring must kick us.
++                    state.enable_notification().map_err(|_| other_io_error("notify arm"))?;
++                    let desc = state.get_queue_mut().iter(mem.clone())
++                        .map_err(|_| other_io_error("notify queue"))?.next();
++                    let Some(desc) = desc else { return Ok(false); };
++                    let mut writer = Writer::new(&mem, desc.clone()).map_err(Error::QueueWriter)?;
++                    writer.write_all(message)?;
++                    VhostUserFsThread::<F>::return_descriptor(&mut state, desc.head_index(), event_idx, message.len());
++                    Ok(true)
++                }));
++            }
++            if device_event == 2 {
++                let queues = [vrings[0].clone(), vrings[2].clone()];
++                return if thread.pool.is_some() { thread.handle_event_pool(1, &queues) }
++                       else { thread.handle_event_serial(1, &queues) };
++            }
++        }
+         if thread.pool.is_some() {
+             thread.handle_event_pool(device_event, vrings)
+         } else {

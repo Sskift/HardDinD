@@ -1,0 +1,377 @@
+Subject: [PATCH] Add experimental virtio-fs change notifications
+
+Requires the opt-in daemon notification and event features. Caching remains a
+separate daemon policy and must be validated against first-access checks.
+
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <linux/fs.h>
++#include <linux/fsnotify.h>
+ #include <linux/dax.h>
+ #include <linux/pci.h>
+ #include <linux/interrupt.h>
+@@ -47,6 +48,26 @@
+ 	VQ_REQUEST
+ };
+ 
++/* Bit 0 is virtio 1.2's notification queue. Bit 1 and opcodes below are
++ * experimental HardDinD event semantics, negotiated together, default off.
++ */
++#define SHARE_NOTIFY_FEATURE 0
++#define SHARE_EVENT_FEATURE 1
++#define SHARE_EVENT 0x4844
++#define SHARE_FAILED 0x4845
++#define SHARE_NOTIFY_SIZE 512
++#define SHARE_NOTIFY_COUNT 64
++#define SHARE_EVENT_MASK (FS_MODIFY | FS_ATTRIB | FS_CREATE | FS_DELETE | \
++                          FS_MOVED_FROM | FS_MOVED_TO | FS_MOVE_SELF | \
++                          FS_DELETE_SELF | FS_ISDIR)
++struct share_event {
++	u64 inode;
++	u32 mask;
++	u32 cookie;
++	u32 namelen;
++	u32 reserved;
++};
++
+ #define VQ_NAME_LEN	24
+ 
+ /* Per-virtqueue state */
+@@ -72,6 +93,8 @@
+ 	struct list_head list;    /* on virtio_fs_instances */
+ 	char *tag;
+ 	struct virtio_fs_vq *vqs;
++	unsigned int first_request;
++	void *notify_buffers[SHARE_NOTIFY_COUNT];
+ 	unsigned int nvqs;               /* number of virtqueues */
+ 	unsigned int num_request_queues; /* number of request queues */
+ 	struct dax_device *dax_dev;
+@@ -254,7 +277,7 @@
+ 
+ 	qid = fsvq->vq->index;
+ 	for (cpu = 0; cpu < nr_cpu_ids; cpu++) {
+-		if (qid < VQ_REQUEST || (fs->mq_map[cpu] == qid)) {
++		if (qid < fs->first_request || (fs->mq_map[cpu] == qid)) {
+ 			if (first)
+ 				ret = snprintf(buf + pos, size - pos, "%u", cpu);
+ 			else
+@@ -922,6 +945,189 @@
+ 	spin_unlock(&fsvq->lock);
+ }
+ 
++/* Parent-only inode events require a child mark selector, even when the
++ * child has never been looked up. Keep that selector unhashed and unmarked;
++ * the actual event data remains the dentry and parent/name.
++ */
++static int virtio_fs_notify_parent(struct inode *dir, struct dentry *entry,
++				   struct qstr *name, u32 mask)
++{
++	struct inode *unmarked = new_inode_pseudo(dir->i_sb);
++
++	if (!unmarked)
++		return -ENOMEM;
++	clear_nlink(unmarked);
++	fsnotify(mask | FS_EVENT_ON_CHILD, entry, FSNOTIFY_EVENT_DENTRY,
++		 dir, name, unmarked, 0);
++	iput(unmarked);
++	return 0;
++}
++
++/* Called from a workqueue, never from the virtqueue interrupt. */
++static int virtio_fs_share_event(struct fuse_conn *fc, void *data, unsigned int len)
++{
++	struct share_event *event = data;
++	struct inode *inode;
++	struct dentry *dir, *entry;
++	struct qstr name;
++	char *text = (char *)(event + 1);
++	int ret = 0;
++
++	if (len < sizeof(*event) + 1 || event->reserved ||
++	    event->namelen > NAME_MAX || len != sizeof(*event) + event->namelen + 1 ||
++	    event->mask & ~SHARE_EVENT_MASK || text[event->namelen] ||
++	    memchr(text, 0, event->namelen) || memchr(text, '/', event->namelen))
++		return -EINVAL;
++	inode = fuse_ilookup(fc, event->inode, NULL);
++	if (!inode)
++		return 0;
++	if (!fsnotify_sb_has_watchers(inode->i_sb)) {
++		iput(inode);
++		return 0;
++	}
++	if (!event->namelen) {
++		fsnotify_inode(inode, event->mask);
++	} else if (S_ISDIR(inode->i_mode)) {
++		/* An inotify mark can outlive every cached dentry for this inode. */
++		dir = d_obtain_alias(igrab(inode));
++		if (IS_ERR(dir)) {
++			iput(inode);
++			return PTR_ERR(dir);
++		}
++		if (dir) {
++			name.name = text;
++			name.len = event->namelen;
++			name.hash = full_name_hash(dir, text, name.len);
++			entry = d_lookup(dir, &name);
++			if (!entry)
++				entry = d_alloc(dir, &name);
++			if (entry) {
++				if (event->mask & (FS_MODIFY | FS_ATTRIB))
++					ret = virtio_fs_notify_parent(inode, entry, &name, event->mask);
++				else
++					fsnotify_name(event->mask, entry, FSNOTIFY_EVENT_DENTRY,
++						      inode, &name, event->cookie);
++				dput(entry);
++			} else {
++				ret = -ENOMEM;
++			}
++			dput(dir);
++		}
++	}
++	iput(inode);
++	return ret;
++}
++
++static int virtio_fs_notification(struct fuse_conn *fc, void *buf, unsigned int len)
++{
++	struct fuse_out_header *out = buf;
++	void *data = out + 1;
++	unsigned int size;
++	int ret = -EINVAL;
++
++	if (len < sizeof(*out) || out->len != len || out->unique)
++		return -EINVAL;
++	size = len - sizeof(*out);
++	if (out->error == SHARE_FAILED)
++		return -EIO;
++	down_read(&fc->killsb);
++	switch (out->error) {
++	case FUSE_NOTIFY_INVAL_INODE: {
++		struct fuse_notify_inval_inode_out *arg = data;
++
++		if (size == sizeof(*arg))
++			ret = fuse_reverse_inval_inode(fc, arg->ino, arg->off, arg->len);
++		break;
++	}
++	case FUSE_NOTIFY_INVAL_ENTRY: {
++		struct fuse_notify_inval_entry_out *arg = data;
++		struct qstr name;
++		char *text = (char *)(arg + 1);
++
++		if (size < sizeof(*arg) + 1 || arg->namelen > NAME_MAX ||
++		    size != sizeof(*arg) + arg->namelen + 1 || text[arg->namelen] ||
++		    memchr(text, 0, arg->namelen) || memchr(text, '/', arg->namelen))
++			break;
++		name.name = text;
++		name.len = arg->namelen;
++		ret = fuse_reverse_inval_entry(fc, arg->parent, 0, &name, arg->flags);
++		break;
++	}
++	case SHARE_EVENT:
++		ret = virtio_fs_share_event(fc, data, size);
++		break;
++	}
++	up_read(&fc->killsb);
++	/* An inode may already have been forgotten when its event arrives. */
++	return ret == -ENOENT ? 0 : ret;
++}
++
++static void virtio_fs_notify_done(struct work_struct *work)
++{
++	struct virtio_fs_vq *fsvq = container_of(work, struct virtio_fs_vq, done_work);
++	struct fuse_chan *fch;
++	struct scatterlist sg;
++	unsigned int len;
++	void *buf;
++	int ret;
++
++	for (;;) {
++		spin_lock(&fsvq->lock);
++		if (!fsvq->connected || !fsvq->fud) {
++			spin_unlock(&fsvq->lock);
++			return;
++		}
++		buf = virtqueue_get_buf(fsvq->vq, &len);
++		spin_unlock(&fsvq->lock);
++		if (!buf)
++			return;
++		fch = fsvq->fud->chan;
++		ret = 0;
++		if (smp_load_acquire(&fch->initialized) && fch->connected)
++			ret = len > SHARE_NOTIFY_SIZE ? -EINVAL :
++				virtio_fs_notification(fch->conn, buf, len);
++		if (ret) {
++			pr_err("virtio-fs: notification failed (%d), aborting connection\n", ret);
++			fuse_chan_abort(fch, false);
++			return;
++		}
++		sg_init_one(&sg, buf, SHARE_NOTIFY_SIZE);
++		spin_lock(&fsvq->lock);
++		ret = virtqueue_add_inbuf(fsvq->vq, &sg, 1, buf, GFP_ATOMIC);
++		if (!ret)
++			virtqueue_kick(fsvq->vq);
++		spin_unlock(&fsvq->lock);
++		if (ret) {
++			fuse_chan_abort(fch, false);
++			return;
++		}
++	}
++}
++
++static int virtio_fs_notify_fill(struct virtio_fs *fs)
++{
++	struct virtio_fs_vq *fsvq = &fs->vqs[1];
++	struct scatterlist sg;
++	unsigned int i;
++	int ret;
++
++	for (i = 0; i < SHARE_NOTIFY_COUNT; i++) {
++		if (fs->notify_buffers[i])
++			continue;
++		fs->notify_buffers[i] = kzalloc(SHARE_NOTIFY_SIZE, GFP_KERNEL);
++		if (!fs->notify_buffers[i])
++			return -ENOMEM;
++		sg_init_one(&sg, fs->notify_buffers[i], SHARE_NOTIFY_SIZE);
++		spin_lock(&fsvq->lock);
++		ret = virtqueue_add_inbuf(fsvq->vq, &sg, 1, fs->notify_buffers[i], GFP_ATOMIC);
++		spin_unlock(&fsvq->lock);
++		if (ret)
++			return ret;
++	}
++	virtqueue_kick(fsvq->vq);
++	return 0;
++}
++
+ static void virtio_fs_map_queues(struct virtio_device *vdev, struct virtio_fs *fs)
+ {
+ 	const struct cpumask *mask, *masks;
+@@ -934,12 +1140,12 @@
+ 		goto fallback;
+ 
+ 	for (q = 0; q < fs->num_request_queues; q++) {
+-		mask = vdev->config->get_vq_affinity(vdev, VQ_REQUEST + q);
++		mask = vdev->config->get_vq_affinity(vdev, fs->first_request + q);
+ 		if (!mask)
+ 			goto fallback;
+ 
+ 		for_each_cpu(cpu, mask)
+-			fs->mq_map[cpu] = q + VQ_REQUEST;
++			fs->mq_map[cpu] = q + fs->first_request;
+ 	}
+ 
+ 	return;
+@@ -949,13 +1155,13 @@
+ 	/* If even this fails we default to all CPUs use first request queue */
+ 	if (!masks) {
+ 		for_each_possible_cpu(cpu)
+-			fs->mq_map[cpu] = VQ_REQUEST;
++			fs->mq_map[cpu] = fs->first_request;
+ 		return;
+ 	}
+ 
+ 	for (q = 0; q < fs->num_request_queues; q++) {
+ 		for_each_cpu(cpu, &masks[q % nr_masks])
+-			fs->mq_map[cpu] = q + VQ_REQUEST;
++			fs->mq_map[cpu] = q + fs->first_request;
+ 	}
+ 	kfree(masks);
+ }
+@@ -1000,9 +1206,21 @@
+ 	 * request queues (e.g. hiprio) don't claim any of the CPUs in
+ 	 * the multi-queue mapping and interrupt affinities
+ 	 */
+-	struct irq_affinity desc = { .pre_vectors = VQ_REQUEST };
++	struct irq_affinity desc = {};
+ 	unsigned int i;
+ 	int ret = 0;
++
++	fs->first_request = virtio_has_feature(vdev, SHARE_NOTIFY_FEATURE) ? 2 : 1;
++	if (fs->first_request == 2) {
++		__le32 size;
++
++		if (!virtio_has_feature(vdev, SHARE_EVENT_FEATURE))
++			return -EINVAL;
++		virtio_cread_bytes(vdev, 40, &size, sizeof(size));
++		if (le32_to_cpu(size) != SHARE_NOTIFY_SIZE)
++			return -EINVAL;
++	}
++	desc.pre_vectors = fs->first_request;
+ 
+ 	virtio_cread_le(vdev, struct virtio_fs_config, num_request_queues,
+ 			&fs->num_request_queues);
+@@ -1012,7 +1230,7 @@
+ 	/* Truncate nr of request queues to nr_cpu_id */
+ 	fs->num_request_queues = min_t(unsigned int, fs->num_request_queues,
+ 					nr_cpu_ids);
+-	fs->nvqs = VQ_REQUEST + fs->num_request_queues;
++	fs->nvqs = fs->first_request + fs->num_request_queues;
+ 	fs->vqs = kzalloc_objs(fs->vqs[VQ_HIPRIO], fs->nvqs);
+ 	if (!fs->vqs)
+ 		return -ENOMEM;
+@@ -1031,11 +1249,18 @@
+ 	virtio_fs_init_vq(&fs->vqs[VQ_HIPRIO], "hiprio", VQ_HIPRIO);
+ 	vqs_info[VQ_HIPRIO].name = fs->vqs[VQ_HIPRIO].name;
+ 
++	if (fs->first_request == 2) {
++		virtio_fs_init_vq(&fs->vqs[1], "notifications", VQ_HIPRIO);
++		INIT_WORK(&fs->vqs[1].done_work, virtio_fs_notify_done);
++		vqs_info[1].callback = virtio_fs_vq_done;
++		vqs_info[1].name = fs->vqs[1].name;
++	}
++
+ 	/* Initialize the requests virtqueues */
+-	for (i = VQ_REQUEST; i < fs->nvqs; i++) {
++	for (i = fs->first_request; i < fs->nvqs; i++) {
+ 		char vq_name[VQ_NAME_LEN];
+ 
+-		snprintf(vq_name, VQ_NAME_LEN, "requests.%u", i - VQ_REQUEST);
++		snprintf(vq_name, VQ_NAME_LEN, "requests.%u", i - fs->first_request);
+ 		virtio_fs_init_vq(&fs->vqs[i], vq_name, VQ_REQUEST);
+ 		vqs_info[i].callback = virtio_fs_vq_done;
+ 		vqs_info[i].name = fs->vqs[i].name;
+@@ -1064,7 +1289,15 @@
+ /* Free virtqueues (device must already be reset) */
+ static void virtio_fs_cleanup_vqs(struct virtio_device *vdev)
+ {
++	struct virtio_fs *fs = vdev->priv;
++	unsigned int i;
++
+ 	vdev->config->del_vqs(vdev);
++	/* An IRQ can queue notification work after the earlier drain. */
++	if (fs->first_request == 2)
++		cancel_work_sync(&fs->vqs[1].done_work);
++	for (i = 0; i < SHARE_NOTIFY_COUNT; i++)
++		kfree(fs->notify_buffers[i]);
+ }
+ 
+ /* Map a window offset to a page frame number.  The window offset will have
+@@ -1284,7 +1517,7 @@
+ 	{},
+ };
+ 
+-static const unsigned int feature_table[] = {};
++static const unsigned int feature_table[] = { SHARE_NOTIFY_FEATURE, SHARE_EVENT_FEATURE };
+ 
+ static struct virtio_driver virtio_fs_driver = {
+ 	.driver.name		= KBUILD_MODNAME,
+@@ -1701,6 +1934,8 @@
+ 	/* Previous unmount will stop all queues. Start these again */
+ 	virtio_fs_start_all_queues(fs);
+ 	fuse_send_init(fm);
++	if (fs->first_request == 2 && virtio_fs_notify_fill(fs))
++		fuse_chan_abort(fc->chan, false);
+ 	mutex_unlock(&virtio_fs_mutex);
+ 	return 0;
+ 
+@@ -1791,7 +2026,7 @@
+ 		return -EINVAL;
+ 	}
+ 
+-	virtqueue_size = virtqueue_get_vring_size(fs->vqs[VQ_REQUEST].vq);
++	virtqueue_size = virtqueue_get_vring_size(fs->vqs[fs->first_request].vq);
+ 	if (WARN_ON(virtqueue_size <= FUSE_HEADER_OVERHEAD))
+ 		goto out_err;
+ 
