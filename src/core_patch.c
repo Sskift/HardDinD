@@ -101,6 +101,61 @@ static void ptrace_after_patch(void) {
     }
     CHECK(stops == 130);
 }
+static void debugger_writes(void) {
+    unsigned char *site = mapping + OFFSET;
+    for (int mode = 0; mode < 3; mode++) {
+        pid_t child = fork(); CHECK(child >= 0);
+        if (!child) {
+            verify_site(site);
+            CHECK(!ptrace(PTRACE_TRACEME, 0, NULL, NULL));
+            CHECK(!syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), SIGSTOP));
+            CHECK(((long (*)(void))site)() == (mode == 1 ? getppid() : getpid()));
+            _exit(0);
+        }
+        int status;
+        struct user_regs_struct regs, saved;
+        CHECK(waitpid(child, &status, 0) == child && WIFSTOPPED(status));
+        CHECK(!ptrace(PTRACE_SETOPTIONS, child, NULL, (void *)(uintptr_t)PTRACE_O_EXITKILL));
+        if (mode == 1) {
+            char path[64];
+            CHECK(snprintf(path, sizeof(path), "/proc/%d/mem", child) > 0);
+            int fd = open(path, O_WRONLY); CHECK(fd >= 0);
+            uint32_t nr = SYS_getppid;
+            CHECK(pwrite(fd, &nr, sizeof(nr), (off_t)(uintptr_t)(site + 1)) == sizeof(nr));
+            CHECK(!close(fd));
+        } else {
+            errno = 0;
+            long word = ptrace(PTRACE_PEEKTEXT, child, site, NULL); CHECK(!errno);
+            if (mode == 0) {
+                CHECK(!ptrace(PTRACE_POKETEXT, child, site, (void *)((word & ~255UL) | 0xcc)));
+                CHECK(!ptrace(PTRACE_CONT, child, NULL, NULL));
+                CHECK(waitpid(child, &status, 0) == child && WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP);
+                CHECK(!ptrace(PTRACE_GETREGS, child, NULL, &regs));
+                CHECK(regs.rip == (uintptr_t)site + 1);
+                CHECK(!ptrace(PTRACE_POKETEXT, child, site, (void *)word));
+                regs.rip = (uintptr_t)site;
+            } else {
+                CHECK(!ptrace(PTRACE_GETREGS, child, NULL, &saved));
+                regs = saved;
+                regs.rip = (uintptr_t)site + 5;
+                regs.rax = SYS_getpid;
+                regs.orig_rax = (unsigned long)-1;
+            }
+            CHECK(!ptrace(PTRACE_SETREGS, child, NULL, &regs));
+            for (int step = mode == 0 ? 0 : 1; step < 2; step++) {
+                CHECK(!ptrace(PTRACE_SINGLESTEP, child, NULL, NULL));
+                CHECK(waitpid(child, &status, 0) == child && WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP);
+                CHECK(!ptrace(PTRACE_GETREGS, child, NULL, &regs));
+                CHECK(regs.rip == (uintptr_t)site + (step ? 7 : 5));
+                CHECK(regs.rax == (unsigned long)(step ? child : SYS_getpid));
+            }
+            if (mode == 2) CHECK(!ptrace(PTRACE_SETREGS, child, NULL, &saved));
+        }
+        CHECK(!ptrace(PTRACE_CONT, child, NULL, NULL));
+        wait_ok(child);
+        verify_site(site);
+    }
+}
 static void restart_and_long_form(void) {
     unsigned char *p = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -258,6 +313,7 @@ int main(int argc, char **argv) {
     if (!child) { execl("/proc/self/exe", "core_patch", "fresh", (char *)NULL); _exit(127); }
     wait_ok(child);
     ptrace_after_patch();
+    debugger_writes();
     restart_and_long_form();
     ambiguous_instructions();
     trampoline_lifetime();
@@ -294,7 +350,7 @@ int main(int argc, char **argv) {
     CHECK(!munmap(mapping, SITES * page_size) && !close(fd));
     printf("{\"schema\":\"hd.core-patch/1\",\"enabled\":%s,\"sites\":%d,\"calls\":%d,"
            "\"signals\":%u,\"fork\":true,\"exec_clean\":true,\"file_clean\":true,"
-           "\"ptrace\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"mremap\":true,\"trampoline_lifetime\":%s,\"discard_remap_write\":true,\"verified\":true}\n",
+           "\"ptrace\":true,\"poketext\":true,\"proc_mem\":true,\"single_step\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"mremap\":true,\"trampoline_lifetime\":%s,\"discard_remap_write\":true,\"verified\":true}\n",
            enabled ? "true" : "false", SITES, SITES * CALLS * 4, atomic_load(&delivered), enabled ? "true" : "false");
     return 0;
 }

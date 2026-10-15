@@ -2,6 +2,11 @@ Subject: [CANDIDATE] UML private syscall sites and GS-free runner trampoline
 
 Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 
+Writable __access_remote_vm calls restore affected private sites before mmap_lock,
+holding the per-mm patch mutex through the write. Single stepping restores all
+sites and disables further rewriting in that mm until exec. Guest text readers
+(including ptrace and /proc/pid/mem) can observe patched bytes.
+
 --- a/arch/um/include/asm/mmu.h
 +++ b/arch/um/include/asm/mmu.h
 @@ -10,6 +10,8 @@
@@ -13,7 +18,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #include <linux/spinlock.h>
  #include <mm_id.h>
  
-@@ -20,6 +22,11 @@
+@@ -20,6 +22,12 @@
  	/* Parallel seccomp runners share the broker's host address space. */
  	struct mm_id cpu_ids[NR_CPUS];
  	struct mutex turnstile;
@@ -21,6 +26,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	struct rw_semaphore patch_run;
 +	wait_queue_head_t patch_wait;
 +	int patch_stopping;
++	bool patch_debug;
 +	unsigned long patch_miss[64];
  	struct mm_id gpu_id;
  	struct mutex gpu_lock;
@@ -77,7 +83,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,44 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
@@ -107,6 +113,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +extern int uml_syscall_patch;
 +struct uml_pt_regs;
 +struct mm_struct;
++struct task_struct;
 +void uml_patch_syscall(struct uml_pt_regs *r);
 +int uml_patch_fault(struct uml_pt_regs *r);
 +void uml_patch_enter(struct mm_struct *mm);
@@ -114,6 +121,9 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +void uml_patch_count(void);
 +int uml_patch_prepare(int syscall, struct uml_pt_regs *r);
 +void uml_patch_done(void);
++int uml_patch_write_begin(struct mm_struct *mm, unsigned long addr, int len);
++void uml_patch_write_end(struct mm_struct *mm);
++int uml_patch_step(struct task_struct *task);
 +void uml_patch_forget(struct mm_struct *mm, unsigned long start, unsigned long end);
 +int uml_patch_setup(void);
 +#endif
@@ -151,7 +161,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,421 @@
+@@ -0,0 +1,465 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -333,6 +343,8 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	if (offset_in_page(addr) + len > PAGE_SIZE)
 +		return;
 +	mutex_lock(&mm->context.patch_lock);
++	if (mm->context.patch_debug)
++		goto unlock;
 +	if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
 +	    h.magic != PATCH_MAGIC || h.next < 1 || h.next >= (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
 +		goto unlock;
@@ -421,45 +433,14 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	mutex_unlock(&mm->context.patch_lock);
 +}
 +
-+/* Keep the patch mutex through a mapping syscall so another thread cannot
-+ * install a new site after restoration but before the VMA is moved. */
-+int uml_patch_prepare(int syscall, struct uml_pt_regs *r)
++/* Return with patch_lock held, including when this mm has no patch table. */
++static int patch_restore(struct mm_struct *mm, unsigned long start, unsigned long end, bool all)
 +{
-+    struct mm_struct *mm = current->mm;
 +    struct patch_header h;
-+    unsigned long start = UPT_SYSCALL_ARG1(r), size = UPT_SYSCALL_ARG2(r), end;
-+    bool all = false;
 +    int error = 0;
 +
-+    if (!uml_syscall_patch || !parallel_userspace || !mm)
-+        return 0;
-+    size = PAGE_ALIGN(size);
-+    end = size > ULONG_MAX - start ? ULONG_MAX : start + size;
-+    switch (syscall) {
-+    case __NR_mremap:
-+        if ((UPT_SYSCALL_ARG4(r) & MREMAP_FIXED) &&
-+            UPT_SYSCALL_ARG5(r) < UML_PATCH_END &&
-+            UPT_SYSCALL_ARG3(r) > UML_PATCH_BASE - min(UPT_SYSCALL_ARG5(r), (unsigned long)UML_PATCH_BASE))
-+            all = true;
-+        break;
-+    case __NR_mmap:
-+        if (!(UPT_SYSCALL_ARG4(r) & MAP_FIXED))
-+            return 0;
-+        fallthrough;
-+    case __NR_mprotect: case __NR_pkey_mprotect:
-+        if (UPT_SYSCALL_ARG3(r) & PROT_WRITE)
-+            break;
-+        fallthrough;
-+    case __NR_munmap: case __NR_madvise:
-+        if (start >= UML_PATCH_END || end <= UML_PATCH_BASE)
-+            return 0;
-+        break;
-+    default:
-+        return 0;
-+    }
-+    all |= start < UML_PATCH_END && end > UML_PATCH_BASE;
 +    mutex_lock(&mm->context.patch_lock);
-+    if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
++    if (access_remote_vm(mm, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
 +        h.magic != PATCH_MAGIC || h.next < 1 || h.next > (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
 +        return 1;
 +    for (unsigned long i = 1; i < h.next; i++) {
@@ -472,7 +453,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +        u32 imm = slot, nr;
 +        void *bytes;
 +
-+        if (access_process_vm(current, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
++        if (access_remote_vm(mm, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
 +            continue;
 +        memcpy(&return_ip, code + 48, 8);
 +        memcpy(&nr, code + 40, 4);
@@ -481,7 +462,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +            return_ip >= TASK_SIZE)
 +            continue;
 +        addr = return_ip - len;
-+        if ((!all && (addr < start || addr >= end)) || offset_in_page(addr) + len > PAGE_SIZE)
++        if ((!all && (addr >= end || return_ip <= start)) || offset_in_page(addr) + len > PAGE_SIZE)
 +            continue;
 +        memcpy(jump + 3, &imm, 4);
 +        mmap_read_lock(mm);
@@ -521,6 +502,79 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +        }
 +    }
 +    return 1;
++}
++
++/* Keep the patch mutex through a mapping syscall so another thread cannot
++ * install a new site after restoration but before the VMA is moved. */
++int uml_patch_prepare(int syscall, struct uml_pt_regs *r)
++{
++    struct mm_struct *mm = current->mm;
++    unsigned long start = UPT_SYSCALL_ARG1(r), size = UPT_SYSCALL_ARG2(r), end;
++    bool all = false;
++
++    if (!uml_syscall_patch || !parallel_userspace || !mm)
++        return 0;
++    size = PAGE_ALIGN(size);
++    end = size > ULONG_MAX - start ? ULONG_MAX : start + size;
++    switch (syscall) {
++    case __NR_mremap:
++        if ((UPT_SYSCALL_ARG4(r) & MREMAP_FIXED) &&
++            UPT_SYSCALL_ARG5(r) < UML_PATCH_END &&
++            UPT_SYSCALL_ARG3(r) > UML_PATCH_BASE - min(UPT_SYSCALL_ARG5(r), (unsigned long)UML_PATCH_BASE))
++            all = true;
++        break;
++    case __NR_mmap:
++        if (!(UPT_SYSCALL_ARG4(r) & MAP_FIXED))
++            return 0;
++        fallthrough;
++    case __NR_mprotect: case __NR_pkey_mprotect:
++        if (UPT_SYSCALL_ARG3(r) & PROT_WRITE)
++            break;
++        fallthrough;
++    case __NR_munmap: case __NR_madvise:
++        if (start >= UML_PATCH_END || end <= UML_PATCH_BASE)
++            return 0;
++        break;
++    default:
++        return 0;
++    }
++    all |= start < UML_PATCH_END && end > UML_PATCH_BASE;
++    return patch_restore(mm, start, end, all);
++}
++
++int uml_patch_write_begin(struct mm_struct *mm, unsigned long addr, int len)
++{
++    unsigned long end;
++
++    if (!uml_syscall_patch || !parallel_userspace || len <= 0)
++        return 0;
++    end = len > ULONG_MAX - addr ? ULONG_MAX : addr + len;
++    return patch_restore(mm, addr, end, addr < UML_PATCH_END && end > UML_PATCH_BASE);
++}
++
++void uml_patch_write_end(struct mm_struct *mm)
++{
++    mutex_unlock(&mm->context.patch_lock);
++}
++
++int uml_patch_step(struct task_struct *task)
++{
++    struct mm_struct *mm;
++    int held;
++
++    if (!uml_syscall_patch || !parallel_userspace)
++        return 0;
++    mm = get_task_mm(task);
++    if (!mm)
++        return 0;
++    held = patch_restore(mm, 0, ULONG_MAX, true);
++    if (held > 0) {
++        /* Sticky until exec: another thread must not repatch a stepped site. */
++        mm->context.patch_debug = true;
++        uml_patch_write_end(mm);
++    }
++    mmput(mm);
++    return held < 0 ? held : 0;
 +}
 +
 +void uml_patch_done(void)
@@ -607,6 +661,28 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  	memblock_add(__pa(start), len);
  	memblock_reserve(__pa(start), reserve);
+--- a/arch/um/kernel/ptrace.c
++++ b/arch/um/kernel/ptrace.c
+@@ -4,6 +4,7 @@
+  */
+ 
+ #include <linux/audit.h>
++#include <core-patch.h>
+ #include <linux/ptrace.h>
+ #include <linux/sched.h>
+ #include <linux/uaccess.h>
+@@ -99,6 +100,11 @@
+ 		ret = ptrace_set_thread_area(child, addr, vp);
+ 		break;
+ 
++	case PTRACE_SINGLESTEP:
++		ret = uml_patch_step(child);
++		if (ret)
++			break;
++		fallthrough;
+ 	default:
+ 		ret = ptrace_request(child, request, addr, data);
+ 		if (ret == -EIO)
 --- a/arch/um/kernel/skas/mmu.c
 +++ b/arch/um/kernel/skas/mmu.c
 @@ -84,7 +84,7 @@
@@ -618,10 +694,11 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	if (!err)
  		err = syscall_stub_flush(&ctx->id);
  	if (err || ctx->id.pid < 2)
-@@ -161,6 +161,11 @@
+@@ -161,6 +161,12 @@
  
  	memset(mm->context.cpu_ids, 0, sizeof(mm->context.cpu_ids));
  	mutex_init(&mm->context.turnstile);
++	mm->context.patch_debug = false;
 +	mutex_init(&mm->context.patch_lock);
 +	init_rwsem(&mm->context.patch_run);
 +	init_waitqueue_head(&mm->context.patch_wait);
@@ -1250,3 +1327,58 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	if (mmap_write_lock_killable(mm))
  		return -EINTR;
  
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -41,6 +41,9 @@
+ 
+ #include <linux/kernel_stat.h>
+ #include <linux/mm.h>
++#ifdef CONFIG_UML
++#include <core-patch.h>
++#endif
+ #include <linux/mm_inline.h>
+ #include <linux/sched/mm.h>
+ #include <linux/sched/numa_balancing.h>
+@@ -7017,7 +7020,7 @@
+ /*
+  * Access another process' address space as given in mm.
+  */
+-static int __access_remote_vm(struct mm_struct *mm, unsigned long addr,
++static int access_remote_vm_inner(struct mm_struct *mm, unsigned long addr,
+ 			      void *buf, int len, unsigned int gup_flags)
+ {
+ 	void *old_buf = buf;
+@@ -7095,6 +7098,25 @@
+ 	return buf - old_buf;
+ }
+ 
++/* UML restores private syscall sites before the mmap lock, and keeps its
++ * patch mutex across the write. Reads and other architectures are unchanged. */
++static int __access_remote_vm(struct mm_struct *mm, unsigned long addr,
++                             void *buf, int len, unsigned int gup_flags)
++{
++    int ret;
++#ifdef CONFIG_UML
++    int held = (gup_flags & FOLL_WRITE) ? uml_patch_write_begin(mm, addr, len) : 0;
++    if (held < 0)
++        return 0;
++#endif
++    ret = access_remote_vm_inner(mm, addr, buf, len, gup_flags);
++#ifdef CONFIG_UML
++    if (held)
++        uml_patch_write_end(mm);
++#endif
++    return ret;
++}
++
+ /**
+  * access_remote_vm - access another process' address space
+  * @mm:		the mm_struct of the target address space
+@@ -7107,6 +7129,7 @@
+  *
+  * Return: number of bytes copied from source to destination.
+  */
++
+ int access_remote_vm(struct mm_struct *mm, unsigned long addr,
+ 		void *buf, int len, unsigned int gup_flags)
+ {
