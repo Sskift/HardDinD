@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <pthread.h>
+#include <sched.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdint.h>
@@ -26,6 +28,27 @@ static const char *self;
 static int grouped, group_items;
 static sigjmp_buf recovery;
 static volatile sig_atomic_t expected, caught;
+
+struct syscall_work { pthread_barrier_t barrier; size_t count; };
+struct syscall_thread { struct syscall_work *work; int cpu; };
+static void barrier(pthread_barrier_t *b) {
+    int r = pthread_barrier_wait(b);
+    CHECK(r == 0 || r == PTHREAD_BARRIER_SERIAL_THREAD);
+}
+static void *syscall_worker(void *arg) {
+    struct syscall_thread *thread = arg;
+    struct syscall_work *work = thread->work;
+    cpu_set_t affinity;
+    CPU_ZERO(&affinity);
+    CPU_SET(thread->cpu, &affinity);
+    CHECK(!pthread_setaffinity_np(pthread_self(), sizeof(affinity), &affinity));
+    barrier(&work->barrier);
+    barrier(&work->barrier);
+    for (size_t i = 0; i < work->count; i++) CHECK(syscall(SYS_getpid) > 0);
+    barrier(&work->barrier);
+    barrier(&work->barrier);
+    return NULL;
+}
 
 struct counters {
     char names[MAX_COUNTERS][40];
@@ -228,9 +251,28 @@ static void semantics(void) {
 }
 static void measure(const char *mode, size_t count) {
     struct sample local = {0}, *s = &local;
+    struct syscall_work work;
+    struct syscall_thread workers[4];
+    pthread_t threads[4];
+    int parallel = !strcmp(mode, "getpid4");
     unsigned char *p = NULL;
     size_t bytes = count * page;
     int fd = -1;
+    if (parallel) {
+        cpu_set_t affinity;
+        int cpus[4], found = 0;
+        CHECK(!sched_getaffinity(0, sizeof(affinity), &affinity));
+        for (int cpu = 0; cpu < CPU_SETSIZE && found < 4; cpu++)
+            if (CPU_ISSET(cpu, &affinity)) cpus[found++] = cpu;
+        CHECK(found > 0);
+        work.count = count;
+        CHECK(!pthread_barrier_init(&work.barrier, NULL, 5));
+        for (unsigned int i = 0; i < 4; i++) {
+            workers[i] = (struct syscall_thread){&work, cpus[i % found]};
+            CHECK(!pthread_create(&threads[i], NULL, syscall_worker, &workers[i]));
+        }
+        barrier(&work.barrier); /* Every worker is initialized before timing. */
+    }
     if (!strcmp(mode, "anon") || !strcmp(mode, "cow")) p = anonymous(bytes);
     if (!strcmp(mode, "file")) {
         fd = backing(count); /* Warm page cache; measure PTE faults, not storage. */
@@ -295,8 +337,17 @@ static void measure(const char *mode, size_t count) {
             }
         } else if (!strcmp(mode, "getpid")) {
             for (size_t i = 0; i < count; i++) CHECK(syscall(SYS_getpid) > 0);
+        } else if (parallel) {
+            barrier(&work.barrier);
+            barrier(&work.barrier);
         } else { fprintf(stderr, "unknown mode: %s\n", mode); exit(2); }
         end(s);
+    }
+    if (parallel) {
+        barrier(&work.barrier); /* Release worker exits after the final snapshot. */
+        for (unsigned int i = 0; i < 4; i++) CHECK(!pthread_join(threads[i], NULL));
+        CHECK(!pthread_barrier_destroy(&work.barrier));
+        count *= 4;
     }
     if (!strcmp(mode, "anon") || !strcmp(mode, "file"))
         for (size_t i = 0; i < count; i++) {
@@ -312,7 +363,7 @@ static void measure(const char *mode, size_t count) {
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "child")) return 0;
     if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: %s semantics | anon|file|cow|small|fork|exec|mmap|mprotect|getpid|faults|process|all [count]\n", argv[0]);
+        fprintf(stderr, "usage: %s semantics | anon|file|cow|small|fork|exec|mmap|mprotect|getpid|getpid4|faults|process|syscalls|all [count]\n", argv[0]);
         return 2;
     }
     page = (size_t)sysconf(_SC_PAGESIZE);
@@ -327,11 +378,16 @@ int main(int argc, char **argv) {
         CHECK(!errno && *argv[2] && !*tail && value > 0 && value <= 1048576);
         count = value;
     }
-    if (!strcmp(argv[1], "faults") || !strcmp(argv[1], "process") || !strcmp(argv[1], "all")) {
+    if (!strcmp(argv[1], "faults") || !strcmp(argv[1], "process") ||
+        !strcmp(argv[1], "syscalls") || !strcmp(argv[1], "all")) {
         int all = !strcmp(argv[1], "all");
         if (all || !strcmp(argv[1], "process")) CHECK(count <= 1024);
         grouped = 1;
         printf("{\"schema\":\"hd.core-group/1\",\"samples\":[");
+        if (!strcmp(argv[1], "syscalls")) {
+            measure("getpid", count);
+            measure("getpid4", count);
+        }
         if (all || !strcmp(argv[1], "faults")) {
             size_t pages = all ? count * 256 : count;
             measure("anon", pages);
