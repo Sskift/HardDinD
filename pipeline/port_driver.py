@@ -71,7 +71,7 @@ class PortDriver:
             return 200, {'apiVersion': '1.1.2', 'version': 'harddind-port-v2',
                          'stateDir': '/run/harddind-port', 'childPID': 0,
                          'networkDriver': {'driver': 'harddind-uml', 'childIP': '10.0.2.15',
-                                           'dns': [self.dns], 'ipv6': True},
+                                           'dns': self.dns.split(','), 'ipv6': True},
                          'portDriver': {'driver': 'harddind-slirp', 'protos': list(PROTOS),
                                         'disallowLoopbackChildIP': True}}
         if method == 'GET' and path == '/v1/ports':

@@ -8,7 +8,6 @@ virtiofsd shares, and tears all of them down on stop.
 import base64
 import ctypes
 import fcntl
-import hashlib
 import http.client
 import json
 import os
@@ -31,13 +30,6 @@ from pipeline.port_driver import PortDriver
 CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
-
-def sha(path):
-    h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for b in iter(lambda: f.read(1024 * 1024), b''):
-            h.update(b)
-    return h.hexdigest()
 
 
 def share_specs(paths):
@@ -161,6 +153,18 @@ def shutdown_diagnostics(instance, state):
     return str(path)
 
 
+def default_dns(resolv='/etc/resolv.conf'):
+    """Outer resolvers if usable from the guest; else Docker's own fallback for
+    loopback-only hosts (public resolvers). The guest reaches the outer host's
+    resolver only through slirp, and Starpub's 127.0.0.11 stalls AAAA lookups."""
+    try:
+        servers = [line.split()[1] for line in open(resolv) if line.startswith('nameserver ') and len(line.split()) > 1]
+    except OSError:
+        servers = []
+    usable = [s for s in servers if not s.startswith('127.') and s != '::1' and ':' not in s]
+    return ','.join(usable[:3]) or '1.1.1.1,8.8.8.8'
+
+
 def parse_cpus(text):
     cpus = set()
     for part in str(text).split(','):
@@ -175,6 +179,10 @@ def serve(instance):
     lock = (instance / 'instance.lock').open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     config = json.loads((instance / 'config.json').read_text())
+    if config.get('measure_lock'):
+        # Interactive guests block exclusive measurements for their whole life.
+        measure = open(config['measure_lock'], 'a')
+        fcntl.flock(measure, fcntl.LOCK_SH)
     run = uuid.uuid4().hex[:12]
     state = {'phase': 'starting', 'run': run, 'supervisor_pid': os.getpid(),
              'supervisor_start': start_time(os.getpid()), 'config': config}
@@ -284,6 +292,9 @@ def serve(instance):
         write_state(instance, state)
         deadline = time.monotonic() + config['boot_timeout']
         console = instance / f'guest-{run}.log'
+        booted = time.monotonic()
+        markers = {'init': b'Run /sbin/harddind-runtime-init', 'dockerd': b'HARDDIND_RUNTIME_READY'}
+        state['boot'] = {}
         while not stopping:
             if guest.poll() is not None or helper.poll() is not None:
                 raise RuntimeError('guest or network backend exited unexpectedly')
@@ -292,6 +303,11 @@ def serve(instance):
             if any(fs.poll() is not None for fs, _, _, _ in filesystems):
                 raise RuntimeError('shared filesystem backend exited unexpectedly')
             if state['phase'] == 'starting':
+                if len(state['boot']) < len(markers):
+                    head = console.read_bytes()
+                    for name, marker in markers.items():
+                        if name not in state['boot'] and marker in head:
+                            state['boot'][name] = round(time.monotonic() - booted, 2)
                 try:
                     answered = api(port, '/_ping') == b'OK'
                 except (OSError, http.client.HTTPException, RuntimeError):
@@ -304,6 +320,7 @@ def serve(instance):
                         raise RuntimeError('Docker did not connect to the port driver')
                     if f'HARDDIND_RUNTIME_MTU={mtu}' not in text:
                         raise RuntimeError('guest did not confirm requested MTU')
+                    state['boot']['api'] = round(time.monotonic() - booted, 2)
                     state['phase'] = 'ready'; state['ready_at'] = time.time(); write_state(instance, state)
                 if state['phase'] != 'ready' and time.monotonic() > deadline:
                     raise RuntimeError('Docker API readiness timed out')
@@ -372,7 +389,7 @@ def serve(instance):
 
 def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cpus=4, memory='4G',
           cpuset=None, kernel_args=(), shares=(), share_options=None, publish_ports=True,
-          mtu=1500, dns='10.0.2.3', network_batch=1, boot_timeout=180, fresh=True):
+          mtu=1500, dns=None, network_batch=1, boot_timeout=180, fresh=True, measure_lock=None):
     """Boot a guest in `instance` and wait until dockerd answers.
 
     fresh=True requires a new instance; fresh=False reboots on the existing COW disk."""
@@ -392,8 +409,8 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'client': str(client), 'virtiofsd': str(virtiofsd) if virtiofsd else None,
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
-              'mtu': mtu, 'dns': dns, 'network_batch': network_batch, 'boot_timeout': boot_timeout,
-              'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk)}
+              'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'boot_timeout': boot_timeout,
+              'measure_lock': str(measure_lock) if measure_lock else None}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]
     with (instance / 'supervisor.log').open('a') as log:

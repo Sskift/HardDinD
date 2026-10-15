@@ -19,6 +19,8 @@ rootless Docker/Podman、sysbox、fuse-overlayfs 都需要 user namespace 或 mo
 
 应用的 CPU 指令直接在宿主 CPU 上执行。guest 的系统调用被外层 seccomp 过滤器以 SIGSYS 截获，交给 UML 内核处理后再返回；缺页和地址空间变化由映射管理进程在宿主上执行 mmap/mprotect。所以纯计算接近原生，系统调用、缺页、fork/exec、网络的开销集中在这条交接路径上。
 
+guest 的上游 DNS：外层有可路由的解析器就用外层的；只有回环解析器时（Starpub 是 `127.0.0.11`，AAAA 查询约 4 秒后 SERVFAIL），按原生 Docker 对仅回环宿主的做法改用公共解析器 1.1.1.1、8.8.8.8。
+
 ## 已知瓶颈（重构前的测量，原生 = 1）
 
 | 项目 | guest/原生耗时 |

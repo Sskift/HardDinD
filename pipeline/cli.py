@@ -27,8 +27,16 @@ REMOTE_SRC = f'{config.REMOTE_ROOT}/src/{CHECKOUT}'
 
 # ---------------------------------------------------------------- local side
 
+def require_master():
+    """Refuse to open bare TCP connections: the jump host bans bursts of them."""
+    if config.JUMP and subprocess.run(['ssh', '-O', 'check', config.JUMP], capture_output=True).returncode:
+        raise SystemExit(f'ssh master for {config.JUMP} is down; wait for it to reconnect (launchd keepalive) '
+                         'instead of retrying, or set HD_JUMP= to skip this check')
+
+
 def ssh(script, check=True, capture=False):
     """Run one shell script remotely in a single ssh invocation."""
+    require_master()
     result = subprocess.run(['ssh', config.REMOTE, 'bash -s'], input=script, text=True,
                             capture_output=capture)
     if check and result.returncode:
@@ -47,9 +55,9 @@ def cmd_sync(_a=None):
            'diff_sha256': hashlib.sha256(diff.encode()).hexdigest() if diff else None,
            'synced_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
     (REPO / '.hd-revision.json').write_text(json.dumps(rev, indent=2) + '\n')
-    cmd = ['rsync', '-az', '--delete', *[f'--exclude={e}' for e in RSYNC_EXCLUDES], f'{REPO}/',
-           f'{config.REMOTE}:{REMOTE_SRC}/']
-    subprocess.run(['ssh', config.REMOTE, f'mkdir -p {REMOTE_SRC}'], check=True)
+    cmd = ['rsync', '-az', '--delete', f'--rsync-path=mkdir -p {REMOTE_SRC} && rsync',
+           *[f'--exclude={e}' for e in RSYNC_EXCLUDES], f'{REPO}/', f'{config.REMOTE}:{REMOTE_SRC}/']
+    require_master()
     subprocess.run(cmd, check=True)
     print(f"synced {rev['git'][:12]}{' (dirty)' if rev['dirty'] else ''} -> {config.REMOTE}:{REMOTE_SRC}")
 
@@ -101,11 +109,19 @@ def cmd_wait(a):
 def cmd_fetch(_a):
     dest = REPO / 'results/runs'
     dest.mkdir(parents=True, exist_ok=True)
+    require_master()
     subprocess.run(['rsync', '-a', '--prune-empty-dirs', '--include=*/', '--include=summary.json',
                     '--include=scorecard.md', '--exclude=*', f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
                    check=True)
     runs = sorted(p.parent.name for p in dest.glob('*/summary.json'))
     print(f'{len(runs)} run summaries in results/runs; latest: {runs[-1] if runs else "-"}')
+    # The scoreboard is the newest complete ci run: no --only, no --quick, no run error.
+    for name in reversed(runs):
+        summary = json.loads((dest / name / 'summary.json').read_text())
+        if summary.get('kind') == 'ci' and not summary.get('only') and not summary.get('quick') and not summary.get('error'):
+            shutil.copy2(dest / name / 'scorecard.md', REPO / 'results/SCOREBOARD.md')
+            print(f'results/SCOREBOARD.md <- {name}')
+            break
 
 
 def cmd_check(_a):
@@ -143,7 +159,8 @@ def cmd_up(a):
     path = config.INSTANCES / a.name
     if a.recreate and path.exists():
         instance.stop(path); instance.remove(path)
-    state = instance.start(path, **opts)
+    config.LOCKS.mkdir(parents=True, exist_ok=True)
+    state = instance.start(path, measure_lock=config.LOCKS / 'measure.lock', **opts)
     print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
 
 
@@ -175,6 +192,32 @@ def cmd_ps(_a):
               f"api={state.get('api_port', '-')} {state.get('error', '')}")
 
 
+def cmd_gc(a):
+    """Drop old runs, dead instances and store entries no kept run refers to."""
+    require_linux()
+    from pipeline import build, instance
+    with build.lock('build'), build.lock('measure'):
+        runs = sorted(p for p in config.RUNS.glob('*') if p.is_dir()) if config.RUNS.exists() else []
+        drop = runs[:-a.keep_runs] if len(runs) > a.keep_runs else []
+        for path in drop:
+            shutil.rmtree(path)
+        used = set()
+        for path in runs[len(drop):]:
+            try:
+                used.update(json.loads((path / 'summary.json').read_text()).get('artifacts', {}).values())
+            except (OSError, ValueError):
+                pass
+        cutoff = time.time() - a.keep_days * 86400
+        removed = []
+        for entry in config.STORE.glob('*/*') if config.STORE.exists() else []:
+            if entry.name.startswith('.') or (entry.name not in used and entry.stat().st_mtime < cutoff):
+                shutil.rmtree(entry); removed.append(f'{entry.parent.name}/{entry.name}')
+        for path in config.INSTANCES.glob('*') if config.INSTANCES.exists() else []:
+            if not instance.live(instance.read_state(path)) and path.stat().st_mtime < cutoff:
+                instance.remove(path); removed.append('instance/' + path.name)
+    print(f'gc: removed {len(drop)} runs and {len(removed)} store/instance entries')
+
+
 def run_suite(kind, a):
     """Shared driver for test/bench/ci: build, boot, run the suite(s), score."""
     require_linux()
@@ -185,7 +228,7 @@ def run_suite(kind, a):
         print(f'run {run_id}', flush=True)
         summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
                    'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
-                   'host': runs.host_info(), 'only': a.only}
+                   'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
         try:
             artifacts = build.everything(a.with_, shares=kind in ('test', 'ci'))
             summary['artifacts'] = artifacts['ids']
@@ -313,6 +356,9 @@ def main(argv=None):
     s = sub.add_parser('docker', help='run the Docker CLI against a named guest')
     s.add_argument('name'); s.add_argument('args', nargs=argparse.REMAINDER); s.set_defaults(fn=cmd_docker)
     sub.add_parser('ps', help='list guests').set_defaults(fn=cmd_ps)
+    s = sub.add_parser('gc', help='prune old runs, unused store entries and dead guests')
+    s.add_argument('--keep-runs', type=int, default=60); s.add_argument('--keep-days', type=float, default=3)
+    s.set_defaults(fn=cmd_gc)
     for kind, text in (('test', 'functional Docker suite on a fresh guest'),
                        ('bench', 'performance matrix, native vs guest, exclusive'),
                        ('ci', 'test then bench in one run')):

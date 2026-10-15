@@ -75,6 +75,7 @@ def artifact(kind, key, builder):
     """Return STORE/kind/key, building it with builder(tmp, final) when absent."""
     final = config.STORE / kind / key
     if (final / '.complete').exists():
+        os.utime(final)  # last use, for ./hd gc
         return final
     with lock('build'):
         if (final / '.complete').exists():
@@ -193,15 +194,16 @@ def rootfs():
     bins = moby()
     agent = port_agent()
     guest = [REPO / 'guest/runtime-init', REPO / 'guest/runtime-daemon']
-    key = key_of('rootfs/1', base.parent.name, bins.name, agent.parent.name, *guest)
+    key = key_of('rootfs/2', base.parent.name, bins.name, agent.parent.name, *guest)
     def build(tmp, _final):
         root = tmp / 'root'
         run(['cp', '-a', base, root])
-        shutil.copy2(guest[0], root / 'sbin/harddind-runtime-init')
-        shutil.copy2(guest[1], root / 'sbin/harddind-daemon')
-        shutil.copy2(agent, root / 'sbin/harddind-port-agent')
-        for name in ('dockerd', 'docker-proxy'):
-            shutil.copy2(bins / name, root / 'usr/bin' / name)
+        installs = [(guest[0], 'sbin/harddind-runtime-init'), (guest[1], 'sbin/harddind-daemon'),
+                    (agent, 'sbin/harddind-port-agent'), (bins / 'dockerd', 'usr/bin/dockerd'),
+                    (bins / 'docker-proxy', 'usr/bin/docker-proxy')]
+        for source, target in installs:
+            shutil.copyfile(source, root / target)
+            (root / target).chmod(0o755)
         disk = tmp / 'rootfs.ext4'
         # Sparse; holds images, containers and build cache of one instance.
         run(['truncate', '-s', '24G', disk])
