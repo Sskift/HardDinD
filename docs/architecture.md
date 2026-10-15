@@ -34,7 +34,7 @@ guest 的上游 DNS：外层有可路由的解析器就用外层的；只有回�
 
 ## 推进顺序
 
-1. **时钟 vDSO**：guest vDSO 直接读时钟，不陷入。频繁读时钟的负载（Go、JVM、数据库）受益最大。`kernel/candidates/clock-getcpu-fastpath.patch` 在 SIGSYS 处理里直接应答，需要 rebase 到当前 series；真正的 vDSO 方案更快。
+1. **时钟 vDSO**（已完成，补丁 0031，默认开启）：guest 内核以宿主不变 TSC 为时钟源，发布只读 vvar，容器所在的 time namespace 也走快路径；`clock_gettime` 从约 5 µs 降到约 25 ns（原生约 18 ns），`micro.clock` 从 0.006 到约 0.6。语义差别：guest 时钟不再跟随宿主 NTP 调频，长期运行会按 TSC 校准误差漂移；需要补上以宿主时间为参考的频率校正。
 2. **并行执行稳定化**（0003 起）：并发 fork/exec 下曾丢失宿主进程，根因未证实修复。
 3. **缺页批量映射**：`kernel/candidates/anon-faultaround.patch`，降低 fork/exec 和 mmap 开销。
 4. **系统调用改写**：参考 gVisor systrap，把 `mov sysno,%eax; syscall` 改写为跳到 trampoline，省掉信号投递和 sigreturn。

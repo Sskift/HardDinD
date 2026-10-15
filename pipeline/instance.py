@@ -29,8 +29,9 @@ from pipeline.port_driver import PortDriver
 # Boot parameters of the default execution core (see kernel/series).
 # Guest RAM in a memfd (shmem): a file under TMPDIR would make the host write
 # guest memory back to disk and stall exit in inode writeback.
+# harddind_vdso_clock: clock_gettime and friends read a TSC vvar without trapping (patch 0031).
 CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
-             'memfd_ram=1')
+             'memfd_ram=1', 'harddind_vdso_clock=1')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
 
