@@ -1,0 +1,69 @@
+{
+  "scope": "Source-bound native fixture; not actual GPU or guest acceptance.",
+  "platform": "macOS-26.6.1-arm64-arm-64bit",
+  "runner_sha256": "6b3d5381495fbbe2223c3949bf40270d6f00b759ab015849400eefcc0c536b04",
+  "source_sha256": "e6ce7e45b3d018cce104825e9b1807cf1c02a2bbe54e4a8ed104e276f0ad341f",
+  "fixture_sha256": "e34fff1e088706d7806055ef6a3cf70dfa7f869d0b5b06df1880a29acf1710ce",
+  "extracted_sha256": "0c03b26ed233e986eb46af9d40b25290f38c84f9a777b3272e8c1cfbcb513076",
+  "header_sha256": {
+    "results/starpub-2026-10-15-candidate-review/gpu-cuda-lifecycle-v8/source/arch/um/include/shared/as-layout.h": "3ad452682a3b782a90620eaf4e767f14c889e0b5f348308864ea85a175d35fba",
+    "results/starpub-2026-10-15-candidate-review/gpu-cuda-lifecycle-v8/source/arch/um/include/shared/skas/stub-data.h": "23d62dedca22fe46b45d28ee4916512523fbe25f6263bd477b9afb4571effd8a"
+  },
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "commands": [
+    {
+      "argv": [
+        "clang",
+        "--version"
+      ],
+      "exit_code": 0,
+      "timeout": false,
+      "group_empty_at_exit": true,
+      "stdout": "Apple clang version 21.0.0 (clang-2100.3.34.2)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "clang",
+        "-std=gnu11",
+        "-O1",
+        "-g",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pthread",
+        "/var/folders/pg/2kfm_1qs6dg953wzxkkzw5p40000gn/T/harddind-gpu-usercopy-fludjka2/fixture.c",
+        "-o",
+        "/var/folders/pg/2kfm_1qs6dg953wzxkkzw5p40000gn/T/harddind-gpu-usercopy-fludjka2/fixture"
+      ],
+      "exit_code": 0,
+      "timeout": false,
+      "group_empty_at_exit": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/var/folders/pg/2kfm_1qs6dg953wzxkkzw5p40000gn/T/harddind-gpu-usercopy-fludjka2/fixture"
+      ],
+      "exit_code": 0,
+      "timeout": false,
+      "group_empty_at_exit": true,
+      "stdout": "{\"checks\":204,\"failures\":0,\"alias_negative\":false}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/var/folders/pg/2kfm_1qs6dg953wzxkkzw5p40000gn/T/harddind-gpu-usercopy-fludjka2/fixture",
+        "--alias-negative"
+      ],
+      "exit_code": 1,
+      "timeout": false,
+      "group_empty_at_exit": true,
+      "stdout": "{\"checks\":24,\"failures\":1,\"alias_negative\":true}\n",
+      "stderr": "FAIL case=forced-interleaving reason=A received another request's output\n"
+    }
+  ],
+  "passed": true
+}
