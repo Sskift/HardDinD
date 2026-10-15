@@ -74,6 +74,15 @@ class CoreFunctionalTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.core_summary(json.dumps(row), 'core_patch', 'rewrite', patch_enabled=False)
 
+    def test_dynamic_requires_both_wrappers_and_all_semantics(self):
+        row = {'schema': 'hd.core-dynamic/1', 'calls': 98304, 'enabled': True, 'signals': 4,
+               'arguments': True, 'fork': True, 'exec': True, 'verified': True}
+        f.core_summary(json.dumps(row), 'core_dynamic', 'registers', patch_enabled=True)
+        for key, value in (('calls', 32768), ('enabled', False), ('signals', 0),
+                           ('arguments', False), ('fork', False), ('exec', False), ('verified', 1)):
+            with self.subTest(key=key), self.assertRaises(AssertionError):
+                f.core_summary(json.dumps(dict(row, **{key: value})), 'core_dynamic', 'registers', patch_enabled=True)
+
     def test_registered_helpers_use_privileged_container_and_validate(self):
         checks = [row for row in f.CHECKS if row[0] in ('process.core_faults', 'process.core_fpstate')
                   or row[0].startswith('process.core_syscalls_')]

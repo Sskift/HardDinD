@@ -7,6 +7,12 @@ holding the per-mm patch mutex through the write. Single stepping restores all
 sites and disables further rewriting in that mm until exec. Guest text readers
 (including ptrace and /proc/pid/mem) can observe patched bytes.
 
+The 0x0606xx06 indirect targets leave an invalid opcode at every stopped
+MOV boundary in the Go register wrapper. Dynamic RAX is saved under a per-mm
+one-try lock before host gettid; contention and lifecycle calls use SIGSYS.
+The host gettid exemption matches only lookup instruction offsets, never the
+slow syscall. The extra host scratch page is reset before cached-broker reuse.
+
 --- a/arch/um/include/asm/mmu.h
 +++ b/arch/um/include/asm/mmu.h
 @@ -10,6 +10,8 @@
@@ -75,7 +81,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  #define STUB_THREAD_DATA(cpu) (STUB_DATA + (STUB_DATA_PAGES + (cpu) * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
 -#define STUB_SIZE ((1 + STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
 +#define STUB_TID_SLOTS 4194304
-+#define STUB_TID_SIZE STUB_TID_SLOTS
++#define STUB_TID_SIZE (STUB_TID_SLOTS + UM_KERN_PAGE_SIZE)
 +#define STUB_TID_TABLE (STUB_DATA + (STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
 +#define STUB_SIZE ((STUB_CODE_PAGES + STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE + STUB_TID_SIZE)
  #define STUB_END (STUB_START + STUB_SIZE)
@@ -83,13 +89,13 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,65 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
-+#define UML_PATCH_BASE 0x60000
-+#define UML_PATCH_END 0x70000
-+#define UML_PATCH_SLOT 128
++#define UML_PATCH_BASE 0x06060000
++#define UML_PATCH_END 0x06070000
++#define UML_PATCH_SLOT 256
 +#define UML_FAST_UC 8200
 +#define UML_FAST_MC 8240
 +#define UML_FAST_FP 9216
@@ -109,6 +115,27 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +          ((unsigned long)p[3] << 24);
 +    return imm == nr && p[4] == 0x0f && p[5] == 0x05;
 +}
++static inline int uml_patch_dynamic(const unsigned char *p, unsigned int len)
++{
++    /* Go register ABI; glibc/musl syscall's final stack argument; Go ABI0. */
++    static const unsigned char go[] = {0x49,0x89,0xf2,0x48,0x89,0xfa,
++        0x48,0x89,0xce,0x48,0x89,0xdf,0x0f,0x05};
++    if (len == sizeof(go)) {
++        for (unsigned int i = 0; i < sizeof(go); i++)
++            if (p[i] != go[i]) return 0;
++        return 1;
++    }
++    return len == 7 && (p[0] == 0x4c || p[0] == 0x48) && p[1] == 0x8b &&
++        p[2] == (p[0] == 0x4c ? 0x4c : 0x44) && p[3] == 0x24 &&
++        p[4] == 8 && p[5] == 0x0f && p[6] == 0x05;
++}
++static inline void uml_patch_jump(unsigned char *p, unsigned int len, unsigned long slot)
++{
++    unsigned long target = slot + 6;
++    for (unsigned int i = 0; i < len; i++) p[i] = 0x06;
++    p[0] = 0xff; p[1] = 0x24; p[2] = 0x25;
++    for (unsigned int i = 0; i < 4; i++) p[3 + i] = target >> (i * 8);
++}
 +int uml_patch_boundary(const unsigned char *p, unsigned int before, unsigned int len);
 +extern int uml_syscall_patch;
 +struct uml_pt_regs;
@@ -118,7 +145,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +int uml_patch_fault(struct uml_pt_regs *r);
 +void uml_patch_enter(struct mm_struct *mm);
 +void uml_patch_exit(struct mm_struct *mm);
-+void uml_patch_count(void);
++void uml_patch_count(int dynamic);
 +int uml_patch_prepare(int syscall, struct uml_pt_regs *r);
 +void uml_patch_done(void);
 +int uml_patch_write_begin(struct mm_struct *mm, unsigned long addr, int len);
@@ -138,7 +165,13 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  	/* Permit the GPU completion-byte write(); 0017 async GPU wait. */
  	int gpu_async;
  
-@@ -170,6 +171,9 @@
+@@ -165,11 +166,15 @@
+ 	 * neither gpu_payload nor syscall_data offsets change. */
+ 	unsigned char gpu_async;
+ 	unsigned char gpu_debug;
++	unsigned char fast_reset;
+ 	int child_socket;
+ 	int memfd_cached;
  	int syscall_fd_num;
  
  	int syscall_data_len;
@@ -161,7 +194,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,487 @@
+@@ -0,0 +1,551 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -172,6 +205,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +#include <linux/seq_file.h>
 +#include <linux/atomic.h>
 +#include <linux/percpu.h>
++#include <linux/uaccess.h>
 +#include <asm/cacheflush.h>
 +#include <asm/unistd.h>
 +#include <as-layout.h>
@@ -182,9 +216,9 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +#include <sysdep/ptrace.h>
 +
 +int uml_syscall_patch;
-+static atomic64_t patched;
++static atomic64_t patched, dynamic_sites;
 +static DEFINE_PER_CPU(unsigned long, patch_calls);
-+struct patch_stats { unsigned long sigsys, excluded, cached, pattern, boundary, debug; };
++struct patch_stats { unsigned long sigsys, excluded, cached, pattern, boundary, debug, dynamic; };
 +static DEFINE_PER_CPU(struct patch_stats, patch_stats);
 +extern char __syscall_stub_start[], stub_fast_entry[];
 +
@@ -307,10 +341,11 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +{
 +	struct mm_struct *mm = current->mm;
 +	unsigned long end = UPT_IP(r), addr, slot, nr = PT_SYSCALL_NR(r->gp);
-+	unsigned char old[9], jump[9] = { 0xff, 0x24, 0x25, 0, 0, 0, 0, 0x06, 0x06 };
++	unsigned char old[14], jump[14];
 +	/* gettid; scale/add lookup base; load runner; jump to common save code. */
 +	unsigned char code[UML_PATCH_SLOT] = {
-+		[8] = 0xb8, 186, 0, 0, 0, 0x0f, 0x05,
++		[136] = 0xb8, 186, 0, 0, 0, 0x0f, 0x05,
++        0x48, 0x8d, 0x89, 0x80, 0xff, 0xff, 0xff,
 +		0x48, 0x03, 0x41, 49, 0x0f, 0xb6, 0x00,
 +		0x48, 0xc1, 0xe0, 14, 0x48, 0x03, 0x41, 57,
 +		0xff, 0x61, 65,
@@ -318,17 +353,19 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +	struct patch_header h;
 +	struct page *text = NULL, *entry = NULL, *header = NULL, *previous = NULL;
 +	struct vm_area_struct *vma;
-+	unsigned char window[23];
++	unsigned char window[28];
 +	unsigned int before = 14, offset, split;
 +	void *bytes;
 +	u64 value;
 +	u32 imm;
 +	unsigned int len = 7;
++    bool dynamic = false;
 +
 +    if (!parallel_userspace || !mm || r->fast_syscall)
 +        return;
 +    this_cpu_inc(patch_stats.sigsys);
-+    if (!uml_syscall_patch || end < UML_PATCH_END + sizeof(old) || end >= TASK_SIZE)
++    if (!uml_syscall_patch || end < sizeof(old) || end >= TASK_SIZE ||
++        (end > UML_PATCH_BASE && end - sizeof(old) < UML_PATCH_END))
 +        return;
 +    if (!eligible(nr)) {
 +        this_cpu_inc(patch_stats.excluded);
@@ -339,16 +376,23 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +        return;
 +    }
 +    WRITE_ONCE(mm->context.patch_miss[(end >> 3) & 63], end);
-+    /* A seven-byte site may begin at a VMA boundary: do not read before it. */
-+    if (access_process_vm(current, end - 7, old + 2, 7, FOLL_FORCE) != 7)
++    /* Do not read preceding unmapped bytes just to find a longer form. */
++    if (access_process_vm(current, end - 7, old + 7, 7, FOLL_FORCE) != 7)
 +        return;
-+    if (!uml_patch_pattern(old + 2, 7, nr)) {
-+        if (access_process_vm(current, end - 9, old, 9, FOLL_FORCE) != 9 ||
-+            !uml_patch_pattern(old, 9, nr)) {
++    if (!uml_patch_pattern(old + 7, 7, nr)) {
++        if (uml_patch_dynamic(old + 7, 7)) {
++            dynamic = true;
++        } else if (access_process_vm(current, end - 9, old + 5, 9, FOLL_FORCE) == 9 &&
++                   uml_patch_pattern(old + 5, 9, nr)) {
++            len = 9;
++        } else if (access_process_vm(current, end - 14, old, 14, FOLL_FORCE) == 14 &&
++                   uml_patch_dynamic(old, 14)) {
++            len = 14;
++            dynamic = true;
++        } else {
 +            this_cpu_inc(patch_stats.pattern);
 +            return;
 +        }
-+        len = 9;
 +    }
 +    imm = nr;
 +	addr = end - len;
@@ -410,19 +454,43 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +		goto out;
 +	}
 +	kunmap_local(bytes);
-+	value = slot + 8; memcpy(code, &value, 8);
++	value = slot + 136; memcpy(code + 6, &value, 8);
 +	memcpy(code + 40, &imm, 4);
 +	value = end; memcpy(code + 48, &value, 8);
-+	code[88] = len; memcpy(code + 89, old + sizeof(old) - len, len);
++	code[44] = dynamic;
++    code[88] = len; memcpy(code + 89, old + sizeof(old) - len, len);
 +	value = STUB_TID_TABLE; memcpy(code + 64, &value, 8);
 +	value = STUB_THREAD_DATA(0) - STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE;
 +	memcpy(code + 72, &value, 8);
 +	value = STUB_CODE + (unsigned long)stub_fast_entry - (unsigned long)__syscall_stub_start;
 +	memcpy(code + 80, &value, 8);
++    if (dynamic) {
++        unsigned int at = 136 + len - 2;
++        /* MOV/XCHG/JRCXZ preserve flags and never touch the guest stack.
++         * One try only: a descheduled owner cannot make peers spin. */
++        unsigned char acquire[] = {0x49,0xbb,0,0,0,0,0,0,0,0,
++            0xb9,1,0,0,0,0x49,0x87,0x0b,0xe3,5,0xe9,0,0,0,0,
++            0x49,0x89,0x43,8};
++        s32 relative = 232 - (at + 25);
++        value = STUB_TID_TABLE + STUB_TID_SLOTS;
++        memcpy(acquire + 2, &value, 8);
++        memcpy(acquire + 21, &relative, 4);
++        memset(code + 136, 0x90, 96);
++        memcpy(code + 136, old + sizeof(old) - len, len - 2);
++        memcpy(code + at, acquire, sizeof(acquire));
++        /* Lookup syscall always ends at slot+192; normalize metadata base. */
++        unsigned char lookup[] = {0xb8,186,0,0,0,0x0f,0x05,
++            0x48,0x8d,0x89,0x4f,0xff,0xff,0xff,
++            0x48,0x03,0x41,49,0x0f,0xb6,0x00,
++            0x48,0xc1,0xe0,14,0x48,0x03,0x41,57,0xff,0x61,65};
++        memcpy(code + 185, lookup, sizeof(lookup));
++        code[232] = 0x0f; code[233] = 0x05;
++        code[234] = 0x0f; code[235] = 0x0b;
++    }
 +	write_bytes(mm, entry, slot, code, sizeof(code));
 +	h.next++;
 +	write_bytes(mm, header, UML_PATCH_BASE, &h, sizeof(h));
-+	imm = slot; memcpy(jump + 3, &imm, 4);
++	uml_patch_jump(jump, len, slot);
 +	/* Stop-before-write also covers a runner already past the original MOV.
 +	 * The byte at its old SYSCALL remains invalid in the final jump. */
 +	old[0] = 0x06;
@@ -437,6 +505,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +            WRITE_ONCE(d->fast_enabled, READ_ONCE(d->fast_enabled) | 2);
 +    }
 +    atomic64_inc(&patched);
++    if (dynamic) atomic64_inc(&dynamic_sites);
 +	resume_mm(mm);
 +out:
 +	if (previous) put_page(previous);
@@ -459,13 +528,13 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +        h.magic != PATCH_MAGIC || h.next < 1 || h.next > (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
 +        return 1;
 +    for (unsigned long i = 1; i < h.next; i++) {
-+        unsigned char code[UML_PATCH_SLOT], jump[9] = {0xff,0x24,0x25,0,0,0,0,0x06,0x06};
++        unsigned char code[UML_PATCH_SLOT], jump[14];
 +        unsigned long slot = UML_PATCH_BASE + i * UML_PATCH_SLOT, addr;
 +        unsigned int len;
 +        struct vm_area_struct *vma;
 +        struct page *page = NULL;
 +        u64 return_ip;
-+        u32 imm = slot, nr;
++        u32 nr;
 +        void *bytes;
 +
 +        if (access_remote_vm(mm, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
@@ -473,13 +542,13 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +        memcpy(&return_ip, code + 48, 8);
 +        memcpy(&nr, code + 40, 4);
 +        len = code[88];
-+        if (!uml_patch_pattern(code + 89, len, nr) || return_ip < UML_PATCH_END + len ||
-+            return_ip >= TASK_SIZE)
++        if ((!uml_patch_pattern(code + 89, len, nr) && !uml_patch_dynamic(code + 89, len)) || return_ip < len || return_ip >= TASK_SIZE ||
++            (return_ip > UML_PATCH_BASE && return_ip - len < UML_PATCH_END))
 +            continue;
 +        addr = return_ip - len;
 +        if ((!all && (addr >= end || return_ip <= start)) || offset_in_page(addr) + len > PAGE_SIZE)
 +            continue;
-+        memcpy(jump + 3, &imm, 4);
++        uml_patch_jump(jump, len, slot);
 +        mmap_read_lock(mm);
 +        vma = find_vma(mm, addr);
 +        if (!vma || vma->vm_start > addr || (vma->vm_flags & VM_SHARED) ||
@@ -597,33 +666,60 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +    mutex_unlock(&current->mm->context.patch_lock);
 +}
 +
++/* Decode while the runner lease still excludes site restoration. All source
++ * pages were populated when the site was installed; never fault or sleep. */
 +int uml_patch_fault(struct uml_pt_regs *r)
 +{
-+	unsigned char code[9];
-+	unsigned long ip = UPT_IP(r);
-+	u32 slot;
-+	u64 end;
++    static const unsigned char offsets[] = {3,5,6,7,9,12};
++    unsigned long ip = UPT_IP(r);
 +
-+	if (!uml_syscall_patch || !parallel_userspace || ip < UML_PATCH_END + 7)
-+		return 0;
-+	for (int offset = 5; offset <= 7; offset += 2) {
-+		if (access_process_vm(current, ip - offset, code, offset + 2, FOLL_FORCE) != offset + 2 ||
-+		    code[0] != 0xff || code[1] != 0x24 || code[2] != 0x25 || code[offset] != 0x06)
-+			continue;
-+		memcpy(&slot, code + 3, 4);
-+		if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT)
-+			continue;
-+		if (access_process_vm(current, slot + 48, &end, sizeof(end), FOLL_FORCE) != sizeof(end) || end != ip + 2)
-+			continue;
-+		r->fast_syscall = 1;
-+		UPT_IP(r) = end;
-+		PT_SYSCALL_NR(r->gp) = UPT_AX(r);
-+		return 1;
-+	}
-+	return 0;
++    if (!uml_syscall_patch || !parallel_userspace || ip < 14 || (ip >= UML_PATCH_BASE && ip < UML_PATCH_END))
++        return 0;
++    for (unsigned int i = 0; i < ARRAY_SIZE(offsets); i++) {
++        unsigned int offset = offsets[i], len;
++        unsigned char jump[14], expected[14], code[UML_PATCH_SLOT];
++        unsigned long addr = ip - offset, slot;
++        u32 target, nr;
++        u64 end;
++        if (copy_from_user_nofault(jump, (void __user *)addr, 7) ||
++            jump[0] != 0xff || jump[1] != 0x24 || jump[2] != 0x25)
++            continue;
++        memcpy(&target, jump + 3, 4);
++        slot = target - 6;
++        if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT)
++            continue;
++        if (copy_from_user_nofault(code, (void __user *)slot, sizeof(code)))
++            continue;
++        memcpy(&end, code + 48, 8);
++        memcpy(&nr, code + 40, 4);
++        len = code[88];
++        if ((!uml_patch_pattern(code + 89, len, nr) && !uml_patch_dynamic(code + 89, len)) ||
++            end != addr + len || (offset != len - 2 && (len != 14 || offset % 3)))
++            continue;
++        uml_patch_jump(expected, len, slot);
++        if (copy_from_user_nofault(jump, (void __user *)addr, len) || memcmp(jump, expected, len))
++            continue;
++        /* A parked Go runner may have executed only part of the MOV prefix. */
++        if (len == 14) {
++            if (offset <= 3) UPT_DX(r) = UPT_DI(r);
++            if (offset <= 6) UPT_SI(r) = UPT_CX(r);
++            if (offset <= 9) UPT_DI(r) = UPT_BX(r);
++        }
++        r->fast_syscall = 1;
++        UPT_IP(r) = end;
++        UPT_CX(r) = end;
++        r->gp[HOST_R11] = UPT_EFLAGS(r);
++        PT_SYSCALL_NR(r->gp) = UPT_AX(r);
++        return 1;
++    }
++    return 0;
 +}
 +
-+void uml_patch_count(void) { this_cpu_inc(patch_calls); }
++void uml_patch_count(int dynamic)
++{
++    this_cpu_inc(patch_calls);
++    if (dynamic) this_cpu_inc(patch_stats.dynamic);
++}
 +
 +static int patch_show(struct seq_file *m, void *v)
 +{
@@ -638,7 +734,8 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +    for_each_possible_cpu(cpu) total += READ_ONCE(per_cpu(patch_stats, cpu).field); \
 +    seq_printf(m, #field " %llu\n", total); \
 +} while (0)
-+    SHOW(sigsys); SHOW(excluded); SHOW(cached); SHOW(pattern); SHOW(boundary); SHOW(debug);
++    SHOW(sigsys); SHOW(excluded); SHOW(cached); SHOW(pattern); SHOW(boundary); SHOW(debug); SHOW(dynamic);
++    seq_printf(m, "dynamic_sites %lld\n", atomic64_read(&dynamic_sites));
 +#undef SHOW
 +	return 0;
 +}
@@ -788,7 +885,19 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  	stub_syscall0(__NR_getpid);
  	stub_syscall1(__NR_exit, 41);
  	__builtin_unreachable();
-@@ -434,6 +445,16 @@
+@@ -367,6 +378,11 @@
+ 		case STUB_SYSCALL_CLONE: {
+ 			struct stub_data *child = (void *)sc->mem.addr;
+ 			child->child_socket = fd_map[sc->mem.fd];
++            if (child->fast_enabled && child->fast_reset) {
++                unsigned long *lock = (void *)get_stub_data() +
++                    (STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE + STUB_TID_SLOTS;
++                *lock = 0;
++            }
+ 			d->clone_pid = stub_clone(sc->mem.addr);
+ 			if (d->clone_pid < 0) {
+ 				d->err = d->clone_pid;
+@@ -434,6 +450,29 @@
  	int notify = 0;
  	long res;
  
@@ -801,11 +910,24 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +            return;
 +    }
 +#endif
++    if (d->fast_enabled && sig == SIGSYS) {
++        unsigned long ip = uc->uc_mcontext.gregs[REG_RIP];
++        if (ip >= UML_PATCH_BASE && ip < UML_PATCH_END && ip % UML_PATCH_SLOT == 234) {
++            /* This slot page is present: the runner just executed its SYSCALL.
++             * Normalize before publishing, while the mm runner lease is held. */
++            unsigned char *slot = (void *)(ip - 234);
++            if (slot[44] == 1 && slot[232] == 0x0f && slot[233] == 0x05) {
++                unsigned long after = *(unsigned long *)(slot + 48);
++                uc->uc_mcontext.gregs[REG_RIP] = after;
++                uc->uc_mcontext.gregs[REG_RCX] = after;
++            }
++        }
++    }
 +    d->fast_active = 0;
  	d->signal = sig;
  	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
  	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
-@@ -549,3 +570,124 @@
+@@ -549,3 +588,145 @@
  	/* We must not have anything on the stack when doing rt_sigreturn */
  	stub_syscall0(__NR_rt_sigreturn);
  }
@@ -818,6 +940,16 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +    ucontext_t *uc = (void *)d + UML_FAST_UC;
 +    long res;
 +
++    long nr = uc->uc_mcontext.gregs[REG_RAX];
++    if (nr == __NR_clone || nr == __NR_clone3 || nr == __NR_fork || nr == __NR_vfork ||
++        nr == __NR_execve || nr == __NR_execveat || nr == __NR_rt_sigreturn ||
++        nr == __NR_exit || nr == __NR_exit_group || nr == __NR_restart_syscall) {
++        uc->uc_mcontext.gregs[REG_RIP] = (unsigned long)uc->uc_link + 232;
++        d->fast_active = 0;
++        asm volatile("mov %0,%%rsp; mov $15,%%eax; syscall; ud2"
++                     :: "r"(uc) : "rax", "rcx", "r11", "memory");
++        __builtin_unreachable();
++    }
 +    d->signal = SIGSYS;
 +    if (stub_futex_handoff(&d->futex, FUTEX_IN_KERN)) {
 +        do { res = stub_syscall3(__NR_futex, (unsigned long)&d->futex, FUTEX_WAKE, 1); }
@@ -858,6 +990,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +    return d;
 +}
 +
++_Static_assert(offsetof(ucontext_t, uc_link) == 8, "fast link offset");
 +_Static_assert(offsetof(struct stub_data, fast_active) == 52, "fast active offset");
 +_Static_assert(offsetof(struct stub_data, fast_xfeatures) == 56, "fast xsave offset");
 +asm(
@@ -879,13 +1012,23 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +    "movq %rdx,8336(%rax)\n"
 +    "movq %rsp,8360(%rax)\n"
 +    "movq %r11,8376(%rax)\n"
++    "cmpb $1,29(%rcx)\n"
++    "je 5f\n"
 +    "movl 25(%rcx),%edx\n"
-+    "movq %rdx,8344(%rax)\n"
++    "jmp 6f\n"
++    "5: movq 49(%rcx),%r11\n"
++    "movq 4194312(%r11),%rdx\n"
++    "movq $0,4194304(%r11)\n"
++    "6: movq %rdx,8344(%rax)\n"
++    "leaq -15(%rcx),%rdx\n"
++    "movq %rdx,8208(%rax)\n"
 +    "movq 33(%rcx),%rdx\n"
 +    "movq %rdx,8192(%rax)\n"
 +    "movq %rdx,8368(%rax)\n"
 +    "movq %rdx,8352(%rax)\n"
-+    "movl $1,52(%rax)\n"
++    "movzbl 29(%rcx),%edx\n"
++    "incl %edx\n"
++    "movl %edx,52(%rax)\n"
 +    "movq %rax,%rdi\n"
 +    "leaq 16384(%rdi),%rsp\n"
 +    "cld\n"
@@ -984,18 +1127,21 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  	stub_syscall2(__NR_sigaltstack, (unsigned long)&stack, 0);
  
  	/* register signal handlers */
-@@ -131,6 +141,18 @@
+@@ -131,6 +141,21 @@
  	 */
  	if (init_data.seccomp) {
  		struct sock_filter filter[] = {
 +#ifdef __x86_64__
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
-+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, UM_SECCOMP_ARCH_NATIVE, 0, 8),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, UM_SECCOMP_ARCH_NATIVE, 0, 11),
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, instruction_pointer) + 4),
-+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 0, 6),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 0, 9),
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, instruction_pointer)),
-+            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_BASE, 0, 4),
-+            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_END, 3, 0),
++            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_BASE, 0, 7),
++            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_END, 6, 0),
++            BPF_STMT(BPF_ALU | BPF_AND | BPF_K, UML_PATCH_SLOT - 1),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 143, 1, 0),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 192, 0, 3),
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
 +            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_gettid, 0, 1),
 +            BPF_STMT(BPF_RET | BPF_K, init_data.syscall_patch ? SECCOMP_RET_ALLOW : SECCOMP_RET_TRAP),
@@ -1003,7 +1149,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  #if __BITS_PER_LONG > 32
  			/* [0] Load upper 32bit of instruction pointer from seccomp_data */
  			BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-@@ -144,10 +166,10 @@
+@@ -144,10 +169,10 @@
  				 (offsetof(struct seccomp_data, instruction_pointer))),
  
  			/* [3] Mask out lower bits */
@@ -1016,7 +1162,7 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  
  			/* [5] Trap call, allow */
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
-@@ -175,6 +197,9 @@
+@@ -175,6 +200,9 @@
  			/* Each match is followed by its action: no fragile jump counts. */
  			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
@@ -1107,15 +1253,16 @@ sites and disables further rewriting in that mm until exec. Guest text readers
  #include <mm_id.h>
  #include <os.h>
  #include <ptrace_user.h>
-@@ -322,6 +323,7 @@
+@@ -322,6 +323,8 @@
  		return -errno;
  	child->sock = sockets[0];
  	data->spin_limit = uml_seccomp_spin_limit;
 +	data->fast_enabled = uml_syscall_patch;
++	data->fast_reset = parent->clone_pid == 0;
  	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
  	map(broker, addr, STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE,
  	    UM_PROT_READ | UM_PROT_WRITE, fd, offset);
-@@ -339,12 +341,20 @@
+@@ -339,12 +342,20 @@
  		goto fail;
  	child->pid = parent->clone_pid;
  	if (child->pid < 2) {
@@ -1209,22 +1356,22 @@ sites and disables further rewriting in that mm until exec. Guest text readers
 +				regs->fast_syscall = 1;
 +				memset(si, 0, sizeof(*si));
 +				si->si_syscall = UPT_AX(regs);
-+				uml_patch_count();
++				uml_patch_count(proc_data->fast_active == 2);
 +			} else {
 +				memcpy(si, &proc_data->sigstack[proc_data->si_offset], sizeof(*si));
 +			}
  
  			regs->is_user = 1;
  
-@@ -813,6 +838,8 @@
+@@ -810,6 +835,8 @@
+ 			}
+ 		}
+ 
++		if (sig == SIGILL && uml_patch_fault(regs))
++			sig = SIGSYS;
  		current_mm_exit(mm_id);
  
  		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
-+		if (sig == SIGILL && uml_patch_fault(regs))
-+			sig = SIGSYS;
- 
- 		if (sig) {
- 			switch (sig) {
 --- a/arch/x86/um/Makefile
 +++ b/arch/x86/um/Makefile
 @@ -26,7 +26,16 @@

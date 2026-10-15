@@ -221,7 +221,7 @@ static void trampoline_lifetime(void) {
     for (int mode = 0; mode < 3; mode++) {
         pid_t child = fork(); CHECK(child >= 0);
         if (!child) {
-            void *table = (void *)0x60000;
+            void *table = (void *)0x06060000;
             if (mode == 0) {
                 void *target = mmap(NULL, 65536, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
                 CHECK(target != MAP_FAILED);

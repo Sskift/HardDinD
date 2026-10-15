@@ -1115,6 +1115,10 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
         require(row == {'schema': 'hd.core-fpstate/1', 'sse_calls': count * 2,
                         'avx_calls': count * 2, 'signal_upper_edit': True,
                         'ptrace_upper_edit': True, 'verified': True}, row)
+    elif program == 'core_dynamic':
+        require(row['schema'] == 'hd.core-dynamic/1' and row['calls'] == 98304 and
+                row['enabled'] is patch_enabled and type(row['signals']) is int and row['signals'] > 0, row)
+        require(all(row[k] is True for k in ('arguments', 'fork', 'exec', 'verified')), row)
     else:
         expected = {'filters': [('seccomp_allow', 1), ('seccomp_errno', 1)],
                     'ptrace': [('ptraced_getpid', 1)], 'signals': [('local_sigsys', 1)],
@@ -1159,6 +1163,13 @@ def core_patch_semantic(c):
     core_summary(output, 'core_patch', 'rewrite', patch_enabled=enabled)
 
 
+@check('process.core_dynamic', 'run', helpers=True, timeout=180)
+def core_dynamic_semantic(c):
+    output = c.output('/core_dynamic', image=HELPERS, opts=('--privileged',))
+    enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
+    core_summary(output, 'core_dynamic', 'registers', patch_enabled=enabled)
+
+
 @check('process.core_startup_pressure', 'run|container exec', helpers=True, timeout=240)
 def core_startup_pressure(c):
     from pipeline.runs import throttle
@@ -1168,9 +1179,9 @@ def core_startup_pressure(c):
                      'if test -r /proc/uml_syscall_patch; then cat /proc/uml_syscall_patch; fi')
         return {k: int(v) for k, v in (line.split() for line in output.splitlines())}
     before, cpu_before = counters(), throttle()
-    names = [c.object('container', str(n)) for n in range(32)]
+    names = [c.object('container', 'pressure-' + str(n)) for n in range(32)]
     burn = subprocess.Popen([c.suite.bins / 'core_pressure', '30'], stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True)
+                            stderr=subprocess.PIPE, text=True, start_new_session=True)
     c.processes.append(burn)
     require(re.fullmatch(r'ready [1-9][0-9]*\n', burn.stdout.readline()), 'host pressure did not start')
     def run(name):
@@ -1182,6 +1193,7 @@ def core_startup_pressure(c):
         for name, result in pool.map(run, names):
             c.write(name + '\n' + result.stdout + result.stderr)
             require(result.returncode == 0 and result.stdout.strip() == 'startup-ok', 'runner startup failed')
+            c.forget_removed(('rm', name))
     output, error = burn.communicate(timeout=c.remaining(40))
     require(burn.returncode == 0 and not error, 'host pressure failed: ' + error)
     row = json.loads(output)
@@ -1205,7 +1217,7 @@ def core_compat(c):
     core_summary(c.d('exec', name, '/core_patch_musl', timeout=180),
                  'core_patch', 'rewrite', patch_enabled=enabled)
     row = json.loads(c.d('exec', name, '/core_go', timeout=180))
-    require(row == {'schema': 'hd.core-go/1', 'calls': 16384, 'children': 4,
+    require(row == {'schema': 'hd.core-go/1', 'calls': 16384, 'children': 4, 'patch_enabled': enabled,
                     'signal': True, 'verified': True}, row)
     output = c.d('exec', name, '/strace', '-f', '-e', 'trace=getpid,clone,clone3,fork,vfork,execve',
                  '-o', '/trace', '/core_syscalls', 'filters', '256', timeout=180)
