@@ -12,6 +12,55 @@ from pipeline import config
 
 
 class CorePatchTests(unittest.TestCase):
+    def test_runner_gettid_does_not_bypass_allowlist(self):
+        compiler = shutil.which('cc')
+        if compiler is None:
+            self.skipTest('C compiler unavailable')
+        patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
+        part = patch.split('+++ b/arch/um/kernel/skas/stub_exe.c\n')[1].split('--- a/')[0]
+        code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith(('+', ' ')))
+        fragment = code.split('/* Each match is followed by its action: no fragile jump counts. */')[1]
+        fragment = fragment.split('BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_recvmsg')[0]
+        source = r'''
+#include <assert.h>
+enum { BPF_JMP=1, BPF_JEQ=2, BPF_K=0, BPF_RET=4,
+       __NR_getpid=39, __NR_gettid=186, __NR_futex=202,
+       SECCOMP_RET_ALLOW=10, SECCOMP_RET_TRAP=11, SECCOMP_RET_KILL_PROCESS=12 };
+struct instruction { unsigned int op, k, yes, no; };
+#define BPF_JUMP(op,k,y,n) {op,k,y,n}
+#define BPF_STMT(op,k) {op,k,0,0}
+static unsigned int evaluate(unsigned int nr, int enabled) {
+    struct { int syscall_patch; } init_data = {enabled};
+    struct instruction filter[] = {
+''' + fragment + r'''
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS)
+    };
+    for (unsigned int i = 0; i < sizeof(filter)/sizeof(filter[0]); i++) {
+        struct instruction f = filter[i];
+        if (f.op == BPF_RET) return f.k;
+        assert(f.op == (BPF_JMP | BPF_JEQ));
+        i += nr == f.k ? f.yes : f.no;
+    }
+    assert(0); return 0;
+}
+int main(void) {
+    for (int enabled = 0; enabled < 2; enabled++) {
+        assert(evaluate(__NR_getpid, enabled) == SECCOMP_RET_TRAP);
+        assert(evaluate(__NR_gettid, enabled) == (enabled ? SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS));
+        assert(evaluate(__NR_futex, enabled) == SECCOMP_RET_ALLOW);
+        for (unsigned int nr = 0; nr < 512; nr++)
+            if (nr != __NR_getpid && nr != __NR_gettid && nr != __NR_futex)
+                assert(evaluate(nr, enabled) == SECCOMP_RET_KILL_PROCESS);
+    }
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as directory:
+            path = pathlib.Path(directory)
+            (path / 'test.c').write_text(source)
+            subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', path / 'test.c',
+                            '-o', path / 'test'], check=True)
+            subprocess.run([path / 'test'], check=True, timeout=10)
+
     def test_canonical_instruction_decoder(self):
         compiler = shutil.which('cc')
         if compiler is None:

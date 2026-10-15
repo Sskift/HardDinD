@@ -916,14 +916,12 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  			/* [5] Trap call, allow */
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
-@@ -174,7 +196,9 @@
- 				 SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS),
+@@ -175,6 +197,8 @@
  			/* Each match is followed by its action: no fragile jump counts. */
  			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
--			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
+ 			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
 +			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, init_data.syscall_patch ? __NR_gettid : ~0U, 0, 1),
-+            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
-+            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
++			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
  			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_futex, 0, 1),
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
  			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_recvmsg, 0, 1),
