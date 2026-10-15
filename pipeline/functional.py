@@ -89,6 +89,45 @@ def helper_artifact():
     return build.artifact('functional-helpers', key, compile_helpers)
 
 
+def core_compat_artifact():
+    from pipeline import bench
+    toolchain = bench.bench_root()
+    native = helper_artifact()
+    go_archive = build.fetch('core_go_build')
+    strace_archive = build.fetch('core_strace')
+    c_source = FIXTURES / 'helpers/core_patch.c'
+    go_source = FIXTURES / 'helpers/core_go.go'
+    key = build.key_of('core-compat/1', toolchain.name, native.name, build.LOCK['core_go_build'],
+                       build.LOCK['core_strace'], FLAGS, c_source, go_source, pathlib.Path(__file__))
+    def compile_compat(tmp, _final):
+        log = tmp / 'build.log'
+        root = tmp / 'musl'; root.mkdir()
+        build.run(['tar', '-xf', toolchain / 'rootfs.tar', '-C', root], log_file=log)
+        shutil.copy2(c_source, root / 'core_patch.c')
+        build.run(['chroot', root, 'gcc', *FLAGS, '/core_patch.c', '-o', '/core_patch_musl'], log_file=log, timeout=90)
+        shutil.copy2(root / 'core_patch_musl', tmp / 'core_patch_musl')
+        build.run(['tar', '-xf', go_archive, '-C', tmp], log_file=log)
+        env = {**os.environ, 'CGO_ENABLED': '0', 'GOTOOLCHAIN': 'local', 'GOPROXY': 'off',
+               'GOOS': 'linux', 'GOARCH': 'amd64', 'GOCACHE': str(tmp / 'go-cache')}
+        build.run([tmp / 'go/bin/go', 'build', '-trimpath', '-o', tmp / 'core_go', go_source],
+                  log_file=log, env=env, timeout=180)
+        source = tmp / 'strace-source'; source.mkdir()
+        build.run(['tar', '-xf', strace_archive, '--strip-components=1', '-C', source], log_file=log)
+        build.run([source / 'configure', '--enable-mpers=no', '--with-libdw=no', '--with-libunwind=no',
+                   '--enable-stacktrace=no', 'CC=gcc', 'CFLAGS=-O2 -Wall -Wextra', 'LDFLAGS=-static'],
+                  cwd=source, log_file=log, timeout=180)
+        build.run(['make', '-j4', 'CFLAGS=-O2 -Wall -Wextra -Werror'], cwd=source, log_file=log, timeout=300)
+        shutil.copy2(source / 'src/strace', tmp / 'strace')
+        for name in ('core_patch_musl', 'core_go', 'strace'):
+            elf = subprocess.run(['readelf', '-l', tmp / name], capture_output=True, text=True, check=True, timeout=10)
+            require('INTERP' not in elf.stdout, 'compat helper is dynamically linked: ' + name)
+        for name in ('core_patch_musl', 'core_go'):
+            build.run([tmp / name], log_file=log, timeout=90)
+        for path in (root, source, tmp / 'go', tmp / 'go-cache'):
+            shutil.rmtree(path)
+    return build.artifact('core-compat', key, compile_compat)
+
+
 class Suite:
     def __init__(self, ctx):
         self.ctx = ctx
@@ -1059,6 +1098,88 @@ for _mode in ('identity', 'fdio', 'mapping', 'thread_syscalls', 'isolation', 'pa
 for _mode in ('threads', 'processes', 'signals', 'exec', 'syscall'):
     check('process.core_' + _mode, 'run', helpers=True, timeout=180)(
         lambda c, mode=_mode: semantic(c, 'corebench', (mode, '4')))
+
+
+def core_summary(output, program, mode, count=256, patch_enabled=None):
+    row = json.loads(output.strip().splitlines()[-1])
+    if program == 'core_faults':
+        require(row == {'schema': 'hd.core/1', 'mode': 'semantics', 'verified': True}, row)
+    elif program == 'core_patch':
+        require(row['schema'] == 'hd.core-patch/1' and row['sites'] == 32 and row['calls'] == 131072, row)
+        require(type(row['signals']) is int and row['signals'] > 0, row)
+        require(row['enabled'] is patch_enabled and row['trampoline_lifetime'] is patch_enabled, row)
+        require(all(row[k] is True for k in ('fork', 'exec_clean', 'file_clean', 'ptrace',
+                    'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')), row)
+    elif program == 'core_fpstate':
+        require(row == {'schema': 'hd.core-fpstate/1', 'sse_calls': count * 2,
+                        'avx_calls': count * 2, 'signal_upper_edit': True,
+                        'ptrace_upper_edit': True, 'verified': True}, row)
+    else:
+        expected = {'filters': [('seccomp_allow', 1), ('seccomp_errno', 1)],
+                    'ptrace': [('ptraced_getpid', 1)], 'signals': [('local_sigsys', 1)],
+                    'threads': [('getpid', n) for n in range(1, 5)]}[mode]
+        require(row['schema'] == 'hd.core-syscalls/1', row)
+        samples = row['samples']
+        require([(s['mode'], s['threads']) for s in samples] == expected, row)
+        if patch_enabled is not None:
+            require(all(s['patch_enabled'] is patch_enabled for s in samples), row)
+        if patch_enabled:
+            require(all(type(s['profile'].get('patch_fast_calls')) is int
+                        and s['profile']['patch_fast_calls'] >= count * s['threads'] - 1
+                        for s in samples), 'syscall loop did not exercise patched entries')
+        require(all(s['verified'] is True and s['operations'] == count * s['threads']
+                    and isinstance(s['ns_per_op'], (float, int)) and 0 < s['ns_per_op'] < float('inf')
+                    for s in samples), row)
+    return row
+
+
+def core_semantic(c, program, mode, count=256):
+    args = (mode,) if program == 'core_faults' else ((str(count),) if program == 'core_fpstate'
+                                                  else (mode, str(count)))
+    # Ptrace and nested seccomp are guest semantics, independent of Docker's default filter.
+    output = c.output('/' + program, *args, image=HELPERS, opts=('--privileged',))
+    enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
+    core_summary(output, program, mode, count, patch_enabled=enabled)
+
+
+check('process.core_faults', 'run', helpers=True, timeout=180)(
+    lambda c: core_semantic(c, 'core_faults', 'semantics'))
+check('process.core_fpstate', 'run', helpers=True, timeout=180)(
+    lambda c: core_semantic(c, 'core_fpstate', 'state', 4096))
+for _mode in ('filters', 'ptrace', 'signals', 'threads'):
+    check('process.core_syscalls_' + _mode, 'run', helpers=True, timeout=180)(
+        lambda c, mode=_mode: core_semantic(c, 'core_syscalls', mode))
+
+
+@check('process.core_patch', 'run', helpers=True, timeout=180)
+def core_patch_semantic(c):
+    output = c.output('/core_patch', image=HELPERS, opts=('--privileged',))
+    enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
+    core_summary(output, 'core_patch', 'rewrite', patch_enabled=enabled)
+
+
+@check('process.core_compat', 'run|container exec', helpers=True, timeout=900)
+def core_compat(c):
+    bins = core_compat_artifact()
+    c.write('compat artifact: ' + str(bins))
+    shutil.copy2(bins / 'build.log', c.root / 'build.log')
+    name = c.container('sleep', '600', image=HELPERS, opts=('--privileged',), detached=True)
+    for program in ('core_patch_musl', 'core_go', 'strace'):
+        c.d('cp', bins / program, name + ':/' + program)
+    enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
+    core_summary(c.d('exec', name, '/core_patch_musl', timeout=180),
+                 'core_patch', 'rewrite', patch_enabled=enabled)
+    row = json.loads(c.d('exec', name, '/core_go', timeout=180))
+    require(row == {'schema': 'hd.core-go/1', 'calls': 16384, 'children': 4,
+                    'signal': True, 'verified': True}, row)
+    output = c.d('exec', name, '/strace', '-f', '-e', 'trace=getpid,clone,clone3,fork,vfork,execve',
+                 '-o', '/trace', '/core_syscalls', 'filters', '256', timeout=180)
+    core_summary(output, 'core_syscalls', 'filters', patch_enabled=enabled)
+    trace = c.d('exec', name, 'cat', '/trace')
+    require(re.search(r'getpid\(\)\s+= \d+', trace) and re.search(r'getpid\(\)\s+= -1 EPERM', trace),
+            'strace lost syscall return or seccomp errno stops')
+    pids = {m.group(1) for m in re.finditer(r'^(\d+)\s+', trace, re.M)}
+    require(len(pids) >= 3 and trace.count('exited with 0') >= 3, 'strace -f did not follow both children')
 
 
 def parse_time(value):

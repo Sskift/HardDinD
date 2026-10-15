@@ -1,0 +1,59 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: control runner reply polling independently
+
+Default off: no parameter inherits seccomp_spin. uml_reply_spin=0..10000
+changes only the shared-VM runner's bounded wait, not the kernel or broker.
+The new field occupies existing padding before gpu_payload. No queue or
+signal-stack offsets change. The atomic waiter protocol is unchanged.
+Apply after fault-rendezvous-counters and core-syscall-profile when combined.
+
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -172,2 +172,4 @@
+ 	int syscall_data_len;
++	/* Zero inherits spin_limit; otherwise this is the runner limit + 1. */
++	unsigned int reply_spin;
+ 
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -471,3 +471,4 @@
+ 	/* Kernel is concurrently consuming this request; never spin unbounded. */
+-	for (unsigned int spin = 0; spin < d->spin_limit && spin < 10000; spin++) {
++	for (unsigned int spin = 0, limit = d->reply_spin ? d->reply_spin - 1 : d->spin_limit;
++	     spin < limit && spin < 10000; spin++) {
+ 		if (stub_futex_phase(&d->futex) != FUTEX_IN_KERN)
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -318,3 +318,3 @@
+ 	int sockets[2], fd, err;
+-	extern unsigned int uml_seccomp_spin_limit;
++	extern unsigned int uml_seccomp_spin_limit, uml_seccomp_reply_spin;
+ 
+@@ -323,2 +323,3 @@
+ 	child->sock = sockets[0];
++	data->reply_spin = uml_seccomp_reply_spin;
+ 	data->spin_limit = uml_seccomp_spin_limit;
+--- a/arch/um/os-Linux/start_up.c
++++ b/arch/um/os-Linux/start_up.c
+@@ -443,2 +443,21 @@
+ unsigned int uml_seccomp_spin_limit;
++unsigned int uml_seccomp_reply_spin;
++static int __init uml_reply_spin_setup(char *line, int *add)
++{
++	char *end;
++	unsigned long value;
++
++	*add = 0;
++	errno = 0;
++	value = strtoul(line, &end, 10);
++	if (errno || end == line || *end || value > 10000)
++		fatal("Invalid uml_reply_spin value, expected 0..10000\n");
++	uml_seccomp_reply_spin = value + 1;
++	return 0;
++}
++__uml_setup("uml_reply_spin=", uml_reply_spin_setup,
++"uml_reply_spin=<0..10000>\n"
++"    Override only shared-VM runners' polling for kernel replies.\n"
++"    Unset inherits seccomp_spin; kernel and broker polling are unchanged.\n"
++);
+ int seccomp_broker_cache;
