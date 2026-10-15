@@ -59,9 +59,13 @@ def score_bench(bench):
                 row.update(status='fail', error=str(error))
             else:
                 native = metric.get('native') or []
-                # Native samples drifting by > 30% within the run means the host was
-                # contended: the ratio is still scored but is flagged as noisy.
-                noisy = len(native) >= 2 and max(native) > 1.3 * min(native)
+                # Native samples drifting by > 30% within the run, or the outer container
+                # being CPU-throttled during samples, means the host was contended: the
+                # ratio is still scored but is flagged as noisy.
+                samples = (metric.get('detail') or {}).get('samples', [])
+                throttled = [s['throttled'] for s in samples if s.get('phase') == 'sample' and 'throttled' in s]
+                row['throttled'] = round(max(throttled), 3) if throttled else None
+                noisy = (len(native) >= 2 and max(native) > 1.3 * min(native)) or bool(throttled and max(throttled) > 0.10)
                 row.update(ratio=round(ratio, 4), native=n, guest=g, unit=metric.get('unit'),
                            spread=[round(x, 4) for x in spread] if spread else None,
                            reference='reference_seconds' in spec, noisy=noisy,
@@ -118,7 +122,8 @@ def markdown(card, previous=None):
         prev = {r['metric']: r for r in (previous or {}).get('bench', [])}
         summary = ', '.join(f"{tier} {v['pass']}/{v['total']}" for tier, v in card['tiers'].items())
         lines += [f'**Performance** (guest/native, higher is better): {summary}', '',
-                  '`~noisy`: native samples varied by more than 30% during the run (host contention).', '',
+                  '`~noisy`: native samples varied by more than 30%, or the outer container was CPU-throttled '
+                  'in more than 10% of quota periods during a sample (host contention).', '',
                   '| tier | metric | native | guest | ratio | target | pair range | Δ prev | status |',
                   '|---|---|---:|---:|---:|---:|---|---:|---|']
         for r in card['bench']:

@@ -21,7 +21,7 @@ import subprocess
 import tarfile
 import time
 
-from pipeline import build, config
+from pipeline import build, config, runs
 
 TARGETS = json.loads((config.REPO / 'bench/targets.json').read_text())['metrics']
 METRICS = [name for name, spec in TARGETS.items() if spec.get('suite') != 'gpu']
@@ -573,6 +573,7 @@ def measure_pair(ctx, runner, name, metric, host_load, pairs):
         def sample(fn, side, pair=None):
             entry = {'side': side, 'phase': 'warmup' if pair is None else 'sample', 'pair': pair,
                      'unix_time': time.time(), 'host_load': list(os.getloadavg())}
+            throttled = runs.throttle()
             start = time.monotonic()
             try:
                 output = fn()
@@ -592,6 +593,10 @@ def measure_pair(ctx, runner, name, metric, host_load, pairs):
                 entry['wall_seconds'] = time.monotonic() - start
                 entry['finished'] = time.time()
                 entry['host_load_end'] = list(os.getloadavg())
+                after = runs.throttle()
+                if throttled and after and after[0] > throttled[0]:
+                    # Fraction of the outer container's quota periods that hit the quota during this sample.
+                    entry['throttled'] = round((after[1] - throttled[1]) / (after[0] - throttled[0]), 4)
                 details.append(entry)
         if native:
             sample(native, 'native')

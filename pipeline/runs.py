@@ -26,9 +26,22 @@ def revision():
         return {'git': 'unknown', 'dirty': True, 'subject': ''}
 
 
+def throttle():
+    """(quota periods, throttled periods) of the outer container's CPU quota (cgroup v2)."""
+    try:
+        stat = dict(line.split() for line in pathlib.Path('/sys/fs/cgroup/cpu.stat').read_text().splitlines())
+        return int(stat['nr_periods']), int(stat['nr_throttled'])
+    except (OSError, KeyError, ValueError):
+        return None
+
+
 def host_info():
     info = {'node': platform.node(), 'kernel': platform.release(), 'nproc': os.cpu_count(),
-            'loadavg': os.getloadavg()}
+            'loadavg': os.getloadavg(), 'throttle': throttle()}
+    try:
+        info['cpu_max'] = pathlib.Path('/sys/fs/cgroup/cpu.max').read_text().strip()
+    except OSError:
+        pass
     try:
         model = re.search(r'^model name\s*:\s*(.*)$', pathlib.Path('/proc/cpuinfo').read_text(), re.M)
         info['cpu'] = model.group(1) if model else None
