@@ -123,6 +123,7 @@ static void traced(void) {
     }
     int status; CHECK(waitpid(child, &status, 0) == child);
     CHECK(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP);
+    CHECK(!ptrace(PTRACE_SETOPTIONS, child, NULL, (void *)(uintptr_t)PTRACE_O_EXITKILL));
     unsigned char *fp = calloc(1, 65536); CHECK(fp != NULL);
     struct iovec io = {.iov_base = fp, .iov_len = 65536};
     CHECK(!ptrace(PTRACE_GETREGSET, child, (void *)(uintptr_t)NT_X86_XSTATE, &io));
