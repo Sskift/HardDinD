@@ -6,7 +6,9 @@ One TSC sample per 256 calls; counts are machine-wide, split by receiving CPU.
 Return-gap includes sigreturn, guest instructions and the next SIGSYS entry,
 not just host signal delivery. Totals include scheduling delays. Getpid entry,
 seccomp, body and exit phases are sampled together; prepare and state-copy
-samples are independent. Profiling changes queue capacity to reserve space;
+samples are independent. Receive includes get_state; clock_pair measures
+back-to-back timer overhead. Log2 cycle histograms expose scheduling tails.
+Accounting is outside the next measured interval. Profiling changes queue capacity to reserve space;
 compare enabled and disabled on this same kernel to quantify perturbation.
 
 --- /dev/null
@@ -17,7 +19,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +#define __UM_CORE_PROFILE_H
 +
 +#define UML_SP_STAGES(X) \
-+	X(prepare) X(get_state) X(trace_enter) X(seccomp) X(body) X(trace_leave) \
++	X(prepare) X(get_state) X(receive) X(exit_work) X(clock_pair) X(trace_enter) X(seccomp) X(body) X(trace_leave) \
 +	X(forward) X(reply) X(return_gap) \
 +	X(kernel_ready) X(kernel_spin) X(kernel_futex) \
 +	X(runner_ready) X(runner_spin) X(runner_futex)
@@ -106,7 +108,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  obj-$(CONFIG_STACKTRACE) += stacktrace.o
 --- /dev/null
 +++ b/arch/um/kernel/core-profile.c
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,107 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/kernel.h>
@@ -120,6 +122,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +
 +int uml_sp_enabled;
 +static unsigned long tsc_khz;
++static unsigned long long histogram[UML_SP_COUNT][32];
 +static struct {
 +	unsigned long long sequence[UML_SP_COUNT];
 +	unsigned long long count[UML_SP_COUNT], cycles[UML_SP_COUNT];
@@ -128,11 +131,15 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +unsigned long long uml_sp_begin(unsigned int stage)
 +{
 +	unsigned int cpu;
++	unsigned long long first, second;
 +	if (!uml_sp_enabled)
 +		return 0;
 +	cpu = raw_smp_processor_id();
 +	if (__atomic_add_fetch(&stats[cpu].sequence[stage], 1, __ATOMIC_RELAXED) & 255)
 +		return 0;
++	first = uml_sp_clock();
++	second = uml_sp_clock();
++	uml_sp_add(UML_SP_clock_pair, second - first);
 +	return uml_sp_clock();
 +}
 +
@@ -141,6 +148,10 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	unsigned int cpu = raw_smp_processor_id();
 +	__atomic_fetch_add(&stats[cpu].count[stage], 1, __ATOMIC_RELAXED);
 +	__atomic_fetch_add(&stats[cpu].cycles[stage], cycles, __ATOMIC_RELAXED);
++	if (cycles) {
++		unsigned int bin = min_t(unsigned int, 63 - __builtin_clzll(cycles), 31);
++		__atomic_fetch_add(&histogram[stage][bin], 1, __ATOMIC_RELAXED);
++	}
 +}
 +
 +void uml_sp_count(unsigned int stage, unsigned int count)
@@ -156,12 +167,13 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +		return;
 +	now = uml_sp_clock();
 +	uml_sp_add(stage, now - *stamp);
-+	*stamp = now;
++	/* Keep accounting and histogram updates outside the next interval. */
++	*stamp = uml_sp_clock();
 +}
 +
 +static int profile_show(struct seq_file *m, void *unused)
 +{
-+	unsigned int cpu;
++	unsigned int cpu, bin;
 +	seq_printf(m, "enabled %d\ntsc_khz %lu\nsample_period 256\n", uml_sp_enabled, tsc_khz);
 +	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
 +#define SHOW(n) seq_printf(m, "cpu%u_" #n "_count %llu\ncpu%u_" #n "_cycles %llu\n", \
@@ -169,6 +181,12 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	cpu, __atomic_load_n(&stats[cpu].cycles[UML_SP_##n], __ATOMIC_RELAXED));
 +		UML_SP_STAGES(SHOW)
 +#undef SHOW
++	}
++	for (bin = 0; bin < 32; bin++) {
++#define HIST(n) seq_printf(m, #n "_bin%u %llu\n", bin, \
++	__atomic_load_n(&histogram[UML_SP_##n][bin], __ATOMIC_RELAXED));
++		UML_SP_STAGES(HIST)
++#undef HIST
 +	}
 +	return 0;
 +}
@@ -382,7 +400,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  	interrupt_end();
  
  	while (1) {
-+		unsigned long long prepare = uml_sp_begin(UML_SP_prepare);
++		unsigned long long prepare = uml_sp_begin(UML_SP_prepare), receive = 0, exit_work;
  		struct mm_id *mm_id = current_mm_enter();
  
  		/*
@@ -394,15 +412,17 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  
  			err = set_stub_state(regs, proc_data, singlestepping());
  			if (err) {
-@@ -668,6 +694,7 @@
+@@ -668,7 +694,9 @@
  			proc_data->syscall_data_len = mm_id->syscall_data_len;
  			proc_data->syscall_fd_num = mm_id->syscall_fd_num;
  
 +			uml_sp_mark(UML_SP_prepare, &prepare);
  			wait_stub_done_seccomp(mm_id, 0, 0);
++			receive = uml_sp_begin(UML_SP_receive);
  			if (parallel_userspace && (mm_id->pid < 0 || proc_data->err < 0)) {
  				current_mm_exit(mm_id);
-@@ -693,7 +720,9 @@
+ 				fatal_sigsegv();
+@@ -693,7 +721,9 @@
  			mm_id->syscall_data_len = 0;
  			mm_id->syscall_fd_num = 0;
  
@@ -412,3 +432,21 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  			if (err) {
  				printk(UM_KERN_ERR "%s - failed to get regs: %d",
  				       __func__, err);
+@@ -821,6 +851,7 @@
+ 		}
+ 
+ 		current_mm_exit(mm_id);
++		uml_sp_mark(UML_SP_receive, &receive);
+ 
+ 		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
+ 
+@@ -860,7 +891,9 @@
+ 				       __func__, sig);
+ 				fatal_sigsegv();
+ 			}
++			exit_work = uml_sp_begin(UML_SP_exit_work);
+ 			interrupt_end();
++			uml_sp_mark(UML_SP_exit_work, &exit_work);
+ 
+ 			/* Avoid -ERESTARTSYS handling in host */
+ 			if (PT_SYSCALL_NR_OFFSET != PT_SYSCALL_RET_OFFSET)
