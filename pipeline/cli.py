@@ -175,6 +175,32 @@ def cmd_ps(_a):
               f"api={state.get('api_port', '-')} {state.get('error', '')}")
 
 
+def cmd_gc(a):
+    """Drop old runs, dead instances and store entries no kept run refers to."""
+    require_linux()
+    from pipeline import build, instance
+    with build.lock('build'), build.lock('measure'):
+        runs = sorted(p for p in config.RUNS.glob('*') if p.is_dir()) if config.RUNS.exists() else []
+        drop = runs[:-a.keep_runs] if len(runs) > a.keep_runs else []
+        for path in drop:
+            shutil.rmtree(path)
+        used = set()
+        for path in runs[len(drop):]:
+            try:
+                used.update(json.loads((path / 'summary.json').read_text()).get('artifacts', {}).values())
+            except (OSError, ValueError):
+                pass
+        cutoff = time.time() - a.keep_days * 86400
+        removed = []
+        for entry in config.STORE.glob('*/*') if config.STORE.exists() else []:
+            if entry.name.startswith('.') or (entry.name not in used and entry.stat().st_mtime < cutoff):
+                shutil.rmtree(entry); removed.append(f'{entry.parent.name}/{entry.name}')
+        for path in config.INSTANCES.glob('*') if config.INSTANCES.exists() else []:
+            if not instance.live(instance.read_state(path)) and path.stat().st_mtime < cutoff:
+                instance.remove(path); removed.append('instance/' + path.name)
+    print(f'gc: removed {len(drop)} runs and {len(removed)} store/instance entries')
+
+
 def run_suite(kind, a):
     """Shared driver for test/bench/ci: build, boot, run the suite(s), score."""
     require_linux()
@@ -313,6 +339,9 @@ def main(argv=None):
     s = sub.add_parser('docker', help='run the Docker CLI against a named guest')
     s.add_argument('name'); s.add_argument('args', nargs=argparse.REMAINDER); s.set_defaults(fn=cmd_docker)
     sub.add_parser('ps', help='list guests').set_defaults(fn=cmd_ps)
+    s = sub.add_parser('gc', help='prune old runs, unused store entries and dead guests')
+    s.add_argument('--keep-runs', type=int, default=60); s.add_argument('--keep-days', type=float, default=3)
+    s.set_defaults(fn=cmd_gc)
     for kind, text in (('test', 'functional Docker suite on a fresh guest'),
                        ('bench', 'performance matrix, native vs guest, exclusive'),
                        ('ci', 'test then bench in one run')):

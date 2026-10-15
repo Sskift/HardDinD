@@ -75,6 +75,7 @@ def artifact(kind, key, builder):
     """Return STORE/kind/key, building it with builder(tmp, final) when absent."""
     final = config.STORE / kind / key
     if (final / '.complete').exists():
+        os.utime(final)  # last use, for ./hd gc
         return final
     with lock('build'):
         if (final / '.complete').exists():
