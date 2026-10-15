@@ -55,7 +55,7 @@ TLB changes remain synchronous. One-page clipped windows do no extra work.
  
  /* 32 pages * 4 KiB = 128 KiB, and always below the stub queue depth. */
  #define UM_FAULTAROUND_MAX_ORDER	5
-@@ -229,7 +269,7 @@
+@@ -241,7 +281,7 @@
  				unsigned long address)
  {
  	unsigned int order = READ_ONCE(uml_faultaround_order);
@@ -64,8 +64,8 @@ TLB changes remain synchronous. One-page clipped windows do no extra work.
  	vm_fault_t fault;
  
  	if (!order)
-@@ -237,19 +277,11 @@
- 	if (!um_faultaround_vma_ok(vma))
+@@ -251,19 +291,11 @@
+ 	if (!um_faultaround_sequential(&mm->context.faultaround_last, address))
  		return;
  
 -	size = (unsigned long)PAGE_SIZE << order;

@@ -8,7 +8,7 @@
  #include <skas.h>
  
  /*
-@@ -133,6 +134,173 @@
+@@ -133,6 +134,187 @@
  	return NULL;
  }
  
@@ -23,8 +23,8 @@
 + * instruction is restarted.  A sequential first-touch loop pays this
 + * fixed price once per 4 KiB page instead of once per VMA window.
 + *
-+ * When enabled, a successful user WRITE fault on a plain private
-+ * anonymous VMA synchronously resolves the other EMPTY PTEs of the
++ * When enabled, adjacent user WRITE faults in ascending address order on
++ * a plain private anonymous VMA resolve the other EMPTY PTEs of the
 + * aligned 2^order-page window through the ordinary fault path as well.
 + * Functional semantics (zeroed pages, COW, fork, mprotect, munmap,
 + * rmap, reclaim, swap, the content of every page) are those of normal
@@ -34,11 +34,11 @@
 + *
 + * TIMING/OBSERVABLE SEMANTICS ARE NOT IDENTICAL, and this is why the
 + * feature is opt-in: up to 2^order pages become resident, mincore()
-+ * visible, RSS/memcg charged and accounted as minor faults at the first
-+ * touch of the window, before the process actually accesses them; a
-+ * tight memcg limit (or host OOM) can therefore kill the process one
-+ * window earlier than page-at-a-time behaviour would.  This is the same
-+ * trade upstream makes for THP, not an unchanged semantic.
++ * visible, RSS/memcg charged and accounted as minor faults once a
++ * sequential access is observed, before the process accesses them; a
++ * sequence of windows can accumulate unused charged pages. A tight
++ * memcg limit (or host OOM) can therefore kill the process much earlier.
++ * As with THP, this changes residency semantics, not page contents.
 + *
 + * Lock contract: the caller holds the mmap lock for reading.  Neighbour
 + * faults are invoked WITHOUT FAULT_FLAG_ALLOW_RETRY/KILLABLE/
@@ -76,14 +76,14 @@
 +}
 +__uml_setup("uml_faultaround=", uml_faultaround_setup,
 +"uml_faultaround=<order>\n"
-+"    Default 0 (off).  After a user write fault on plain private\n"
-+"    anonymous memory, also resolve empty PTEs of the aligned\n"
++"    Default 0 (off). After ascending adjacent user write faults, on\n"
++"    plain private anonymous memory, resolve empty PTEs of the aligned\n"
 +"    2^order-page window (max 32 pages) through the normal fault path\n"
 +"    before returning to userspace.  Page contents, COW, fork,\n"
 +"    mprotect and munmap keep their normal semantics, but residency,\n"
 +"    RSS/memcg charging, mincore() and minor-fault accounting move up\n"
-+"    to the first touch of the window, and OOM/SIGKILL under tight\n"
-+"    memory limits can occur up to a window earlier (THP-like).\n\n");
++"    to the second adjacent fault. Unused pages can accumulate across\n"
++"    windows, causing much earlier OOM/SIGKILL under tight limits.\n\n");
 +
 +static bool um_faultaround_vma_ok(const struct vm_area_struct *vma)
 +{
@@ -102,6 +102,18 @@
 +	return true;
 +}
 +
++static bool um_faultaround_sequential(unsigned long *last, unsigned long address)
++{
++	unsigned long previous = READ_ONCE(*last);
++
++	address &= PAGE_MASK;
++	WRITE_ONCE(*last, address);
++	/* Advisory only: racing fault streams can lose a batch opportunity.
++	 * Require real adjacent faults; prefaulted PTEs are not evidence of
++	 * demand, especially after a sparse allocator discards nearby pages. */
++	return address > previous && address - previous == PAGE_SIZE;
++}
++
 +static void um_anon_faultaround(struct mm_struct *mm,
 +				struct vm_area_struct *vma,
 +				unsigned long address)
@@ -113,6 +125,8 @@
 +	if (!order)
 +		return;
 +	if (!um_faultaround_vma_ok(vma))
++		return;
++	if (!um_faultaround_sequential(&mm->context.faultaround_last, address))
 +		return;
 +
 +	size = (unsigned long)PAGE_SIZE << order;
@@ -182,7 +196,7 @@
  /*
   * Note this is constrained to return 0, -EFAULT, -EACCES, -ENOMEM by
   * segv().
-@@ -207,6 +375,10 @@
+@@ -207,6 +389,10 @@
  		pte = pte_offset_kernel(pmd, address);
  	} while (!pte_present(*pte));
  	err = 0;
@@ -193,3 +207,21 @@
  	/*
  	 * The below warning was added in place of
  	 *	pte_mkyoung(); if (is_write) pte_mkdirty();
+--- a/arch/um/include/asm/mmu.h
++++ b/arch/um/include/asm/mmu.h
+@@ -47,5 +47,6 @@
+ 	unsigned long sync_tlb_range_from;
+ 	unsigned long sync_tlb_range_to;
++	unsigned long faultaround_last;
+ } mm_context_t;
+ 
+ #define INIT_MM_CONTEXT(mm)						\
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -145,5 +145,6 @@
+ 	mm->context.sync_tlb_range_from = 0;
+ 	mm->context.sync_tlb_range_to = 0;
++	mm->context.faultaround_last = ~0UL;
+ 	if (take_cached_broker(&mm->context))
+ 		return 0;
+ 
