@@ -1,0 +1,6 @@
+{
+  "prior_setup_failure": "/root/harddind-rebuild/gpu-plain-perf-owner-v2",
+  "kernel_fix_run": "/root/harddind-rebuild/gpu-completion-owner-v1",
+  "changes": "restore isolated run dependency symlinks missing in v2; hash network backend and client executable/loader; no kernel or workload change",
+  "pre_launch_check": "initial setup asserted client is a file; corrected to client/docker and loader before starting"
+}

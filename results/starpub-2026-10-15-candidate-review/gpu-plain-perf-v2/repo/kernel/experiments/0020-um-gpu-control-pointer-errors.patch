@@ -1,0 +1,47 @@
+--- a/arch/um/kernel/gpu.c
++++ b/arch/um/kernel/gpu.c
+@@ -307,6 +307,7 @@
+ 			   unsigned long arg)
+ {
+ 	struct gpu_nvos54 params;
++	u64 original_pointer;
+ 	void __user *nested;
+ 	size_t expected;
+ 	long result;
+@@ -322,9 +323,8 @@
+ 	}
+ 	if (params.flags || params.size != expected)
+ 		return -EOPNOTSUPP;
+-	nested = (void __user *)(unsigned long)params.params;
+-	if (!access_ok(nested, expected))
+-		return -EFAULT;
++	original_pointer = params.params;
++	nested = (void __user *)(unsigned long)original_pointer;
+ 
+ 	/* Bring demand-faulted guest pages into the shared host mm. Do not turn
+ 	 * protection faults into an ioctl errno: RM_CONTROL reports nested
+@@ -333,12 +333,22 @@
+ 	 * These bounded query structures contain no additional pointers/FDs.
+ 	 * Header fields are copied once, so concurrent user edits cannot turn
+ 	 * an allowed query into a different host operation or change its size. */
+-	fault_in_readable(nested, expected);
+-	fault_in_safe_writeable(nested, expected);
++	if (access_ok(nested, expected)) {
++		fault_in_readable(nested, expected);
++		fault_in_safe_writeable(nested, expected);
++	} else {
++		/* Never let a guest pointer outside TASK_SIZE name the UML stub
++		 * or other worker-private mappings. Use a non-null host-invalid
++		 * address so the real driver still decides error ordering/status.
++		 * NULL is not equivalent: NVIDIA reports INVALID_ARGUMENT for
++		 * NULL, but INVALID_ADDRESS for an inaccessible non-null buffer. */
++		params.params = ~0ULL;
++	}
+ 	result = um_tlb_sync(state->mm);
+ 	if (result)
+ 		return result;
+ 	result = gpu_rm_request(state, command, &params, sizeof(params));
++	params.params = original_pointer;
+ 	return gpu_rm_copyback(arg, &params, sizeof(params), result);
+ }
+ 

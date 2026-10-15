@@ -1,0 +1,522 @@
+{
+  "status": "finished",
+  "stage": "docker",
+  "commands": [
+    {
+      "label": "native-before-0",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:15.527781+00:00",
+      "pid": 2534679,
+      "exit_code": 0,
+      "wall_seconds": 2.1243810895830393,
+      "cleanup": {
+        "process_group": 2534679,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-1",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:17.679236+00:00",
+      "pid": 2535083,
+      "exit_code": 0,
+      "wall_seconds": 2.3201703429222107,
+      "cleanup": {
+        "process_group": 2535083,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-2",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:20.039522+00:00",
+      "pid": 2535481,
+      "exit_code": 0,
+      "wall_seconds": 2.3241675533354282,
+      "cleanup": {
+        "process_group": 2535481,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-3",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:22.397889+00:00",
+      "pid": 2535896,
+      "exit_code": 0,
+      "wall_seconds": 2.474972477182746,
+      "cleanup": {
+        "process_group": 2535896,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-4",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:24.893018+00:00",
+      "pid": 2536332,
+      "exit_code": 0,
+      "wall_seconds": 2.2185807209461927,
+      "cleanup": {
+        "process_group": 2536332,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-5",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:27.148558+00:00",
+      "pid": 2536725,
+      "exit_code": 0,
+      "wall_seconds": 2.133054591715336,
+      "cleanup": {
+        "process_group": 2536725,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "native-before-6",
+      "command": [
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe"
+      ],
+      "started_utc": "2026-10-15T00:54:29.301222+00:00",
+      "pid": 2537109,
+      "exit_code": 0,
+      "wall_seconds": 2.159729791805148,
+      "cleanup": {
+        "process_group": 2537109,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "start",
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/run",
+        "gpu-plain-v2",
+        "start",
+        "--kernel",
+        "/root/harddind-rebuild/gpu-completion-owner-v1/kernel",
+        "--disk",
+        "/root/harddind-rebuild/runtime-shares-v1.ext4",
+        "--gpu-control-experiment",
+        "--gpu-async-wait",
+        "--memfd-ram",
+        "--memfd-stub"
+      ],
+      "started_utc": "2026-10-15T00:54:31.477833+00:00",
+      "pid": 2537499,
+      "exit_code": 1,
+      "wall_seconds": 12.332481194287539,
+      "cleanup": {
+        "process_group": 2537499,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "stop",
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/repo/scripts/harddind.py",
+        "/root/harddind-rebuild/gpu-plain-perf-owner-v2/run",
+        "gpu-plain-v2",
+        "stop"
+      ],
+      "started_utc": "2026-10-15T00:54:43.823781+00:00",
+      "pid": 2539630,
+      "exit_code": 1,
+      "wall_seconds": 0.11733266338706017,
+      "cleanup": {
+        "process_group": 2539630,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "samples": {
+    "native-before": [
+      {
+        "seq": 0,
+        "warmup": true,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.007799497,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.009958871,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.005513933,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.003033446,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.1243810895830393
+      },
+      {
+        "seq": 1,
+        "warmup": true,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.008252973,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.009232957,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.005409097,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.003379857,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.3201703429222107
+      },
+      {
+        "seq": 2,
+        "warmup": false,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.008422166,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.011530887,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.005545951,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.00339382,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.3241675533354282
+      },
+      {
+        "seq": 3,
+        "warmup": false,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.00986504,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.009197781,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.00687531,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.003013769,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.474972477182746
+      },
+      {
+        "seq": 4,
+        "warmup": false,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.007893248,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.029276559,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.003925189,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.002972318,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.2185807209461927
+      },
+      {
+        "seq": 5,
+        "warmup": false,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.007775547,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.005610734,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.009039169,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.003011325,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.133054591715336
+      },
+      {
+        "seq": 6,
+        "warmup": false,
+        "gpu_results": [
+          {
+            "gpu": 0,
+            "elements": 1048576,
+            "seconds": 0.008039102,
+            "verified": true
+          },
+          {
+            "gpu": 1,
+            "elements": 1048576,
+            "seconds": 0.005560469,
+            "verified": true
+          },
+          {
+            "gpu": 2,
+            "elements": 1048576,
+            "seconds": 0.008916074,
+            "verified": true
+          },
+          {
+            "gpu": 3,
+            "elements": 1048576,
+            "seconds": 0.002997512,
+            "verified": true
+          }
+        ],
+        "command_wall_seconds": 2.159729791805148
+      }
+    ]
+  },
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "descriptive_only": true,
+  "warmups": 2,
+  "timed": 5,
+  "instrumentation": "no LD_PRELOAD, no strace",
+  "input_sha256": {
+    "/root/harddind-rebuild/gpu-completion-owner-v1/kernel": "b8a58b855edb97bb8cf06bd99ef26fb7a63f08e0e38ba07fa1dcb8f915c1b502",
+    "/root/harddind-rebuild/runtime-shares-v1.ext4": "0adf437833040ad84df0b47fe189b050816c356f69b6ea31b641113f34232c4c",
+    "/root/harddind-rebuild/gpu-plain-perf-owner-v2/cuda-probe": "ce39d7bb3d6b5f0e6a14f08d78f6ad1330e75b58e6e356e30bf97a94948946a6",
+    "/root/harddind-rebuild/gpu-plain-perf-owner-v2/rootfs.tar": "5af141b57ee202c34127bd35eb7e29fafc4d4bb4f9db5ebcc0e77de0a966913e",
+    "/root/harddind-rebuild/gpu-plain-perf-owner-v2/repo/scripts/harddind.py": "67b6a5e10b504db5e09d9ac951fd4116b00fb37785c3298d9e0f9b829d5e970c",
+    "/root/harddind-rebuild/gpu-plain-perf-owner-v2/repo/src/cuda_probe.c": "59a5505d8f811c12feacdabd848d42383b94232d0252d2e0b80f62bf5c52596c"
+  },
+  "library_sha256": {
+    "/bin/true": "1d20d8b1bbc861a2e9e0216efb7945fba664a5e6ba5f6a93febd6612a92551a8",
+    "/lib/x86_64-linux-gnu/libc.so.6": "2e15e345ccba1e1e8bf3bc58938d13eb7ccc17044942f0376cd5bc771f429b79",
+    "/lib/x86_64-linux-gnu/libcuda.so.1": "107466901e768ae0a4ff827a06162f6af0e51218bd5ccf67c48d7e327561a44f",
+    "/lib/x86_64-linux-gnu/libdl.so.2": "0b81164b45b35a571bf0beafda3e7dd8c8488cb901090f50c082e96116b883e7",
+    "/lib/x86_64-linux-gnu/liblzma.so.5": "493cb401ab4aa3bba611ca464d12996afb3b327940d29476f535f999e167439b",
+    "/lib/x86_64-linux-gnu/libm.so.6": "ec93672ba45de8a12ff774c9bcd993fa5c00155f0a64dfe1c4e984282eaf236e",
+    "/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.1": "b45e7c50eb9ea3efc9327cf92e4ada69113c06ca8ff8197134ac5dbc3637aa8d",
+    "/lib/x86_64-linux-gnu/libpthread.so.0": "fdfd7d83a335ba12bd73e857f95a798dae0355f37935231966fd088647978e23",
+    "/lib/x86_64-linux-gnu/librt.so.1": "782662dd5d8b96dd7ecddbba71c8399024c8e72e0ede115aa7643e6050c27920",
+    "/lib/x86_64-linux-gnu/libunwind-ptrace.so.0": "f791a9b0b01faa13a65ee066d2351d2e38a23d6c3752f75eebeaf0fc5c7d56f4",
+    "/lib/x86_64-linux-gnu/libunwind-x86_64.so.8": "1077e265bdd76ed4f2d628ea29150eb98f5c7c8f5a30004a561e6e93a2a6f097",
+    "/lib/x86_64-linux-gnu/libunwind.so.8": "5d1f6f104f79698e137c9f17c4b0317dfd96816c0eb6a87c50619a41472ca382",
+    "/lib64/ld-linux-x86-64.so.2": "e833bd99168bea158d2f2e5d32462479cacfb624003304a9ea74a1607a144f1f",
+    "/usr/bin/strace": "38a5c75cb29dd85ddd7780d54f5bf595554d7a1b5c42524b23065f5dc4c4b01d"
+  },
+  "host_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "limitations": [
+    "per-GPU measured region is two HtoD copies + vector-add + sync + DtoH; allocation/context creation excluded",
+    "fresh process per repetition; Docker container startup is recorded separately and is not compared to native Docker",
+    "sequential cards only; not a whole GPU performance acceptance"
+  ],
+  "lock_wait_seconds": {
+    "native-before": 2.0192936062812805e-05,
+    "docker": 1.0618939995765686e-05
+  },
+  "error": "Traceback (most recent call last):\n  File \"/root/harddind-rebuild/gpu-plain-perf-owner-v2/supervisor.py\", line 38, in <module>\n    call('start',base+['start','--kernel',str(kernel),'--disk',str(disk),'--gpu-control-experiment','--gpu-async-wait','--memfd-ram','--memfd-stub'],180)\n  File \"/root/harddind-rebuild/gpu-plain-perf-owner-v2/supervisor.py\", line 20, in call\n    assert row['exit_code']==0 and not row.get('timeout') and row['cleanup']['clean_shutdown'],label\nAssertionError: start\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/root/harddind-rebuild/gpu-plain-perf-owner-v2/supervisor.py\", line 52, in <module>\n    call('stop',base+['stop'],120);r['final_state']=harddind.read_state(run/'instances'/name);save()\n  File \"/root/harddind-rebuild/gpu-plain-perf-owner-v2/supervisor.py\", line 20, in call\n    assert row['exit_code']==0 and not row.get('timeout') and row['cleanup']['clean_shutdown'],label\nAssertionError: stop\n",
+  "final_state": {},
+  "normal_shutdown": false,
+  "groups": {
+    "2534679": [
+      [],
+      []
+    ],
+    "2535083": [
+      [],
+      []
+    ],
+    "2535481": [
+      [],
+      []
+    ],
+    "2535896": [
+      [],
+      []
+    ],
+    "2536332": [
+      [],
+      []
+    ],
+    "2536725": [
+      [],
+      []
+    ],
+    "2537109": [
+      [],
+      []
+    ],
+    "2537499": [
+      [],
+      []
+    ],
+    "2539630": [
+      [],
+      []
+    ]
+  },
+  "groups_empty": true,
+  "inputs_unchanged": true,
+  "exit_code": 1,
+  "finished_at": "2026-10-15T00:54:57.841372+00:00"
+}
