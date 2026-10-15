@@ -153,6 +153,18 @@ def shutdown_diagnostics(instance, state):
     return str(path)
 
 
+def default_dns(resolv='/etc/resolv.conf'):
+    """Outer resolvers if usable from the guest; else Docker's own fallback for
+    loopback-only hosts (public resolvers). The guest reaches the outer host's
+    resolver only through slirp, and Starpub's 127.0.0.11 stalls AAAA lookups."""
+    try:
+        servers = [line.split()[1] for line in open(resolv) if line.startswith('nameserver ') and len(line.split()) > 1]
+    except OSError:
+        servers = []
+    usable = [s for s in servers if not s.startswith('127.') and s != '::1' and ':' not in s]
+    return ','.join(usable[:3]) or '1.1.1.1,8.8.8.8'
+
+
 def parse_cpus(text):
     cpus = set()
     for part in str(text).split(','):
@@ -377,7 +389,7 @@ def serve(instance):
 
 def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cpus=4, memory='4G',
           cpuset=None, kernel_args=(), shares=(), share_options=None, publish_ports=True,
-          mtu=1500, dns='10.0.2.3', network_batch=1, boot_timeout=180, fresh=True, measure_lock=None):
+          mtu=1500, dns=None, network_batch=1, boot_timeout=180, fresh=True, measure_lock=None):
     """Boot a guest in `instance` and wait until dockerd answers.
 
     fresh=True requires a new instance; fresh=False reboots on the existing COW disk."""
@@ -397,7 +409,7 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'client': str(client), 'virtiofsd': str(virtiofsd) if virtiofsd else None,
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
-              'mtu': mtu, 'dns': dns, 'network_batch': network_batch, 'boot_timeout': boot_timeout,
+              'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'boot_timeout': boot_timeout,
               'measure_lock': str(measure_lock) if measure_lock else None}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]

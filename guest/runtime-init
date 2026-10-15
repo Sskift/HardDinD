@@ -34,7 +34,7 @@ ip -6 addr add fd00::15/64 dev vec0
 ip -6 route add default via fd00::2
 # Publication-specific aliases are still added and removed by dockerd as
 # mappings are created and released (Moby patch 0003).
-echo "nameserver $dns" > /etc/resolv.conf
+printf "nameserver %s\n" $(echo "$dns" | tr , " ") > /etc/resolv.conf
 echo "HARDDIND_RUNTIME_MTU=$HARDDIND_MTU"
 for arg in $(cat /proc/cmdline); do
     case "$arg" in
