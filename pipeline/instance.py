@@ -288,6 +288,9 @@ def serve(instance):
         write_state(instance, state)
         deadline = time.monotonic() + config['boot_timeout']
         console = instance / f'guest-{run}.log'
+        booted = time.monotonic()
+        markers = {'init': b'Run /sbin/harddind-runtime-init', 'dockerd': b'HARDDIND_RUNTIME_READY'}
+        state['boot'] = {}
         while not stopping:
             if guest.poll() is not None or helper.poll() is not None:
                 raise RuntimeError('guest or network backend exited unexpectedly')
@@ -296,6 +299,11 @@ def serve(instance):
             if any(fs.poll() is not None for fs, _, _, _ in filesystems):
                 raise RuntimeError('shared filesystem backend exited unexpectedly')
             if state['phase'] == 'starting':
+                if len(state['boot']) < len(markers):
+                    head = console.read_bytes()
+                    for name, marker in markers.items():
+                        if name not in state['boot'] and marker in head:
+                            state['boot'][name] = round(time.monotonic() - booted, 2)
                 try:
                     answered = api(port, '/_ping') == b'OK'
                 except (OSError, http.client.HTTPException, RuntimeError):
@@ -308,6 +316,7 @@ def serve(instance):
                         raise RuntimeError('Docker did not connect to the port driver')
                     if f'HARDDIND_RUNTIME_MTU={mtu}' not in text:
                         raise RuntimeError('guest did not confirm requested MTU')
+                    state['boot']['api'] = round(time.monotonic() - booted, 2)
                     state['phase'] = 'ready'; state['ready_at'] = time.time(); write_state(instance, state)
                 if state['phase'] != 'ready' and time.monotonic() > deadline:
                     raise RuntimeError('Docker API readiness timed out')
