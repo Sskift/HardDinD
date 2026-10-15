@@ -4,9 +4,10 @@ import pathlib
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
-# Local side (developer machine) -> Starpub. Always go through the ssh alias so
-# the ControlMaster connection is reused; the jump host bans new-connection bursts.
-REMOTE = os.environ.get('HD_REMOTE', 'starpub-root')
+# Local side (developer machine) -> Starpub. The -mux alias only reuses the
+# resident ControlMaster and fails closed when it is down: the jump host bans
+# source IPs that open new connections too fast, and ./hd is automation.
+REMOTE = os.environ.get('HD_REMOTE', 'starpub-root-mux')
 REMOTE_ROOT = os.environ.get('HD_REMOTE_ROOT', '/root/harddind-rebuild/hd')
 # Multiplexing master that every remote connection must reuse; empty disables the check.
 JUMP = os.environ.get('HD_JUMP', 'star-jump')

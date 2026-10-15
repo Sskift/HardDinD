@@ -70,7 +70,7 @@ Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持�
 
 - 多个代理可以同时改代码、跑 `./hd check` 和 `./hd test`（共享锁）。`bench` 和 `ci` 持有排它锁，同一时间只有一个在跑。
 - 代理各自用独立的 git worktree 和分支，`./hd job` 用不同的 job 名；主代理合并到 `main` 后推送。
-- 远端只经 ssh 别名 `starpub-root`（复用 ControlMaster 连接），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
+- 远端只经 fail-closed 别名 `starpub-root-mux`（只复用常驻 ControlMaster，master 不在时立即失败），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
 - 不影响 `/root/udock`。不在 `…/hd` 之外写文件。
 
 ## 套件接口

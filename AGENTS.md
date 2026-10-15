@@ -17,6 +17,7 @@
 - 不把关闭网络、忽略资源限制、单核运行、禁用 GPU 称为完成。
 - 第三方源码版本固定在 `sources.lock.json`，改动保留为补丁。禁止使用未固定的 latest/master。
 - 不影响 Starpub 的 `/root/udock`。所有远端文件放在 `/root/harddind-rebuild/hd/` 下。
+- 自动化访问 Starpub 只用 fail-closed 别名 `starpub-root-mux`（`./hd` 默认如此）；master 断开时只用 `ssh -O check star-jump` 等它恢复，不重试、不探活。
 
 ## 工作方式
 
