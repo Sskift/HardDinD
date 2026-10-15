@@ -173,6 +173,11 @@ static void semantics(void) {
     }
     child_ok(child);
     for (size_t i = 0; i < pages; i++) CHECK(p[i * page] == pattern(i));
+    CHECK(!madvise(p, bytes, MADV_COLD));
+    for (size_t i = 0; i < pages; i++) {
+        CHECK(p[i * page] == pattern(i));
+        p[i * page] = pattern(i);
+    }
     CHECK(!mprotect(p, bytes, PROT_READ));
     denied(p + 7 * page, 1, SIGSEGV);
     CHECK(!madvise(p, bytes, MADV_DONTNEED));
@@ -194,9 +199,15 @@ static void semantics(void) {
     for (size_t i = 0; i < pages; i++) CHECK(p[i * page] == pattern(i));
     for (size_t i = 0; i < pages; i++) shared[i * page] = 0x39;
     CHECK(!msync(shared, bytes, MS_SYNC));
+    CHECK(!madvise(shared, bytes, MADV_COLD));
+    for (size_t i = 0; i < pages; i++) {
+        CHECK(shared[i * page] == 0x39);
+        shared[i * page] = 0x53;
+    }
+    CHECK(!msync(shared, bytes, MS_SYNC));
     for (size_t i = 0; i < pages; i++) {
         unsigned char byte;
-        CHECK(pread(fd, &byte, 1, (off_t)(i * page)) == 1 && byte == 0x39);
+        CHECK(pread(fd, &byte, 1, (off_t)(i * page)) == 1 && byte == 0x53);
     }
     CHECK(!ftruncate(fd, 0));
     denied(shared + 32 * page, 0, SIGBUS);
