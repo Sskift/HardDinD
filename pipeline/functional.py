@@ -114,9 +114,9 @@ def core_compat_artifact():
         source = tmp / 'strace-source'; source.mkdir()
         build.run(['tar', '-xf', strace_archive, '--strip-components=1', '-C', source], log_file=log)
         build.run([source / 'configure', '--enable-mpers=no', '--with-libdw=no', '--with-libunwind=no',
-                   '--enable-stacktrace=no', 'CC=gcc', 'CFLAGS=-O2 -Wall -Wextra -Werror', 'LDFLAGS=-static'],
+                   '--enable-stacktrace=no', 'CC=gcc', 'CFLAGS=-O2 -Wall -Wextra', 'LDFLAGS=-static'],
                   cwd=source, log_file=log, timeout=180)
-        build.run(['make', '-j4'], cwd=source, log_file=log, timeout=300)
+        build.run(['make', '-j4', 'CFLAGS=-O2 -Wall -Wextra -Werror'], cwd=source, log_file=log, timeout=300)
         shutil.copy2(source / 'src/strace', tmp / 'strace')
         for name in ('core_patch_musl', 'core_go', 'strace'):
             elf = subprocess.run(['readelf', '-l', tmp / name], capture_output=True, text=True, check=True, timeout=10)
@@ -1121,6 +1121,8 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
         require(row['schema'] == 'hd.core-syscalls/1', row)
         samples = row['samples']
         require([(s['mode'], s['threads']) for s in samples] == expected, row)
+        if patch_enabled is not None:
+            require(all(s['patch_enabled'] is patch_enabled for s in samples), row)
         require(all(s['verified'] is True and s['operations'] == count * s['threads']
                     and isinstance(s['ns_per_op'], (float, int)) and 0 < s['ns_per_op'] < float('inf')
                     for s in samples), row)
@@ -1132,7 +1134,8 @@ def core_semantic(c, program, mode, count=256):
                                                   else (mode, str(count)))
     # Ptrace and nested seccomp are guest semantics, independent of Docker's default filter.
     output = c.output('/' + program, *args, image=HELPERS, opts=('--privileged',))
-    core_summary(output, program, mode, count)
+    enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
+    core_summary(output, program, mode, count, patch_enabled=enabled)
 
 
 check('process.core_faults', 'run', helpers=True, timeout=180)(
@@ -1167,7 +1170,7 @@ def core_compat(c):
                     'signal': True, 'verified': True}, row)
     output = c.d('exec', name, '/strace', '-f', '-e', 'trace=getpid,clone,clone3,fork,vfork,execve',
                  '-o', '/trace', '/core_syscalls', 'filters', '256', timeout=180)
-    core_summary(output, 'core_syscalls', 'filters')
+    core_summary(output, 'core_syscalls', 'filters', patch_enabled=enabled)
     trace = c.d('exec', name, 'cat', '/trace')
     require(re.search(r'getpid\(\)\s+= \d+', trace) and re.search(r'getpid\(\)\s+= -1 EPERM', trace),
             'strace lost syscall return or seccomp errno stops')

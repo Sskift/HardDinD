@@ -25,7 +25,7 @@
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "core syscall failure line=%d %s errno=%d\n", \
     __LINE__, #x, errno); exit(1); } } while (0)
 #define MAX_VALUES 4096
-struct snapshot { unsigned int n; int enabled; uint64_t khz; char names[MAX_VALUES][64]; uint64_t values[MAX_VALUES]; };
+struct snapshot { unsigned int n; int enabled, patch_enabled; uint64_t khz; char names[MAX_VALUES][64]; uint64_t values[MAX_VALUES]; };
 struct sample { uint64_t ns, operations; struct snapshot first, last; };
 struct worker { pthread_barrier_t *barrier; size_t count; int cpu; long pid; };
 static volatile sig_atomic_t trapped;
@@ -36,25 +36,32 @@ static uint64_t now(void) {
     CHECK(!clock_gettime(CLOCK_MONOTONIC, &ts));
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 }
-static void snapshot(struct snapshot *s) {
-    FILE *f = fopen("/proc/uml_syscall_profile", "r");
+static void snapshot_file(struct snapshot *s, const char *path, const char *prefix, int *enabled) {
+    FILE *f = fopen(path, "r");
     if (!f) { CHECK(errno == ENOENT); return; }
     char name[64]; uint64_t value;
     while (fscanf(f, "%63s %" SCNu64, name, &value) == 2) {
-        if (!strcmp(name, "enabled")) { s->enabled = (int)value; continue; }
+        if (!strcmp(name, "enabled")) { CHECK(value <= 1); *enabled = (int)value; continue; }
         if (!strcmp(name, "tsc_khz")) { s->khz = value; continue; }
         if (!strcmp(name, "sample_period")) { CHECK(value == 256); continue; }
         CHECK(s->n < MAX_VALUES && strlen(name) == strspn(name, "abcdefghijklmnopqrstuvwxyz0123456789_"));
-        strcpy(s->names[s->n], name); s->values[s->n++] = value;
+        int n = snprintf(s->names[s->n], sizeof(s->names[0]), "%s%s", prefix, name);
+        CHECK(n > 0 && n < (int)sizeof(s->names[0]));
+        s->values[s->n++] = value;
     }
     CHECK(feof(f) && !ferror(f) && !fclose(f));
+}
+static void snapshot(struct snapshot *s) {
+    snapshot_file(s, "/proc/uml_syscall_profile", "", &s->enabled);
+    snapshot_file(s, "/proc/uml_syscall_patch", "patch_", &s->patch_enabled);
 }
 static void report(const char *mode, unsigned int threads, const struct sample *s) {
     CHECK(s->ns && s->operations && s->first.n == s->last.n);
     CHECK(s->first.enabled == s->last.enabled && s->first.khz == s->last.khz);
+    CHECK(s->first.patch_enabled == s->last.patch_enabled);
     printf("{\"mode\":\"%s\",\"threads\":%u,\"operations\":%" PRIu64 ",\"ns_per_op\":%.3f,"
-           "\"verified\":true,\"profile_enabled\":%d,\"tsc_khz\":%" PRIu64 ",\"profile\":{",
-           mode, threads, s->operations, (double)s->ns / s->operations, s->last.enabled, s->last.khz);
+           "\"verified\":true,\"profile_enabled\":%d,\"patch_enabled\":%s,\"tsc_khz\":%" PRIu64 ",\"profile\":{",
+           mode, threads, s->operations, (double)s->ns / s->operations, s->last.enabled, s->last.patch_enabled ? "true" : "false", s->last.khz);
     int printed = 0;
     for (unsigned int i = 0; i < s->first.n; i++) {
         CHECK(!strcmp(s->first.names[i], s->last.names[i]) && s->last.values[i] >= s->first.values[i]);

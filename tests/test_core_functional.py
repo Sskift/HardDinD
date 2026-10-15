@@ -69,6 +69,7 @@ class CoreFunctionalTests(unittest.TestCase):
         for name, _, _, _, helpers, callback in checks:
             self.assertTrue(helpers, name)
             case = mock.Mock()
+            case.ctx.instance_options = {}
             case.output.return_value = '{}'
             with self.subTest(name=name), self.assertRaises((AssertionError, KeyError)):
                 callback(case)

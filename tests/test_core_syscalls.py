@@ -105,5 +105,6 @@ int main(void) {
                 self.assertEqual([r['threads'] for r in rows], expected)
                 for row in rows:
                     self.assertTrue(row['verified'])
+                    self.assertIs(row['patch_enabled'], False)
                     self.assertEqual(row['operations'], row['threads'] * 256)
                     self.assertGreater(row['ns_per_op'], 0)

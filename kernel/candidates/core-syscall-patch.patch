@@ -148,7 +148,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,276 @@
+@@ -0,0 +1,282 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -158,6 +158,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +#include <linux/proc_fs.h>
 +#include <linux/seq_file.h>
 +#include <linux/atomic.h>
++#include <linux/percpu.h>
 +#include <asm/cacheflush.h>
 +#include <asm/unistd.h>
 +#include <as-layout.h>
@@ -168,7 +169,8 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +#include <sysdep/ptrace.h>
 +
 +int uml_syscall_patch;
-+static atomic64_t patched, calls;
++static atomic64_t patched;
++static DEFINE_PER_CPU(unsigned long, patch_calls);
 +extern char __syscall_stub_start[], stub_fast_entry[];
 +
 +static int __init patch_setup(char *s)
@@ -410,12 +412,16 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	return 0;
 +}
 +
-+void uml_patch_count(void) { atomic64_inc(&calls); }
++void uml_patch_count(void) { this_cpu_inc(patch_calls); }
 +
 +static int patch_show(struct seq_file *m, void *v)
 +{
-+	seq_printf(m, "enabled %d\npatched %lld\nfast_calls %lld\n", uml_syscall_patch,
-+		   atomic64_read(&patched), atomic64_read(&calls));
++	int cpu;
++	u64 calls = 0;
++	for_each_possible_cpu(cpu)
++		calls += READ_ONCE(per_cpu(patch_calls, cpu));
++	seq_printf(m, "enabled %d\npatched %lld\nfast_calls %llu\n", uml_syscall_patch,
++		   atomic64_read(&patched), calls);
 +	return 0;
 +}
 +
