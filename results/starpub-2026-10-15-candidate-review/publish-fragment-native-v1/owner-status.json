@@ -1,0 +1,116 @@
+{
+  "status": "finished",
+  "stage": "build_and_native",
+  "commands": [
+    {
+      "label": "release-build",
+      "command": [
+        "bash",
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/repo/scripts/build-network.sh",
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/build"
+      ],
+      "started_at": "2026-10-15T00:58:12.300696+00:00",
+      "pid": 2603536,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2603536,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "release-independent-build",
+      "command": [
+        "bash",
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/independent/tests/build_and_link.sh",
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/build/libslirp-stage/libslirp-v4.6.1",
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/release/slirp.a",
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/release/frag-repro"
+      ],
+      "started_at": "2026-10-15T00:58:22.172178+00:00",
+      "pid": 2605952,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2605952,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "release-independent-tests",
+      "command": [
+        "/root/harddind-rebuild/publish-fragment-native-owner-v1/release/frag-repro"
+      ],
+      "started_at": "2026-10-15T00:58:29.914953+00:00",
+      "pid": 2607893,
+      "exit_code": 1,
+      "cleanup": {
+        "process_group": 2607893,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "full_acceptance": false,
+  "nested_docker_test": false,
+  "prior_gpu_exit_code": 0,
+  "source_before": {
+    "sources.lock.json": "e3e3e027b336bb842210e94a2a0d3261a3e0746f0fd7679cdf06cad9f6c8b05f",
+    "REPORT-v4.md": "9d68925bda74110d96bb168a67bec721cb6fbdb9be58811e4948ab89dbf8f062",
+    "third_party/libslirp_4.6.1-1ubuntu0.2.debian.tar.xz": "c7b4c8cd67cc99e1b4d13cc49be395372ee3f2fdecd268639446ea87742043a8",
+    "third_party/patches/0001-ipv6-fragmentation.patch": "8faab399ba6f8bb7165c4b96093046a6625e206c4dadccb1465ade09216a5ed0",
+    "third_party/patches/0002-cve-2026-9539-urgent-data-bounds.patch": "2c0e837b6f1774f261862805390a6ab43b4e4239c6892c43feb5895f2c8013d7",
+    "tests/publish/native_ip6frag.c": "60ed52e1eda7d30e8f730af85d82061ed5c45a9196f2185d43162857ed7172b0",
+    "tests/publish/README.md": "d5c4013f5ea2beaf224a01406db008e8bdc6fc1f7844fc31673ff5f1c4a5b8ea",
+    "tests/publish/slirp_peer.py": "095fc4a6457aaafd589b9ea008e95e73c3273f388f164d14bbf87acc453067af",
+    "tests/publish/test_hostfwd_semantics.py": "280c55a7f130a9ec44ee3e01f3afeb3958a7da8b8314659bd3317d27956c2fff",
+    "tests/publish/backend.py": "60e93c87cf01ea965468081be80dd1b0b97ba91185ed68c0d0a3af48060c0b2c",
+    "tests/publish/test_list_inventory.py": "b496512ca691433548cfd075ea766f427285321e013ddc78e2879b3808159f3e",
+    "tests/publish/test_forwarded_flows.py": "f0e5f753c2b9b6d21a3dfc63c3a519d448be3b86efbfa39a98597d15e0e5064b",
+    "tests/publish/test_ipv6_fragmentation.py": "35f2850cce8b604ebb45b0bcf8c93d6b1ac5426c9eabee691b877d651d58957d",
+    "src/network_backend.c": "8d3a5f4a16159781cdf9f2a78baa3914dd8bb36979c5a5285d4f0a63e0290a4e",
+    "scripts/build-network.sh": "470f10102ee5d3fc51bd2242906503157501432dc561f336cf8dbd7df7fa167d",
+    "scripts/guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14",
+    "scripts/build-libslirp.sh": "20c37721fcd1b9fa272333e6d1e2a661b08381a812809ba2f5e27c18b06b5558"
+  },
+  "independent_before": {
+    "build_and_link.sh": "cdaa7110f2495f029268fcf3bead38ea1277152926d7261c61b85bfb28eaa0ae",
+    "frag_repro.c": "4bb8ddef44e0ccccef8c439697dc99177d674a3e26132adedb996a772dcf62ab"
+  },
+  "error": "Traceback (most recent call last):\n  File \"/root/harddind-rebuild/publish-fragment-native-owner-v1/supervisor.py\", line 44, in <module>\n    call(variant+'-independent-tests',[str(out/'frag-repro')],env2,lock.fileno(),30)\n  File \"/root/harddind-rebuild/publish-fragment-native-owner-v1/supervisor.py\", line 16, in call\n    assert row['exit_code']==0 and row['cleanup']['clean_shutdown'] and not row.get('timeout'),label\nAssertionError: release-independent-tests\n",
+  "groups": {
+    "2603536": [
+      [],
+      []
+    ],
+    "2605952": [
+      [],
+      []
+    ],
+    "2607893": [
+      [],
+      []
+    ]
+  },
+  "groups_empty": true,
+  "exit_code": 1,
+  "finished_at": "2026-10-15T00:58:29.963459+00:00"
+}
