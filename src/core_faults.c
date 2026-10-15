@@ -263,6 +263,16 @@ static void measure(const char *mode, size_t count) {
                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
                 CHECK(q != MAP_FAILED && !munmap(q, 32 * page));
             }
+        } else if (!strcmp(mode, "small")) {
+            for (size_t i = 0; i < count; i++) {
+                unsigned char *q = mmap(NULL, 18 * page, PROT_NONE,
+                                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                CHECK(q != MAP_FAILED);
+                CHECK(!mprotect(q + page, 16 * page, PROT_READ | PROT_WRITE));
+                for (size_t j = 1; j <= 16; j++) q[j * page] = pattern(j);
+                for (size_t j = 1; j <= 16; j++) CHECK(q[j * page] == pattern(j));
+                CHECK(!munmap(q, 18 * page));
+            }
         } else if (!strcmp(mode, "mprotect")) {
             for (size_t i = 0; i < count; i++) {
                 CHECK(!mprotect(p, page, PROT_READ));
@@ -287,7 +297,7 @@ static void measure(const char *mode, size_t count) {
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "child")) return 0;
     if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: %s semantics | anon|file|cow|fork|exec|mmap|mprotect|getpid|faults|process|all [count]\n", argv[0]);
+        fprintf(stderr, "usage: %s semantics | anon|file|cow|small|fork|exec|mmap|mprotect|getpid|faults|process|all [count]\n", argv[0]);
         return 2;
     }
     page = (size_t)sysconf(_SC_PAGESIZE);
@@ -314,6 +324,7 @@ int main(int argc, char **argv) {
             measure("cow", pages);
         }
         if (all || !strcmp(argv[1], "process")) {
+            if (all) measure("small", count * 4);
             measure("fork", count);
             measure("exec", count);
             measure("mmap", count * 32);
