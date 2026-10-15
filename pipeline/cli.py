@@ -230,7 +230,7 @@ def run_suite(kind, a):
                    'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
                    'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
         try:
-            artifacts = build.everything(a.with_, shares=kind in ('test', 'ci'))
+            artifacts = build.everything(a.with_, shares=True)
             summary['artifacts'] = artifacts['ids']
             if kind in ('test', 'ci'):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
@@ -289,15 +289,13 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     from pipeline import instance, runs
     name = suite[0] + hashlib.sha256(run_id.encode()).hexdigest()[:10]
     path = config.INSTANCES / name
-    shares = []
-    if suite == 'test':
-        share = run_dir / 'share'
-        share.mkdir()
-        shares = [share]
+    share = run_dir / f'share-{suite}'
+    share.mkdir()
+    shares = [share]
     opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares)
     ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
                        instance_options=opts, bench_cpus=config.BENCH_CPUS, quick=getattr(a, 'quick', False),
-                       only=a.only)
+                       only=a.only, share=share)
     result = {}
     try:
         started = time.monotonic()

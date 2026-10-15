@@ -62,6 +62,7 @@ class Context:
     bench_cpus: str
     quick: bool = False
     only: str = None
+    share: pathlib.Path = None  # outer directory mounted at the same path in the guest
 
     def selected(self, name):
         return self.only is None or re.search(self.only, name) is not None
