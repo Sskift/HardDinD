@@ -1,0 +1,146 @@
+{
+  "status": "finished",
+  "stage": "actual_performance",
+  "commands": [
+    {
+      "label": "harness-tests",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "test_perf_log",
+        "test_supervisor_paths"
+      ],
+      "pid": 2062097,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2062097,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    },
+    {
+      "label": "performance",
+      "command": [
+        "python3",
+        "/root/harddind-rebuild/fp-perf-owner-v1/harness/fp-perf-supervisor.py",
+        "--work",
+        "/root/harddind-rebuild/fp-perf-owner-v1/run",
+        "--no-prep",
+        "--budget",
+        "1200"
+      ],
+      "pid": 2064429,
+      "exit_code": 0,
+      "cleanup": {
+        "process_group": 2064429,
+        "forced_cleanup": false,
+        "initial_live_pids": [],
+        "initial_zombie_pids": [],
+        "initial_processes": [],
+        "forced_processes": [],
+        "remaining_live_pids": [],
+        "remaining_zombie_pids": [],
+        "clean_shutdown": true
+      }
+    }
+  ],
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "harness_before": {
+    "test_supervisor_paths.py": "fd009af48ebca9475c101db2cd0571889b121e8f7ac921621d2e8b54eb2d8f01",
+    "fp-perf-supervisor.py": "0482ad6220b39c3e231791c4f508f31e5c8cfe22ed3d6bfda816e89dfe5d42b7",
+    "perfrun.c": "ffbbf0879b8ea6339978a77324289080af0b0a7aa4b549284a0bc5201160b43d",
+    "test_perf_log.py": "14c80f642d4669e2669a62a8feb237276b092fb7634658dbec8ccba3df0488d2",
+    "fp-perf-prep.sh": "72ad6f6c2ffc106012058ab2ae43a88d888214ba63bc4336c61fa8f32e6700c0",
+    "perf_log.py": "37bdac089586896760c23d7a7d370d897af694702d4377a17ea3cdfe40c4267f",
+    "harddind-perf-init": "eaf690e661b7a997467af00a608620f95fc26ea9b555d5de48477cc333ddcf25"
+  },
+  "harness_after": {
+    "test_supervisor_paths.py": "fd009af48ebca9475c101db2cd0571889b121e8f7ac921621d2e8b54eb2d8f01",
+    "fp-perf-supervisor.py": "0482ad6220b39c3e231791c4f508f31e5c8cfe22ed3d6bfda816e89dfe5d42b7",
+    "perfrun.c": "ffbbf0879b8ea6339978a77324289080af0b0a7aa4b549284a0bc5201160b43d",
+    "test_perf_log.py": "14c80f642d4669e2669a62a8feb237276b092fb7634658dbec8ccba3df0488d2",
+    "fp-perf-prep.sh": "72ad6f6c2ffc106012058ab2ae43a88d888214ba63bc4336c61fa8f32e6700c0",
+    "perf_log.py": "37bdac089586896760c23d7a7d370d897af694702d4377a17ea3cdfe40c4267f",
+    "harddind-perf-init": "eaf690e661b7a997467af00a608620f95fc26ea9b555d5de48477cc333ddcf25"
+  },
+  "harness_unchanged": true,
+  "performance_status": {
+    "status": "finished",
+    "exit_code": 0,
+    "groups_empty": true,
+    "inputs_unchanged": true,
+    "error": null
+  },
+  "cells": {
+    "native-pre": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    },
+    "eager-a": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    },
+    "lazy1-a": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    },
+    "lazy1-b": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    },
+    "eager-b": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    },
+    "lazy0-control": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    },
+    "native-post": {
+      "exit_code": 0,
+      "clean_shutdown": true,
+      "errors": [],
+      "timed_out": false,
+      "status": null
+    }
+  },
+  "owner_groups": {
+    "2062097": [
+      [],
+      []
+    ],
+    "2064429": [
+      [],
+      []
+    ]
+  },
+  "owner_groups_empty": true,
+  "exit_code": 0,
+  "finished_at": "2026-10-15T00:27:51.867158+00:00"
+}

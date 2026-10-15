@@ -1,0 +1,22 @@
+{
+  "run_timeout": 45,
+  "sources": {
+    "corebench.c": "991be1c676c293e5cdc8900e0ba23fab23fb3de2a65bb19702b5472069c23a35",
+    "dispatchbench.c": "84d6dd6c0e154b8291bce9d69de4cac8e359fe70c5816a77b5c7d9a043c8eba7"
+  },
+  "binaries": {
+    "corebench": "f43b2ece66091df375b78c1f03cf91367c8977c700280f64c8f4ee1b4438a73e",
+    "dispatchbench": "de3b122ad06fed158016ffb9bf4e8b6dd5764c71e9910da2b071c61a49f33758",
+    "perfrun": "36cd08ecbe8ab5d3911976f94e1c31486b544cd03c56163d4a5c367976888a0b"
+  },
+  "harness": {
+    "fp-perf-supervisor.py": "0482ad6220b39c3e231791c4f508f31e5c8cfe22ed3d6bfda816e89dfe5d42b7",
+    "perf_log.py": "37bdac089586896760c23d7a7d370d897af694702d4377a17ea3cdfe40c4267f",
+    "harddind-perf-init": "eaf690e661b7a997467af00a608620f95fc26ea9b555d5de48477cc333ddcf25",
+    "perfrun.c": "ffbbf0879b8ea6339978a77324289080af0b0a7aa4b549284a0bc5201160b43d",
+    "test_perf_log.py": "14c80f642d4669e2669a62a8feb237276b092fb7634658dbec8ccba3df0488d2",
+    "fp-perf-prep.sh": "72ad6f6c2ffc106012058ab2ae43a88d888214ba63bc4336c61fa8f32e6700c0",
+    "repo:guest_cleanup.py": "569ddc41612c9afd0044e1d58e32db3a13cb4778e06ff301e5f97f604c47bc14"
+  },
+  "disk": "39ac2de0ea93ae028aea7bc762aed5ae575b98306083d5d9c6d7f598d2745aea"
+}

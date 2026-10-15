@@ -1,0 +1,47 @@
+[
+  {
+    "pid": 2094069,
+    "state": "S",
+    "ppid": 1299553,
+    "pgrp": 2094069,
+    "session": 2094069,
+    "cmd": "/bin/bash -c source /root/harddind-rebuild/arkclaude/runtime/config/shell-snapshots/snapshot-bash-1792020674882-gy91s0.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'exec 9>/root/harddind-rebuild/kernel-build.lock && flock -w 900 -x 9 && rm -rf .work/final && mkdir .work/final && make network WORK=.work/final > .work/final-network.log 2>&1; echo \"network=$?\"; make publish-tests WORK=.work/final 2>&1 | tail -3' < /dev/null && pwd -P >| /tmp/claude-500e-cwd ",
+    "wchan": "do_wait"
+  },
+  {
+    "pid": 2096391,
+    "state": "S",
+    "ppid": 2094069,
+    "pgrp": 2096391,
+    "session": 2094069,
+    "cmd": "make network WORK=.work/final ",
+    "wchan": "do_wait"
+  },
+  {
+    "pid": 2096392,
+    "state": "S",
+    "ppid": 2096391,
+    "pgrp": 2096391,
+    "session": 2094069,
+    "cmd": "/bin/sh -c bash scripts/build-network.sh \".work/final\" ",
+    "wchan": "do_wait"
+  },
+  {
+    "pid": 2096393,
+    "state": "S",
+    "ppid": 2096392,
+    "pgrp": 2096391,
+    "session": 2094069,
+    "cmd": "bash scripts/build-network.sh .work/final ",
+    "wchan": "do_wait"
+  },
+  {
+    "pid": 2096396,
+    "state": "S",
+    "ppid": 2096393,
+    "pgrp": 2096391,
+    "session": 2094069,
+    "cmd": "flock -w 600 -x 9 ",
+    "wchan": "locks_lock_inode_wait"
+  }
+]
