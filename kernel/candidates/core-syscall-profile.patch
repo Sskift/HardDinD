@@ -109,7 +109,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  obj-$(CONFIG_STACKTRACE) += stacktrace.o
 --- /dev/null
 +++ b/arch/um/kernel/core-profile.c
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,110 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/kernel.h>
@@ -178,6 +178,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	unsigned int cpu, bin;
 +	seq_printf(m, "enabled %d\ntsc_khz %lu\nsample_period 256\n", uml_sp_enabled, tsc_khz);
 +	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
++		seq_printf(m, "cpu%u_getpid_calls %llu\n", cpu,
++			__atomic_load_n(&stats[cpu].sequence[UML_SP_trace_enter], __ATOMIC_RELAXED));
 +#define SHOW(n) seq_printf(m, "cpu%u_" #n "_count %llu\ncpu%u_" #n "_cycles %llu\n", \
 +	cpu, __atomic_load_n(&stats[cpu].count[UML_SP_##n], __ATOMIC_RELAXED), \
 +	cpu, __atomic_load_n(&stats[cpu].cycles[UML_SP_##n], __ATOMIC_RELAXED));
