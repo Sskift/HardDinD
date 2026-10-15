@@ -60,7 +60,9 @@ srcdir = stage / 'libslirp-v4.6.1'
 #     data bounds / sb_cc underflow) - the production baseline links the
 #     distro library, so a bare-upstream rebuild must carry it too.
 for name in ('0001-ipv6-fragmentation.patch',
-             '0002-cve-2026-9539-urgent-data-bounds.patch'):
+             '0002-cve-2026-9539-urgent-data-bounds.patch',
+             '0003-net-vnet-mru.patch',
+             '0004-net-window-scale.patch'):
     patch_file = repo / 'third_party' / 'patches' / name
     r = subprocess.run(['patch', '-p1', '--batch', '--fuzz=0', '-d', srcdir,
                         '-i', patch_file], capture_output=True, text=True)
@@ -130,10 +132,14 @@ manifest = {
          'purpose': 'HardDinD bounded IPv6 fragmentation/reassembly'},
         {'file': '0002-cve-2026-9539-urgent-data-bounds.patch',
          'purpose': 'sosendoob urgent data bounds / sb_cc underflow (Ubuntu)'},
+        {'file': '0003-net-vnet-mru.patch',
+         'purpose': 'Use configured receive limit for IPv6 GSO input'},
+        {'file': '0004-net-window-scale.patch',
+         'purpose': 'Negotiate larger TCP windows only for the virtual offload link'},
     ],
     'objects': len(objects),
     'host': {'arch': _platform.machine(), 'compiler': 'gcc'},
-    'link_note': 'network-backend links this archive statically and the ABI-pinned host libglib-2.0.so.0 dynamically; reported slirp version stays 4.6.1',
+    'link_note': 'release network-backend links this archive and the pinned glib dev archive statically; reported slirp version stays 4.6.1',
 }
 (outdir / 'BUILD_MANIFEST.json').write_text(json.dumps(manifest, indent=2) + '\n')
 print(f'built {archive} ({len(objects)} objects, variant={variant or "release"})')

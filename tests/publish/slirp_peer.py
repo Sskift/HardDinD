@@ -39,8 +39,25 @@ def l4_checksum(src, dst, proto, segment):
     return csum(pseudo + segment) or (0xffff if proto == 17 else 0)
 
 
+def window_option(options):
+    while options:
+        kind = options[0]
+        if kind == 0:
+            break
+        if kind == 1:
+            options = options[1:]
+            continue
+        if len(options) < 2 or not 2 <= options[1] <= len(options):
+            break
+        size = options[1]
+        if kind == 3 and size == 3:
+            return options[2]
+        options = options[size:]
+    return None
+
+
 class TCPSession:
-    def __init__(self, peer, src, dst, sport, dport, iss, client_isn):
+    def __init__(self, peer, src, dst, sport, dport, iss, client_isn, window=None):
         self.peer = peer
         self.v6 = len(src) == 16
         self.src, self.dst, self.sport, self.dport = src, dst, sport, dport
@@ -49,14 +66,17 @@ class TCPSession:
         self.rcv_nxt = (client_isn + 1) & 0xffffffff
         self.state = 'SYN_RCVD'
         self.closed = False
+        self.window_scale = peer.window_scale if window is not None else None
 
     def send_segment(self, flags, payload=b''):
         pure_syn = bool(flags & TCP_SYN)
         seq = self.iss if pure_syn else self.snd_nxt
         ack = self.rcv_nxt if flags & TCP_ACK else 0
+        options = (bytes([1, 3, 3, self.window_scale])
+                   if pure_syn and self.window_scale is not None else b'')
         head = struct.pack('!HHIIBBHHH', self.dport, self.sport, seq, ack,
-                           0x50, flags, 0xffff, 0, 0)
-        segment = head + payload
+                           ((20 + len(options)) // 4) << 4, flags, 0xffff, 0, 0)
+        segment = head + options + payload
         # Reply sources from the guest (dst of the inbound frame) to the
         # router/peer (src); the TCP pseudo-header must match that direction.
         check = l4_checksum(self.dst, self.src, 6, segment)
@@ -176,13 +196,15 @@ class V6FragReassembler:
 class SlirpPeer:
     def __init__(self, link, tcp_ports=(7777,), udp_ports=(8888,), mss=1460,
                  v6_udp_reply_mtu=None, raw_v6_udp=False,
-                 atomic_tcp=False, atomic_udp=False):
+                 atomic_tcp=False, atomic_udp=False, window_scale=None):
         self.link = link
         # When set, v6 TCP/UDP replies are wrapped in an atomic fragment header
         # (offset 0, M=0) instead of a plain next-header packet.
         self.atomic_tcp = atomic_tcp
         self.atomic_udp = atomic_udp
         self.mss = mss
+        self.window_scale = window_scale
+        self.tcp_headers = []
         self.tcp_ports = set(tcp_ports)
         self.udp_ports = set(udp_ports)
         # When set, large v6 UDP replies are fragmented like a real Linux
@@ -460,6 +482,9 @@ class SlirpPeer:
         if dport not in self.tcp_ports:
             return
         off = (off_res >> 4) * 4
+        option = window_option(payload[20:off])
+        if len(self.tcp_headers) < 128:
+            self.tcp_headers.append({'flags': flags, 'window': win, 'scale': option})
         body = payload[off:]
         key = (family, bytes(src), bytes(dst), sport, dport)
         sess = self.sessions.get(key)
@@ -467,7 +492,7 @@ class SlirpPeer:
             if not (flags & TCP_SYN) or (flags & TCP_ACK):
                 return
             self.iss_counter += 1
-            sess = TCPSession(self, src, dst, sport, dport, 0xbd000000 + self.iss_counter, seq)
+            sess = TCPSession(self, src, dst, sport, dport, 0xbd000000 + self.iss_counter, seq, option)
             self.sessions[key] = sess
             sess.send_segment(TCP_SYN | TCP_ACK)
             return

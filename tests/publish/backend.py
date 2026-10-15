@@ -17,10 +17,12 @@ BACKEND = pathlib.Path(os.environ.get('HARDDIND_NETWORK_BACKEND', REPO / '.work'
 
 
 class Backend:
-    def __init__(self):
+    def __init__(self, batch=1, vnet=None):
         if not BACKEND.exists():
             raise unittest.SkipTest(f'network-backend binary not found: {BACKEND}')
         self.tmp = None
+        self.batch = batch
+        self.vnet = os.environ.get('HARDDIND_TEST_VNET') == '1' if vnet is None else vnet
 
     def start(self):
         import tempfile
@@ -28,10 +30,14 @@ class Backend:
         self.ctl = self.tmp / 'network.ctl'
         self.link_host, link_guest = socket.socketpair(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         self.proc = subprocess.Popen(
-            [str(BACKEND), str(link_guest.fileno()), str(self.ctl), '1', '1500'],
+            [str(BACKEND), str(link_guest.fileno()), str(self.ctl), str(self.batch), '1500',
+             *(['vnet'] if self.vnet else [])],
             pass_fds=(link_guest.fileno(),),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         link_guest.close()
+        if self.vnet:
+            from vnet_peer import VnetPeer
+            self.link_host = VnetPeer(self.link_host)
         deadline = time.monotonic() + 5
         while not self.ctl.exists():
             if self.proc.poll() is not None:
@@ -115,6 +121,7 @@ class Backend:
                 self.proc.kill()
                 self.proc.wait(timeout=5)
             result = self.proc.stdout.read().decode(errors='replace')
+            self.proc.stdout.close()
             self.link_host.close()
             if self.proc.returncode != 0:
                 raise AssertionError(f'network-backend rc={self.proc.returncode}:\n{result}')

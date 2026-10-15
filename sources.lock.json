@@ -319,5 +319,11 @@
     "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-minirootfs-3.24.2-x86_64.tar.gz",
     "sha256": "c5ca053cfe1d85c5b96dff8b9bc57045f7f184a30ffb6b65776409ca90388677",
     "purpose": "Container DNS and HTTPS transfer; verify the downloaded bytes against this digest"
+  },
+  "net_passt_source": {
+    "version": "2026_01_20.386b5f5",
+    "url": "https://passt.top/passt/snapshot/passt-2026_01_20.386b5f5.tar.gz",
+    "sha256": "b378b36cc6d17988fd8efdc9e432495afc96787c3ee231aee55bc7e50c4edf6d",
+    "purpose": "Evaluated network replacement; not enabled (namespace and fragment support gaps)"
   }
 }
