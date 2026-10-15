@@ -1,0 +1,125 @@
+--- a/arch/um/drivers/vector_kern.c
++++ b/arch/um/drivers/vector_kern.c
+@@ -396,13 +396,28 @@
+  */
+ 
+ 
++static bool vector_tx_poll;
++
++static int __init vector_tx_poll_setup(char *str)
++{
++	return kstrtobool(str, &vector_tx_poll) ? 0 : 1;
++}
++__setup("uml_vector_tx_poll=", vector_tx_poll_setup);
++
+ static int vector_send(struct vector_queue *qi)
+ {
+ 	struct vector_private *vp = netdev_priv(qi->dev);
+ 	struct mmsghdr *send_from;
+ 	int result = 0, send_len;
+ 
++	/* Publish a retry request before testing the lock. The owner either
++	 * drains this enqueue or schedules one poll after releasing the lock.
++	 */
++	if (vector_tx_poll)
++		atomic_xchg(&qi->send_pending, 1);
+ 	if (spin_trylock(&qi->head_lock)) {
++		if (vector_tx_poll)
++			atomic_set(&qi->send_pending, 0);
+ 		/* update queue_depth to current value */
+ 		while (atomic_read(&qi->queue_depth) > 0) {
+ 			/* Calculate the start of the vector */
+@@ -452,12 +467,23 @@
+ 			 */
+ 			if (result != send_len) {
+ 				vp->estats.tx_restart_queue++;
++				/* A positive short send may be interrupted, not blocked. */
++				if (vector_tx_poll && result > 0)
++					continue;
++				/* IRQ_WRITE normally retries EAGAIN; bound the retry
++				 * delay for ENOBUFS, which need not create a new edge.
++				 */
++				if (vector_tx_poll)
++					mod_timer(&vp->tl, jiffies + vp->coalesce);
+ 				break;
+ 			}
+ 		}
+ 		spin_unlock(&qi->head_lock);
+-	}
+-	return atomic_read(&qi->queue_depth);
++		if (vector_tx_poll && atomic_xchg(&qi->send_pending, 0))
++			napi_schedule(&vp->napi);
++	}
++	/* Busy TX waits for its owner or writable IRQ, not an RX poll loop. */
++	return vector_tx_poll ? 0 : atomic_read(&qi->queue_depth);
+ }
+ 
+ /* Queue destructor. Deliberately stateless so we can use
+@@ -571,6 +597,7 @@
+ 	spin_lock_init(&result->head_lock);
+ 	spin_lock_init(&result->tail_lock);
+ 	atomic_set(&result->queue_depth, 0);
++	atomic_set(&result->send_pending, 0);
+ 	result->head = 0;
+ 	result->tail = 0;
+ 	return result;
+@@ -1062,7 +1089,7 @@
+ 	queue_depth = vector_enqueue(vp->tx_queue, skb);
+ 
+ 	if (queue_depth < vp->tx_queue->max_depth && netdev_xmit_more()) {
+-		mod_timer(&vp->tl, vp->coalesce);
++		mod_timer(&vp->tl, vector_tx_poll ? jiffies + vp->coalesce : vp->coalesce);
+ 		return NETDEV_TX_OK;
+ 	} else {
+ 		queue_depth = vector_send(vp->tx_queue);
+@@ -1092,6 +1119,9 @@
+ 
+ 	if (!netif_running(dev))
+ 		return IRQ_NONE;
++	/* An edge can precede the sender updating in_write_poll. */
++	if (vector_tx_poll && !atomic_read(&vp->tx_queue->queue_depth))
++		return IRQ_HANDLED;
+ 	/* We need to pay attention to it only if we got
+ 	 * -EAGAIN or -ENOBUFFS from sendmmsg. Otherwise
+ 	 * we ignore it. In the future, it may be worth
+@@ -1110,7 +1140,10 @@
+ {
+ 	struct vector_private *vp = netdev_priv(dev);
+ 
+-	netif_stop_queue(dev);
++	if (vector_tx_poll)
++		netif_tx_disable(dev);
++	else
++		netif_stop_queue(dev);
+ 	timer_delete(&vp->tl);
+ 
+ 	vp->opened = false;
+@@ -1128,6 +1161,9 @@
+ 		vp->tx_irq = 0;
+ 	}
+ 	napi_disable(&vp->napi);
++	/* TX and NAPI can no longer rearm the retry timer. */
++	if (vector_tx_poll)
++		timer_delete_sync(&vp->tl);
+ 	netif_napi_del(&vp->napi);
+ 	if (vp->fds->rx_fd > 0) {
+ 		if (vp->bpf)
+@@ -1534,6 +1570,8 @@
+ {
+ 	struct vector_private *vp = timer_container_of(vp, t, tl);
+ 
++	if (vector_tx_poll && !atomic_read(&vp->tx_queue->queue_depth))
++		return;
+ 	vp->estats.tx_kicks++;
+ 	napi_schedule(&vp->napi);
+ }
+--- a/arch/um/drivers/vector_kern.h
++++ b/arch/um/drivers/vector_kern.h
+@@ -46,6 +46,7 @@
+ 	spinlock_t head_lock;
+ 	spinlock_t tail_lock;
+ 	atomic_t queue_depth;
++	atomic_t send_pending;
+ 	int head, tail, max_depth, max_iov_frags;
+ 	short options;
+ };
