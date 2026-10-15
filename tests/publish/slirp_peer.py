@@ -74,6 +74,8 @@ class TCPSession:
         ack = self.rcv_nxt if flags & TCP_ACK else 0
         options = (bytes([1, 3, 3, self.window_scale])
                    if pure_syn and self.window_scale is not None else b'')
+        if pure_syn and self.peer.advertised_mss is not None:
+            options += struct.pack('!BBH', 2, 4, self.peer.advertised_mss)
         head = struct.pack('!HHIIBBHHH', self.dport, self.sport, seq, ack,
                            ((20 + len(options)) // 4) << 4, flags, 0xffff, 0, 0)
         segment = head + options + payload
@@ -203,6 +205,7 @@ class SlirpPeer:
         self.atomic_tcp = atomic_tcp
         self.atomic_udp = atomic_udp
         self.mss = mss
+        self.advertised_mss = None
         self.window_scale = window_scale
         self.tcp_headers = []
         self.tcp_ports = set(tcp_ports)
