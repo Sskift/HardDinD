@@ -25,7 +25,7 @@
 
 1. 系统调用和 fork/exec 的速度还未达到原生。
 2. 默认路径仍串行执行同一地址空间的线程。并行实验已通过线程正确性和 Docker 内的初步回归，但尚缺长期压力、异常退出与内部隔离验证。旧路径还复现了并发 fork/COW 缺陷；扩大测试后，上一版并行内核也曾在并发 fork/exec 中丢失宿主进程并崩溃。
-3. 完整 GPU 设备 ABI、地址空间映射、显存生命周期和 Docker GPU 接入尚未实现。已有实验性的 UML 控制查询通道；Star­pub 外层的 4 张 A100 已完成真实计算，但内部 CUDA 仍未通过。
+3. GPU 映射候选已在内部 Docker 中完成四张 A100 的真实计算、双向传输和逐元素结果校验。完整 GPU ABI、并发进程/线程、扩展显存生命周期、`--gpus all` 接入和性能仍未验收。
 4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证；可选的 Moby 补丁已验证 IPv4 自动 `docker -p` 子集。IPv6 流量、多个外层地址复用同一端口、外层目录共享语义、异常恢复与长期运行管理尚未完成。网络请求／响应性能仍明显低于原生。
 5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
 
@@ -44,6 +44,8 @@
 [后续候选审查](results/starpub-2026-10-15-candidate-review/README.md) 又发现 CPU shares 校验器在四类关键证据缺失时仍误判通过，以及浮点引用修复中的空指针释放和锁顺序问题。两项远端模型测试挂起后已保留现场并清理；相关候选仍未合入，修复和实际运行验证继续进行。
 
 [浮点候选 v4 的真实对照](results/starpub-2026-10-15-candidate-review/fp-matrix-v1/README.md) 已通过原生 15 项及 12 组 guest 配置各 15 项检查，无跳过，全部进程组正常退出。该记录保留已撤回的两条审查意见、原生与 guest 的短 XSTATE 写入差异，以及尚缺的继承值、唤醒值和 core note 检查；候选仍未合入，也未证明性能收益。
+
+[GPU 映射 v14 实测](results/starpub-2026-10-15-candidate-review/gpu-mapping-v14/README.md) 已打通内部四卡 CUDA：每卡完成 1,048,576 个元素的上传、计算、回传和精确校验，前后原生对照也通过。控制 31/31、分配 74/74 回归通过，实例正常退出，25 个记录的进程组为空。补丁现作为 `make kernel-gpu-mapping-experiment` 的可选构建纳入主线；这轮有追踪开销，不能用耗时宣称 GPU 性能一致。并发和完整生命周期验证继续进行。
 
 [GPU 事件修复的真实 CUDA 运行](results/starpub-2026-10-15-candidate-review/gpu-mapping-v11/README.md) 已确认四卡事件注册与释放成功，控制 31/31、分配 74/74 回归通过。内部 CUDA 仍初始化失败，日志保留 `0x20810108` / 992 字节和新到达的 `0x80028b` / 1 字节两类未支持控制；没有内部计算或 GPU 性能通过结论。
 
@@ -226,4 +228,4 @@ GPU 后端需要处理 NVIDIA 驱动 550.120 的 ioctl 内嵌指针/FD、mmap、
 
 [系统能力与分配错误顺序实测](results/starpub-2026-10-15-gpu-system-features/) 用 `0027` 消除 `0xcb33` 的 FINN 错误顺序差异，扩展的 74 条结果在 guest 与五次 Docker 运行中全部匹配原生。第二版同时修正首版遗漏的系统能力过滤条件，31 条查询边界结果在 guest 与五次 Docker 运行中全部匹配原生；两组 Docker 各 12 项外层检查通过。实际 CUDA 已通过 `0x1f0`，下一处阻断仍为缺失的 `/dev/nvidia-uvm`。第二版 87 项证据核对通过，记录的 22 个进程组均已清理，首版失败记录保留。内部 GPU 计算与近原生性能尚未完成。
 
-[四卡 OS-event 内部实测](results/starpub-2026-10-15-candidate-review/gpu-os-event-docker-v1/README.md) 使用同一静态探针完成原生四卡、内部 Docker 四卡、原生四卡的前后对照，12/12 通过事件分配释放、错误返回和空队列轮询检查。`src/gpu_os_event_probe.c` 与对应检查器已纳入主线；CUDA 初始化仍卡在私有控制命令，实际计算、传输和 GPU 性能尚未达标。
+[四卡 OS-event 内部实测](results/starpub-2026-10-15-candidate-review/gpu-os-event-docker-v1/README.md) 使用同一静态探针完成原生四卡、内部 Docker 四卡、原生四卡的前后对照，12/12 通过事件分配释放、错误返回和空队列轮询检查。`src/gpu_os_event_probe.c` 与对应检查器已纳入主线。该轮 CUDA 初始化仍卡在私有控制命令；之后的 v14 已打通顺序四卡计算与传输，完整生命周期和 GPU 性能继续验证。

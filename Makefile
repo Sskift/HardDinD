@@ -98,3 +98,7 @@ compose-client:
 .PHONY: kernel-gpu-async-experiment
 kernel-gpu-async-experiment:
 	GPU_ASYNC_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"
+
+.PHONY: kernel-gpu-mapping-experiment
+kernel-gpu-mapping-experiment:
+	GPU_MAPPING_EXPERIMENT=1 bash scripts/build-kernel.sh "$(WORK)"

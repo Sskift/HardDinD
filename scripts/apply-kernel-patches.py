@@ -82,7 +82,8 @@ if __name__ == "__main__":
     repo = pathlib.Path(__file__).resolve().parents[1]
     src = pathlib.Path(sys.argv[1]).resolve()
     options = sys.argv[3:]
-    async_mode = options == ["--gpu-async-experiment"]
+    mapping_mode = options == ["--gpu-mapping-experiment"]
+    async_mode = mapping_mode or options == ["--gpu-async-experiment"]
     if async_mode:
         options = ["--gpu-experiment"]
     patches = sorted((repo / "kernel/patches").glob("[0-9]*.patch"))
@@ -123,4 +124,7 @@ if __name__ == "__main__":
         patches += [repo / "kernel/experiments/0025-um-gpu-policy-driver-validation.patch",
                     repo / "kernel/experiments/0026-um-gpu-fixed-alloc.patch",
                     repo / "kernel/experiments/0027-um-gpu-system-features.patch"]
+    if mapping_mode:
+        # This replacement patch is based on the full 0027 async series.
+        patches += [repo / "kernel/experiments/0024-um-gpu-mapping-lifecycle.patch"]
     apply_series(src, pathlib.Path(sys.argv[2]), patches)
