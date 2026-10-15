@@ -1,0 +1,10 @@
+{
+  "baseline": "/root/harddind-rebuild/gpu-plain-perf-owner-v3",
+  "kernel": "/root/harddind-rebuild/gpu-completion-owner-v1/kernel",
+  "probe_change": "same CUDA API/workload, split integer monotonic timings,8withincontext iterations first2warmup, vary input and reset output periteration, forward/reverse order",
+  "limits": [
+    "no GPU-event timing or UUID claim",
+    "context/JIT/allocation/cleanup outside timed region",
+    "diagnostic only, no performance threshold"
+  ]
+}
