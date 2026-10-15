@@ -30,8 +30,9 @@ from pipeline.port_driver import PortDriver
 # Guest RAM in a memfd (shmem): a file under TMPDIR would make the host write
 # guest memory back to disk and stall exit in inode writeback.
 # harddind_vdso_clock: clock_gettime and friends read a TSC vvar without trapping (patch 0031).
+# queue_size/request_pages: a 1 MiB unaligned read fits one virtio-fs request (patch 0032).
 CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
-             'memfd_ram=1', 'harddind_vdso_clock=1')
+             'memfd_ram=1', 'harddind_vdso_clock=1', 'virtio_uml.queue_size=512', 'virtiofs.request_pages=512')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
 
@@ -230,6 +231,7 @@ def serve(instance):
                    '--thread-pool-size', '4']
             if share_opts.get('profile'): cmd.append('--profile-requests')
             if share_opts.get('inline_flock'): cmd.append('--inline-flock')
+            if share_opts.get('inline_metadata'): cmd.append('--inline-metadata')
             if share_opts.get('posix_locks'): cmd.append('--shared-posix-locks')
             with (instance / f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
