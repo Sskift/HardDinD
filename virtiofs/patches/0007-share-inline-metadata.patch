@@ -1,0 +1,151 @@
+Subject: [PATCH] Add opt-in inline LOOKUP and GETATTR dispatch
+
+Bypass the worker wakeup for path validation; retain zero-timeout cache
+policy and asynchronous I/O and locks. Disabled by default because a slow
+host metadata operation can delay the event loop.
+
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -172,6 +172,10 @@
+     /// Experimental inline nonblocking flock dispatch.
+     #[arg(long, requires = "shared_flock")]
+     inline_flock: bool,
++
++    /// Experiment: dispatch LOOKUP/GETATTR without a thread-pool handoff.
++    #[arg(long)]
++    inline_metadata: bool,
+ 
+     /// Enable support for extended attributes
+     #[arg(long)]
+@@ -886,13 +890,13 @@
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock, opt.inline_metadata);
+     } else {
+         let fs = PassthroughFs::new(fs_cfg).unwrap_or_else(|e| {
+             error!("Failed to create internal filesystem representation: {e}");
+             process::exit(1);
+         });
+-        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock);
++        run_generic_fs(fs, listener, thread_pool_size, opt.tag, opt.profile_requests, opt.inline_flock, opt.inline_metadata);
+     }
+ }
+ 
+@@ -904,12 +908,14 @@
+     tag: Option<String>,
+     profile_requests: bool,
+     inline_flock: bool,
++    inline_metadata: bool,
+ ) {
+     let fs_backend = Arc::new(
+         VhostUserFsBackendBuilder::default()
+             .set_thread_pool_size(thread_pool_size)
+             .set_profile_requests(profile_requests)
+             .set_inline_flock(inline_flock)
++            .set_inline_metadata(inline_metadata)
+             .set_tag(tag)
+             .build(fs)
+             .unwrap_or_else(|error| {
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -123,6 +123,11 @@
+     }
+ }
+ 
++fn inline_metadata_opcode(opcode: u32) -> bool {
++    [Opcode::Lookup, Opcode::Getattr]
++        .iter().any(|op| *op as u32 == opcode)
++}
++
+ struct VhostUserFsThread<F: FileSystem + Send + Sync + 'static> {
+     mem: Option<LoggedMemoryAtomic>,
+     kill_evt: EventFd,
+@@ -135,10 +140,11 @@
+     retries: RetryQueue,
+     profile: Option<Arc<RequestProfile>>,
+     inline: Option<InlineStats>,
++    inline_metadata: bool,
+ }
+ 
+ impl<F: FileSystem + SerializableFileSystem + Send + Sync + 'static> VhostUserFsThread<F> {
+-    fn new(fs: F, thread_pool_size: usize, profile_requests: bool, inline_flock: bool) -> Result<Self> {
++    fn new(fs: F, thread_pool_size: usize, profile_requests: bool, inline_flock: bool, inline_metadata: bool) -> Result<Self> {
+         if inline_flock && !fs.requires_async_locks() { return Err(Error::InlineNeedsSharedLocks); }
+         if profile_requests && thread_pool_size == 0 { return Err(Error::ProfileNeedsPool); }
+         if fs.requires_async_locks() && thread_pool_size == 0 { return Err(Error::LocksNeedPool); }
+@@ -166,6 +172,7 @@
+             retries: RetryQueue::new().map_err(Error::CreateRetryQueue)?,
+             profile: profile_requests.then(|| Arc::new(RequestProfile::default())),
+             inline: inline_flock.then(InlineStats::default),
++            inline_metadata,
+         })
+     }
+ 
+@@ -306,7 +313,7 @@
+             drop(peek);
+             drop(mem);
+ 
+-            self.pool.as_ref().unwrap().spawn_ok(async move {
++            let process = move || {
+                 let started = sample.as_mut().map(|s| s.start());
+                 let mem = atomic_mem.memory();
+                 let head_index = worker_desc.head_index();
+@@ -327,7 +334,12 @@
+                 let reply_start = sample.as_ref().map(|_| Instant::now());
+                 Self::return_descriptor(&mut worker_vring.get_mut(), head_index, event_idx, len);
+                 if let (Some(s), Some(start)) = (sample, reply_start) { s.finish(start); }
+-            });
++            };
++            if self.inline_metadata && inline_metadata_opcode(header.opcode) {
++                process();
++            } else {
++                self.pool.as_ref().unwrap().spawn_ok(async move { process(); });
++            }
+         }
+ 
+         Ok(used_any)
+@@ -486,10 +498,17 @@
+     thread_pool_size: usize,
+     profile_requests: bool,
+     inline_flock: bool,
++    inline_metadata: bool,
+     tag: Option<String>,
+ }
+ 
+ impl VhostUserFsBackendBuilder {
++    /// Keep ordinary I/O and lock waits asynchronous during this experiment.
++    pub fn set_inline_metadata(mut self, enabled: bool) -> Self {
++        self.inline_metadata = enabled;
++        self
++    }
++
+     /// Experiment: issue nonblocking host locks without a worker handoff.
+     pub fn set_inline_flock(mut self, enabled: bool) -> Self {
+         self.inline_flock = enabled;
+@@ -523,7 +542,7 @@
+     where
+         F: FileSystem + SerializableFileSystem + Send + Sync + 'static,
+     {
+-        let thread = RwLock::new(VhostUserFsThread::new(fs, self.thread_pool_size, self.profile_requests, self.inline_flock)?);
++        let thread = RwLock::new(VhostUserFsThread::new(fs, self.thread_pool_size, self.profile_requests, self.inline_flock, self.inline_metadata)?);
+         Ok(VhostUserFsBackend {
+             thread,
+             premigration_thread: None.into(),
+@@ -824,3 +843,15 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod harddind_metadata_tests {
++    use super::*;
++
++    #[test]
++    fn harddind_metadata_dispatch_excludes_io_locks_and_unknown_requests() {
++        for opcode in 0..=1024 {
++            assert_eq!(inline_metadata_opcode(opcode), [1, 3].contains(&opcode));
++        }
++    }
++}

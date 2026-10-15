@@ -1,0 +1,55 @@
+Subject: [PATCH] Add opt-in virtqueue and virtio-fs request sizing
+
+Keep the existing 256-entry / 256-page defaults. Larger queues and page
+limits let an unaligned 1 MiB buffer fit in one request when the server
+also negotiates enough pages. Both overrides are read-only boot options.
+
+--- a/arch/um/drivers/virtio_uml.c
++++ b/arch/um/drivers/virtio_uml.c
+@@ -39,6 +39,10 @@
+ 
+ #define MAX_SUPPORTED_QUEUE_SIZE	256
+ 
++static unsigned int queue_size = MAX_SUPPORTED_QUEUE_SIZE;
++module_param(queue_size, uint, 0444);
++MODULE_PARM_DESC(queue_size, "Virtqueue entries (power of two, 16..32768)");
++
+ #define to_virtio_uml_device(_vdev) \
+ 	container_of(_vdev, struct virtio_uml_device, vdev)
+ 
+@@ -962,8 +966,11 @@
+ 	struct platform_device *pdev = vu_dev->pdev;
+ 	struct virtio_uml_vq_info *info;
+ 	struct virtqueue *vq;
+-	int num = MAX_SUPPORTED_QUEUE_SIZE;
++	int num = queue_size;
+ 	int rc;
++
++	if (num < 16 || num > 32768 || !is_power_of_2(num))
++		return ERR_PTR(-EINVAL);
+ 
+ 	info = kzalloc_obj(*info);
+ 	if (!info) {
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -28,6 +28,10 @@
+  * addition to the pages used, so this can help account for that overhead.
+  */
+ #define FUSE_HEADER_OVERHEAD    4
++
++static unsigned int request_pages;
++module_param(request_pages, uint, 0444);
++MODULE_PARM_DESC(request_pages, "Override virtio-fs request page limit (0=default, max 1024)");
+ 
+ /* List of virtio-fs device instances and a lock for the list. Also provides
+  * mutual exclusion in device removal and mounting path
+@@ -1810,7 +1814,8 @@
+ 	fc->use_pages_for_kvec_io = true;
+ 
+ 	/* Tell FUSE to split requests that exceed the virtqueue's size */
+-	fc->max_pages_limit = min_t(unsigned int, fc->max_pages_limit,
++	fc->max_pages_limit = min_t(unsigned int,
++				    request_pages ? min(request_pages, 1024U) : fc->max_pages_limit,
+ 				    virtqueue_size - FUSE_HEADER_OVERHEAD);
+ 
+ 	fsc->s_fs_info = fm;

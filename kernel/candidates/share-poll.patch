@@ -1,0 +1,136 @@
+Subject: [PATCH] Add bounded opt-in virtiofs completion polling
+
+virtio_uml.poll_iters=0 preserves interrupt-only completion. An enabled
+poller only invokes the existing virtiofs callback (which queues work),
+never consumes descriptors, and retains the normal call pipe and IRQ path.
+Stop when the IRQ path has already observed progress. Count a consumed
+call-pipe notification as handled even if a poller completed it first.
+
+The counters describe polling progress, not completion of the request that
+caused a kick. wall_ns includes preemption, so it is not a CPU-time measure.
+
+--- a/arch/um/drivers/virtio_uml.c
++++ b/arch/um/drivers/virtio_uml.c
+@@ -21,11 +21,13 @@
+  * Based on Virtio MMIO driver by Pawel Moll, copyright 2011-2014, ARM Ltd.
+  */
+ #include <linux/module.h>
++#include <linux/reboot.h>
+ #include <linux/of.h>
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
+ #include <linux/string_choices.h>
+ #include <linux/virtio.h>
++#include <linux/virtio_ids.h>
+ #include <linux/virtio_config.h>
+ #include <linux/virtio_ring.h>
+ #include <linux/time-internal.h>
+@@ -71,6 +73,7 @@
+ 
+ struct virtio_uml_vq_info {
+ 	int kick_fd, call_fd;
++	atomic_t calls;
+ 	char name[32];
+ 	bool suspended;
+ };
+@@ -786,12 +789,56 @@
+ }
+ 
+ 
++static unsigned int poll_iters;
++module_param(poll_iters, uint, 0444);
++MODULE_PARM_DESC(poll_iters, "Bounded virtiofs completion polling (0=off, capped at 65536)");
++
++static atomic64_t poll_attempts, poll_hits, poll_interrupts, poll_loops, poll_ns;
++
++static void vu_poll_fs(struct virtqueue *vq, int calls)
++{
++	struct virtio_uml_vq_info *info = vq->priv;
++	unsigned int i, budget = min(poll_iters, 65536U);
++	u64 start;
++
++	if (!budget || vq->vdev->id.device != VIRTIO_ID_FS)
++		return;
++	start = os_nsecs();
++	for (i = 0; i < budget; i++) {
++		if (atomic_read(&info->calls) != calls) {
++			atomic64_inc(&poll_interrupts);
++			break;
++		}
++		if (vring_interrupt(0, vq) == IRQ_HANDLED) {
++			atomic64_inc(&poll_hits);
++			break;
++		}
++		cpu_relax();
++	}
++	atomic64_add(os_nsecs() - start, &poll_ns);
++	atomic64_add(i + (i < budget), &poll_loops);
++	atomic64_inc(&poll_attempts);
++}
++
++static int vu_poll_reboot(struct notifier_block *nb, unsigned long event, void *unused)
++{
++	pr_emerg("HARDDIND_FUSE_POLL attempts=%lld hits=%lld interrupts=%lld loops=%lld wall_ns=%lld\n",
++		atomic64_read(&poll_attempts), atomic64_read(&poll_hits),
++		atomic64_read(&poll_interrupts), atomic64_read(&poll_loops), atomic64_read(&poll_ns));
++	return NOTIFY_DONE;
++}
++
++static struct notifier_block vu_poll_notifier = {
++	.notifier_call = vu_poll_reboot,
++};
++
+ /* Virtio interface */
+ 
+ static bool vu_notify(struct virtqueue *vq)
+ {
+ 	struct virtio_uml_vq_info *info = vq->priv;
+ 	const uint64_t n = 1;
++	int calls = poll_iters ? atomic_read(&info->calls) : 0;
+ 	int rc;
+ 
+ 	if (info->suspended)
+@@ -811,6 +858,8 @@
+ 	do {
+ 		rc = os_write_file(info->kick_fd, &n, sizeof(n));
+ 	} while (rc == -EINTR);
++	if (rc == sizeof(n) && poll_iters)
++		vu_poll_fs(vq, calls);
+ 	return !WARN(rc != sizeof(n), "write returned %d\n", rc);
+ }
+ 
+@@ -824,8 +873,14 @@
+ 
+ 	do {
+ 		rc = os_read_file(info->call_fd, &n, sizeof(n));
+-		if (rc == sizeof(n))
++		if (rc == sizeof(n)) {
++			if (poll_iters)
++				atomic_inc(&info->calls);
+ 			ret |= vring_interrupt(irq, vq);
++			/* A poller may already have consumed this completion. */
++			if (poll_iters)
++				ret = IRQ_HANDLED;
++		}
+ 	} while (rc == sizeof(n) || rc == -EINTR);
+ 	WARN(rc != -EAGAIN, "read returned %d\n", rc);
+ 	return ret;
+@@ -1527,11 +1582,17 @@
+ 
+ static int __init virtio_uml_init(void)
+ {
+-	return platform_driver_register(&virtio_uml_driver);
++	int ret = platform_driver_register(&virtio_uml_driver);
++
++	if (!ret && poll_iters)
++		register_reboot_notifier(&vu_poll_notifier);
++	return ret;
+ }
+ 
+ static void __exit virtio_uml_exit(void)
+ {
++	if (poll_iters)
++		unregister_reboot_notifier(&vu_poll_notifier);
+ 	platform_driver_unregister(&virtio_uml_driver);
+ 	vu_unregister_cmdline_devices();
+ }
