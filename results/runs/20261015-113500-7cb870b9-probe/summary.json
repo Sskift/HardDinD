@@ -1,0 +1,122 @@
+{
+  "schema": "hd.probe/1",
+  "run_id": "20261015-113500-7cb870b9-probe",
+  "kind": "probe",
+  "revision": {
+    "git": "7cb870b900d3ecfb9a3e1952d15502c82941aef1",
+    "dirty": false,
+    "subject": "Merge branch 'main' into codex/core",
+    "diff_sha256": null,
+    "synced_at": "2026-10-15T11:34:58Z"
+  },
+  "program": "src/core_faults.c",
+  "args": [
+    "semantics"
+  ],
+  "candidates": [
+    "core-set-ptes",
+    "anon-faultaround",
+    "fault-rendezvous-counters"
+  ],
+  "kernel_args": [
+    "uml_faultstat=1"
+  ],
+  "ab": [
+    "uml_faultaround=5"
+  ],
+  "cpus": 4,
+  "bench_cpus": "8-11",
+  "artifacts": {
+    "kernel": "6a8a69086638dcc2531b",
+    "rootfs": "517c15477940b12b0d5a",
+    "network_backend": "52f5c212e8510cb12da4",
+    "network_probe": "52f5c212e8510cb12da4",
+    "client": "8b092aa35fde7efc002a"
+  },
+  "records": [
+    {
+      "rep": 0,
+      "side": "native",
+      "rc": 0,
+      "wall": 0.3058,
+      "result": {
+        "schema": "hd.core/1",
+        "mode": "semantics",
+        "verified": true
+      },
+      "stdout_tail": "CORE_CHECK anonymous_cow_protection_discard pass\nCORE_CHECK file_cow_dirty_truncate_fixed pass\nCORE_SEMANTICS_END status=0\n{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}\n",
+      "stderr_tail": "",
+      "load1": 43.970703125
+    },
+    {
+      "rep": 0,
+      "side": "A",
+      "rc": 0,
+      "wall": 1.6465,
+      "result": {
+        "schema": "hd.core/1",
+        "mode": "semantics",
+        "verified": true
+      },
+      "stdout_tail": "CORE_CHECK anonymous_cow_protection_discard pass\nCORE_CHECK file_cow_dirty_truncate_fixed pass\nCORE_SEMANTICS_END status=0\n{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}\n",
+      "stderr_tail": "",
+      "load1": 43.970703125
+    },
+    {
+      "rep": 0,
+      "side": "B",
+      "rc": 0,
+      "wall": 1.7846,
+      "result": {
+        "schema": "hd.core/1",
+        "mode": "semantics",
+        "verified": true
+      },
+      "stdout_tail": "CORE_CHECK anonymous_cow_protection_discard pass\nCORE_CHECK file_cow_dirty_truncate_fixed pass\nCORE_SEMANTICS_END status=0\n{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}\n",
+      "stderr_tail": "",
+      "load1": 42.771484375
+    },
+    {
+      "rep": 1,
+      "side": "native",
+      "rc": 0,
+      "wall": 0.5124,
+      "result": {
+        "schema": "hd.core/1",
+        "mode": "semantics",
+        "verified": true
+      },
+      "stdout_tail": "CORE_CHECK anonymous_cow_protection_discard pass\nCORE_CHECK file_cow_dirty_truncate_fixed pass\nCORE_SEMANTICS_END status=0\n{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}\n",
+      "stderr_tail": "",
+      "load1": 42.771484375
+    },
+    {
+      "rep": 1,
+      "side": "A",
+      "rc": 0,
+      "wall": 6.9404,
+      "result": {
+        "schema": "hd.core/1",
+        "mode": "semantics",
+        "verified": true
+      },
+      "stdout_tail": "CORE_CHECK anonymous_cow_protection_discard pass\nCORE_CHECK file_cow_dirty_truncate_fixed pass\nCORE_SEMANTICS_END status=0\n{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}\n",
+      "stderr_tail": "",
+      "load1": 41.82861328125
+    },
+    {
+      "rep": 1,
+      "side": "B",
+      "rc": 0,
+      "wall": 2.3216,
+      "result": {
+        "schema": "hd.core/1",
+        "mode": "semantics",
+        "verified": true
+      },
+      "stdout_tail": "CORE_CHECK anonymous_cow_protection_discard pass\nCORE_CHECK file_cow_dirty_truncate_fixed pass\nCORE_SEMANTICS_END status=0\n{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}\n",
+      "stderr_tail": "",
+      "load1": 42.1630859375
+    }
+  ]
+}
