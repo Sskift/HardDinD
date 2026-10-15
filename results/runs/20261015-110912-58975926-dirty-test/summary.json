@@ -1,0 +1,1507 @@
+{
+  "schema": "hd.summary/1",
+  "run_id": "20261015-110912-58975926-dirty-test",
+  "kind": "test",
+  "revision": {
+    "git": "58975926357ac5a8f69ecd5333ab2ffed4df9f1d",
+    "dirty": true,
+    "subject": "Implement outer-CLI Docker functional acceptance suite",
+    "diff_sha256": "bae6784af39abe8e66310138373d1667f8681833b71b085ac468c70cbdf57ba3",
+    "synced_at": "2026-10-15T11:09:08Z"
+  },
+  "candidates": [],
+  "kernel_args": [],
+  "started": 1792062553.163739,
+  "host": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      47.16455078125,
+      52.4091796875,
+      52.7880859375
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  },
+  "only": "^share\\.files\\.(outer_inotify_to_guest|outer_inotify_to_guest_uid1001|guest_inotify_to_outer|guest_inotify_to_outer_uid1001)$",
+  "quick": false,
+  "artifacts": {
+    "kernel": "cc2d81792c5059edbcdd",
+    "rootfs": "517c15477940b12b0d5a",
+    "network_backend": "52f5c212e8510cb12da4",
+    "network_probe": "52f5c212e8510cb12da4",
+    "client": "8b092aa35fde7efc002a",
+    "virtiofsd": "a57c2af7f64dea0873a8"
+  },
+  "test": {
+    "schema": "hd.test/1",
+    "checks": [
+      {
+        "id": "system.version_info",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "version",
+          "system info"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "image.import",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "image import",
+          "image inspect",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.lifecycle",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container create",
+          "container start",
+          "container stop",
+          "container restart",
+          "container kill",
+          "container rm",
+          "container inspect",
+          "container exec",
+          "container logs",
+          "container ps"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.exit_stdin_wait",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container wait",
+          "container inspect"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.exec_attach",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container exec",
+          "container attach",
+          "container create",
+          "container start"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.tty",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container exec"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.rename",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container rename",
+          "container inspect"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.pause",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container pause",
+          "container unpause",
+          "container cp"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.top_stats",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container top",
+          "container stats"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.logs_follow",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container logs",
+          "container exec"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.signals",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container kill",
+          "container logs",
+          "container wait"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.cp",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container cp",
+          "container exec"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "image.commit_export",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container diff",
+          "container commit",
+          "container export",
+          "image history",
+          "image import",
+          "image inspect",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "image.save_load_tag",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "image save",
+          "image load",
+          "image tag",
+          "image rm",
+          "image inspect"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "image.buildkit",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "image build",
+          "buildx build",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "image.pull",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "image pull",
+          "image inspect",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "image.registry_roundtrip",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "image push",
+          "image pull",
+          "image tag",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "volume.shared",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "volume create",
+          "volume ls",
+          "volume inspect",
+          "volume rm",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "storage.tmpfs",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container exec",
+          "container restart"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "storage.bind_metadata",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container exec"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "security.readonly_user",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "security.seccomp",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "security.privileged_mount",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "security.net_admin",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "security.user_namespace",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "resource.memory_oom",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container inspect"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "resource.pids",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "resource.cpu_quota",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "resource.cpuset",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "resource.update",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container update",
+          "container exec"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.bridge_dns",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "network create",
+          "network ls",
+          "network inspect",
+          "network connect",
+          "network disconnect",
+          "network rm",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.ipv6",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "network create",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.publish_tcp_udp",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container port",
+          "container stop",
+          "container start",
+          "container rm"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.publish_conflicts",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container create",
+          "container start",
+          "network create",
+          "container inspect"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.publish_addresses",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container port",
+          "container rm"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.publish_wildcard",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container create",
+          "container start",
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.publish_dynamic",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container port"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.egress_https_dns",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "system.context",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "context create",
+          "context ls",
+          "context inspect",
+          "context rm",
+          "system info"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "system.events",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "system events",
+          "container create",
+          "container start",
+          "container wait",
+          "container rm"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "system.df",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "system df"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "system.prune",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container prune",
+          "image prune",
+          "volume prune",
+          "network prune",
+          "system prune"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "container.restart_health",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container inspect",
+          "container logs"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.threads",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.mapping",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.dispatch_identity",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.dispatch_fdio",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.dispatch_mapping",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.dispatch_thread_syscalls",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.dispatch_isolation",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.dispatch_parallel_exec",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.core_threads",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.core_processes",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.core_signals",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.core_exec",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "process.core_syscall",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "compose.workflow",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "compose config",
+          "compose build",
+          "compose up",
+          "compose down",
+          "compose exec",
+          "compose logs",
+          "compose ps",
+          "compose scale",
+          "compose run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "swarm.workflow",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "swarm init",
+          "swarm leave",
+          "node ls",
+          "service create",
+          "service inspect",
+          "service ls",
+          "service ps",
+          "service logs",
+          "service scale",
+          "service rm",
+          "secret create",
+          "secret inspect",
+          "secret rm",
+          "config create",
+          "config inspect",
+          "config rm",
+          "network create"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.publish_alias_lifetime",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container create",
+          "container start",
+          "container rm"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "network.manual_forward_ownership",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "container create",
+          "container start",
+          "container rm"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.read_initial",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_write_open_fd",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_write_reopen",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_truncate_fstat",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_chmod_fstat",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.guest_write_outer_read",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.mmap_outer_to_guest",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.mmap_guest_to_outer",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.replace_open_inode",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.unlink_open_inode",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.xattr_both_directions",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_lock_blocks_guest",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.guest_lock_blocks_outer",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_inotify_to_guest",
+        "status": "fail",
+        "seconds": 14.511,
+        "covers": [
+          "run"
+        ],
+        "detail": "f-5e46d63c-share-files-outer-inotify-to-guest-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-peer-1> quit\nAssertionError: condition did not become true: False\n"
+      },
+      {
+        "id": "share.files.guest_inotify_to_outer",
+        "status": "fail",
+        "seconds": 2.782,
+        "covers": [
+          "run"
+        ],
+        "detail": "hd/store/client/8b092aa35fde7efc002a/ld-musl-x86_64.so.1 /root/harddind-rebuild/hd/store/client/8b092aa35fde7efc002a/docker run --rm -i --name hf-5e46d63c-share-files-guest-inotify-to-outer-peer-1 --label hd.check=share.files.guest_inotify_to_outer --mount type=bind,src=/root/harddind-rebuild/hd/runs/20261015-110912-58975926-dirty-test/share/share.files.guest_inotify_to_outer,dst=/share hd-functional:local /share_probe /share/docker-guest_inotify_to_outer\nhf-5e46d63c-share-files-guest-inotify-to-outer-peer-1: {\"ready\":true,\"uid\":0,\"gid\":0,\"pid\":1}\nhf-5e46d63c-share-files-guest-inotify-to-outer-peer-1> open\nhf-5e46d63c-share-files-guest-inotify-to-outer-peer-1: {\"op\":\"open\",\"rc\":0,\"errno\":0}\nhf-5e46d63c-share-files-guest-inotify-to-outer-peer-1> quit\nOSError: [Errno 24] outer inotify_init1\n"
+      },
+      {
+        "id": "share.files.user_permission_denied",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.user_create_owner",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.read_only_bind",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.files.outer_inotify_to_guest_uid1001",
+        "status": "fail",
+        "seconds": 6.296,
+        "covers": [
+          "run"
+        ],
+        "detail": "\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1> events\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1: {\"op\":\"events\",\"rc\":0,\"bytes\":0}\nhf-5e46d63c-share-files-outer-inotify-to-guest-uid1001-peer-1> quit\nAssertionError: condition did not become true: False\n"
+      },
+      {
+        "id": "share.files.guest_inotify_to_outer_uid1001",
+        "status": "pass",
+        "seconds": 2.923,
+        "covers": [
+          "run"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "share.files.parallel_creation_masks",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.outer_excludes_inner",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.inner_excludes_outer",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.shared_readers",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.independent_opens",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.dup_last_close",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.close_dup_keeps_lock",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.fork_last_close",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.close_releases",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.kill_releases",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.blocking_inner",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.blocking_outer",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.signal_cancels_wait",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.kill_cancels_wait",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.six_waiters_no_starvation",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.rename_keeps_lock",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.unlink_keeps_lock",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.downgrade",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.upgrade_failure_drops_shared",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.readonly_bind_flock",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_outer_excludes_inner",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_inner_excludes_outer",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_one_byte_zero",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_non_overlapping",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_readers_coexist",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_independent_guest_processes",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_self_multi_open",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_close_dup_releases",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_fork_close",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_partial_unlock",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_downgrade_upgrade",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_to_eof",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_blocking_grant",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_signal_eintr",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_kill_release",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_whence_cur_end",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_whence_before_bof",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_getlk_reports",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_getlk_child_exact_pid",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_getlk_host_pid_zero",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_deadlock_cycle",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_two_file_deadlock_cycle",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_exec_preserves",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_exec_missing",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_readonly_rights",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_cancel_grant_race",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_large_offsets",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "share.locks.posix_rename_unlink",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run"
+        ],
+        "detail": "not selected"
+      },
+      {
+        "id": "persistence.reboot",
+        "status": "not_tested",
+        "seconds": 0.0,
+        "covers": [
+          "run",
+          "container inspect",
+          "container port",
+          "volume inspect",
+          "image inspect",
+          "container exec"
+        ],
+        "detail": "not selected"
+      }
+    ],
+    "coverage": {
+      "commands": [
+        "buildx build",
+        "compose build",
+        "compose config",
+        "compose down",
+        "compose exec",
+        "compose logs",
+        "compose ps",
+        "compose run",
+        "compose scale",
+        "compose up",
+        "config create",
+        "config inspect",
+        "config rm",
+        "container attach",
+        "container commit",
+        "container cp",
+        "container create",
+        "container diff",
+        "container exec",
+        "container export",
+        "container inspect",
+        "container kill",
+        "container logs",
+        "container pause",
+        "container port",
+        "container prune",
+        "container ps",
+        "container rename",
+        "container restart",
+        "container rm",
+        "container start",
+        "container stats",
+        "container stop",
+        "container top",
+        "container unpause",
+        "container update",
+        "container wait",
+        "context create",
+        "context inspect",
+        "context ls",
+        "context rm",
+        "image build",
+        "image history",
+        "image import",
+        "image inspect",
+        "image load",
+        "image prune",
+        "image pull",
+        "image push",
+        "image rm",
+        "image save",
+        "image tag",
+        "network connect",
+        "network create",
+        "network disconnect",
+        "network inspect",
+        "network ls",
+        "network prune",
+        "network rm",
+        "node ls",
+        "run",
+        "secret create",
+        "secret inspect",
+        "secret rm",
+        "service create",
+        "service inspect",
+        "service logs",
+        "service ls",
+        "service ps",
+        "service rm",
+        "service scale",
+        "swarm init",
+        "swarm leave",
+        "system df",
+        "system events",
+        "system info",
+        "system prune",
+        "version",
+        "volume create",
+        "volume inspect",
+        "volume ls",
+        "volume prune",
+        "volume rm"
+      ],
+      "covered": [
+        "run"
+      ],
+      "missing": [
+        "buildx build",
+        "compose build",
+        "compose config",
+        "compose down",
+        "compose exec",
+        "compose logs",
+        "compose ps",
+        "compose run",
+        "compose scale",
+        "compose up",
+        "config create",
+        "config inspect",
+        "config rm",
+        "container attach",
+        "container commit",
+        "container cp",
+        "container create",
+        "container diff",
+        "container exec",
+        "container export",
+        "container inspect",
+        "container kill",
+        "container logs",
+        "container pause",
+        "container port",
+        "container prune",
+        "container ps",
+        "container rename",
+        "container restart",
+        "container rm",
+        "container start",
+        "container stats",
+        "container stop",
+        "container top",
+        "container unpause",
+        "container update",
+        "container wait",
+        "context create",
+        "context inspect",
+        "context ls",
+        "context rm",
+        "image build",
+        "image history",
+        "image import",
+        "image inspect",
+        "image load",
+        "image prune",
+        "image pull",
+        "image push",
+        "image rm",
+        "image save",
+        "image tag",
+        "network connect",
+        "network create",
+        "network disconnect",
+        "network inspect",
+        "network ls",
+        "network prune",
+        "network rm",
+        "node ls",
+        "secret create",
+        "secret inspect",
+        "secret rm",
+        "service create",
+        "service inspect",
+        "service logs",
+        "service ls",
+        "service ps",
+        "service rm",
+        "service scale",
+        "swarm init",
+        "swarm leave",
+        "system df",
+        "system events",
+        "system info",
+        "system prune",
+        "version",
+        "volume create",
+        "volume inspect",
+        "volume ls",
+        "volume prune",
+        "volume rm"
+      ]
+    }
+  },
+  "finished": 1792062644.9625893,
+  "host_end": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      58.5166015625,
+      55.79345703125,
+      54.0234375
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  }
+}

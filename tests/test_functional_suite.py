@@ -2,6 +2,7 @@ import ast
 import json
 import pathlib
 import re
+import socket
 import subprocess
 import tempfile
 import time
@@ -92,10 +93,20 @@ class FunctionalSuiteTests(unittest.TestCase):
         self.assertIn('x' * 1500, (self.ctx.run_dir / 'functional/broken.log').read_text())
 
     def test_subprocess_timeout_is_failure(self):
-        self.ctx.responses = [subprocess.TimeoutExpired(['docker'], .01)]
+        self.ctx.responses = [subprocess.TimeoutExpired(['docker'], .01, output=b'partial-output', stderr=b'partial-error')]
         rows = self.execute([spec('timeout', lambda c: c.d('run')), spec('next', lambda _: None)])['checks']
         self.assertEqual([r['status'] for r in rows], ['fail', 'pass'])
         self.assertLessEqual(self.ctx.calls[0][1]['timeout'], 1)
+        self.assertIn('partial-output', rows[0]['detail'])
+        self.assertIn('partial-error', rows[0]['detail'])
+
+    def test_context_wrapped_timeout_keeps_partial_output(self):
+        error = RuntimeError('docker timed out')
+        error.__cause__ = subprocess.TimeoutExpired(['docker'], .01, output=b'last-progress')
+        self.ctx.responses = [error]
+        row = self.execute([spec('timeout', lambda c: c.d('run'))])['checks'][0]
+        self.assertEqual(row['status'], 'fail')
+        self.assertIn('last-progress', row['detail'])
 
     def test_callback_deadline_and_cleanup(self):
         def hangs(c):
@@ -242,3 +253,14 @@ class FunctionalSuiteTests(unittest.TestCase):
     def test_build_context_contains_every_helper(self):
         copied = (f.FIXTURES / 'Dockerfile').read_text().split('COPY ', 1)[1].split()[:-1]
         self.assertEqual(set(copied), {p.stem for p in (f.FIXTURES / 'helpers').glob('*.c')} | {'network_probe'})
+
+    def test_udp_release_rejects_a_live_reusable_binding(self):
+        case = mock.Mock()
+        case.eventually.side_effect = lambda callback, timeout: callback()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as holder:
+            holder.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            holder.bind(('127.0.0.1', 0))
+            port = holder.getsockname()[1]
+            with self.assertRaises(OSError):
+                f.released(case, port, udp=True)
+        f.released(case, port, udp=True)
