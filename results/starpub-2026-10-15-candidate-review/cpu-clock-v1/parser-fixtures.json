@@ -1,0 +1,14 @@
+{
+  "pass": [
+    "historical_quota_accept",
+    "deadline_reject",
+    "missing_reject",
+    "quota_reject",
+    "errno_reject",
+    "stage_order_reject"
+  ],
+  "fail": [],
+  "supervisor_sha256": "7a4c8f47de3a08b34a55eac8a2730c1253fd70accaa02ec530a08babccdd0303",
+  "historical_stdout_sha256": "a611a2c08af4d85c30e7a93f9f63534898a9dbcbc6895191258b387a24518378",
+  "historical_stderr_sha256": "150ed063126c83d66d6647081a4b18aae3e2494ad80efe9d300aba1778ecf465"
+}

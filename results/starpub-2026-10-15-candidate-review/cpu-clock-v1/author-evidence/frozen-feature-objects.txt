@@ -1,0 +1,5 @@
+PRESENT kernel/cgroup/cpuset.o
+PRESENT arch/um/drivers/virtio_uml.o
+PRESENT fs/fuse/virtio_fs.o
+PRESENT net/netfilter/xt_ipvs.o
+PRESENT net/netfilter/nf_conntrack_netlink.o

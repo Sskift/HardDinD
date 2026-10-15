@@ -71,6 +71,8 @@
 
 [CPU 延迟四组对照](results/starpub-2026-10-15-candidate-review/cpu-witness-v3/README.md) 捕捉到限额组内约 479–498 ms 的长采样，而独立无限额观察进程最长约 2–3 ms；外层采样器本身有显著开销，根因和无干扰性能仍在核对。[CPU shares v5](results/starpub-2026-10-15-candidate-review/cpu-shares-v5/README.md) 则在正常关机后生成报告失败，缺失完整命令元数据，仍按失败保存。
 
+[无外层采样器的调度时钟对照](results/starpub-2026-10-15-candidate-review/cpu-clock-v1/README.md) 在旧内核限额组中再次记录到 182.786 ms 的采样，而同一候选关闭、开启、再次开启、再次关闭的最长采样均约 2–3 ms。开关之间没有稳定收益，不能将差异归因于高精度时钟或认定长停顿已修复。720 次采样完整结束，五个 guest 正常关机，47 个进程组清空；本轮没有忙负载，不作为 CPU 限制或整体性能验收。
+
 新的 `defer_ipi=1` 实验保留宿主 IPI 信号投递，在 guest 关闭中断期间原子登记待处理向量，恢复时处理，减少反复调用宿主信号屏蔽。构建使用 `make kernel-ipi-experiment`，运行器使用 `--defer-ipi`；开关默认关闭。`scripts/compare-ipi.py` 对原生、上一版内核以及同一新内核的开关两种状态做交错对照，`scripts/run-ipi-probes.py` 使用实际补丁内的协议头进行异步信号压力测试。
 
 该实验必须同时应用 `0009` 空闲等待修正：软件屏蔽不会把 IPI 留在宿主信号队列里，原来的 `signalfd` 等待因此可能漏唤醒。空闲路径现在在检查与睡眠期间屏蔽宿主 IPI，并检查软件 pending 位。原函数体的确定性复现与真实 guest 的零轮询回归见 [IPI 优化和故障定位](results/starpub-2026-10-14-ipi/)。单独应用 `0008` 的早期性能结果不能代表可用版本。

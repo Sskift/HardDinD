@@ -1,0 +1,22 @@
+{
+  "files": {
+    "0001-EXPERIMENTAL-um-stall-rendezvous-cfs-throttle-diag-v5.patch": "05ce7d904d6e059733e2975e118856126f82e8031d1e3241fafc3dd5a8274ddd",
+    "0002-EXPERIMENTAL-um-hr-sched-clock-AB-v5.patch": "27d37f5f5ec7c1b0dc7bcb12ce6d7d74d18bbcbabfbd08de089f57127f800a5d",
+    "MANIFEST-v5.json": "41fa3095b43ddb673748ca200c7891912b180971429b480e59f00de58da3c9ff",
+    "README.md": "de6196a86b5b343df13eb98753d929c909a8d174cace94137c56df2cf516201d",
+    "build-chunk.sh": "b887770912314e060845932bf1811fff5c01288cf21ef3499defb7819df243ca",
+    "build-common.sh": "7ff3aa085159504ce5a34c11818d5ddff0e9ed74cd51dfa2afcb0aa6fb6be0ed",
+    "build-v5.sh": "5e4748175b947705b65668bbd6716243ca4707113629144b50d4766b32c9d5a8",
+    "frozen-cpuset-kernel.config": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+    "frozen-feature-objects.txt": "da99fcfda477b28e33dc3ac3e3ae4183e89569ca6a8aed2844d6e34ceadfbc14",
+    "smp-link-final.log": "9fd1c1f6b23a3dcdef4f86a44f23c41b388360829c2f9b390a5b11c398ac64fb",
+    "smp-sched_clock-disasm.txt": "443f0e4127e1281a6635e230556801aaa7cd2b56f6887d0bbb780b5ed528d55f",
+    "smp-symbol-binding.txt": "8fa8b5e4a6d947ed6f2571b8b18838aa84d9ae2909f142a61ccedac035788ad2",
+    "tt-config-diff.txt": "ddf4434bcfc565370d6bd7457ddbc783ef2478652201f1d75a9d6f9a27892405"
+  },
+  "frozen_config_sha256": "bd17febf02803c6b966948829fa25d3bfc85a354ac8746afaa3422a8ec65549b",
+  "kind": "clock-candidate-v5",
+  "smp_config_drift": 0,
+  "smp_kernel_sha256": "5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0",
+  "tt_status": "pending_owner_slot_1212_objects_rc124"
+}

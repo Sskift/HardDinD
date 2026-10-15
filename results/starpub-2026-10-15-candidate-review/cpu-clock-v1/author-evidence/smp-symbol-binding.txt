@@ -1,0 +1,32 @@
+# v5 SMP vmlinux (5b3d3c507a00cd6c56dfb0dfec06f07b62633c4e9a487e5905ab960a105c10b0), frozen config bd17febf, drift 0
+## harddind + clock symbols
+00000000607d8854 r __flags_sched_clock
+00000000607daaa8 r __kstrtab_sched_clock
+00000000607e5bb3 r __kstrtabns_sched_clock
+00000000607cfdb8 r __ksymtab_sched_clock
+00000000607f52a0 d __uml_help_harddind_hr_sched_clock_setup
+00000000607f52a8 d __uml_help_harddind_stall_diag_setup
+000000006080bc00 d __uml_help_str_harddind_hr_sched_clock_setup
+000000006080bce0 d __uml_help_str_harddind_stall_diag_setup
+00000000607f5140 d __uml_setup_harddind_hr_sched_clock_setup
+00000000607f5150 d __uml_setup_harddind_stall_diag_setup
+000000006080bbd0 d __uml_setup_str_harddind_hr_sched_clock_setup
+000000006080bcb0 d __uml_setup_str_harddind_stall_diag_setup
+0000000060a77868 b harddind_diag_seq
+0000000060965110 b harddind_hr_anchor_guest_ns
+0000000060965108 b harddind_hr_anchor_host_ns
+0000000060965104 b harddind_hr_ready
+0000000060965100 b harddind_hr_sched_clock
+0000000060005e9f t harddind_hr_sched_clock_setup
+000000006081aaa0 d harddind_rs_cfs
+000000006081aa80 d harddind_rs_rv
+000000006003f9bf t harddind_stall_cfs
+0000000060a77860 b harddind_stall_diag_ms
+0000000060006030 t harddind_stall_diag_setup
+000000006003f8bf t harddind_stall_rendezvous
+000000006003b86a t sched_clock
+## undefined harddind (expect none)
+NONE
+## pinned-kernel precedent binding
+0000000060857580 d jiffies
+0000000060a7f8f0 b seccomp_threads

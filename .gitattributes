@@ -9,6 +9,7 @@ results/**/*.log -text -whitespace
 results/**/*.patch -text -whitespace
 results/**/*-stub-relocations.txt -text -whitespace
 results/**/*-stub-symbols.txt -text -whitespace
+results/**/*-disasm.txt -text -whitespace
 # Source snapshots also preserve formatting from failed experiments.
 results/**/sources/* -text -whitespace
 # Fixed kernel snapshots and patch-reapplication proofs retain upstream bytes.
