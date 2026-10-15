@@ -1,0 +1,3939 @@
+{
+  "schema": "hd.summary/1",
+  "run_id": "20261015-114450-1abb922b-dirty-bench-net-vnet-tx",
+  "kind": "bench",
+  "revision": {
+    "git": "1abb922b5032aaee103a15a7233e531f6b2a9125",
+    "dirty": true,
+    "subject": "Merge commit '33daff2' into codex/net",
+    "diff_sha256": "60e0038f87fdada896ff349a8da538b25d3a2aa31bbe9f7260d87603262b5ae9",
+    "synced_at": "2026-10-15T11:22:35Z",
+    "net_launcher_patch_sha256": "d7212b685d2b8cc7cebaa9d976bbe2474fdc8b6de638ab072eb55582549b1678"
+  },
+  "candidates": [
+    "net-fd-vnet"
+  ],
+  "kernel_args": [],
+  "started": 1792064690.8630319,
+  "host": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      42.4794921875,
+      43.37255859375,
+      45.478515625
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  },
+  "only": "^net\\.",
+  "quick": true,
+  "artifacts": {
+    "kernel": "11fccd118a3beafc56aa",
+    "rootfs": "517c15477940b12b0d5a",
+    "network_backend": "744d0a90e267e579a89b",
+    "network_probe": "744d0a90e267e579a89b",
+    "client": "8b092aa35fde7efc002a"
+  },
+  "bench": {
+    "schema": "hd.bench/1",
+    "cpus": "8-11",
+    "pairs": 2,
+    "host_load": [
+      [
+        1792064773.4418414,
+        39.18115234375
+      ],
+      [
+        1792064774.0952227,
+        39.18115234375
+      ],
+      [
+        1792064781.3348274,
+        39.4033203125
+      ],
+      [
+        1792064783.6258273,
+        39.4033203125
+      ],
+      [
+        1792064789.3111176,
+        41.853515625
+      ],
+      [
+        1792064791.4049785,
+        44.02783203125
+      ],
+      [
+        1792064795.2247458,
+        44.02783203125
+      ],
+      [
+        1792064795.8700254,
+        44.58642578125
+      ],
+      [
+        1792064802.4550993,
+        48.78369140625
+      ],
+      [
+        1792064804.6131709,
+        48.78369140625
+      ]
+    ],
+    "metrics": {
+      "net.publish_stream": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          3200.32002,
+          2992.61694
+        ],
+        "guest": [
+          371.607098,
+          332.878396
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "56e96a985aa950124b3e",
+          "image": "hd-bench:56e96a985aa950124b3e",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-114450-1abb922b-dirty-bench-net-vnet-tx/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064772.066813,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.publish_stream",
+                "side": "native",
+                "pair": null,
+                "started": 1792064772.0999982,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.23953046463429928,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 46,
+                    "tasks_after": 46,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 49,
+                  "system_us": 35
+                }
+              },
+              "workload": {
+                "value": 3330.70874,
+                "verified": 704643072,
+                "batch": 1024,
+                "clock_reads": 13,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.211559499
+              },
+              "value": 3330.70874,
+              "wall_seconds": 0.3175155445933342,
+              "finished": 1792064772.3843408,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064772.3843558,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.publish_stream",
+                "side": "guest",
+                "pair": null,
+                "started": 1792064772.4183776,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.2947800438851118,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.12,
+                    "system_seconds": 0.05,
+                    "new_tasks": 2,
+                    "exited_tasks": 1,
+                    "tasks_before": 46,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.11,
+                        "system_seconds": 0.05
+                      },
+                      {
+                        "pid": 3597469,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.06,
+                    "system_seconds": 0.05,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.06,
+                        "system_seconds": 0.05
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 1674,
+                  "tx_packets": 1792,
+                  "rx_bytes": 90408,
+                  "tx_bytes": 62945804,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 3088,
+                  "tx_syscalls": 1790,
+                  "poll_calls": 2049,
+                  "rx_gso": 0,
+                  "tx_gso": 1779,
+                  "coalesced": 41267,
+                  "user_us": 65153,
+                  "system_us": 44052
+                }
+              },
+              "workload": {
+                "value": 222.375071,
+                "verified": 54525952,
+                "batch": 128,
+                "clock_reads": 8,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.245198132
+              },
+              "value": 222.375071,
+              "wall_seconds": 0.3771048914641142,
+              "finished": 1792064772.7614646,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064772.7614846,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.publish_stream",
+                "side": "native",
+                "pair": 0,
+                "started": 1792064772.8112996,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.23386030085384846,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.02,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 51,
+                  "system_us": 36
+                }
+              },
+              "workload": {
+                "value": 3200.32002,
+                "verified": 671088640,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.209694229
+              },
+              "value": 3200.32002,
+              "wall_seconds": 0.3108424339443445,
+              "finished": 1792064773.072331,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064773.0723467,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.publish_stream",
+                "side": "guest",
+                "pair": 0,
+                "started": 1792064773.1002357,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.3028910830616951,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.24,
+                    "system_seconds": 0.09,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.2,
+                        "system_seconds": 0.08
+                      },
+                      {
+                        "pid": 3597684,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.12,
+                    "system_seconds": 0.05,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.12,
+                        "system_seconds": 0.05
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 2875,
+                  "tx_packets": 2915,
+                  "rx_bytes": 155274,
+                  "tx_bytes": 109143802,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 5202,
+                  "tx_syscalls": 2913,
+                  "poll_calls": 3429,
+                  "rx_gso": 0,
+                  "tx_gso": 2900,
+                  "coalesced": 71746,
+                  "user_us": 119571,
+                  "system_us": 56192
+                }
+              },
+              "workload": {
+                "value": 371.607098,
+                "verified": 92274688,
+                "batch": 256,
+                "clock_reads": 7,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.248312501
+              },
+              "value": 371.607098,
+              "wall_seconds": 0.36947523429989815,
+              "finished": 1792064773.4418259,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064773.4418473,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.publish_stream",
+                "side": "native",
+                "pair": 1,
+                "started": 1792064773.4826326,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.24819567240774632,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.02,
+                    "system_seconds": 0.0,
+                    "new_tasks": 1,
+                    "exited_tasks": 1,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 43,
+                  "system_us": 27
+                }
+              },
+              "workload": {
+                "value": 2992.61694,
+                "verified": 603979776,
+                "batch": 1024,
+                "clock_reads": 10,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.201823283
+              },
+              "value": 2992.61694,
+              "wall_seconds": 0.32142941653728485,
+              "finished": 1792064773.7632809,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064773.7632952,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.publish_stream",
+                "side": "guest",
+                "pair": 1,
+                "started": 1792064773.7894905,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.2767789736390114,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.22,
+                    "system_seconds": 0.1,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.18,
+                        "system_seconds": 0.08
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3597684,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.06,
+                    "system_seconds": 0.09,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.06,
+                        "system_seconds": 0.09
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 2542,
+                  "tx_packets": 2644,
+                  "rx_bytes": 137292,
+                  "tx_bytes": 92351952,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 4633,
+                  "tx_syscalls": 2642,
+                  "poll_calls": 3042,
+                  "rx_gso": 0,
+                  "tx_gso": 2631,
+                  "coalesced": 60524,
+                  "user_us": 55637,
+                  "system_us": 86505
+                }
+              },
+              "workload": {
+                "value": 332.878396,
+                "verified": 75497472,
+                "batch": 256,
+                "clock_reads": 6,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.226801958
+              },
+              "value": 332.878396,
+              "wall_seconds": 0.3319129925221205,
+              "finished": 1792064774.0952117,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            }
+          ]
+        }
+      },
+      "net.egress_stream": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          3609.76751,
+          2672.62782
+        ],
+        "guest": [
+          346.938559,
+          160.189417
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "56e96a985aa950124b3e",
+          "image": "hd-bench:56e96a985aa950124b3e",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-114450-1abb922b-dirty-bench-net-vnet-tx/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064775.068987,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.egress_stream",
+                "side": "native",
+                "pair": null,
+                "started": 1792064775.0943224,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.25413323752582073,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.01,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 36,
+                    "tasks_after": 36,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 66,
+                  "system_us": 0
+                }
+              },
+              "workload": {
+                "value": 2569.83649,
+                "verified": 536870912,
+                "batch": 1024,
+                "clock_reads": 9,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.208912479
+              },
+              "value": 2569.83649,
+              "wall_seconds": 0.31370492465794086,
+              "finished": 1792064775.3827124,
+              "host_load_end": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064775.3827276,
+              "host_load": [
+                39.18115234375,
+                42.46240234375,
+                45.0048828125
+              ],
+              "network_profile": {
+                "metric": "net.egress_stream",
+                "side": "guest",
+                "pair": null,
+                "started": 1792064775.4402654,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 2.878386965021491,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.82,
+                    "system_seconds": 0.32,
+                    "new_tasks": 3,
+                    "exited_tasks": 3,
+                    "tasks_before": 36,
+                    "tasks_after": 36,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 2.56,
+                        "system_seconds": 0.19
+                      },
+                      {
+                        "pid": 3589299,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589627,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.03
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3590515,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3597312,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.07,
+                    "system_seconds": 0.05,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.07,
+                        "system_seconds": 0.05
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 1504,
+                  "tx_packets": 1509,
+                  "rx_bytes": 92292068,
+                  "tx_bytes": 84429,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 2964,
+                  "tx_syscalls": 1476,
+                  "poll_calls": 1494,
+                  "rx_gso": 1474,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 66153,
+                  "system_us": 44926
+                }
+              },
+              "workload": {
+                "value": 278.960403,
+                "verified": 83886080,
+                "batch": 128,
+                "clock_reads": 12,
+                "calibration_clock_reads": 7,
+                "measurement_seconds": 0.300709632
+              },
+              "value": 278.960403,
+              "wall_seconds": 3.0842130165547132,
+              "finished": 1792064778.466946,
+              "host_load_end": [
+                40.0478515625,
+                42.587890625,
+                45.03173828125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064778.466962,
+              "host_load": [
+                40.0478515625,
+                42.587890625,
+                45.03173828125
+              ],
+              "network_profile": {
+                "metric": "net.egress_stream",
+                "side": "native",
+                "pair": 0,
+                "started": 1792064778.592832,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.46564254350960255,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.01,
+                    "system_seconds": 0.01,
+                    "new_tasks": 1,
+                    "exited_tasks": 2,
+                    "tasks_before": 36,
+                    "tasks_after": 35,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589299,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 2,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 64,
+                  "system_us": 47
+                }
+              },
+              "workload": {
+                "value": 3609.76751,
+                "verified": 771751936,
+                "batch": 1024,
+                "clock_reads": 13,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.213795468
+              },
+              "value": 3609.76751,
+              "wall_seconds": 0.6322984863072634,
+              "finished": 1792064779.0992646,
+              "host_load_end": [
+                40.0478515625,
+                42.587890625,
+                45.03173828125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064779.0992835,
+              "host_load": [
+                40.0478515625,
+                42.587890625,
+                45.03173828125
+              ],
+              "network_profile": {
+                "metric": "net.egress_stream",
+                "side": "guest",
+                "pair": 0,
+                "started": 1792064779.136882,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 2.152682736515999,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.43,
+                    "system_seconds": 0.28,
+                    "new_tasks": 3,
+                    "exited_tasks": 2,
+                    "tasks_before": 35,
+                    "tasks_after": 36,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 2.22,
+                        "system_seconds": 0.17
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590515,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3597312,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3598586,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.05,
+                    "system_seconds": 0.06,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.05,
+                        "system_seconds": 0.06
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 3216,
+                  "tx_packets": 3221,
+                  "rx_bytes": 92384516,
+                  "tx_bytes": 176877,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 4027,
+                  "tx_syscalls": 1492,
+                  "poll_calls": 1509,
+                  "rx_gso": 3185,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 57717,
+                  "system_us": 67574
+                }
+              },
+              "workload": {
+                "value": 346.938559,
+                "verified": 75497472,
+                "batch": 128,
+                "clock_reads": 10,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.217610496
+              },
+              "value": 346.938559,
+              "wall_seconds": 2.2355303447693586,
+              "finished": 1792064781.3348196,
+              "host_load_end": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064781.334831,
+              "host_load": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ],
+              "network_profile": {
+                "metric": "net.egress_stream",
+                "side": "native",
+                "pair": 1,
+                "started": 1792064781.3627834,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.24318099208176136,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 36,
+                    "tasks_after": 36,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 35,
+                  "system_us": 27
+                }
+              },
+              "workload": {
+                "value": 2672.62782,
+                "verified": 536870912,
+                "batch": 1024,
+                "clock_reads": 9,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.200877544
+              },
+              "value": 2672.62782,
+              "wall_seconds": 0.3015760686248541,
+              "finished": 1792064781.63641,
+              "host_load_end": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064781.6364303,
+              "host_load": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ],
+              "network_profile": {
+                "metric": "net.egress_stream",
+                "side": "guest",
+                "pair": 1,
+                "started": 1792064781.6630473,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.9283357579261065,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 1.89,
+                    "system_seconds": 0.16,
+                    "new_tasks": 2,
+                    "exited_tasks": 2,
+                    "tasks_before": 36,
+                    "tasks_after": 36,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 1.68,
+                        "system_seconds": 0.11
+                      },
+                      {
+                        "pid": 3589627,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3597312,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3599468,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3599470,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.05,
+                    "system_seconds": 0.04,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.05,
+                        "system_seconds": 0.04
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 1865,
+                  "tx_packets": 1870,
+                  "rx_bytes": 67145737,
+                  "tx_bytes": 103923,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 2786,
+                  "tx_syscalls": 1091,
+                  "poll_calls": 1107,
+                  "rx_gso": 1832,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 49299,
+                  "system_us": 33733
+                }
+              },
+              "workload": {
+                "value": 160.189417,
+                "verified": 50331648,
+                "batch": 128,
+                "clock_reads": 7,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.314200832
+              },
+              "value": 160.189417,
+              "wall_seconds": 1.9893805589526892,
+              "finished": 1792064783.6258173,
+              "host_load_end": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ]
+            }
+          ]
+        }
+      },
+      "net.bridge_stream": {
+        "unit": "MB/s",
+        "higher_is_better": true,
+        "native": [
+          3305.13494,
+          3086.61517
+        ],
+        "guest": [
+          1343.21995,
+          1111.6989
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "56e96a985aa950124b3e",
+          "image": "hd-bench:56e96a985aa950124b3e",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-114450-1abb922b-dirty-bench-net-vnet-tx/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064784.9692063,
+              "host_load": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ],
+              "network_profile": {
+                "metric": "net.bridge_stream",
+                "side": "native",
+                "pair": null,
+                "started": 1792064784.9957469,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.23905166424810886,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 1,
+                    "exited_tasks": 1,
+                    "tasks_before": 42,
+                    "tasks_after": 42,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 0,
+                  "system_us": 88
+                }
+              },
+              "workload": {
+                "value": 3410.75447,
+                "verified": 704643072,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.206594488
+              },
+              "value": 3410.75447,
+              "wall_seconds": 0.2913655061274767,
+              "finished": 1792064785.2605822,
+              "host_load_end": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064785.2605944,
+              "host_load": [
+                39.4033203125,
+                42.412109375,
+                44.96142578125
+              ],
+              "network_profile": {
+                "metric": "net.bridge_stream",
+                "side": "guest",
+                "pair": null,
+                "started": 1792064785.285401,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.8798369094729424,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.54,
+                    "system_seconds": 0.27,
+                    "new_tasks": 3,
+                    "exited_tasks": 1,
+                    "tasks_before": 42,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 2.29,
+                        "system_seconds": 0.14
+                      },
+                      {
+                        "pid": 3589400,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3597312,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3598586,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3599470,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.02
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 19,
+                  "tx_packets": 26,
+                  "rx_bytes": 2672,
+                  "tx_bytes": 4077,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 36,
+                  "tx_syscalls": 25,
+                  "poll_calls": 35,
+                  "rx_gso": 0,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 0,
+                  "system_us": 1572
+                }
+              },
+              "workload": {
+                "value": 1427.44711,
+                "verified": 301989888,
+                "batch": 512,
+                "clock_reads": 10,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.211559424
+              },
+              "value": 1427.44711,
+              "wall_seconds": 1.938789812847972,
+              "finished": 1792064787.1993887,
+              "host_load_end": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064787.199403,
+              "host_load": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ],
+              "network_profile": {
+                "metric": "net.bridge_stream",
+                "side": "native",
+                "pair": 0,
+                "started": 1792064787.234747,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.24815049581229687,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.01,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 44,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 0,
+                  "system_us": 64
+                }
+              },
+              "workload": {
+                "value": 3305.13494,
+                "verified": 671088640,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.203044249
+              },
+              "value": 3305.13494,
+              "wall_seconds": 0.3144028317183256,
+              "finished": 1792064787.5138094,
+              "host_load_end": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064787.5138247,
+              "host_load": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ],
+              "network_profile": {
+                "metric": "net.bridge_stream",
+                "side": "guest",
+                "pair": 0,
+                "started": 1792064787.5433178,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.7316729854792356,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.47,
+                    "system_seconds": 0.29,
+                    "new_tasks": 2,
+                    "exited_tasks": 2,
+                    "tasks_before": 44,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 2.08,
+                        "system_seconds": 0.15
+                      },
+                      {
+                        "pid": 3589627,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3597312,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.06,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3598586,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3599470,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3601080,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3601159,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.08,
+                        "system_seconds": 0.05
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 19,
+                  "tx_packets": 26,
+                  "rx_bytes": 2672,
+                  "tx_bytes": 4077,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 37,
+                  "tx_syscalls": 25,
+                  "poll_calls": 35,
+                  "rx_gso": 0,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 0,
+                  "system_us": 1561
+                }
+              },
+              "workload": {
+                "value": 1343.21995,
+                "verified": 301989888,
+                "batch": 512,
+                "clock_reads": 10,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.224825344
+              },
+              "value": 1343.21995,
+              "wall_seconds": 1.7972778230905533,
+              "finished": 1792064789.3111076,
+              "host_load_end": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064789.3111224,
+              "host_load": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ],
+              "network_profile": {
+                "metric": "net.bridge_stream",
+                "side": "native",
+                "pair": 1,
+                "started": 1792064789.3475804,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.24759359285235405,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.01,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 44,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 0,
+                  "system_us": 62
+                }
+              },
+              "workload": {
+                "value": 3086.61517,
+                "verified": 671088640,
+                "batch": 1024,
+                "clock_reads": 15,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.217418954
+              },
+              "value": 3086.61517,
+              "wall_seconds": 0.3235642407089472,
+              "finished": 1792064789.6346903,
+              "host_load_end": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064789.6347084,
+              "host_load": [
+                41.853515625,
+                42.8701171875,
+                45.09619140625
+              ],
+              "network_profile": {
+                "metric": "net.bridge_stream",
+                "side": "guest",
+                "pair": 1,
+                "started": 1792064789.6639338,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.7117741368710995,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.16,
+                    "system_seconds": 0.23,
+                    "new_tasks": 3,
+                    "exited_tasks": 3,
+                    "tasks_before": 44,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 1.84,
+                        "system_seconds": 0.14
+                      },
+                      {
+                        "pid": 3589627,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3597312,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3601080,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3601159,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.09,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3601627,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.01,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 19,
+                  "tx_packets": 26,
+                  "rx_bytes": 2670,
+                  "tx_bytes": 4077,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 38,
+                  "tx_syscalls": 26,
+                  "poll_calls": 36,
+                  "rx_gso": 0,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 0,
+                  "system_us": 1492
+                }
+              },
+              "workload": {
+                "value": 1111.6989,
+                "verified": 234881024,
+                "batch": 512,
+                "clock_reads": 8,
+                "calibration_clock_reads": 10,
+                "measurement_seconds": 0.211281152
+              },
+              "value": 1111.6989,
+              "wall_seconds": 1.770255483686924,
+              "finished": 1792064791.404969,
+              "host_load_end": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ]
+            }
+          ]
+        }
+      },
+      "net.publish_rr": {
+        "unit": "round trips/s",
+        "higher_is_better": true,
+        "native": [
+          54263.023,
+          58892.5278
+        ],
+        "guest": [
+          778.136965,
+          6724.93557
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "56e96a985aa950124b3e",
+          "image": "hd-bench:56e96a985aa950124b3e",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-114450-1abb922b-dirty-bench-net-vnet-tx/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064793.6327949,
+              "host_load": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ],
+              "network_profile": {
+                "metric": "net.publish_rr",
+                "side": "native",
+                "pair": null,
+                "started": 1792064793.6603518,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.28033080138266087,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 46,
+                    "tasks_after": 46,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.01,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 82,
+                  "system_us": 0
+                }
+              },
+              "workload": {
+                "value": 46875.0924,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.240298193
+              },
+              "value": 46875.0924,
+              "wall_seconds": 0.335437411442399,
+              "finished": 1792064793.9682426,
+              "host_load_end": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064793.9682713,
+              "host_load": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ],
+              "network_profile": {
+                "metric": "net.publish_rr",
+                "side": "guest",
+                "pair": null,
+                "started": 1792064793.9987934,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.2956597749143839,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.24,
+                    "system_seconds": 0.06,
+                    "new_tasks": 2,
+                    "exited_tasks": 1,
+                    "tasks_before": 46,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.22,
+                        "system_seconds": 0.05
+                      },
+                      {
+                        "pid": 3603134,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.05,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.05
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 1799,
+                  "tx_packets": 1902,
+                  "rx_bytes": 211794,
+                  "tx_bytes": 217356,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 3595,
+                  "tx_syscalls": 1886,
+                  "poll_calls": 3597,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 1634,
+                  "system_us": 57234
+                }
+              },
+              "workload": {
+                "value": 7627.01011,
+                "verified": 1536,
+                "batch": 128,
+                "clock_reads": 13,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.201389533
+              },
+              "value": 7627.01011,
+              "wall_seconds": 0.35476767271757126,
+              "finished": 1792064794.323043,
+              "host_load_end": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064794.3230615,
+              "host_load": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ],
+              "network_profile": {
+                "metric": "net.publish_rr",
+                "side": "native",
+                "pair": 0,
+                "started": 1792064794.3505552,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.24524212256073952,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 34,
+                  "system_us": 28
+                }
+              },
+              "workload": {
+                "value": 54263.023,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.207581505
+              },
+              "value": 54263.023,
+              "wall_seconds": 0.30260021425783634,
+              "finished": 1792064794.6256661,
+              "host_load_end": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064794.6256802,
+              "host_load": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ],
+              "network_profile": {
+                "metric": "net.publish_rr",
+                "side": "guest",
+                "pair": 0,
+                "started": 1792064794.6520698,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.5290192328393459,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.07,
+                    "system_seconds": 0.06,
+                    "new_tasks": 1,
+                    "exited_tasks": 1,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.07,
+                        "system_seconds": 0.03
+                      },
+                      {
+                        "pid": 3603340,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.03
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.02,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.02
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 647,
+                  "tx_packets": 687,
+                  "rx_bytes": 75858,
+                  "tx_bytes": 78018,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 1294,
+                  "tx_syscalls": 679,
+                  "poll_calls": 1293,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 7572,
+                  "system_us": 15981
+                }
+              },
+              "workload": {
+                "value": 778.136965,
+                "verified": 384,
+                "batch": 128,
+                "clock_reads": 4,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.493486388
+              },
+              "value": 778.136965,
+              "wall_seconds": 0.5990510489791632,
+              "finished": 1792064795.2247353,
+              "host_load_end": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064795.2247522,
+              "host_load": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ],
+              "network_profile": {
+                "metric": "net.publish_rr",
+                "side": "native",
+                "pair": 1,
+                "started": 1792064795.254345,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.2602961715310812,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 34,
+                  "system_us": 29
+                }
+              },
+              "workload": {
+                "value": 58892.5278,
+                "verified": 12288,
+                "batch": 1024,
+                "clock_reads": 13,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.208651258
+              },
+              "value": 58892.5278,
+              "wall_seconds": 0.3206355571746826,
+              "finished": 1792064795.545392,
+              "host_load_end": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064795.5454073,
+              "host_load": [
+                44.02783203125,
+                43.30419921875,
+                45.224609375
+              ],
+              "network_profile": {
+                "metric": "net.publish_rr",
+                "side": "guest",
+                "pair": 1,
+                "started": 1792064795.575625,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.26406579464673996,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.18,
+                    "system_seconds": 0.09,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 47,
+                    "tasks_after": 47,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.12,
+                        "system_seconds": 0.07
+                      },
+                      {
+                        "pid": 3603340,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.06,
+                        "system_seconds": 0.02
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.02,
+                    "system_seconds": 0.04,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.04
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 1671,
+                  "tx_packets": 1766,
+                  "rx_bytes": 196690,
+                  "tx_bytes": 201820,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 3341,
+                  "tx_syscalls": 1758,
+                  "poll_calls": 3343,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 11904,
+                  "system_us": 40200
+                }
+              },
+              "workload": {
+                "value": 6724.93557,
+                "verified": 1408,
+                "batch": 128,
+                "clock_reads": 12,
+                "calibration_clock_reads": 8,
+                "measurement_seconds": 0.209370036
+              },
+              "value": 6724.93557,
+              "wall_seconds": 0.3246039357036352,
+              "finished": 1792064795.8700159,
+              "host_load_end": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ]
+            }
+          ]
+        }
+      },
+      "net.bridge_rr": {
+        "unit": "round trips/s",
+        "higher_is_better": true,
+        "native": [
+          41796.8219,
+          55702.3528
+        ],
+        "guest": [
+          9420.70884,
+          8721.77691
+        ],
+        "error": null,
+        "detail": {
+          "root_key": "56e96a985aa950124b3e",
+          "image": "hd-bench:56e96a985aa950124b3e",
+          "native_root": "/root/harddind-rebuild/hd/runs/20261015-114450-1abb922b-dirty-bench-net-vnet-tx/bench-native",
+          "quick": true,
+          "warmups_per_side": 1,
+          "timing": "inside workload; Docker control plane uses outer CLI wall time",
+          "budget_seconds": 120,
+          "samples": [
+            {
+              "side": "native",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064798.0287585,
+              "host_load": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ],
+              "network_profile": {
+                "metric": "net.bridge_rr",
+                "side": "native",
+                "pair": null,
+                "started": 1792064798.0658007,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.2485155090689659,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.01,
+                    "new_tasks": 1,
+                    "exited_tasks": 0,
+                    "tasks_before": 42,
+                    "tasks_after": 43,
+                    "processes": [
+                      {
+                        "pid": 3591915,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 0,
+                  "system_us": 64
+                }
+              },
+              "workload": {
+                "value": 52871.5411,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.213044669
+              },
+              "value": 52871.5411,
+              "wall_seconds": 0.3246461655944586,
+              "finished": 1792064798.353416,
+              "host_load_end": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "warmup",
+              "pair": null,
+              "unix_time": 1792064798.3534303,
+              "host_load": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ],
+              "network_profile": {
+                "metric": "net.bridge_rr",
+                "side": "guest",
+                "pair": null,
+                "started": 1792064798.384606,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.7145927958190441,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.0,
+                    "system_seconds": 0.21,
+                    "new_tasks": 4,
+                    "exited_tasks": 3,
+                    "tasks_before": 43,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 1.8,
+                        "system_seconds": 0.14
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3603001,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3603011,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.01,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [
+                      {
+                        "pid": 3589194,
+                        "comm": "network-backend",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 19,
+                  "tx_packets": 26,
+                  "rx_bytes": 2664,
+                  "tx_bytes": 4074,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 38,
+                  "tx_syscalls": 26,
+                  "poll_calls": 36,
+                  "rx_gso": 0,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 0,
+                  "system_us": 1535
+                }
+              },
+              "workload": {
+                "value": 5758.14634,
+                "verified": 1280,
+                "batch": 256,
+                "clock_reads": 6,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.22229376
+              },
+              "value": 5758.14634,
+              "wall_seconds": 1.7807408720254898,
+              "finished": 1792064800.1341763,
+              "host_load_end": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064800.1341925,
+              "host_load": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ],
+              "network_profile": {
+                "metric": "net.bridge_rr",
+                "side": "native",
+                "pair": 0,
+                "started": 1792064800.1683295,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.28889365680515766,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.03,
+                    "system_seconds": 0.0,
+                    "new_tasks": 1,
+                    "exited_tasks": 2,
+                    "tasks_before": 44,
+                    "tasks_after": 43,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3603001,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3604632,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 0,
+                  "system_us": 59
+                }
+              },
+              "workload": {
+                "value": 41796.8219,
+                "verified": 10240,
+                "batch": 1024,
+                "clock_reads": 11,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.244994704
+              },
+              "value": 41796.8219,
+              "wall_seconds": 0.359145350754261,
+              "finished": 1792064800.493342,
+              "host_load_end": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 0,
+              "unix_time": 1792064800.4933615,
+              "host_load": [
+                44.58642578125,
+                43.43212890625,
+                45.255859375
+              ],
+              "network_profile": {
+                "metric": "net.bridge_rr",
+                "side": "guest",
+                "pair": 0,
+                "started": 1792064800.53195,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.8890842571854591,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 2.2,
+                    "system_seconds": 0.34,
+                    "new_tasks": 3,
+                    "exited_tasks": 2,
+                    "tasks_before": 43,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 1.92,
+                        "system_seconds": 0.25
+                      },
+                      {
+                        "pid": 3589308,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589628,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3603011,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.05,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3604180,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3604738,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.02
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 19,
+                  "tx_packets": 26,
+                  "rx_bytes": 2665,
+                  "tx_bytes": 4074,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 37,
+                  "tx_syscalls": 25,
+                  "poll_calls": 35,
+                  "rx_gso": 0,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 0,
+                  "system_us": 1670
+                }
+              },
+              "workload": {
+                "value": 9420.70884,
+                "verified": 2048,
+                "batch": 256,
+                "clock_reads": 9,
+                "calibration_clock_reads": 9,
+                "measurement_seconds": 0.217393408
+              },
+              "value": 9420.70884,
+              "wall_seconds": 1.9617230407893658,
+              "finished": 1792064802.4550905,
+              "host_load_end": [
+                48.78369140625,
+                44.32177734375,
+                45.5341796875
+              ]
+            },
+            {
+              "side": "native",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064802.4551024,
+              "host_load": [
+                48.78369140625,
+                44.32177734375,
+                45.5341796875
+              ],
+              "network_profile": {
+                "metric": "net.bridge_rr",
+                "side": "native",
+                "pair": 1,
+                "started": 1792064802.4861298,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 0.23787508346140385,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 0.01,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 44,
+                    "tasks_after": 44,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 0,
+                  "tx_packets": 0,
+                  "rx_bytes": 0,
+                  "tx_bytes": 0,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 0,
+                  "tx_syscalls": 0,
+                  "poll_calls": 1,
+                  "rx_gso": 0,
+                  "tx_gso": 0,
+                  "coalesced": 0,
+                  "user_us": 0,
+                  "system_us": 62
+                }
+              },
+              "workload": {
+                "value": 55702.3528,
+                "verified": 11264,
+                "batch": 1024,
+                "clock_reads": 12,
+                "calibration_clock_reads": 11,
+                "measurement_seconds": 0.20221767
+              },
+              "value": 55702.3528,
+              "wall_seconds": 0.2978361267596483,
+              "finished": 1792064802.7529418,
+              "host_load_end": [
+                48.78369140625,
+                44.32177734375,
+                45.5341796875
+              ]
+            },
+            {
+              "side": "guest",
+              "phase": "sample",
+              "pair": 1,
+              "unix_time": 1792064802.7529576,
+              "host_load": [
+                48.78369140625,
+                44.32177734375,
+                45.5341796875
+              ],
+              "network_profile": {
+                "metric": "net.bridge_rr",
+                "side": "guest",
+                "pair": 1,
+                "started": 1792064802.7781632,
+                "complete": true,
+                "affinity": {
+                  "guest_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "network_pid": [
+                    8,
+                    9,
+                    10,
+                    11
+                  ]
+                },
+                "network_config": {
+                  "vnet": true,
+                  "batch_size": 16,
+                  "mtu": 1500
+                },
+                "trace": null,
+                "wall_seconds": 1.7976578045636415,
+                "cpu": {
+                  "guest_pid": {
+                    "user_seconds": 1.98,
+                    "system_seconds": 0.28,
+                    "new_tasks": 3,
+                    "exited_tasks": 2,
+                    "tasks_before": 44,
+                    "tasks_after": 45,
+                    "processes": [
+                      {
+                        "pid": 3589227,
+                        "comm": "linux",
+                        "user_seconds": 1.73,
+                        "system_seconds": 0.16
+                      },
+                      {
+                        "pid": 3589627,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589630,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3589634,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.0,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3589640,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3589662,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590076,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3590077,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590086,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3590124,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.0
+                      },
+                      {
+                        "pid": 3603011,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.04,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3604180,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.02,
+                        "system_seconds": 0.01
+                      },
+                      {
+                        "pid": 3604353,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.03,
+                        "system_seconds": 0.02
+                      },
+                      {
+                        "pid": 3604738,
+                        "comm": "uml-userspace",
+                        "user_seconds": 0.01,
+                        "system_seconds": 0.01
+                      }
+                    ],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  },
+                  "network_pid": {
+                    "user_seconds": 0.0,
+                    "system_seconds": 0.0,
+                    "new_tasks": 0,
+                    "exited_tasks": 0,
+                    "tasks_before": 1,
+                    "tasks_after": 1,
+                    "processes": [],
+                    "scope": "tasks alive at both snapshots; excludes exited and new tasks"
+                  }
+                },
+                "network": {
+                  "rx_packets": 19,
+                  "tx_packets": 26,
+                  "rx_bytes": 2666,
+                  "tx_bytes": 4074,
+                  "dropped_packets": 0,
+                  "rx_syscalls": 36,
+                  "tx_syscalls": 25,
+                  "poll_calls": 35,
+                  "rx_gso": 0,
+                  "tx_gso": 1,
+                  "coalesced": 1,
+                  "user_us": 0,
+                  "system_us": 1688
+                }
+              },
+              "workload": {
+                "value": 8721.77691,
+                "verified": 1790,
+                "batch": 256,
+                "clock_reads": 14,
+                "calibration_clock_reads": 2,
+                "measurement_seconds": 0.205233408
+              },
+              "value": 8721.77691,
+              "wall_seconds": 1.8602000791579485,
+              "finished": 1792064804.613162,
+              "host_load_end": [
+                48.78369140625,
+                44.32177734375,
+                45.5341796875
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "finished": 1792064807.6889567,
+  "host_end": {
+    "node": "liushiao",
+    "kernel": "5.15.0-177-generic",
+    "nproc": 72,
+    "loadavg": [
+      47.0390625,
+      44.0341796875,
+      45.4345703125
+    ],
+    "cpu": "Intel(R) Xeon(R) Gold 6240C CPU @ 2.60GHz"
+  }
+}
