@@ -27,7 +27,7 @@ def apply_series(source, archive, patches):
                 paths.add(line[6:].split("\t", 1)[0])
     for name in paths:
         p = pathlib.PurePosixPath(name)
-        if p.is_absolute() or ".." in p.parts or not name.startswith(("arch/um/", "arch/x86/um/", "fs/fuse/")):
+        if p.is_absolute() or ".." in p.parts or not (name.startswith(("arch/um/", "arch/x86/um/", "fs/fuse/")) or name in ("mm/memory.c",)):
             raise ValueError(f"unexpected patch path: {name}")
         if not (source / p).resolve().is_relative_to(source.resolve()):
             raise ValueError(f"patch path escapes source: {name}")
