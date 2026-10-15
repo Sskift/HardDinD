@@ -13,6 +13,9 @@ class Link:
         self.data = data
         return len(data)
 
+    def recv(self, size):
+        return self.data[:size]
+
 
 class VnetPeerTests(unittest.TestCase):
     def test_window_option_padding_and_truncation(self):
@@ -53,6 +56,7 @@ class VnetPeerTests(unittest.TestCase):
                 partial = bytearray(link.data[10 + start:])
                 partial[16:18] = struct.pack('!H', csum(partial))
                 self.assertEqual(csum(pseudo + partial), 0)
+                self.assertEqual(VnetPeer(link).recv(65536), frame)
 
 
 if __name__ == '__main__':

@@ -44,6 +44,13 @@ class VnetPeer:
         if data[1]:
             self.gso_received += 1
         frame = data[10:]
+        if data[0] & 1:
+            _, _, _, _, start, offset = struct.unpack('<BBHHHH', data[:10])
+            if start + offset + 2 > len(frame):
+                raise ValueError('partial checksum offset exceeds frame')
+            check = csum(frame[start:]) or 65535
+            position = start + offset
+            frame = frame[:position] + struct.pack('!H', check) + frame[position + 2:]
         if frame[12:14] == b'\x08\x00' and frame[23] == 6:
             tcp = 14 + (frame[14] & 15) * 4
             if csum(frame[14:tcp]):

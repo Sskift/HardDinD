@@ -1,0 +1,29 @@
+--- a/pipeline/functional.py
++++ b/pipeline/functional.py
+@@ -157,7 +157,15 @@
+ 
+     def d(self, *args, input=None, expected=0, timeout=60):
+         self.write('$ docker ' + shlex.join(map(str, args)))
+-        result = self.ctx.docker(*args, input=input, timeout=self.remaining(timeout))
++        try:
++            result = self.ctx.docker(*args, input=input, timeout=self.remaining(timeout))
++        except Exception as error:
++            cause = error if isinstance(error, subprocess.TimeoutExpired) else error.__cause__
++            if isinstance(cause, subprocess.TimeoutExpired):
++                for text in (cause.stdout, cause.stderr):
++                    if text:
++                        self.write(text.decode(errors='replace') if isinstance(text, bytes) else text)
++            raise
+         self.write(result.stdout + result.stderr + f'\n[exit={result.returncode}]')
+         require(result.returncode != 0 if expected == 'failure' else result.returncode == expected,
+                 f'docker {args[:3]} exited {result.returncode}, expected {expected}: '
+@@ -938,7 +946,8 @@
+ def egress(c):
+     item = build.LOCK['functional_https']
+     host = item['url'].split('/')[2]
+-    c.output('sh', '-ec', 'nslookup "$1"; wget -T 30 -qO /tmp/download "$2"; echo "$3  /tmp/download" | sha256sum -c -',
++    wget = '-SO' if os.environ.get('HD_NET_VERBOSE') == '1' else '-qO'
++    c.output('sh', '-ec', f'nslookup "$1"; wget -T 30 {wget} /tmp/download "$2"; echo "$3  /tmp/download" | sha256sum -c -',
+              'sh', host, item['url'], item['sha256'])
+ 
+ 

@@ -47,8 +47,8 @@ def cpu_delta(before, after, ticks):
 
 @contextlib.contextmanager
 def trace(ctx, metric, side, pair, pid):
-    """Opt-in diagnostics perturb timing: never use traced runs for scoring."""
-    if os.environ.get('HD_NET_STRACE') != '1' or side != 'guest' or pair != 0:
+    """Trace guest warmups only; measured pairs must remain untraced."""
+    if os.environ.get('HD_NET_STRACE') != '1' or side != 'guest' or pair is not None:
         yield None
         return
     prefix = ctx.run_dir / (metric + '-strace')
@@ -70,6 +70,11 @@ def trace(ctx, metric, side, pair, pid):
             except subprocess.TimeoutExpired:
                 tracer.kill(); tracer.wait()
             detail['exit_code'] = tracer.returncode
+            status = pathlib.Path(f'/proc/{pid}/status').read_text()
+            detail['detached'] = any(line.split() == ['TracerPid:', '0']
+                                     for line in status.splitlines())
+            if not detail['detached']:
+                raise RuntimeError('network tracer remains attached before measured pairs')
 
 
 @contextlib.contextmanager

@@ -36,7 +36,7 @@ static struct pollfd pfds[MAX_FDS];
 static volatile sig_atomic_t stopping;
 static uint64_t rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets;
 static uint64_t rx_syscalls, tx_syscalls, poll_calls;
-static bool trace_dns;
+static bool trace_dns, trace_tcp;
 static bool vnet;
 static uint64_t rx_gso, tx_gso, coalesced;
 static struct in_addr guest_addr;
@@ -135,11 +135,11 @@ static void frame_header(struct packet *p, unsigned char hdr[VNET_SIZE]) {
         put16(data + 24, finish_sum(sum16(data + 14, 20, 0)));
         sum = sum16(data + 26, 8, sum);
     } else sum = sum16(data + 22, 32, sum);
-    data[f.tcp + 16] = data[f.tcp + 17] = 0;
-    put16(data + f.tcp + 16, finish_sum(sum16(data + f.tcp, tcp_len, sum)));
-    hdr[0] = 2; /* DATA_VALID: checksums above cover the combined segment. */
+    put16(data + f.tcp + 16, (~finish_sum(sum)) & 65535);
+    hdr[0] = 1; /* NEEDS_CSUM: standard GSO pseudoheader seed. */
     hdr[1] = f.version == 4 ? 1 : 4;
     putle16(hdr + 2, f.payload); putle16(hdr + 4, p->gso_size);
+    putle16(hdr + 6, f.tcp); putle16(hdr + 8, 16);
 }
 static bool input_frame(unsigned char **data, unsigned *len) {
     if (!vnet) return *len >= 14;
@@ -157,7 +157,8 @@ static bool input_frame(unsigned char **data, unsigned *len) {
     if (hdr[0] & 1) {
         unsigned start = le16(hdr + 6), offset = le16(hdr + 8);
         if (start > *len || offset + 2 > *len - start) return false;
-        put16(p + start + offset, finish_sum(sum16(p + start, *len - start, 0)));
+        unsigned check = finish_sum(sum16(p + start, *len - start, 0));
+        put16(p + start + offset, check ? check : 65535);
     }
     if (type) rx_gso++;
     return true;
@@ -171,7 +172,24 @@ static int64_t clock_ns(void *opaque) {
     if (clock_gettime(CLOCK_MONOTONIC, &ts)) die("clock_gettime");
     return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
+static void tcp_trace_frame(const void *buf, size_t len, const char *direction) {
+    const unsigned char *p = buf;
+    struct tcp_frame f;
+    if (!tcp_frame(p, len, &f) || (be16(p + f.tcp) != 443 && be16(p + f.tcp + 2) != 443)) return;
+    char src[INET6_ADDRSTRLEN], dst[INET6_ADDRSTRLEN];
+    unsigned family = f.version == 4 ? AF_INET : AF_INET6;
+    inet_ntop(family, p + (f.version == 4 ? 26 : 22), src, sizeof(src));
+    inet_ntop(family, p + (f.version == 4 ? 30 : 38), dst, sizeof(dst));
+    unsigned sum = sum16(p + (f.version == 4 ? 26 : 22), f.version == 4 ? 8 : 32, len - f.tcp + 6);
+    printf("HARDDIND_TCP %" PRId64 " %s %s:%u %s:%u flags=%02x seq=%" PRIu32
+           " ack=%" PRIu32 " win=%u payload=%u checksum=%04x\n", clock_ns(NULL), direction,
+           src, be16(p + f.tcp), dst, be16(p + f.tcp + 2), p[f.tcp + 13],
+           be32(p + f.tcp + 4), be32(p + f.tcp + 8), be16(p + f.tcp + 14), f.size,
+           finish_sum(sum16(p + f.tcp, len - f.tcp, sum)));
+    fflush(stdout);
+}
 static void dns_trace(const void *buf, size_t len, const char *direction) {
+    if (trace_tcp) tcp_trace_frame(buf, len, direction);
     if (!trace_dns || len < 42) return;
     const unsigned char *p = buf;
     if (p[12] != 8 || p[13] || (p[14] >> 4) != 4 || p[23] != 17) return;
@@ -213,6 +231,8 @@ static void flush_frames(void) {
             unsigned count = 0;
             for (struct packet *p = head; p && count < batch_size; p = p->next) {
                 frame_header(p, headers[count]);
+                if (trace_tcp && vnet) tcp_trace_frame(p->data, p->len,
+                    headers[count][0] & 1 ? "wire_partial_to_guest" : "wire_to_guest");
                 vectors[count][0] = (struct iovec){headers[count], VNET_SIZE};
                 vectors[count][1] = (struct iovec){p->data, p->len};
                 messages[count].msg_hdr.msg_iov = &vectors[count][vnet ? 0 : 1];
@@ -553,6 +573,7 @@ int main(int argc, char **argv) {
         vnet = true;
     }
     trace_dns = getenv("HARDDIND_NET_TRACE_DNS") != NULL;
+    trace_tcp = getenv("HARDDIND_NET_TRACE_TCP") != NULL;
     signal(SIGTERM, stop); signal(SIGINT, stop); signal(SIGPIPE, SIG_IGN);
     pid_t parent = getppid();
     if (prctl(PR_SET_PDEATHSIG, SIGTERM) || getppid() != parent) return 1;

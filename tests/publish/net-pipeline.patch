@@ -1,6 +1,27 @@
 --- a/pipeline/instance.py
 +++ b/pipeline/instance.py
-@@ -238,9 +238,10 @@
+@@ -199,6 +199,7 @@
+     filesystems = []
+     libc = ctypes.CDLL(None, use_errno=True)
+     parent = os.getpid()
++    coordinator = os.getppid()
+     def parent_death():
+         if libc.prctl(1, signal.SIGKILL, 0, 0, 0) or os.getppid() != parent:
+             os._exit(1)
+@@ -207,6 +208,12 @@
+         parent_death()
+         if cpuset:
+             os.sched_setaffinity(0, cpuset)
++    def network_setup():
++        guest_setup()
++        # Permit this benchmark coordinator and its tracer children.
++        if os.environ.get('HD_NET_STRACE') == '1':
++            if libc.prctl(0x59616d61, coordinator, 0, 0, 0):  # PR_SET_PTRACER
++                os._exit(1)
+     ctl = instance / 'network.ctl'
+     ctl.unlink(missing_ok=True)  # The exclusive instance lock is held.
+     share_opts = config.get('share_options', {})
+@@ -238,9 +245,10 @@
              s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
          with (instance / f'network-{run}.log').open('x') as log:
              helper = subprocess.Popen([config['network_backend'], str(helper_end.fileno()), str(ctl),
@@ -9,11 +30,11 @@
 +                                       *(['vnet'] if os.environ.get('HD_NET_VNET') == '1' else [])],
                                        pass_fds=(helper_end.fileno(),), stdout=log, stderr=subprocess.STDOUT,
 -                                      start_new_session=True, preexec_fn=parent_death)
-+                                      start_new_session=True, preexec_fn=guest_setup)
++                                      start_new_session=True, preexec_fn=network_setup)
          helper_end.close()
          until = time.monotonic() + 5
          while not ctl.exists():
-@@ -261,12 +262,13 @@
+@@ -261,12 +269,13 @@
          uml_dir.mkdir(exist_ok=True)
          tmp = instance / 'tmp'; tmp.mkdir(exist_ok=True)
          mtu = config['mtu']
