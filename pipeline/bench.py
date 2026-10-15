@@ -15,6 +15,7 @@ import selectors
 import shutil
 import signal
 import stat
+import statistics
 import subprocess
 import tarfile
 import time
@@ -178,6 +179,7 @@ class Workloads:
         self.deadline = None
         self.disk_evidence = None
         self.bind_evidence = None
+        self.write_evidence = None
 
     def begin_metric(self, name):
         budget = metric_budget(name, self.ctx.quick)
@@ -282,6 +284,37 @@ class Workloads:
             return int(values[0]), int(values[1])
         except (RuntimeError, ValueError, IndexError):
             return None
+
+    def write_diagnostics(self):
+        """Unscored native fresh/overwrite and fsync/fdatasync comparisons."""
+        if self.write_evidence is not None:
+            return self.write_evidence
+        self.write_evidence = {'samples': [], 'error': None, 'bytes_per_sample': 256 * 1024 * 1024}
+        directory = self.root / 'work/write-diagnostics'; directory.mkdir()
+        try:
+            cow = self.ctx.instance / 'root.cow'
+            self.write_evidence['native_device'] = directory.stat().st_dev
+            self.write_evidence['cow_device'] = cow.stat().st_dev
+            fd = os.open(cow, os.O_RDWR)
+            try:
+                start = time.monotonic(); os.fdatasync(fd)
+                self.write_evidence['host_cow_sync_seconds'] = time.monotonic() - start
+            finally:
+                os.close(fd)
+            variants = [('fresh_fsync', ['--keep-data']), ('overwrite_fsync', ['--reuse-data']),
+                        ('fresh_fdatasync', ['--keep-data', '--data-sync']),
+                        ('overwrite_fdatasync', ['--reuse-data', '--data-sync'])]
+            for pair in range(2):
+                for mode, flags in variants:
+                    sample = parse_output(self.native('/bench/workload', 'disk.seq_write', '1', *flags,
+                                                      workdir=directory))
+                    self.write_evidence['samples'].append({'mode': mode, 'pair': pair, 'workload': sample,
+                                                          'unix_time': time.time(), 'host_load': list(os.getloadavg())})
+        except Exception as error:
+            self.write_evidence['error'] = f'{type(error).__name__}: {error}'
+        finally:
+            shutil.rmtree(directory)
+        return self.write_evidence
 
     def durability(self):
         """Host flush counters around three checked guest fsyncs; cached per run."""
@@ -576,6 +609,11 @@ def run(ctx):
                 for check in ('durability', 'bind_visibility'):
                     if metric['detail'].get(check, {}).get('error'):
                         metric['error'] = metric['detail'][check]['error']
+                if name in ('disk.seq_write', 'disk.volume_write') and not metric['error']:
+                    if statistics.median(metric['guest']) > 2 * statistics.median(metric['native']):
+                        metric['detail']['write_diagnostics'] = runner.write_diagnostics()
+                        if metric['detail']['write_diagnostics']['error']:
+                            metric['error'] = 'write diagnostics: ' + metric['detail']['write_diagnostics']['error']
             except Exception as error:
                 metric['error'] = f'{type(error).__name__}: {error}'
                 ctx.log(f'bench {name}: {metric["error"]}')

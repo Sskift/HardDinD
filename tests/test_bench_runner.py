@@ -346,6 +346,40 @@ class RunnerTests(unittest.TestCase):
             runner.bind_evidence = None; content = content[:-1] + b'X'
             self.assertIn('differs', runner.bind_visibility()['error'])
 
+    def test_write_diagnostics_separate_allocation_and_sync_modes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / 'root.cow').touch(); (root / 'bench-native/work').mkdir(parents=True)
+            ctx = types.SimpleNamespace(run_dir=root, instance=root, bench_cpus='8-11')
+            runner = bench.Workloads(ctx)
+            runner.native = mock.Mock(return_value='{"value": 100, "verified": 268435456}')
+            with mock.patch.object(bench.os, 'fdatasync', create=True):
+                evidence = runner.write_diagnostics()
+            self.assertIsNone(evidence['error'])
+            self.assertEqual([s['mode'] for s in evidence['samples']],
+                             ['fresh_fsync', 'overwrite_fsync', 'fresh_fdatasync', 'overwrite_fdatasync'] * 2)
+            self.assertEqual(runner.native.call_count, 8)
+            calls = runner.native.call_args_list
+            self.assertEqual(calls[0].args[-1:], ('--keep-data',))
+            self.assertEqual(calls[1].args[-1:], ('--reuse-data',))
+            self.assertEqual(calls[3].args[-2:], ('--reuse-data', '--data-sync'))
+            self.assertIs(runner.write_diagnostics(), evidence)
+            self.assertFalse((root / 'bench-native/work/write-diagnostics').exists())
+
+    def test_failed_write_diagnostics_cannot_pass(self):
+        class FastGuest(FakeRunner):
+            def durability(self):
+                return {'error': None}
+            @contextlib.contextmanager
+            def samples(self, name):
+                yield lambda: '{"value": 1}', lambda: '{"value": 3}'
+            def write_diagnostics(self):
+                return {'error': 'diagnostic failed'}
+        with mock.patch.object(bench, 'Workloads', FastGuest):
+            metric = bench.run(self.ctx(['disk.seq_write']))['metrics']['disk.seq_write']
+        self.assertEqual(metric['guest'], [3, 3])
+        self.assertIn('diagnostic failed', metric['error'])
+
     def test_network_topologies_use_required_endpoints(self):
         with tempfile.TemporaryDirectory() as tmp:
             ctx = types.SimpleNamespace(run_id='test', run_dir=pathlib.Path(tmp), bench_cpus='8-11', quick=True)
