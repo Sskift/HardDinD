@@ -58,9 +58,13 @@ def score_bench(bench):
             except ValueError as error:
                 row.update(status='fail', error=str(error))
             else:
+                native = metric.get('native') or []
+                # Native samples drifting by > 30% within the run means the host was
+                # contended: the ratio is still scored but is flagged as noisy.
+                noisy = len(native) >= 2 and max(native) > 1.3 * min(native)
                 row.update(ratio=round(ratio, 4), native=n, guest=g, unit=metric.get('unit'),
                            spread=[round(x, 4) for x in spread] if spread else None,
-                           reference='reference_seconds' in spec,
+                           reference='reference_seconds' in spec, noisy=noisy,
                            status='pass' if ratio >= target else 'fail')
         rows.append(row)
     return rows
@@ -114,6 +118,7 @@ def markdown(card, previous=None):
         prev = {r['metric']: r for r in (previous or {}).get('bench', [])}
         summary = ', '.join(f"{tier} {v['pass']}/{v['total']}" for tier, v in card['tiers'].items())
         lines += [f'**Performance** (guest/native, higher is better): {summary}', '',
+                  '`~noisy`: native samples varied by more than 30% during the run (host contention).', '',
                   '| tier | metric | native | guest | ratio | target | pair range | Δ prev | status |',
                   '|---|---|---:|---:|---:|---:|---|---:|---|']
         for r in card['bench']:
@@ -123,7 +128,7 @@ def markdown(card, previous=None):
                 delta = f"{(r['ratio'] - p['ratio']) / p['ratio'] * 100:+.0f}%"
             native = ('ref ' if r.get('reference') else '') + _fmt(r.get('native'))
             spread = f"{r['spread'][0]:.2f}–{r['spread'][1]:.2f}" if r.get('spread') else '-'
-            status = r['status'] + (f" ({r['error'][:40]})" if r.get('error') else '')
+            status = r['status'] + (f" ({r['error'][:40]})" if r.get('error') else '') + (' ~noisy' if r.get('noisy') else '')
             lines.append(f"| {r['tier']} | {r['metric']} | {native} | {_fmt(r.get('guest'))} {r.get('unit') or ''} | "
                          f"{_fmt(r.get('ratio'))} | {r['target']:.2f} | {spread} | {delta} | {status} |")
     return '\n'.join(lines) + '\n'
