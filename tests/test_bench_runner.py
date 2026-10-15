@@ -44,7 +44,7 @@ class ParseTests(unittest.TestCase):
                 bench.check_build_cache(output)
 
     def test_entire_matrix_matches_targets(self):
-        self.assertEqual(len(bench.METRICS), 27)
+        self.assertEqual(len(bench.METRICS), 30)
         self.assertFalse(any(name.startswith('gpu.') for name in bench.METRICS))
         for name in bench.METRICS:
             unit, higher = bench.metric_info(name)
