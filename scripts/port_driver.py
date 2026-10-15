@@ -9,6 +9,32 @@ import socket
 import threading
 import time
 
+# Guest-side alias addresses configured by guest/runtime-init and mapped by
+# Moby patch 0003. Keep these three definitions in lockstep. The host bind
+# always uses the real requested parent IP; the alias only names the guest
+# reservation/DNAT target so distinct parent IPs never collapse.
+GUEST_IPV4 = ipaddress.IPv4Address('10.0.2.15')
+WILDCARD_IPV4 = ipaddress.IPv4Address('10.0.2.16')          # parent 0.0.0.0
+DYNAMIC_IPV4_LO = ipaddress.IPv4Address('10.0.2.17')
+DYNAMIC_IPV4_HI = ipaddress.IPv4Address('10.0.2.254')
+GUEST_IPV6 = ipaddress.IPv6Address('fd00::15')
+WILDCARD_IPV6 = ipaddress.IPv6Address('fd00::10')           # parent ::
+DYNAMIC_IPV6_NET = ipaddress.IPv6Network('fd00::100:0/112')
+PROTOS = ('tcp4', 'tcp6', 'udp4', 'udp6')
+
+
+def valid_child(proto, child):
+    """The guest alias must be an address the static guest config actually
+    owns on vec0; never an arbitrary address (no silent wildcard routing)."""
+    if proto.endswith('4'):
+        if not isinstance(child, ipaddress.IPv4Address): return False
+        if child == GUEST_IPV4 or child == WILDCARD_IPV4: return True
+        return DYNAMIC_IPV4_LO <= child <= DYNAMIC_IPV4_HI
+    if not isinstance(child, ipaddress.IPv6Address) or child.ipv4_mapped is not None:
+        return False
+    if child in (GUEST_IPV6, WILDCARD_IPV6): return True
+    return child in DYNAMIC_IPV6_NET and int(child) != int(DYNAMIC_IPV6_NET.network_address)
+
 
 class PortDriver:
     def __init__(self, stream, control, log, dns):
@@ -42,10 +68,11 @@ class PortDriver:
             raise ValueError('invalid method or path')
         if method == 'GET' and path == '/v1/info':
             self.info_seen = True
-            return 200, {'apiVersion': '1.1.2', 'version': 'harddind-port-v1',
+            return 200, {'apiVersion': '1.1.2', 'version': 'harddind-port-v2',
                          'stateDir': '/run/harddind-port', 'childPID': 0,
-                         'networkDriver': {'driver': 'harddind-uml', 'childIP': '10.0.2.15', 'dns': [self.dns]},
-                         'portDriver': {'driver': 'harddind-slirp', 'protos': ['tcp4', 'udp4'],
+                         'networkDriver': {'driver': 'harddind-uml', 'childIP': '10.0.2.15',
+                                           'dns': [self.dns], 'ipv6': True},
+                         'portDriver': {'driver': 'harddind-slirp', 'protos': list(PROTOS),
                                         'disallowLoopbackChildIP': True}}
         if method == 'GET' and path == '/v1/ports':
             return 200, list(self.ports.values())
@@ -53,18 +80,28 @@ class PortDriver:
             if not isinstance(body, dict) or set(body) - {'proto', 'parentIP', 'parentPort', 'childIP', 'childPort'}:
                 raise ValueError('invalid port specification')
             proto = body.get('proto')
-            if proto not in ('tcp4', 'udp4'):
-                raise ValueError('only tcp4 and udp4 are implemented')
-            parent = str(ipaddress.IPv4Address(body.get('parentIP') or '0.0.0.0'))
-            child = str(ipaddress.IPv4Address(body.get('childIP') or '10.0.2.15'))
-            if child != '10.0.2.15':
-                raise ValueError('unsupported guest address')
+            if proto not in PROTOS:
+                raise ValueError('supported protocols are tcp4, tcp6, udp4, udp6')
+            want_v6 = proto.endswith('6')
+            kind = ipaddress.IPv6Address if want_v6 else ipaddress.IPv4Address
+            try:
+                parent = kind(body.get('parentIP') or ('::' if want_v6 else '0.0.0.0'))
+                child = kind(body.get('childIP') or (str(GUEST_IPV6) if want_v6 else str(GUEST_IPV4)))
+            except (ipaddress.AddressValueError, ipaddress.NetmaskValueError, ValueError):
+                raise ValueError('parentIP/childIP family must match proto')
+            if isinstance(parent, ipaddress.IPv6Address):
+                if parent.ipv4_mapped is not None or parent.scope_id is not None:
+                    raise ValueError('IPv4-mapped or scoped IPv6 parent addresses are not supported')
+                if parent.is_link_local:
+                    raise ValueError('link-local IPv6 parent addresses are not supported')
+            if not valid_child(proto, child):
+                raise ValueError('childIP is not a configured harddind guest alias')
             parent_port = self.port_number(body.get('parentPort'))
             child_port = self.port_number(body.get('childPort'))
-            spec = {'proto': proto, 'parentIP': parent, 'parentPort': parent_port,
-                    'childIP': child, 'childPort': child_port}
+            spec = {'proto': proto, 'parentIP': str(parent), 'parentPort': parent_port,
+                    'childIP': str(child), 'childPort': child_port}
             # Strict creation prevents adopting an existing manual/API mapping.
-            self.control(f'create {proto[:-1]} {parent} {parent_port} {child_port}')
+            self.control(f'create {proto[:-1]} {parent} {parent_port} {child_port} {child}')
             status = {'id': self.next_id, 'spec': spec}
             self.ports[self.next_id] = status
             self.next_id += 1
@@ -75,7 +112,8 @@ class PortDriver:
             ident = int(suffix)
             if ident not in self.ports: return 404, {'message': 'port id not found'}
             spec = self.ports[ident]['spec']
-            self.control(f'del {spec["proto"][:-1]} {spec["parentIP"]} {spec["parentPort"]} {spec["childPort"]}')
+            self.control(f'del {spec["proto"][:-1]} {spec["parentIP"]} {spec["parentPort"]} '
+                         f'{spec["childPort"]} {spec["childIP"]}')
             del self.ports[ident]
             return 200, {}
         return 404, {'message': 'unsupported port-control endpoint'}

@@ -1,0 +1,75 @@
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+daemon=
+agent=
+watcher=
+shutdown() {
+    trap '' INT TERM
+    [ -z "$watcher" ] || kill -TERM "$watcher" 2>/dev/null
+    if [ -n "$daemon" ]; then
+        kill -TERM "$daemon" 2>/dev/null
+        wait "$daemon"
+    fi
+    if [ -n "$agent" ]; then
+        kill -TERM "$agent" 2>/dev/null
+        wait "$agent"
+    fi
+    sync
+    echo HARDDIND_RUNTIME_STOPPED
+    poweroff -f
+}
+trap shutdown INT TERM
+if [ "${HARDDIND_PORTS:-0}" = 1 ]; then
+    mkdir -p /run/harddind-port
+    # Keep the agent alive during tini's group-wide INT until dockerd releases
+    # its ports. The shutdown handler terminates it after the daemon exits.
+    setsid /sbin/harddind-port-agent /dev/ttyS0 /run/harddind-port/api.sock > /run/port-agent.log 2>&1 &
+    agent=$!
+    for i in $(seq 10); do
+        [ ! -S /run/harddind-port/api.sock ] || break
+        kill -0 "$agent" 2>/dev/null || break
+        sleep 1
+    done
+    if [ ! -S /run/harddind-port/api.sock ] || ! kill -0 "$agent" 2>/dev/null; then
+        cat /run/port-agent.log
+        shutdown
+    fi
+    export HARDDIND_PORT_DRIVER_STATE=/run/harddind-port
+    # Uplink dockerd adds/removes exact publish aliases on (Moby patch 0003).
+    export HARDDIND_PUBLISH_IFACE=vec0
+fi
+# The outer helper forwards this API only onto a loopback port. Internal bridge,
+# firewall and cgroup behavior remain the stock daemon's defaults.
+dockerd --host=unix:///run/docker.sock --host=tcp://10.0.2.15:2375 --tls=false \
+    --mtu="${HARDDIND_MTU:-1500}" \
+    --default-network-opt "bridge=com.docker.network.driver.mtu=${HARDDIND_MTU:-1500}" \
+    > /run/dockerd.log 2>&1 &
+daemon=$!
+if [ -n "$agent" ]; then
+    supervisor=$$
+    (
+        while kill -0 "$daemon" 2>/dev/null; do
+            if ! kill -0 "$agent" 2>/dev/null; then
+                echo HARDDIND_PORT_AGENT_FAILED
+                cat /run/port-agent.log
+                kill -TERM "$supervisor"
+                exit 1
+            fi
+            sleep 1
+        done
+    ) &
+    watcher=$!
+fi
+ready=0
+for i in $(seq 90); do
+    if docker info >/dev/null 2>&1; then ready=1; break; fi
+    kill -0 "$daemon" 2>/dev/null || break
+    sleep 1
+done
+if [ "$ready" = 1 ]; then
+    echo HARDDIND_RUNTIME_READY
+    wait "$daemon"
+else
+    cat /run/dockerd.log
+fi
+shutdown

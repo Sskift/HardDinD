@@ -27,6 +27,15 @@ ip link set vec0 mtu "$HARDDIND_MTU"
 ip link set vec0 up
 ip addr add 10.0.2.15/24 dev vec0
 ip route add default via 10.0.2.2
+if [ "$HARDDIND_PORTS" = 1 ]; then
+    # Only the primary IPv6 uplink address is static here. The wildcard and
+    # per-parent-address secondary aliases are assigned exactly (IPv4 /32,
+    # IPv6 /128 NODAD) at publication time by dockerd via netlink, and removed
+    # with the last mapping; see Moby patch 0003
+    # (daemon/libnetwork/internal/rlkclient/harddind_aliases_linux.go).
+    ip -6 addr add fd00::15/64 dev vec0
+    ip -6 route add default via fd00::2
+fi
 echo "nameserver $dns" > /etc/resolv.conf
 echo "HARDDIND_RUNTIME_MTU=$HARDDIND_MTU"
 for arg in $(cat /proc/cmdline); do

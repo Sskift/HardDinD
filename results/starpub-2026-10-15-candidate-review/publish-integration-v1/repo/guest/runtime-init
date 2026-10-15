@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+mount -t proc proc /proc
+dns=10.0.2.3
+export HARDDIND_MTU=1500
+export HARDDIND_PORTS=0
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        harddind_dns=*) dns=${arg#harddind_dns=} ;;
+        harddind_mtu=*) HARDDIND_MTU=${arg#harddind_mtu=} ;;
+        harddind_ports=1) HARDDIND_PORTS=1 ;;
+    esac
+done
+mount -t sysfs sysfs /sys
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /dev/shm /run /sys/fs/cgroup
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /run
+mount -t tmpfs tmpfs /dev/shm
+mount -t cgroup2 cgroup2 /sys/fs/cgroup
+echo '1 4 1 7' > /proc/sys/kernel/printk
+echo 0 > /proc/sys/kernel/ctrl-alt-del
+hostname harddind
+ip link set lo up
+ip link set vec0 mtu "$HARDDIND_MTU"
+ip link set vec0 up
+ip addr add 10.0.2.15/24 dev vec0
+ip route add default via 10.0.2.2
+if [ "$HARDDIND_PORTS" = 1 ]; then
+    # Only the primary IPv6 uplink address is static here. The wildcard and
+    # per-parent-address secondary aliases are assigned exactly (IPv4 /32,
+    # IPv6 /128 NODAD) at publication time by dockerd via netlink, and removed
+    # with the last mapping; see Moby patch 0003
+    # (daemon/libnetwork/internal/rlkclient/harddind_aliases_linux.go).
+    ip -6 addr add fd00::15/64 dev vec0
+    ip -6 route add default via fd00::2
+fi
+echo "nameserver $dns" > /etc/resolv.conf
+echo "HARDDIND_RUNTIME_MTU=$HARDDIND_MTU"
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        harddind_share=*)
+            share=${arg#harddind_share=}
+            tag=${share%%:*}
+            target=$(printf '%s' "${share#*:}" | base64 -d)
+            mkdir -p "$target"
+            mount -t virtiofs "$tag" "$target"
+            echo "HARDDIND_SHARE=$share"
+            ;;
+    esac
+done
+exec /sbin/tini -g -- /sbin/harddind-daemon

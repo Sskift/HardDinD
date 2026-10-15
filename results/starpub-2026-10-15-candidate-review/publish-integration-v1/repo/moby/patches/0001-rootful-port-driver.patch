@@ -1,0 +1,34 @@
+--- a/daemon/libnetwork/drivers_linux.go
++++ b/daemon/libnetwork/drivers_linux.go
+@@ -3,6 +3,7 @@
+ import (
+ 	"context"
+ 	"fmt"
++	"os"
+ 
+ 	"github.com/moby/moby/v2/daemon/libnetwork/config"
+ 	"github.com/moby/moby/v2/daemon/libnetwork/datastore"
+@@ -46,7 +47,8 @@
+ 
+ func registerPortMappers(ctx context.Context, r *drvregistry.PortMappers, cfg *config.Config) error {
+ 	var pdc *rlkclient.PortDriverClient
+-	if cfg.Rootless {
++	// HardDinD supplies a port driver without changing rootful isolation/cgroups.
++	if cfg.Rootless || os.Getenv("HARDDIND_PORT_DRIVER_STATE") != "" {
+ 		var err error
+ 		pdc, err = rlkclient.NewPortDriverClient(ctx)
+ 		if err != nil {
+--- a/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux.go
++++ b/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux.go
+@@ -28,7 +28,10 @@
+ }
+ 
+ func NewPortDriverClient(ctx context.Context) (*PortDriverClient, error) {
+-	stateDir := os.Getenv("ROOTLESSKIT_STATE_DIR")
++	stateDir := os.Getenv("HARDDIND_PORT_DRIVER_STATE")
++	if stateDir == "" {
++		stateDir = os.Getenv("ROOTLESSKIT_STATE_DIR")
++	}
+ 	if stateDir == "" {
+ 		return nil, errors.New("$ROOTLESSKIT_STATE_DIR needs to be set")
+ 	}

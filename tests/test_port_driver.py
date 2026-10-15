@@ -35,7 +35,7 @@ class PortDriverTests(unittest.TestCase):
         self.assertFalse(self.driver.ports)
         self.failure = None
         _, status = self.driver.handle('POST', '/v1/ports', self.spec)
-        self.assertTrue(self.commands[-1].startswith('create '))
+        self.assertEqual(self.commands[-1], 'create tcp 127.0.0.1 49123 49123 10.0.2.15')
         self.failure = 'backend unavailable'
         with self.assertRaises(RuntimeError):
             self.driver.handle('DELETE', f'/v1/ports/{status["id"]}', None)
@@ -44,12 +44,64 @@ class PortDriverTests(unittest.TestCase):
         self.driver.handle('DELETE', f'/v1/ports/{status["id"]}', None)
         self.assertFalse(self.driver.ports)
 
-    def test_invalid_destination_or_port_never_reaches_backend(self):
-        for field, value in [('childIP', '10.0.2.2'), ('proto', 'tcp6'), ('parentPort', True),
-                             ('parentPort', 0), ('childPort', 65536), ('parentIP', '::1')]:
-            with self.assertRaises(ValueError):
-                self.driver.handle('POST', '/v1/ports', {**self.spec, field: value})
+    def test_validation_family_and_alias_membership(self):
+        bad = [
+            {'proto': 'tcp', 'parentIP': '127.0.0.1'},               # unqualified proto
+            {'proto': 'tcp4', 'parentIP': '::1'},                   # family mismatch
+            {'proto': 'tcp6', 'parentIP': '127.0.0.1'},             # family mismatch
+            {'proto': 'tcp4', 'childIP': '10.0.2.2'},               # vhost, not an alias
+            {'proto': 'tcp4', 'childIP': '10.0.2.255'},             # broadcast
+            {'proto': 'tcp6', 'childIP': 'fd00::1'},                # not in pools
+            {'proto': 'tcp6', 'childIP': 'fd00::100:0'},            # network address
+            {'proto': 'tcp6', 'parentIP': '::ffff:127.0.0.1'},      # v4-mapped v6
+            {'proto': 'tcp6', 'parentIP': 'fe80::1%eth0'},          # scoped literal
+            {'proto': 'tcp6', 'parentIP': 'fe80::1'},               # link-local
+            {'proto': 'sctp4'},
+        ]
+        for body in bad:
+            with self.subTest(body=body):
+                with self.assertRaises(ValueError):
+                    self.driver.handle('POST', '/v1/ports', {**self.spec, **body})
         self.assertEqual(self.commands, [])
+
+    def test_invalid_port_never_reaches_backend(self):
+        for field, value in [('parentPort', True), ('parentPort', 0), ('childPort', 65536)]:
+            with self.subTest(field=field, value=value):
+                with self.assertRaises(ValueError):
+                    self.driver.handle('POST', '/v1/ports', {**self.spec, field: value})
+        self.assertEqual(self.commands, [])
+
+    def test_wildcards_default_to_fixed_aliases_and_distinct_parents_distinct_children(self):
+        _, w4 = self.driver.handle('POST', '/v1/ports',
+                                   {'proto': 'tcp4', 'parentPort': 8080, 'childPort': 80})
+        self.assertEqual(w4['spec']['parentIP'], '0.0.0.0')
+        self.assertEqual(w4['spec']['childIP'], '10.0.2.15')  # no childIP -> canonical guest
+        _, w6 = self.driver.handle('POST', '/v1/ports',
+                                   {'proto': 'tcp6', 'parentPort': 8080, 'childPort': 80})
+        self.assertEqual(w6['spec']['parentIP'], '::')
+        self.assertEqual(w6['spec']['childIP'], 'fd00::15')
+        _, a = self.driver.handle('POST', '/v1/ports',
+                                  {'proto': 'tcp4', 'parentIP': '127.0.0.1', 'parentPort': 8081,
+                                   'childIP': '10.0.2.17', 'childPort': 80})
+        _, b = self.driver.handle('POST', '/v1/ports',
+                                  {'proto': 'tcp4', 'parentIP': '127.0.0.2', 'parentPort': 8081,
+                                   'childIP': '10.0.2.18', 'childPort': 80})
+        self.assertEqual(self.commands[2], 'create tcp 127.0.0.1 8081 80 10.0.2.17')
+        self.assertEqual(self.commands[3], 'create tcp 127.0.0.2 8081 80 10.0.2.18')
+        self.driver.handle('DELETE', f"/v1/ports/{a['id']}", None)
+        self.assertEqual(self.commands[4], 'del tcp 127.0.0.1 8081 80 10.0.2.17')
+
+    def test_alias_pool_extents_accepted(self):
+        for child in ('10.0.2.16', '10.0.2.17', '10.0.2.254'):
+            self.assertTrue(module.valid_child('tcp4', module.ipaddress.IPv4Address(child)), child)
+        for child in ('fd00::10', 'fd00::100:1', 'fd00::100:fffe', 'fd00::100:ffff'):
+            self.assertTrue(module.valid_child('tcp6', module.ipaddress.IPv6Address(child)), child)
+
+    def test_info_advertises_all_four_protocols_and_ipv6(self):
+        _, info = self.driver.handle('GET', '/v1/info', None)
+        self.assertEqual(info['portDriver']['protos'], ['tcp4', 'tcp6', 'udp4', 'udp6'])
+        self.assertTrue(info['networkDriver']['ipv6'])
+        self.assertEqual(info['version'], 'harddind-port-v2')
 
     def test_framed_errors_do_not_desynchronize_following_request(self):
         self.driver.start()
@@ -70,3 +122,7 @@ class PortDriverTests(unittest.TestCase):
         self.driver.start(); self.client.shutdown(socket.SHUT_WR)
         self.driver.thread.join(2)
         self.assertEqual(self.driver.error, 'guest port-control channel closed')
+
+
+if __name__ == '__main__':
+    unittest.main()

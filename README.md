@@ -26,7 +26,7 @@
 1. 系统调用和 fork/exec 的速度还未达到原生。
 2. 默认路径仍串行执行同一地址空间的线程。并行实验已通过线程正确性和 Docker 内的初步回归，但尚缺长期压力、异常退出与内部隔离验证。旧路径还复现了并发 fork/COW 缺陷；扩大测试后，上一版并行内核也曾在并发 fork/exec 中丢失宿主进程并崩溃。
 3. GPU 映射候选已完成内部四张 A100 的真实计算、双向传输和逐元素校验。针对普通运行的间歇失败，已修复一处同步到异步交接竞态，开启异步等待的有限重复对照通过。完整 GPU ABI、并发进程/线程、扩展显存生命周期、`--gpus all` 接入、长期稳定性和性能仍未验收。
-4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证；可选的 Moby 补丁已验证 IPv4 自动 `docker -p` 子集。IPv6 流量、多个外层地址复用同一端口、外层目录共享语义、异常恢复与长期运行管理尚未完成。网络请求／响应性能仍明显低于原生。
+4. IPv4 出站、显式 TCP/UDP 转发和正常关机重启后的持久化已在实验入口验证。可选 Moby 发布补丁的 21 项实际 Docker 检查通过，覆盖 IPv6 回环发布与大 UDP、不同外层地址共用端口、冲突回滚和重启恢复。完整 IPv6、外层目录共享语义、异常恢复与长期运行管理仍未完成。网络请求／响应性能仍明显低于原生。
 5. 上游 seccomp 模式存在内部隔离缺口，需要在产品化前解决。
 
 具体机器证据位于 [results/starpub-2026-10-14](results/starpub-2026-10-14/)，总状态为 [results/acceptance.json](results/acceptance.json)。性能数据是微基准，不代表完整 Docker 或 GPU 性能。
@@ -91,9 +91,11 @@ CPU 限制另用 `scripts/run-cpu-limits.py WORK --kernel KERNEL --disk DISK --n
 
 [自动端口发布实测](results/starpub-2026-10-14-published-ports/) 的 15 项检查通过，覆盖外层回环 TCP/UDP 数据校验、停止与删除后的释放、默认和自定义 bridge 冲突重试、多端口回滚、临时端口、范围、`-P`、四个并发发布与整个实例重启恢复。第一版冲突失败记录保留。控制请求经实例专用的串口通道传递，数据仍走原有 libslirp 路径；此次没有宣称性能提升。IPv6、不同外层地址复用同一端口、Swarm ingress 和异常恢复尚未通过验收。
 
-[IPv6 与地址发布候选实测](results/starpub-2026-10-15-publish/) 在实际 Docker 中为 11 pass、1 IPv6 fail、9 not_tested。新增的实际 guest 地址共享、释放、复用和失败回滚已通过。后续诊断确认 IPv6 TCP 64 KiB 可用，而 MTU 1500 下 IPv6 UDP 从 1453 字节起失败，报头与固定版 libslirp 源码指向缺少 IPv6 分片和重组。失败记录、构建源码和进程清理证据均保留，候选实现尚未合入。
+[IPv6 与地址发布早期实测](results/starpub-2026-10-15-publish/) 在实际 Docker 中为 11 pass、1 IPv6 fail、9 not_tested。诊断确认 IPv6 TCP 64 KiB 可用，而 MTU 1500 下 IPv6 UDP 从 1453 字节起失败，报头与固定版 libslirp 源码指向缺少 IPv6 分片和重组。原失败记录、构建源码和进程清理证据均保留，后续修复与复验见下文。
 
 [IPv6 分片原生复验](results/starpub-2026-10-15-candidate-review/publish-fragment-native-v2/README.md) 已用冻结的最终候选重新构建，普通与 ASAN/UBSAN 构建各通过 108 项独立分片检查和 29 项网络后端测试；同一测试源码仍能检出旧实现的缺陷。上一轮独立测试的时钟表示、队列寿命假设错误已纠正，原失败记录保留。此轮仅为原生复验，不代表内部 Docker、完整 IPv6 或性能验收通过。
+
+[修复后的实际 Docker 复验](results/starpub-2026-10-15-candidate-review/publish-fragment-docker-v1/README.md) 为 21 项通过，140 次 TCP/UDP 数据传输校验一致；IPv6 UDP 包括 1453 字节旧失败边界和 65507 字节报文。不同地址共用端口、并发发布、冲突回滚与整个实例重启恢复通过。原始外层汇总字段错误保留，独立复核确认两次正常关机、128 个进程组清空、输入哈希未变。相关补丁已纳入可选的发布端口入口，随后完成 [主线重新构建与检查](results/starpub-2026-10-15-candidate-review/publish-integration-v1/README.md)。这轮仍不是完整 IPv6 或网络性能验收。
 
 ```sh
 make moby port-agent network WORK=/root/harddind-rebuild

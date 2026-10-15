@@ -35,6 +35,8 @@ if [ "${HARDDIND_PORTS:-0}" = 1 ]; then
         shutdown
     fi
     export HARDDIND_PORT_DRIVER_STATE=/run/harddind-port
+    # Uplink dockerd adds/removes exact publish aliases on (Moby patch 0003).
+    export HARDDIND_PUBLISH_IFACE=vec0
 fi
 # The outer helper forwards this API only onto a loopback port. Internal bridge,
 # firewall and cgroup behavior remain the stock daemon's defaults.

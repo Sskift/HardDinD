@@ -12,6 +12,10 @@ check:
 network:
 	bash scripts/build-network.sh "$(WORK)"
 
+.PHONY: publish-tests
+publish-tests: network
+	HARDDIND_NETWORK_BACKEND="$(WORK)/network-backend" python3 -m unittest discover -s tests/publish -v
+
 .PHONY: moby port-agent
 moby:
 	bash scripts/build-moby.sh "$(WORK)"

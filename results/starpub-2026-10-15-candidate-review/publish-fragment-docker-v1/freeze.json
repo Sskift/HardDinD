@@ -1,0 +1,9 @@
+{
+  "runtime_repo": "/root/harddind-rebuild/publish-owner-v3/repo",
+  "fragment_repo_overlay": "/root/harddind-rebuild/publish-fragment-native-owner-v2/repo",
+  "runtime_controller": "/root/harddind-rebuild/gpu-phase-owner-v2/repo/scripts/harddind.py",
+  "backend_source": "/root/harddind-rebuild/publish-fragment-native-owner-v2/build/network-backend",
+  "disk": "/root/harddind-rebuild/publish-owner-v3/build/runtime-publish-v3.ext4",
+  "kernel": "/root/harddind-rebuild/cpu-cpuset-kernel-v1",
+  "scope": "IPv6 host publication to IPv4 default bridge container; 21 existing lifecycle checks and recorded TCP/UDP payloads. No performance claim; no full IPv6/RFC conformance claim."
+}

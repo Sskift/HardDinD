@@ -1,0 +1,932 @@
+--- a/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux.go
++++ b/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux.go
+@@ -1,5 +1,5 @@
+-// RootlessKit integration - if required by RootlessKit's port driver, let it know
+-// about port mappings as they're added and removed.
++// RootlessKit integration - if required by RootlessKit's port driver, let it
++// know about port mappings as they're added and removed.
+ //
+ // This is based on / copied from rootlesskit-docker-proxy, which was previously
+ // installed as a proxy for docker-proxy:
+@@ -25,6 +25,11 @@
+ 	portDriverName string
+ 	protos         map[string]struct{}
+ 	childIP        netip.Addr
++
++	// aliases is non-nil only with the HardDinD slirp port driver. It owns
++	// the exact secondary addresses assigned on the guest uplink for the
++	// duration of each publication (see harddind_aliases_linux.go).
++	aliases *harddindAliasManager
+ }
+ 
+ func NewPortDriverClient(ctx context.Context) (*PortDriverClient, error) {
+@@ -75,6 +80,16 @@
+ 		pdc.protos[p] = struct{}{}
+ 	}
+ 
++	if os.Getenv("HARDDIND_PORT_DRIVER_STATE") != "" && info.PortDriver.Driver == "harddind-slirp" {
++		// Fail daemon startup loudly if the guest cannot own the alias
++		// addresses; never publish against addresses nobody configured.
++		aliases, err := newHarddindAliasManager()
++		if err != nil {
++			return nil, fmt.Errorf("harddind publish alias manager unavailable: %w", err)
++		}
++		pdc.aliases = aliases
++	}
++
+ 	return pdc, nil
+ }
+ 
+@@ -96,35 +111,51 @@
+ 	return apiProto
+ }
+ 
+-// ChildHostIP returns the address that must be used in the child network
+-// namespace in place of hostIP, a host IP address. In particular, port
+-// mappings from host IP addresses, and DNAT rules, must use this child
+-// address in place of the real host address. It may return an invalid
+-// netip.Addr if the proto and IP family aren't supported.
+-func (c *PortDriverClient) ChildHostIP(proto string, hostIP netip.Addr) netip.Addr {
++// ChildHostIP reserves and returns the guest-side address that must be used
++// in place of hostIP for port allocation, firewall rules and DNAT. Each
++// successful reservation must be balanced with ReleaseChildIP when the port
++// binding is torn down. It returns an invalid netip.Addr with a nil error if
++// the proto and family aren't advertised; a non-nil error means the guest
++// address could not be owned and container start must fail rather than
++// dropping or misrouting the binding.
++func (c *PortDriverClient) ChildHostIP(proto string, hostIP netip.Addr) (netip.Addr, error) {
+ 	if c == nil {
+-		return hostIP
++		return hostIP, nil
+ 	}
+ 	if _, ok := c.protos[c.proto(proto, hostIP)]; !ok {
+ 		// This happens when apiProto="tcp6", portDriverName="slirp4netns",
+ 		// because "slirp4netns" port driver does not support listening on IPv6 yet.
+-		return netip.Addr{}
++		return netip.Addr{}, nil
++	}
++	if c.aliases != nil {
++		return c.aliases.Reserve(hostIP.Unmap())
+ 	}
+ 	if c.childIP.IsValid() {
+-		return c.childIP
++		return c.childIP, nil
+ 	}
+ 	// Child namespaces only listen on loopback addresses. Preserve requested
+ 	// loopback addresses (the child namespace's lo covers all of 127.0.0.0/8,
+ 	// and collapsing them makes bindings on the same port but distinct
+ 	// loopback addresses collide); otherwise use the canonical loopback
+ 	// address for the family.
++	hostIP = hostIP.Unmap()
+ 	if hostIP.IsLoopback() {
+-		return hostIP
++		return hostIP, nil
+ 	}
+ 	if hostIP.Is6() {
+-		return netip.IPv6Loopback()
++		return netip.IPv6Loopback(), nil
++	}
++	return netip.MustParseAddr("127.0.0.1"), nil
++}
++
++// ReleaseChildIP drops one reference to the guest alias reserved for hostIP
++// and removes the exact address from the guest uplink when the last mapping
++// using it goes away. It is a no-op outside HardDinD alias mode.
++func (c *PortDriverClient) ReleaseChildIP(hostIP netip.Addr) error {
++	if c == nil || c.aliases == nil {
++		return nil
+ 	}
+-	return netip.MustParseAddr("127.0.0.1")
++	return c.aliases.Release(hostIP.Unmap())
+ }
+ 
+ // ProtocolUnsupportedError is returned when apiProto is not supported by portDriverName.
+--- a/daemon/libnetwork/portmappers/nat/mapper_linux.go
++++ b/daemon/libnetwork/portmappers/nat/mapper_linux.go
+@@ -6,7 +6,6 @@
+ 	"fmt"
+ 	"net"
+ 	"net/netip"
+-	"slices"
+ 	"strconv"
+ 
+ 	"github.com/containerd/log"
+@@ -20,7 +19,8 @@
+ const driverName = "nat"
+ 
+ type PortDriverClient interface {
+-	ChildHostIP(proto string, hostIP netip.Addr) netip.Addr
++	ChildHostIP(proto string, hostIP netip.Addr) (netip.Addr, error)
++	ReleaseChildIP(hostIP netip.Addr) error
+ 	AddPort(ctx context.Context, proto string, hostIP, childIP netip.Addr, hostPort int) (func() error, error)
+ }
+ 
+@@ -64,23 +64,47 @@
+ 	}
+ 
+ 	bindings := make([]portmapperapi.PortBinding, 0, len(cfg))
++	// Host IPs whose guest alias was reserved in this call but never made it
++	// into a returned binding (port allocation/proxy/driver failure), so the
++	// deferred rollback can drop their references. Bindings that do get built
++	// are balanced through UnmapPorts instead.
++	reserved := make(map[netip.Addr]struct{})
+ 	defer func() {
+-		if retErr != nil {
+-			if err := pm.UnmapPorts(ctx, bindings); err != nil {
+-				log.G(ctx).WithFields(log.Fields{
+-					"pbs":   bindings,
+-					"error": err,
+-				}).Warn("Failed to release port bindings")
++		if retErr == nil {
++			return
++		}
++		if err := pm.UnmapPorts(ctx, bindings); err != nil {
++			log.G(ctx).WithFields(log.Fields{
++				"pbs":   bindings,
++				"error": err,
++			}).Warn("Failed to release port bindings")
++		}
++		if pm.pdc != nil {
++			for hip := range reserved {
++				if err := pm.pdc.ReleaseChildIP(hip); err != nil {
++					log.G(ctx).WithError(err).WithField("hostIP", hip).
++						Warn("Failed to release guest alias after port mapping failure")
++				}
+ 			}
+ 		}
+ 	}()
+ 
+-	for i := len(cfg) - 1; i >= 0; i-- {
+-		var supported bool
+-		if cfg[i], supported = setChildHostIP(pm.pdc, cfg[i]); !supported {
+-			cfg = slices.Delete(cfg, i, i+1)
++	planned := make([]portmapperapi.PortBindingReq, 0, len(cfg))
++	for i := range cfg {
++		req, supported, err := setChildHostIP(pm.pdc, cfg[i])
++		if err != nil {
++			return nil, err
++		}
++		if !supported {
+ 			continue
+ 		}
++		hip, _ := netip.AddrFromSlice(req.HostIP)
++		reserved[hip.Unmap()] = struct{}{}
++		planned = append(planned, req)
++	}
++	cfg = planned
++	if len(cfg) == 0 {
++		return nil, nil
+ 	}
+ 
+ 	addrs := sliceutil.Map(cfg, func(req portmapperapi.PortBindingReq) net.IP {
+@@ -94,6 +118,7 @@
+ 	}
+ 
+ 	for i := range cfg {
++		hip, _ := netip.AddrFromSlice(cfg[i].HostIP)
+ 		pb := portmapperapi.PortBinding{
+ 			PortBinding: cfg[i].PortBinding.Copy(),
+ 			BoundSocket: socks[i],
+@@ -106,6 +131,7 @@
+ 		pb.NAT = netip.AddrPortFrom(childHIP.Unmap(), pb.PortBinding.HostPort)
+ 
+ 		bindings = append(bindings, pb)
++		delete(reserved, hip.Unmap())
+ 	}
+ 
+ 	if err := configPortDriver(ctx, bindings, pm.pdc); err != nil {
+@@ -131,6 +157,16 @@
+ 	}
+ 	for _, pb := range pbs {
+ 		portallocator.Get().ReleasePort(pb.ChildHostIP, pb.Proto.String(), int(pb.HostPort))
++		if pm.pdc != nil {
++			hip, ok := netip.AddrFromSlice(pb.HostIP)
++			if !ok {
++				errs = append(errs, fmt.Errorf("invalid host IP in port mapping %s", pb))
++				continue
++			}
++			if err := pm.pdc.ReleaseChildIP(hip.Unmap()); err != nil {
++				errs = append(errs, err)
++			}
++		}
+ 	}
+ 	return errors.Join(errs...)
+ }
+@@ -138,18 +174,21 @@
+ // setChildHostIP returns a modified PortBindingReq that contains the IP
+ // address that should be used for port allocation, firewall rules, etc. It
+ // returns false when the PortBindingReq isn't supported by the PortDriverClient.
+-func setChildHostIP(pdc PortDriverClient, req portmapperapi.PortBindingReq) (portmapperapi.PortBindingReq, bool) {
++func setChildHostIP(pdc PortDriverClient, req portmapperapi.PortBindingReq) (portmapperapi.PortBindingReq, bool, error) {
+ 	if pdc == nil {
+ 		req.ChildHostIP = req.HostIP
+-		return req, true
++		return req, true, nil
+ 	}
+ 	hip, _ := netip.AddrFromSlice(req.HostIP)
+-	chip := pdc.ChildHostIP(req.Proto.String(), hip.Unmap())
++	chip, err := pdc.ChildHostIP(req.Proto.String(), hip.Unmap())
++	if err != nil {
++		return req, false, err
++	}
+ 	if !chip.IsValid() {
+-		return req, false
++		return req, false, nil
+ 	}
+ 	req.ChildHostIP = chip.AsSlice()
+-	return req, true
++	return req, true, nil
+ }
+ 
+ // configPortDriver passes the port binding's details to rootlesskit, and updates the
+--- a/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux_test.go
++++ b/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux_test.go
+@@ -95,7 +95,8 @@
+ 
+ 	for _, tc := range testcases {
+ 		t.Run(tc.name, func(t *testing.T) {
+-			got := tc.pdc.ChildHostIP(tc.proto, tc.hostIP)
++			got, err := tc.pdc.ChildHostIP(tc.proto, tc.hostIP)
++			assert.NilError(t, err)
+ 			assert.Check(t, is.Equal(got, tc.want))
+ 		})
+ 	}
+--- a/daemon/libnetwork/drivers/bridge/port_mapping_linux_test.go
++++ b/daemon/libnetwork/drivers/bridge/port_mapping_linux_test.go
+@@ -963,16 +963,18 @@
+ 	}
+ }
+ 
+-func (c *mockPortDriverClient) ChildHostIP(proto string, hostIP netip.Addr) netip.Addr {
++func (c *mockPortDriverClient) ChildHostIP(proto string, hostIP netip.Addr) (netip.Addr, error) {
+ 	if hostIP.Is6() {
+ 		if !c.supportV6 {
+-			return netip.Addr{}
++			return netip.Addr{}, nil
+ 		}
+-		return netip.IPv6Loopback()
++		return netip.IPv6Loopback(), nil
+ 	}
+-	return netip.MustParseAddr("127.0.0.1")
++	return netip.MustParseAddr("127.0.0.1"), nil
+ }
+ 
++func (c *mockPortDriverClient) ReleaseChildIP(netip.Addr) error { return nil }
++
+ func (c *mockPortDriverClient) AddPort(_ context.Context, proto string, hostIP, childIP netip.Addr, hostPort int) (func() error, error) {
+ 	key := mockPortDriverPort{proto: proto, hostIP: hostIP.String(), childIP: childIP.String(), hostPort: hostPort}
+ 	if _, exists := c.openPorts[key]; exists {
+--- a/daemon/libnetwork/internal/rlkclient/harddind_aliases_linux.go
++++ b/daemon/libnetwork/internal/rlkclient/harddind_aliases_linux.go
+@@ -0,0 +1,304 @@
++// HardDinD exact-address alias manager.
++//
++// Every distinct host IP a container publishes on is represented inside the
++// guest by its own exact secondary address on the slirp uplink. Dockerd's
++// port allocator, firewall and userland proxy then see the same "same port on
++// distinct IPs / wildcard vs specific" semantics as on a normal host, while
++// the outer network-backend still binds the real requested parent IP.
++//
++// Secondary addresses are added and removed with netlink (RTM_NEWADDR /
++// RTM_DELADDR) inside the guest network namespace dockerd already administers.
++// No nonlocal_bind/freebind sysctls and no outer-host privileges are used.
++// Reservations are reference counted across protocols (TCP+UDP on one host IP
++// share one alias); the exact address is removed with the last mapping and
++// its slot becomes reusable.
++
++package rlkclient
++
++import (
++	"errors"
++	"fmt"
++	"net"
++	"net/netip"
++	"os"
++	"sync"
++
++	"github.com/vishvananda/netlink"
++	"golang.org/x/sys/unix"
++)
++
++const harddindPublishIfaceEnv = "HARDDIND_PUBLISH_IFACE"
++
++var (
++	harddindPrimary4  = netip.MustParseAddr("10.0.2.15") // never pruned/touched
++	harddindPrimary6  = netip.MustParseAddr("fd00::15")  // never pruned/touched
++	harddindWildcard4 = netip.MustParseAddr("10.0.2.16") // parent 0.0.0.0
++	harddindWildcard6 = netip.MustParseAddr("fd00::10")  // parent ::
++
++	harddindDyn4First = [4]byte{10, 0, 2, 17}
++	harddindDyn4Count = 238 // 10.0.2.17 .. 10.0.2.254 (/24 broadcast excluded)
++	harddindV4Prefix  = netip.MustParsePrefix("10.0.2.0/24")
++
++	// fd00::100:0/112; dynamic aliases fd00::100:1 .. fd00::100:ffff.
++	harddindV6Prefix    = netip.MustParsePrefix("fd00::/64")
++	harddindDyn6Prefix  = netip.MustParsePrefix("fd00::100:0/112")
++	harddindDyn6First32 = uint32(0x01000001)
++	harddindDyn6Count   = 0xffff
++)
++
++// harddindAddrBackend is the small netlink surface the manager needs. It
++// exists so reservation/rollback logic can be unit-tested without a network
++// namespace.
++type harddindAddrBackend interface {
++	AddAddress(ifindex int, addr netip.Addr) error
++	RemoveAddress(ifindex int, addr netip.Addr) error
++	ListAddresses(ifindex int) ([]netip.Addr, error)
++}
++
++type harddindAliasManager struct {
++	backend harddindAddrBackend
++	ifindex int
++
++	mu      sync.Mutex
++	refs    map[netip.Addr]int        // host IP -> live mapping count
++	aliases map[netip.Addr]netip.Addr // host IP -> guest alias
++	used    map[netip.Addr]struct{}   // guest aliases currently assigned
++}
++
++func newHarddindAliasManager() (*harddindAliasManager, error) {
++	iface := os.Getenv(harddindPublishIfaceEnv)
++	if iface == "" {
++		return nil, fmt.Errorf("%s is not set", harddindPublishIfaceEnv)
++	}
++	link, err := netlink.LinkByName(iface)
++	if err != nil {
++		return nil, fmt.Errorf("lookup uplink %q: %w", iface, err)
++	}
++	m := &harddindAliasManager{
++		backend: &harddindNetlinkBackend{},
++		ifindex: link.Attrs().Index,
++		refs:    make(map[netip.Addr]int),
++		aliases: make(map[netip.Addr]netip.Addr),
++		used:    make(map[netip.Addr]struct{}),
++	}
++	if err := m.reset(); err != nil {
++		return nil, err
++	}
++	return m, nil
++}
++
++// reset removes addresses a previous daemon instance left in the alias pools
++// (crash recovery) and assigns the permanent wildcard aliases. The primary
++// addresses are never touched.
++func (m *harddindAliasManager) reset() error {
++	existing, err := m.backend.ListAddresses(m.ifindex)
++	if err != nil {
++		return fmt.Errorf("list uplink addresses: %w", err)
++	}
++	for _, addr := range existing {
++		if harddindManagedAlias(addr) {
++			if err := m.backend.RemoveAddress(m.ifindex, addr); err != nil {
++				return fmt.Errorf("prune stale alias %s: %w", addr, err)
++			}
++		}
++	}
++	for _, wildcard := range []netip.Addr{harddindWildcard4, harddindWildcard6} {
++		if err := m.backend.AddAddress(m.ifindex, wildcard); err != nil {
++			return fmt.Errorf("assign wildcard alias %s: %w", wildcard, err)
++		}
++		m.used[wildcard] = struct{}{}
++	}
++	return nil
++}
++
++// Reserve returns the exact guest alias for hostIP, assigning it on the
++// uplink on first use and counting later references.
++func (m *harddindAliasManager) Reserve(hostIP netip.Addr) (netip.Addr, error) {
++	if hostIP.Is4() && hostIP.IsUnspecified() {
++		return harddindWildcard4, nil
++	}
++	if hostIP.Is6() && hostIP.IsUnspecified() {
++		return harddindWildcard6, nil
++	}
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	if alias, ok := m.aliases[hostIP]; ok {
++		m.refs[hostIP]++
++		return alias, nil
++	}
++	alias, err := m.allocate(hostIP)
++	if err != nil {
++		return netip.Addr{}, err
++	}
++	if err := m.backend.AddAddress(m.ifindex, alias); err != nil {
++		return netip.Addr{}, fmt.Errorf("assign guest alias %s for host IP %s: %w", alias, hostIP, err)
++	}
++	m.used[alias] = struct{}{}
++	m.aliases[hostIP] = alias
++	m.refs[hostIP] = 1
++	return alias, nil
++}
++
++// Release drops one reference; the exact alias address is removed when the
++// last mapping for the host IP is torn down.
++func (m *harddindAliasManager) Release(hostIP netip.Addr) error {
++	if hostIP.IsUnspecified() {
++		return nil // wildcard aliases are permanent for the daemon lifetime
++	}
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	count, ok := m.refs[hostIP]
++	if !ok {
++		// Balanced calls are guaranteed by the port mapper; report rather
++		// than silently corrupting the refcount.
++		return fmt.Errorf("unbalanced release for host IP %s", hostIP)
++	}
++	alias := m.aliases[hostIP]
++	if count > 1 {
++		m.refs[hostIP] = count - 1
++		return nil
++	}
++	if err := m.backend.RemoveAddress(m.ifindex, alias); err != nil {
++		return fmt.Errorf("remove guest alias %s for host IP %s: %w", alias, hostIP, err)
++	}
++	delete(m.used, alias)
++	delete(m.aliases, hostIP)
++	delete(m.refs, hostIP)
++	return nil
++}
++
++func (m *harddindAliasManager) allocate(hostIP netip.Addr) (netip.Addr, error) {
++	is6 := hostIP.Is6()
++	count := harddindDyn4Count
++	if is6 {
++		count = harddindDyn6Count
++	}
++	for i := 0; i < count; i++ {
++		candidate := harddindDynAlias(i, is6)
++		if _, taken := m.used[candidate]; taken {
++			continue
++		}
++		return candidate, nil
++	}
++	return netip.Addr{}, fmt.Errorf("harddind publish alias pool for %s is exhausted (%d addresses)",
++		hostIP, count)
++}
++
++func harddindDynAlias(index int, is6 bool) netip.Addr {
++	if !is6 {
++		b := harddindDyn4First
++		b[3] += byte(index)
++		addr := netip.AddrFrom4(b)
++		if !harddindV4Prefix.Contains(addr) || addr == harddindPrimary4 {
++			panic("harddind v4 alias outside its configured pool")
++		}
++		return addr
++	}
++	var b [16]byte
++	b[0] = 0xfd
++	v := harddindDyn6First32 + uint32(index)
++	b[12], b[13], b[14], b[15] = byte(v>>24), byte(v>>16), byte(v>>8), byte(v)
++	addr := netip.AddrFrom16(b)
++	if !harddindDyn6Prefix.Contains(addr) || addr == harddindDyn6Prefix.Addr() {
++		panic("harddind v6 alias outside its configured /112 pool")
++	}
++	return addr
++}
++
++// harddindManagedAlias reports whether an address found on the uplink comes
++// from a wildcard or dynamic alias pool and may be pruned/reassigned. The
++// primaries are excluded explicitly.
++func harddindManagedAlias(addr netip.Addr) bool {
++	addr = addr.Unmap()
++	if addr == harddindPrimary4 || addr == harddindPrimary6 {
++		return false
++	}
++	if addr.Is4() {
++		if addr == harddindWildcard4 {
++			return true
++		}
++		first := harddindDynAlias(0, false)
++		last := harddindDynAlias(harddindDyn4Count-1, false)
++		return harddindV4Prefix.Contains(addr) && addr.Compare(first) >= 0 && addr.Compare(last) <= 0
++	}
++	if addr == harddindWildcard6 {
++		return true
++	}
++	return harddindDyn6Prefix.Contains(addr) && addr != harddindDyn6Prefix.Addr()
++}
++
++// harddindNetlinkBackend performs the exact address changes. IPv4 aliases are
++// /32 secondaries; the primary 10.0.2.15/24 already supplies the connected
++// route and the kernel answers ARP for every local address. IPv6 aliases are
++// /128 with NODAD so dockerd can bind() them immediately without waiting out
++// DAD tentative state; the primary fd00::15/64 supplies the on-link route.
++type harddindNetlinkBackend struct {
++	link netlink.Link
++}
++
++func (b *harddindNetlinkBackend) netlinkAddr(addr netip.Addr) *netlink.Addr {
++	if addr.Is4() {
++		return &netlink.Addr{IPNet: &net.IPNet{IP: net.IP(addr.AsSlice()), Mask: net.CIDRMask(32, 32)}}
++	}
++	nlAddr := &netlink.Addr{
++		IPNet: &net.IPNet{IP: net.IP(addr.AsSlice()), Mask: net.CIDRMask(128, 128)},
++		Flags: unix.IFA_F_NODAD,
++	}
++	return nlAddr
++}
++
++func (b *harddindNetlinkBackend) AddAddress(ifindex int, addr netip.Addr) error {
++	link, err := lookupCachedLink(b, ifindex)
++	if err != nil {
++		return err
++	}
++	return netlink.AddrAdd(link, b.netlinkAddr(addr))
++}
++
++func (b *harddindNetlinkBackend) RemoveAddress(ifindex int, addr netip.Addr) error {
++	link, err := lookupCachedLink(b, ifindex)
++	if err != nil {
++		return err
++	}
++	err = netlink.AddrDel(link, b.netlinkAddr(addr))
++	// A crash between listing and pruning may have removed it already.
++	if err != nil && !errors.Is(err, unix.ENOENT) && !errors.Is(err, unix.EADDRNOTAVAIL) {
++		return err
++	}
++	return nil
++}
++
++func (b *harddindNetlinkBackend) ListAddresses(ifindex int) ([]netip.Addr, error) {
++	link, err := lookupCachedLink(b, ifindex)
++	if err != nil {
++		return nil, err
++	}
++	nlAddrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
++	if err != nil {
++		return nil, err
++	}
++	addrs := make([]netip.Addr, 0, len(nlAddrs))
++	for _, a := range nlAddrs {
++		if a.IP == nil || a.IP.IsMulticast() {
++			continue
++		}
++		ip, ok := netip.AddrFromSlice(a.IP)
++		if !ok {
++			continue
++		}
++		addrs = append(addrs, ip.Unmap())
++	}
++	return addrs, nil
++}
++
++func lookupCachedLink(b *harddindNetlinkBackend, ifindex int) (netlink.Link, error) {
++	if b.link != nil && b.link.Attrs().Index == ifindex {
++		return b.link, nil
++	}
++	link, err := netlink.LinkByIndex(ifindex)
++	if err != nil {
++		return nil, fmt.Errorf("lookup uplink ifindex %d: %w", ifindex, err)
++	}
++	b.link = link
++	return link, nil
++}
+--- a/daemon/libnetwork/internal/rlkclient/harddind_aliases_linux_test.go
++++ b/daemon/libnetwork/internal/rlkclient/harddind_aliases_linux_test.go
+@@ -0,0 +1,213 @@
++package rlkclient
++
++import (
++	"errors"
++	"net/netip"
++	"sort"
++	"sync"
++	"testing"
++
++	"gotest.tools/v3/assert"
++	is "gotest.tools/v3/assert/cmp"
++)
++
++// fakeAddrBackend records exact address changes instead of touching netlink.
++type fakeAddrBackend struct {
++	mu       sync.Mutex
++	addrs    map[netip.Addr]bool
++	added    []netip.Addr
++	removed  []netip.Addr
++	failNext map[netip.Addr]bool
++}
++
++func newFakeAddrBackend(existing ...netip.Addr) *fakeAddrBackend {
++	f := &fakeAddrBackend{
++		addrs:    make(map[netip.Addr]bool),
++		failNext: make(map[netip.Addr]bool),
++	}
++	for _, a := range existing {
++		f.addrs[a.Unmap()] = true
++	}
++	return f
++}
++
++func (f *fakeAddrBackend) AddAddress(_ int, addr netip.Addr) error {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	addr = addr.Unmap()
++	if f.failNext[addr] {
++		delete(f.failNext, addr)
++		return errors.New("simulated netlink EEXIST")
++	}
++	if f.addrs[addr] {
++		return errors.New("duplicate add")
++	}
++	f.addrs[addr] = true
++	f.added = append(f.added, addr)
++	return nil
++}
++
++func (f *fakeAddrBackend) RemoveAddress(_ int, addr netip.Addr) error {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	addr = addr.Unmap()
++	f.removed = append(f.removed, addr)
++	delete(f.addrs, addr)
++	return nil
++}
++
++func (f *fakeAddrBackend) ListAddresses(_ int) ([]netip.Addr, error) {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	out := make([]netip.Addr, 0, len(f.addrs))
++	for a := range f.addrs {
++		out = append(out, a)
++	}
++	sort.Slice(out, func(i, j int) bool { return out[i].Less(out[j]) })
++	return out, nil
++}
++
++func (f *fakeAddrBackend) has(addr netip.Addr) bool {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	return f.addrs[addr.Unmap()]
++}
++
++func newTestManager(t *testing.T, backend *fakeAddrBackend) *harddindAliasManager {
++	t.Helper()
++	m := &harddindAliasManager{
++		backend: backend,
++		ifindex: 7,
++		refs:    make(map[netip.Addr]int),
++		aliases: make(map[netip.Addr]netip.Addr),
++		used:    make(map[netip.Addr]struct{}),
++	}
++	assert.NilError(t, m.reset())
++	return m
++}
++
++func TestHarddindManagerPrunesStaleAndAssignsWildcards(t *testing.T) {
++	stale4 := netip.MustParseAddr("10.0.2.42")    // stale dynamic alias
++	stale6 := netip.MustParseAddr("fd00::100:77") // stale dynamic alias
++	primary4 := harddindPrimary4
++	primary6 := harddindPrimary6
++	unrelated := netip.MustParseAddr("192.168.9.9")
++	backend := newFakeAddrBackend(stale4, stale6, primary4, primary6, unrelated)
++	m := newTestManager(t, backend)
++
++	assert.Check(t, !backend.has(stale4), "stale v4 alias must be pruned")
++	assert.Check(t, !backend.has(stale6), "stale v6 alias must be pruned")
++	assert.Check(t, backend.has(primary4), "primary v4 must be untouched")
++	assert.Check(t, backend.has(primary6), "primary v6 must be untouched")
++	assert.Check(t, backend.has(unrelated), "unrelated addresses must be untouched")
++	assert.Check(t, backend.has(harddindWildcard4))
++	assert.Check(t, backend.has(harddindWildcard6))
++	// Wildcards do not participate in refcounting.
++	assert.NilError(t, m.Release(netip.MustParseAddr("0.0.0.0")))
++	assert.Check(t, backend.has(harddindWildcard4))
++}
++
++func TestHarddindManagerReserveReleaseRefcountAndReuse(t *testing.T) {
++	backend := newFakeAddrBackend()
++	m := newTestManager(t, backend)
++
++	ip1 := netip.MustParseAddr("127.0.0.1")
++	ip2 := netip.MustParseAddr("127.0.0.2")
++	a1, err := m.Reserve(ip1)
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(a1, netip.MustParseAddr("10.0.2.17")))
++	// TCP and UDP on one host IP share one alias and one exact address.
++	a1again, err := m.Reserve(ip1)
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(a1again, a1))
++	assert.Equal(t, m.refs[ip1], 2)
++
++	a2, err := m.Reserve(ip2)
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(a2, netip.MustParseAddr("10.0.2.18")))
++
++	assert.NilError(t, m.Release(ip1))
++	assert.Check(t, backend.has(a1), "alias stays while a second mapping references it")
++	assert.NilError(t, m.Release(ip1))
++	assert.Check(t, !backend.has(a1), "exact address removed with last mapping")
++
++	// The freed slot is reused for a new host IP rather than monotonically
++	// leaking pool capacity over container churn.
++	a3, err := m.Reserve(netip.MustParseAddr("127.0.0.3"))
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(a3, a1))
++
++	err = m.Release(ip1)
++	assert.Check(t, err != nil, "unbalanced release must be reported")
++}
++
++func TestHarddindManagerIPv6PoolMatchesValidatedCIDR(t *testing.T) {
++	backend := newFakeAddrBackend()
++	m := newTestManager(t, backend)
++
++	first, err := m.Reserve(netip.MustParseAddr("2001:db8::1"))
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(first, netip.MustParseAddr("fd00::100:1")))
++	assert.Check(t, harddindDyn6Prefix.Contains(first))
++
++	last := harddindDynAlias(harddindDyn6Count-1, true)
++	assert.Check(t, is.Equal(last, netip.MustParseAddr("fd00::100:ffff")))
++	assert.Check(t, harddindDyn6Prefix.Contains(last))
++	assert.NilError(t, m.Release(netip.MustParseAddr("2001:db8::1")))
++}
++
++func TestHarddindManagerPoolExhaustionAndRecovery(t *testing.T) {
++	backend := newFakeAddrBackend()
++	m := newTestManager(t, backend)
++
++	// Shrink the pool by marking all but two v4 slots occupied (e.g. other
++	// live publications); allocation must fail loudly, never collapse.
++	allocated := 0
++	for i := 2; i < harddindDyn4Count; i++ {
++		a := harddindDynAlias(i, false)
++		m.used[a] = struct{}{}
++		allocated++
++	}
++	first, err := m.Reserve(netip.MustParseAddr("127.0.0.1"))
++	assert.NilError(t, err)
++	second, err := m.Reserve(netip.MustParseAddr("127.0.0.2"))
++	assert.NilError(t, err)
++	_, err = m.Reserve(netip.MustParseAddr("127.0.0.3"))
++	assert.Check(t, err != nil)
++	assert.Check(t, is.ErrorContains(err, "is exhausted"))
++	// Nothing was half-assigned for the failed reservation.
++	assert.Equal(t, len(m.aliases), 2)
++	assert.NilError(t, m.Release(netip.MustParseAddr("127.0.0.1")))
++	recovered, err := m.Reserve(netip.MustParseAddr("127.0.0.3"))
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(recovered, first))
++	assert.Check(t, recovered != second)
++}
++
++func TestHarddindManagerNetlinkFailureRollsBackNothing(t *testing.T) {
++	backend := newFakeAddrBackend()
++	target := harddindDynAlias(0, false)
++	backend.failNext[target] = true
++	m := newTestManager(t, backend)
++
++	_, err := m.Reserve(netip.MustParseAddr("127.0.0.1"))
++	assert.Check(t, is.ErrorContains(err, "simulated netlink EEXIST"))
++	assert.Equal(t, len(m.aliases), 0)
++	assert.Equal(t, len(m.refs), 0)
++	// The slot is still free: retry after the transient failure succeeds.
++	again, err := m.Reserve(netip.MustParseAddr("127.0.0.1"))
++	assert.NilError(t, err)
++	assert.Check(t, is.Equal(again, target))
++}
++
++func TestHarddindManagedAliasMembership(t *testing.T) {
++	managed := []string{"10.0.2.16", "10.0.2.17", "10.0.2.254", "fd00::10", "fd00::100:1", "fd00::100:ffff"}
++	for _, s := range managed {
++		assert.Check(t, harddindManagedAlias(netip.MustParseAddr(s)), s)
++	}
++	unmanaged := []string{"10.0.2.15", "10.0.2.2", "10.0.2.255", "fd00::15", "fd00::2",
++		"fd00::100:0", "fd01::100:1", "127.0.0.1"}
++	for _, s := range unmanaged {
++		assert.Check(t, !harddindManagedAlias(netip.MustParseAddr(s)), s)
++	}
++}
+--- a/daemon/libnetwork/portmappers/nat/harddind_alias_mapper_linux_test.go
++++ b/daemon/libnetwork/portmappers/nat/harddind_alias_mapper_linux_test.go
+@@ -0,0 +1,128 @@
++package nat
++
++import (
++	"context"
++	"net"
++	"net/netip"
++	"sync"
++	"testing"
++
++	"github.com/moby/moby/v2/daemon/libnetwork/portmapperapi"
++	"github.com/moby/moby/v2/daemon/libnetwork/types"
++	"gotest.tools/v3/assert"
++)
++
++// fakeAliasPDC emulates HardDinD guest alias reservation with live
++// reference counting, using bindable loopback addresses so the real OS port
++// allocator in MapPorts works inside the test environment.
++type fakeAliasPDC struct {
++	mu        sync.Mutex
++	refs      map[netip.Addr]int
++	failAddOn map[netip.Addr]bool
++}
++
++func newFakeAliasPDC() *fakeAliasPDC {
++	return &fakeAliasPDC{refs: map[netip.Addr]int{}, failAddOn: map[netip.Addr]bool{}}
++}
++
++func (f *fakeAliasPDC) ChildHostIP(_ string, hostIP netip.Addr) (netip.Addr, error) {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	hostIP = hostIP.Unmap()
++	f.refs[hostIP]++
++	// Distinct loopback addresses stand in for the guest aliases.
++	return hostIP, nil
++}
++
++func (f *fakeAliasPDC) ReleaseChildIP(hostIP netip.Addr) error {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	f.refs[hostIP.Unmap()]--
++	if f.refs[hostIP.Unmap()] == 0 {
++		delete(f.refs, hostIP.Unmap())
++	}
++	return nil
++}
++
++func (f *fakeAliasPDC) AddPort(_ context.Context, _ string, hostIP, _ netip.Addr, _ int) (func() error, error) {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	if f.failAddOn[hostIP.Unmap()] {
++		return nil, assertError("simulated hostfwd bind conflict")
++	}
++	return func() error { return nil }, nil
++}
++
++func (f *fakeAliasPDC) outstanding() int {
++	f.mu.Lock()
++	defer f.mu.Unlock()
++	total := 0
++	for _, n := range f.refs {
++		total += n
++	}
++	return total
++}
++
++type errString string
++
++func (e errString) Error() string { return string(e) }
++func assertError(s string) error  { return errString(s) }
++
++func reqFor(ip string) portmapperapi.PortBindingReq {
++	return portmapperapi.PortBindingReq{
++		PortBinding: types.PortBinding{
++			Proto:    types.TCP,
++			Port:     7777,
++			HostIP:   net.ParseIP(ip),
++			HostPort: 0,
++		},
++	}
++}
++
++func TestMapPortsReservesAndReleasesDistinctHostIPs(t *testing.T) {
++	pdc := newFakeAliasPDC()
++	pm := NewPortMapper(Config{RlkClient: pdc})
++	pbs, err := pm.MapPorts(context.Background(),
++		[]portmapperapi.PortBindingReq{reqFor("127.0.0.1"), reqFor("127.0.0.2")})
++	assert.NilError(t, err)
++	assert.Equal(t, len(pbs), 2)
++	assert.Equal(t, pdc.outstanding(), 2, "one guest alias reference per host IP")
++
++	assert.NilError(t, pm.UnmapPorts(context.Background(), pbs))
++	assert.Equal(t, pdc.outstanding(), 0, "all alias references released")
++}
++
++// A host-side bind conflict arriving while building one binding must roll
++// back every guest alias reserved for the failed MapPorts call.
++func TestMapPortsHostfwdConflictRollsBackAllReservations(t *testing.T) {
++	pdc := newFakeAliasPDC()
++	pdc.failAddOn[netip.MustParseAddr("127.0.0.2")] = true
++	pm := NewPortMapper(Config{RlkClient: pdc})
++	_, err := pm.MapPorts(context.Background(),
++		[]portmapperapi.PortBindingReq{reqFor("127.0.0.1"), reqFor("127.0.0.2")})
++	assert.Check(t, err != nil)
++	assert.Equal(t, pdc.outstanding(), 0, "conflict must leave no reserved guest aliases behind")
++}
++
++// A reservation conflict before bindings are built (here: port allocation
++// failure on a fixed privileged range is simulated via an already-bound
++// port) must also release every alias.
++func TestMapPortsBindFailureReleasesReservations(t *testing.T) {
++	pdc := newFakeAliasPDC()
++	pm := NewPortMapper(Config{RlkClient: pdc})
++
++	holder, err := net.Listen("tcp", "127.0.0.1:0")
++	assert.NilError(t, err)
++	defer holder.Close()
++	occupied := holder.Addr().(*net.TCPAddr).Port
++
++	cfg := []portmapperapi.PortBindingReq{{
++		PortBinding: types.PortBinding{
++			Proto: types.TCP, Port: 7777, HostIP: net.ParseIP("127.0.0.1"),
++			HostPort: uint16(occupied), HostPortEnd: uint16(occupied),
++		},
++	}}
++	_, err = pm.MapPorts(context.Background(), cfg)
++	assert.Check(t, err != nil)
++	assert.Equal(t, pdc.outstanding(), 0)
++}

@@ -48,10 +48,30 @@
   ],
   "network_backend": {
     "libslirp": "4.6.1",
+    "libslirp_source": {
+      "url": "https://gitlab.freedesktop.org/slirp/libslirp/-/archive/v4.6.1/libslirp-v4.6.1.tar.bz2",
+      "sha256": "3ee27347764c629e10228f7002dd22104e9cc21623d565dc0e7e57ed1b63a70e",
+      "purpose": "source-level verification of slirp_add_hostxfwd IPv6/V6ONLY and pinned static build with HardDinD IPv6 fragmentation backport"
+    },
     "starpub_packages": {
       "libslirp0:amd64": "4.6.1-1ubuntu0.2",
       "libslirp-dev:amd64": "4.6.1-1ubuntu0.2",
       "libglib2.0-0:amd64": "2.72.4-0ubuntu2.9"
+    },
+    "libglib_dev": {
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/g/glib2.0/libglib2.0-dev_2.72.4-0ubuntu2.10_amd64.deb",
+      "sha256": "67d6c9ff84841fcc1e5f83b8d8f8169291130dce4bac4f9d3287ccbec1dd2f61",
+      "purpose": "glib headers extracted into the work directory (never installed) to compile the pinned static libslirp; runtime is host libglib2.0-0"
+    },
+    "libslirp_debian": {
+      "package": "libslirp0:amd64 4.6.1-1ubuntu0.2",
+      "source_package": "libslirp_4.6.1-1ubuntu0.2",
+      "debian_tarball": "third_party/libslirp_4.6.1-1ubuntu0.2.debian.tar.xz",
+      "debian_tarball_sha256": "c7b4c8cd67cc99e1b4d13cc49be395372ee3f2fdecd268639446ea87742043a8",
+      "preserved_patches": [
+        "CVE-2026-9539 (sosendoob urgent data bounds / sb_cc underflow)"
+      ],
+      "purpose": "production runtime baseline is the patched distro library; the reproducible static rebuild must apply the same security series on top of upstream 4.6.1"
     }
   },
   "network_test_image": {

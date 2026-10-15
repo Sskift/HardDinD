@@ -11,6 +11,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +25,7 @@
 
 #define MAX_FRAME 65536
 #define MAX_FDS 16384
-#define MAX_FORWARDS 256
+#define MAX_FORWARDS 4096
 #define MAX_QUEUE 256
 #define MAX_BATCH 64
 static int link_fd, ctl_fd, nfds;
@@ -41,9 +42,20 @@ static struct timer timers[64];
 struct packet { struct packet *next; size_t len; unsigned char data[]; };
 static struct packet *head, *tail;
 static unsigned queued;
-struct forward { int udp, host_port, guest_port; struct in_addr addr; };
+/* One host forwarding. family is AF_INET or AF_INET6; the address union key
+ * matches the concrete address libslirp binds on the host (haddr). The guest
+ * alias is the per-family address dockerd reserves/DNATs to inside the guest. */
+struct forward {
+    int family, udp, host_port, guest_port;
+    struct in_addr addr, guest_addr;
+    struct in6_addr addr6, guest_addr6;
+};
 static struct forward forwards[MAX_FORWARDS];
 static unsigned nforwards;
+/* Bumped on every successful add/remove; paged list clients use it to detect
+ * concurrent table changes while aggregating pages. The control loop runs on
+ * one thread, so plain 32-bit counters are sufficient. */
+static uint32_t inventory_revision;
 
 static void die(const char *what) { perror(what); exit(1); }
 static void stop(int sig) { (void)sig; stopping = 1; }
@@ -177,10 +189,110 @@ static int stats(char *buf, size_t len) {
     return snprintf(buf, len, "{\"rx_packets\":%" PRIu64 ",\"tx_packets\":%" PRIu64
         ",\"rx_bytes\":%" PRIu64 ",\"tx_bytes\":%" PRIu64
         ",\"dropped_packets\":%" PRIu64 ",\"queued_packets\":%u,\"forwards\":%u"
+        ",\"inventory_revision\":%" PRIu32
         ",\"mtu\":%d,\"batch_size\":%u,\"rx_syscalls\":%" PRIu64 ",\"tx_syscalls\":%" PRIu64
         ",\"poll_calls\":%" PRIu64 "}",
         rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
-        mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls);
+        inventory_revision, mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls);
+}
+
+/*
+ * Bounded JSON inventory transport.
+ *
+ * Legacy bare "list" returns the original JSON array for small inventories
+ * but fails closed with an explicit error instead of truncating when the
+ * result would overflow. Paged "list <offset> <limit>" returns a revisioned
+ * object so clients can aggregate a complete, consistent snapshot:
+ *   {"ok":true,"revision":N,"count":T,"offset":O,"limit":L,"forwards":[...]}
+ * The control loop is single threaded, so a revision change between pages
+ * means the table changed and the client must restart the sweep.
+ */
+#define INVENTORY_BUF 32768u
+#define INVENTORY_PAGE_MAX 64u
+/* Worst-case per-record JSON with INET6_ADDRSTRLEN addresses:
+ *   {"protocol":"udp","family":"udp6","address":"<46>","host_port":65535,
+ *    "guest_address":"<46>","guest_port":65535},  == 196 bytes. */
+#define INVENTORY_RECORD_MAX 196u
+/* Machine-checked page envelope bound: 64 max-size records plus the object
+ * envelope must always fit the fixed reply buffer. */
+_Static_assert(INVENTORY_PAGE_MAX * INVENTORY_RECORD_MAX + 256 < INVENTORY_BUF,
+               "paged inventory must fit the fixed control buffer");
+
+struct json_buf {
+    char *b;
+    size_t cap, used;
+    bool overflow;
+};
+
+static void jb_init(struct json_buf *j, char *b, size_t cap) {
+    j->b = b; j->cap = cap; j->used = 0; j->overflow = false;
+}
+
+static void jb_append(struct json_buf *j, const char *fmt, ...) {
+    if (j->overflow) return;
+    va_list ap;
+    va_start(ap, fmt);
+    int r = vsnprintf(j->b + j->used, j->cap - j->used, fmt, ap);
+    va_end(ap);
+    /* Fail closed on truncation (or encoding errors); never advance used past
+     * cap (which would turn the next size into an underflowed huge value). */
+    if (r < 0 || (size_t)r >= j->cap - j->used) {
+        j->overflow = true;
+        return;
+    }
+    j->used += (size_t)r;
+}
+
+static void forward_json(struct json_buf *j, const struct forward *f) {
+    char address[INET6_ADDRSTRLEN], guest[INET6_ADDRSTRLEN];
+    inet_ntop(f->family, f->family == AF_INET ? (void *)&f->addr : (void *)&f->addr6,
+              address, sizeof(address));
+    inet_ntop(f->family, f->family == AF_INET ? (void *)&f->guest_addr : (void *)&f->guest_addr6,
+              guest, sizeof(guest));
+    jb_append(j, "{\"protocol\":\"%s\",\"family\":\"%s%d\",\"address\":\"%s\",\"host_port\":%d,"
+              "\"guest_address\":\"%s\",\"guest_port\":%d}",
+              f->udp ? "udp" : "tcp", f->udp ? "udp" : "tcp",
+              f->family == AF_INET ? 4 : 6, address, f->host_port, guest, f->guest_port);
+}
+
+/* Legacy array listing; fails closed with an explicit error on overflow. */
+static void inventory_legacy(char *output, size_t cap) {
+    struct json_buf j; jb_init(&j, output, cap);
+    jb_append(&j, "[");
+    for (unsigned i = 0; i < nforwards; i++) {
+        jb_append(&j, "%s", i ? "," : "");
+        forward_json(&j, &forwards[i]);
+    }
+    jb_append(&j, "]");
+    if (j.overflow) {
+        snprintf(output, cap, "{\"ok\":false,\"error\":\"inventory too large for legacy list "
+                 "buffer; use paged 'list <offset> <limit>'\",\"revision\":%" PRIu32
+                 ",\"count\":%u,\"limit\":%u}", inventory_revision, nforwards, INVENTORY_PAGE_MAX);
+    }
+}
+
+/* Revisioned page listing. Returns false (with an error reply) on bad bounds
+ * or the impossible overflow; *revision_change stays false on success. */
+static void inventory_page(char *output, size_t cap, unsigned offset, unsigned limit) {
+    if (limit == 0 || limit > INVENTORY_PAGE_MAX || offset > nforwards) {
+        snprintf(output, cap, "{\"ok\":false,\"error\":\"invalid inventory page\"}");
+        return;
+    }
+    /* Defense in depth: the 64-record bound plus 196-byte record bound makes
+     * overflow impossible; still route any arithmetic surprise to fail closed. */
+    struct json_buf j; jb_init(&j, output, cap);
+    jb_append(&j, "{\"ok\":true,\"revision\":%" PRIu32 ",\"count\":%u,\"offset\":%u,"
+              "\"limit\":%u,\"forwards\":[", inventory_revision, nforwards, offset, limit);
+    unsigned end = nforwards - offset;
+    if (end > limit) end = limit;
+    for (unsigned k = 0; k < end; k++) {
+        jb_append(&j, "%s", k ? "," : "");
+        forward_json(&j, &forwards[offset + k]);
+    }
+    jb_append(&j, "]}");
+    if (j.overflow) {
+        snprintf(output, cap, "{\"ok\":false,\"error\":\"inventory page overflow\"}");
+    }
 }
 static void control(Slirp *slirp) {
     char input[512], output[32768], *fields[7], *save;
@@ -198,41 +310,104 @@ static void control(Slirp *slirp) {
             stats(output, sizeof(output)); goto reply;
         }
         if (count == 1 && !strcmp(fields[0], "list")) {
-            size_t used = 0;
-            output[used++] = '[';
-            for (unsigned i = 0; i < nforwards; i++) {
-                struct forward *f = &forwards[i];
-                char address[INET_ADDRSTRLEN];
-                inet_ntop(AF_INET, &f->addr, address, sizeof(address));
-                used += (size_t)snprintf(output + used, sizeof(output) - used,
-                    "%s{\"protocol\":\"%s\",\"address\":\"%s\",\"host_port\":%d,\"guest_port\":%d}",
-                    i ? "," : "", f->udp ? "udp" : "tcp", address, f->host_port, f->guest_port);
-            }
-            snprintf(output + used, sizeof(output) - used, "]"); goto reply;
+            inventory_legacy(output, sizeof(output)); goto reply;
         }
-        if (count == 5 && (!strcmp(fields[0], "add") || !strcmp(fields[0], "create") || !strcmp(fields[0], "del"))) {
+        if (count == 3 && !strcmp(fields[0], "list")) {
+            int poff = number(fields[1], 0, MAX_FORWARDS);
+            int plimit = number(fields[2], 1, INVENTORY_PAGE_MAX);
+            if (poff < 0 || plimit < 0) {
+                snprintf(output, sizeof(output), "{\"ok\":false,\"error\":\"invalid inventory page\"}");
+            } else {
+                inventory_page(output, sizeof(output), (unsigned)poff, (unsigned)plimit);
+            }
+            goto reply;
+        }
+        if ((count == 5 || count == 6) && (!strcmp(fields[0], "add") || !strcmp(fields[0], "create") || !strcmp(fields[0], "del"))) {
             int udp = !strcmp(fields[1], "udp");
-            struct in_addr addr;
+            int family = 0;
+            struct in_addr addr4, guest4;
+            struct in6_addr addr6, guest6;
             int hp = number(fields[3], 1, 65535), gp = number(fields[4], 1, 65535);
-            if ((udp || !strcmp(fields[1], "tcp")) && inet_pton(AF_INET, fields[2], &addr) == 1 && hp > 0 && gp > 0) {
+            if (udp || !strcmp(fields[1], "tcp")) {
+                if (inet_pton(AF_INET, fields[2], &addr4) == 1) {
+                    family = AF_INET;
+                    if (count == 6) {
+                        if (inet_pton(AF_INET, fields[5], &guest4) != 1) family = 0;
+                    } else {
+                        guest4 = guest_addr; /* historical 5-field grammar */
+                    }
+                } else if (inet_pton(AF_INET6, fields[2], &addr6) == 1) {
+                    family = AF_INET6;
+                    if (count == 6) {
+                        if (inet_pton(AF_INET6, fields[5], &guest6) != 1) family = 0;
+                    } else {
+                        inet_pton(AF_INET6, "fd00::15", &guest6);
+                    }
+                    /* A scoped literal (fe80::1%dev) is ambiguous over the
+                     * text protocol and cannot bind without a zone. */
+                    if (strchr(fields[2], '%') || (count == 6 && strchr(fields[5], '%'))) family = 0;
+                    /* Reject IPv4-mapped IPv6: it would silently bind IPv4. */
+                    if (family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr6)) family = 0;
+                }
+            }
+            if (family && hp > 0 && gp > 0) {
+                struct sockaddr_storage haddr = {0}, gaddr = {0};
+                socklen_t hlen, glen;
+                if (family == AF_INET) {
+                    struct sockaddr_in *h = (struct sockaddr_in *)&haddr, *g = (struct sockaddr_in *)&gaddr;
+                    h->sin_family = g->sin_family = AF_INET;
+                    h->sin_addr = addr4; h->sin_port = htons(hp);
+                    g->sin_addr = guest4; g->sin_port = htons(gp);
+                    hlen = glen = sizeof(*h);
+                } else {
+                    struct sockaddr_in6 *h = (struct sockaddr_in6 *)&haddr, *g = (struct sockaddr_in6 *)&gaddr;
+                    h->sin6_family = g->sin6_family = AF_INET6;
+                    h->sin6_addr = addr6; h->sin6_port = htons(hp);
+                    g->sin6_addr = guest6; g->sin6_port = htons(gp);
+                    hlen = glen = sizeof(*h);
+                }
+                int xflags = (family == AF_INET6 ? SLIRP_HOSTFWD_V6ONLY : 0);
                 unsigned i;
-                for (i = 0; i < nforwards; i++)
-                    if (forwards[i].udp == udp && forwards[i].addr.s_addr == addr.s_addr && forwards[i].host_port == hp) break;
+                for (i = 0; i < nforwards; i++) {
+                    if (forwards[i].family != family || forwards[i].udp != udp ||
+                        forwards[i].host_port != hp) continue;
+                    int same = family == AF_INET ? forwards[i].addr.s_addr == addr4.s_addr
+                                                 : memcmp(&forwards[i].addr6, &addr6, sizeof(addr6)) == 0;
+                    if (same) break;
+                }
                 if (!strcmp(fields[0], "del")) {
                     if (i == nforwards) error = NULL;
                     else if (forwards[i].guest_port != gp) error = "different guest port";
-                    else if (!slirp_remove_hostfwd(slirp, udp, addr, hp)) { forwards[i] = forwards[--nforwards]; error = NULL; }
+                    else if (!slirp_remove_hostxfwd(slirp, (struct sockaddr *)&haddr, hlen,
+                                                    udp ? SLIRP_HOSTFWD_UDP : 0)) {
+                        forwards[i] = forwards[--nforwards]; inventory_revision++; error = NULL;
+                    }
                     else error = "forward removal failed";
-                } else if (i < nforwards) error = !strcmp(fields[0], "create") ? "host port already allocated" : (forwards[i].guest_port == gp ? NULL : "different guest port");
-                else if (nforwards == MAX_FORWARDS) error = "forward limit";
-                else if (slirp_add_hostfwd(slirp, udp, addr, hp, guest_addr, gp)) error = "host port unavailable";
-                else { forwards[nforwards++] = (struct forward){udp, hp, gp, addr}; error = NULL; }
+                } else if (i < nforwards) {
+                    error = !strcmp(fields[0], "create") ? "host port already allocated"
+                        : (forwards[i].guest_port == gp ? NULL : "different guest port");
+                } else if (nforwards == MAX_FORWARDS) error = "forward limit";
+                else if (slirp_add_hostxfwd(slirp, (struct sockaddr *)&haddr, hlen,
+                                            (struct sockaddr *)&gaddr, glen,
+                                            (udp ? SLIRP_HOSTFWD_UDP : 0) | xflags)) {
+                    snprintf(output, sizeof(output),
+                        "{\"ok\":false,\"error\":\"host port unavailable: %s\"}", strerror(errno));
+                    goto reply_raw;
+                } else {
+                    struct forward *f = &forwards[nforwards++];
+                    f->family = family; f->udp = udp; f->host_port = hp; f->guest_port = gp;
+                    if (family == AF_INET) { f->addr = addr4; f->guest_addr = guest4; }
+                    else { f->addr6 = addr6; f->guest_addr6 = guest6; }
+                    inventory_revision++;
+                    error = NULL;
+                }
             }
         }
     }
     if (error) snprintf(output, sizeof(output), "{\"ok\":false,\"error\":\"%s\"}", error);
     else strcpy(output, "{\"ok\":true}");
 reply:
+reply_raw:
     if (sendto(ctl_fd, output, strlen(output), MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *)&peer, size) < 0)
         fprintf(stderr, "control reply: %s\n", strerror(errno));
 }
@@ -263,12 +438,19 @@ int main(int argc, char **argv) {
     umask(0077);
     /* Refuse an existing path; never unlink another instance's socket. */
     if (bind(ctl_fd, (struct sockaddr *)&addr, sizeof(addr))) die("control bind");
-    SlirpConfig cfg = {.version = 3, .in_enabled = true, .if_mtu = (size_t)mtu, .if_mru = (size_t)mtu};
+    SlirpConfig cfg = {.version = 3, .in_enabled = true, .in6_enabled = true,
+                       .if_mtu = (size_t)mtu, .if_mru = (size_t)mtu};
     inet_pton(AF_INET, "10.0.2.0", &cfg.vnetwork);
     inet_pton(AF_INET, "255.255.255.0", &cfg.vnetmask);
     inet_pton(AF_INET, "10.0.2.2", &cfg.vhost);
     inet_pton(AF_INET, "10.0.2.15", &guest_addr); cfg.vdhcp_start = guest_addr;
     inet_pton(AF_INET, "10.0.2.3", &cfg.vnameserver);
+    /* The guest assigns fd00::15 plus the harddind alias block statically;
+     * slirp only needs the matching prefix, gateway and resolver. */
+    cfg.vprefix_len = 64;
+    inet_pton(AF_INET6, "fd00::", &cfg.vprefix_addr6);
+    inet_pton(AF_INET6, "fd00::2", &cfg.vhost6);
+    inet_pton(AF_INET6, "fd00::3", &cfg.vnameserver6);
     Slirp *slirp = slirp_new(&cfg, &callbacks, NULL);
     if (!slirp) { unlink(argv[2]); return 1; }
     printf("HARDDIND_NETWORK_READY libslirp=%s\n", slirp_version_string()); fflush(stdout);
