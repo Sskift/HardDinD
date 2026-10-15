@@ -12,6 +12,38 @@ from pipeline import config
 
 
 class SyscallProfileTests(unittest.TestCase):
+    def test_reply_spin_argument(self):
+        compiler = shutil.which('cc')
+        if compiler is None:
+            self.skipTest('C compiler unavailable')
+        patch = (config.REPO / 'kernel/candidates/core-reply-spin.patch').read_text()
+        part = patch.split('+++ b/arch/um/os-Linux/start_up.c\n')[1]
+        added = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
+        setup = added.split('__uml_setup(')[0]
+        source = '''#include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
+#define __init
+#define fatal(message) exit(2)
+''' + setup + '''
+int main(int argc, char **argv) {
+    assert(uml_seccomp_reply_spin == 0);
+    int add = 1;
+    if (argc == 1) return 0;
+    uml_reply_spin_setup(argv[1], &add);
+    assert(!add && uml_seccomp_reply_spin == strtoul(argv[1], NULL, 10) + 1);
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as d:
+            path = pathlib.Path(d)
+            (path / 'check.c').write_text(source)
+            subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', str(path / 'check.c'),
+                            '-o', str(path / 'check')], check=True)
+            subprocess.run([str(path / 'check')], check=True, timeout=10)
+            for arg in ['0', '16', '256', '10000', '', '-1', '10001', 'abc', '1x']:
+                result = subprocess.run([str(path / 'check'), arg], timeout=10)
+                self.assertEqual(result.returncode, 0 if arg.isdecimal() and int(arg) <= 10000 else 2)
+
     def test_stub_sampling_and_completed_records(self):
         compiler = shutil.which('cc')
         if compiler is None:
