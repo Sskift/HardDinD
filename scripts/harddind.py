@@ -111,16 +111,22 @@ def api(port, path):
 
 def mconsole(instance, path, command):
     client = instance / ('m-' + uuid.uuid4().hex[:8])
+    # The filesystem path may exceed sockaddr_un.sun_path even though UML
+    # bound it relative to its instance cwd. Resolve the same socket through
+    # an open directory, without changing this multithreaded process's cwd.
     with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
         try:
             s.bind(str(client)); s.settimeout(3)
             data = command.encode()
-            s.sendto(struct.pack('=III512s', 0xcafebabe, 2, len(data), data), str(path))
+            address = f'/proc/self/fd/{directory}/{path.name}'
+            s.sendto(struct.pack('=III512s', 0xcafebabe, 2, len(data), data), address)
             reply = s.recv(524)
             err, _, length = struct.unpack('=III', reply[:12])
             if err:
                 raise RuntimeError(reply[12:12 + length].decode(errors='replace'))
         finally:
+            os.close(directory)
             client.unlink(missing_ok=True)
 
 
@@ -259,7 +265,7 @@ def serve(a, work, instance):
         uml_dir = instance / 'uml'
         uml_dir.mkdir(exist_ok=True)
         tmp = instance / 'tmp'; tmp.mkdir(exist_ok=True)
-        cmd = [str(kernel), f'umid={run}', f'uml_dir={uml_dir}/', f'mem={a.memory}', f'ncpus={a.cpus}',
+        cmd = [str(kernel), f'umid={run}', 'uml_dir=uml/', f'mem={a.memory}', f'ncpus={a.cpus}',
                'seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
                f'ubd0={instance / "root.cow"},{disk}', 'root=/dev/ubda', 'rw',
                'init=/sbin/harddind-runtime-init', 'con=null', 'con0=null,fd:1', 'ssl=null', 'panic=1',
@@ -282,7 +288,7 @@ def serve(a, work, instance):
         with (instance / f'guest-{run}.log').open('x') as log:
             guest = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                      pass_fds=tuple(inherited), env={**os.environ, 'TMPDIR': str(tmp)},
-                                     start_new_session=True, preexec_fn=parent_death)
+                                     cwd=instance, start_new_session=True, preexec_fn=parent_death)
         guest_end.close()
         if a.publish_ports:
             port_guest.close()

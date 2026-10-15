@@ -47,6 +47,8 @@
 
 [GPU 映射 v14 实测](results/starpub-2026-10-15-candidate-review/gpu-mapping-v14/README.md) 已打通内部四卡 CUDA：每卡完成 1,048,576 个元素的上传、计算、回传和精确校验，前后原生对照也通过。控制 31/31、分配 74/74 回归通过，实例正常退出，25 个记录的进程组为空。补丁现作为 `make kernel-gpu-mapping-experiment` 的可选构建纳入主线；这轮有追踪开销，不能用耗时宣称 GPU 性能一致。并发和完整生命周期验证继续进行。 [关闭追踪的后续运行](results/starpub-2026-10-15-candidate-review/gpu-plain-perf-v1/README.md) 在 `cuCtxCreate` 返回 CUDA 304，未产生内部性能样本；正在分离日志注入和 ptrace 的影响，不能把前述成功推广为普通运行已稳定。
 
+[GPU 追踪分离对照](results/starpub-2026-10-15-candidate-review/gpu-instrumentation-v2/README.md) 进一步确认普通运行存在间歇失败：第二轮仅 4/8 完成四卡计算，其余出现 CUDA 304、999 或退出码 139；部分失败发生在后续 GPU。日志已将一个具体失败点缩到 class `0xc56f` 的通道分配 EIO。修复了另行发现的长路径管理 socket 问题，同样 109 字节绝对路径的实例已正常关机。前后原生四卡均通过，不把诊断完成当作 GPU 稳定性或性能通过。
+
 [GPU 事件修复的真实 CUDA 运行](results/starpub-2026-10-15-candidate-review/gpu-mapping-v11/README.md) 已确认四卡事件注册与释放成功，控制 31/31、分配 74/74 回归通过。内部 CUDA 仍初始化失败，日志保留 `0x20810108` / 992 字节和新到达的 `0x80028b` / 1 字节两类未支持控制；没有内部计算或 GPU 性能通过结论。
 
 [CPU 延迟四组对照](results/starpub-2026-10-15-candidate-review/cpu-witness-v3/README.md) 捕捉到限额组内约 479–498 ms 的长采样，而独立无限额观察进程最长约 2–3 ms；外层采样器本身有显著开销，根因和无干扰性能仍在核对。[CPU shares v5](results/starpub-2026-10-15-candidate-review/cpu-shares-v5/README.md) 则在正常关机后生成报告失败，缺失完整命令元数据，仍按失败保存。
