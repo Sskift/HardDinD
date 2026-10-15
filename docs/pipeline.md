@@ -30,6 +30,7 @@ git add -A && git commit && git push        # 提交改动和它的评分
 | `…/hd/store/<kind>/<key>` | 构建产物。key 是所有输入的哈希；完成的条目不再修改，输入不变就直接复用 |
 | `…/hd/runs/<run-id>` | 每次运行的原始日志、实例日志、`summary.json`、`scorecard.md` |
 | `…/hd/instances/<name>` | 运行中的 guest，含 COW 磁盘；测试结束即删除，`--keep` 可保留 |
+| `…/hd/jobs/<job>` | `./hd job` 启动时复制的源码快照，任务只从这里运行，之后的同步不影响它 |
 | `…/hd/logs/<job>.log` | `./hd job` 的输出 |
 
 run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 版本、是否带未提交改动和运行类型。
@@ -60,7 +61,7 @@ run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 
 
 ### 原生基线
 
-- 负载类指标：同一个基准镜像的 rootfs 在外层容器里解开，用 `chroot` 直接运行，与 guest 里 `docker run` 运行的是同一份二进制。两边绑定同样的宿主 CPU（`HD_BENCH_CPUS`，默认 `8-11`），按 原生/guest 交替成对采样，评分用中位数，评分表同时列出每对比值的范围以显示噪声。
+- 负载类指标：同一个基准镜像的 rootfs 在外层容器里解开，用 `chroot` 直接运行，与 guest 里 `docker run` 运行的是同一份二进制。两边绑定同样的宿主 CPU：每次运行开始时从 `/proc/stat` 采样，在同一 CPU 插槽内选最空闲的 4 个物理核（`HD_BENCH_CPUS` 可指定固定列表），记录在 `summary.json` 的 `bench_cpus`。按 原生/guest 交替成对采样，比值取各对比值的中位数（同一对经历相同的宿主负载，可抵消漂移），评分表同时列出每对比值的范围以显示噪声。
 - 网络：原生用回环；guest 分别测外层→发布端口、容器→外层、容器↔容器。
 - Docker 控制面（run、exec、构建缓存等）：Starpub 上没有同机原生 Docker，暂用 `targets.json` 里的参考秒数（服务器上原生 Docker 29 的典型值）。有可用的原生 Docker 主机后再替换。
 
@@ -70,7 +71,7 @@ Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持�
 
 - 多个代理可以同时改代码、跑 `./hd check` 和 `./hd test`（共享锁）。`bench` 和 `ci` 持有排它锁，同一时间只有一个在跑。
 - 代理各自用独立的 git worktree 和分支，`./hd job` 用不同的 job 名；主代理合并到 `main` 后推送。
-- 远端只经 ssh 别名 `starpub-root`（复用 ControlMaster 连接），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
+- 远端只经 fail-closed 别名 `starpub-root-mux`（只复用常驻 ControlMaster，master 不在时立即失败），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
 - 不影响 `/root/udock`。不在 `…/hd` 之外写文件。
 
 ## 套件接口

@@ -37,6 +37,50 @@ def host_info():
     return info
 
 
+def cpu_busy(seconds=2.0):
+    """Busy fraction per CPU over a short window, from /proc/stat."""
+    def sample():
+        rows = {}
+        for line in pathlib.Path('/proc/stat').read_text().splitlines():
+            if line.startswith('cpu') and line[3:4].isdigit():
+                name, *values = line.split()
+                values = list(map(int, values))
+                rows[int(name[3:])] = (sum(values), values[3] + values[4])  # total, idle + iowait
+        return rows
+    before = sample(); time.sleep(seconds); after = sample()
+    return {cpu: 1 - (after[cpu][1] - before[cpu][1]) / max(1, after[cpu][0] - before[cpu][0])
+            for cpu in after if cpu in before}
+
+
+def pick_cpus(count):
+    """The `count` quietest physical cores right now, one hyperthread each.
+
+    Starpub is shared with tenants whose load moves around; a fixed CPU list
+    measures their jobs as much as ours. HD_BENCH_CPUS pins an explicit list."""
+    if config.BENCH_CPUS != 'auto':
+        return config.BENCH_CPUS
+    allowed = os.sched_getaffinity(0)
+    busy = cpu_busy()
+    def topology(cpu, name, default):
+        try:
+            return pathlib.Path(f'/sys/devices/system/cpu/cpu{cpu}/topology/{name}').read_text().strip()
+        except OSError:
+            return default
+    packages = {}  # package -> {core siblings -> load of the whole core}
+    for cpu in sorted(allowed & set(busy)):
+        siblings = topology(cpu, 'thread_siblings_list', str(cpu))
+        load = sum(busy.get(c, 1) for c in instance.parse_cpus(siblings))
+        packages.setdefault(topology(cpu, 'physical_package_id', '0'), {}).setdefault(siblings, (load, cpu))
+    best = None
+    for cores in packages.values():  # one socket: no cross-socket memory traffic
+        quiet = sorted(cores.values())[:count]
+        if len(quiet) == count and (best is None or sum(l for l, _ in quiet) < sum(l for l, _ in best)):
+            best = quiet
+    if best is None:
+        raise RuntimeError(f'no package has {count} cores available for benchmarking')
+    return ','.join(str(cpu) for _, cpu in sorted(best, key=lambda item: item[1]))
+
+
 def new_run(kind, label=None):
     rev = revision()
     stamp = time.strftime('%Y%m%d-%H%M%S', time.gmtime())

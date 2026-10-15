@@ -75,11 +75,14 @@ def cmd_job(a):
     cmd_sync()
     args = ' '.join(shlex.quote(x) for x in a.args)
     root, name = config.REMOTE_ROOT, a.name
-    inner = f'cd {REMOTE_SRC} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
+    # Each job runs from its own copy so later syncs cannot change code under it.
+    snapshot = f'{root}/jobs/{name}'
+    inner = f'cd {snapshot} && ./hd {args} > {root}/logs/{name}.log 2>&1; echo "[hd] job exit $?" >> {root}/logs/{name}.log'
     ssh(f'''set -e
-mkdir -p {root}/logs
+mkdir -p {root}/logs {root}/jobs
 if tmux has-session -t hd-{name} 2>/dev/null; then echo "job {name} is still running" >&2; exit 3; fi
 [ ! -e {root}/logs/{name}.log ] || mv {root}/logs/{name}.log {root}/logs/{name}.log.1
+rm -rf {snapshot} && cp -a {REMOTE_SRC} {snapshot}
 tmux new-session -d -s hd-{name} {shlex.quote(inner)}
 echo "started job {name}: ./hd {args}"
 ''')
@@ -256,7 +259,9 @@ def run_suite(kind, a):
             summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
         if kind in ('bench', 'ci'):
             with locks.measure():
-                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
+                cpus = runs.pick_cpus(config.GUEST_CPUS)
+                summary['bench_cpus'] = cpus
+                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=cpus)
             state = summary['bench'].pop('guest_state')
             if shutdown_check(state)['status'] != 'pass':
                 summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
@@ -313,7 +318,7 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     shares = [share]
     opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares)
     ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
-                       instance_options=opts, bench_cpus=config.BENCH_CPUS, quick=getattr(a, 'quick', False),
+                       instance_options=opts, bench_cpus=cpuset, quick=getattr(a, 'quick', False),
                        only=a.only, share=share)
     result = {}
     try:

@@ -1,5 +1,6 @@
 import contextlib
 import json
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -67,6 +68,9 @@ class FakeRunner:
 
     def durability(self):
         return {'error': 'guest fsync not durable: test evidence'}
+
+    def bind_visibility(self):
+        return {'error': None, 'bytes': 12288}
 
     @contextlib.contextmanager
     def samples(self, name):
@@ -232,6 +236,8 @@ class RunnerTests(unittest.TestCase):
             runner.deadline = 0
             runner.begin_metric('app.compile')
             self.assertGreater(runner.timeout(1000), 239)
+            ctx.quick = False; runner.begin_metric('fs.bind_metadata')
+            self.assertGreater(runner.timeout(1000), 899)
 
     def test_cleanup_missing_allowed_only_for_uncreated_resource(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -269,6 +275,112 @@ class RunnerTests(unittest.TestCase):
         self.assertIn('2 host flushes', bench.durability_error((5, 0), (7, 0), 3))
         self.assertIn('failed', bench.durability_error((5, 0), (9, 1), 3))
         self.assertIsNone(bench.durability_error((5, 0), (9, 0), 3))
+
+    @mock.patch.object(bench, 'Workloads', FakeRunner)
+    def test_bind_metrics_do_not_use_ubd_durability_gate(self):
+        data = bench.run(self.ctx(bench.BIND_METRICS))
+        for metric in data['metrics'].values():
+            self.assertIsNone(metric['error'])
+            self.assertNotIn('durability', metric['detail'])
+            self.assertEqual(metric['native'], [12, 12])
+            self.assertEqual(metric['guest'], [12, 12])
+
+    def test_bind_verification_error_keeps_samples_but_fails(self):
+        class BadBind(FakeRunner):
+            def bind_visibility(self):
+                return {'error': 'bind checksum mismatch'}
+        with mock.patch.object(bench, 'Workloads', BadBind):
+            metric = bench.run(self.ctx(['disk.bind_write']))['metrics']['disk.bind_write']
+        self.assertEqual(metric['guest'], [12, 12])
+        self.assertIn('checksum mismatch', metric['error'])
+
+    def test_native_share_directory_fd_is_inherited_then_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = types.SimpleNamespace(run_dir=pathlib.Path(tmp), bench_cpus='8-11')
+            runner = bench.Workloads(ctx)
+            def process(argv, **kwargs):
+                fd, = kwargs['pass_fds']
+                self.assertEqual(argv[-2:], ['--work-fd', str(fd)])
+                self.assertEqual(os.fstat(fd).st_ino, os.stat(tmp).st_ino)
+                return 'sample'
+            runner.process = mock.Mock(side_effect=process)
+            self.assertEqual(runner.native('/bench/workload', 'disk.bind_write', '1', workdir=tmp), 'sample')
+            fd, = runner.process.call_args.kwargs['pass_fds']
+            with self.assertRaises(OSError):
+                os.fstat(fd)
+
+    def test_bind_samples_use_outer_directories_and_container_bind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            ctx = types.SimpleNamespace(run_dir=root, share=root, bench_cpus='8-11', quick=True)
+            runner = bench.Workloads(ctx); runner.image = 'hd-bench:test'
+            runner.native = mock.Mock(); runner.guest = mock.Mock()
+            for name in bench.BIND_METRICS:
+                with runner.samples(name) as (native, guest):
+                    native(); guest()
+                    path = root / ('bench-' + name)
+                    self.assertTrue((path / 'native').is_dir())
+                    self.assertEqual(runner.native.call_args.kwargs['workdir'], path / 'native')
+                    self.assertEqual(runner.guest.call_args.args[-2:], ('--workdir', '/bind'))
+                    self.assertEqual(runner.guest.call_args.kwargs['options'], ['-v', f'{path / "guest"}:/bind'])
+                self.assertFalse(path.exists())
+
+    def test_bind_probe_reads_outer_bytes_once_and_rejects_corruption(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            ctx = types.SimpleNamespace(run_dir=root, share=root, bench_cpus='8-11', quick=True)
+            runner = bench.Workloads(ctx)
+            block = bytes((j * 131 + j // 251) % 256 for j in range(4096))
+            content = b''.join(bytes([i]) + block[1:] for i in range(3))
+            def guest(*args, **kwargs):
+                self.assertIn('--keep-data', args)
+                self.assertEqual(kwargs['options'], ['-v', f'{root / "bench-verify"}:/bind'])
+                (root / 'bench-verify/fsync-probe').write_bytes(content)
+                return '{"value": 3, "verified": 12288, "fsync_calls": 3}'
+            runner.guest = mock.Mock(side_effect=guest)
+            first = runner.bind_visibility()
+            self.assertIsNone(first['error'])
+            self.assertEqual(first['bytes'], 12288)
+            self.assertRegex(first['sha256'], r'^[a-f0-9]{64}$')
+            self.assertIs(runner.bind_visibility(), first)
+            runner.guest.assert_called_once()
+            self.assertFalse((root / 'bench-verify').exists())
+            runner.bind_evidence = None; content = content[:-1] + b'X'
+            self.assertIn('differs', runner.bind_visibility()['error'])
+
+    def test_write_diagnostics_separate_allocation_and_sync_modes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / 'root.cow').touch(); (root / 'bench-native/work').mkdir(parents=True)
+            ctx = types.SimpleNamespace(run_dir=root, instance=root, bench_cpus='8-11')
+            runner = bench.Workloads(ctx)
+            runner.native = mock.Mock(return_value='{"value": 100, "verified": 268435456}')
+            with mock.patch.object(bench.os, 'fdatasync', create=True):
+                evidence = runner.write_diagnostics()
+            self.assertIsNone(evidence['error'])
+            self.assertEqual([s['mode'] for s in evidence['samples']],
+                             ['fresh_fsync', 'overwrite_fsync', 'fresh_fdatasync', 'overwrite_fdatasync'] * 2)
+            self.assertEqual(runner.native.call_count, 8)
+            calls = runner.native.call_args_list
+            self.assertEqual(calls[0].args[-1:], ('--keep-data',))
+            self.assertEqual(calls[1].args[-1:], ('--reuse-data',))
+            self.assertEqual(calls[3].args[-2:], ('--reuse-data', '--data-sync'))
+            self.assertIs(runner.write_diagnostics(), evidence)
+            self.assertFalse((root / 'bench-native/work/write-diagnostics').exists())
+
+    def test_failed_write_diagnostics_cannot_pass(self):
+        class FastGuest(FakeRunner):
+            def durability(self):
+                return {'error': None}
+            @contextlib.contextmanager
+            def samples(self, name):
+                yield lambda: '{"value": 1}', lambda: '{"value": 3}'
+            def write_diagnostics(self):
+                return {'error': 'diagnostic failed'}
+        with mock.patch.object(bench, 'Workloads', FastGuest):
+            metric = bench.run(self.ctx(['disk.seq_write']))['metrics']['disk.seq_write']
+        self.assertEqual(metric['guest'], [3, 3])
+        self.assertIn('diagnostic failed', metric['error'])
 
     def test_network_topologies_use_required_endpoints(self):
         with tempfile.TemporaryDirectory() as tmp:

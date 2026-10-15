@@ -185,6 +185,8 @@ def serve(instance):
     if config.get('hold_measure'):
         # Interactive guests block exclusive measurements for their whole life.
         from pipeline import locks
+        write_state(instance, {'phase': 'queued', 'supervisor_pid': os.getpid(),
+                               'supervisor_start': start_time(os.getpid())})
         measure = locks.acquire_shared()
     run = uuid.uuid4().hex[:12]
     state = {'phase': 'starting', 'run': run, 'supervisor_pid': os.getpid(),
@@ -424,9 +426,15 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
         proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                 start_new_session=True)
     until = time.monotonic() + boot_timeout + 30
+    queued = False
     while time.monotonic() < until:
         state = read_state(instance)
-        if state.get('supervisor_pid') == proc.pid:
+        if state.get('supervisor_pid') == proc.pid and state.get('phase') == 'queued':
+            if not queued:
+                print(f'{instance.name}: waiting for a running benchmark to finish', file=sys.stderr, flush=True)
+                queued = True
+            until = time.monotonic() + boot_timeout + 30
+        elif state.get('supervisor_pid') == proc.pid:
             if state.get('phase') == 'ready':
                 return state
             if state.get('phase') in ('stopping', 'stopped', 'failed'):

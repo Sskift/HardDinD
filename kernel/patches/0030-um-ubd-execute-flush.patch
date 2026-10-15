@@ -1,11 +1,13 @@
 From: HardDinD developers
-Subject: [PATCH] um: ubd: execute FLUSH requests on the host
+Subject: [PATCH] um: ubd: make guest fsync reach the writable image
 
-FLUSH requests are submitted with zero data descriptors, and the I/O thread
-only called do_io() per descriptor, so os_sync_file() never ran: guest
-fsync() returned success without the host COW file being synced, although
-the device advertises a volatile write cache. Run FLUSH explicitly and count
-host syncs in /sys/module/ubd/parameters/host_flushes{,_errors}.
+Two bugs made guest fsync() a no-op:
+- FLUSH requests have zero data descriptors and the I/O thread only ran
+  do_io() per descriptor, so os_sync_file() never ran;
+- the FLUSH path synced fds[0], which in COW mode is the read-only backing
+  file. Writes go to fds[1] (the COW file).
+Run FLUSH explicitly on fds[1] and count host syncs in
+/sys/module/ubd/parameters/host_flushes{,_errors}.
 
 --- a/arch/um/drivers/ubd_kern.c
 +++ b/arch/um/drivers/ubd_kern.c
@@ -13,7 +15,7 @@ host syncs in /sys/module/ubd/parameters/host_flushes{,_errors}.
  /* Only changed by ubd_init, which is an initcall. */
  static int thread_fd = -1;
  
-+/* Host fsyncs completed for guest FLUSH requests; checked by benchmarks. */
++/* Host syncs completed for guest FLUSH requests; checked by benchmarks. */
 +static unsigned long host_flushes, host_flush_errors;
 +module_param(host_flushes, ulong, 0444);
 +module_param(host_flush_errors, ulong, 0444);
@@ -21,15 +23,23 @@ host syncs in /sys/module/ubd/parameters/host_flushes{,_errors}.
  /* Function to read several request pointers at a time
  * handling fractional reads if (and as) needed
  */
-@@ -1416,6 +1421,7 @@
+@@ -1414,8 +1419,13 @@
+ 	/* FLUSH is really a special case, we cannot "case" it with others */
+ 
  	if (req_op(req->req) == REQ_OP_FLUSH) {
- 		/* fds[0] is always either the rw image or our cow file */
- 		req->error = map_error(-os_sync_file(req->fds[0]));
+-		/* fds[0] is always either the rw image or our cow file */
+-		req->error = map_error(-os_sync_file(req->fds[0]));
++		/*
++		 * Writes always go to fds[1] (the writable image: the COW file
++		 * when one is used). fds[0] is the read-only backing file in
++		 * COW mode, so syncing it made guest fsync() a no-op.
++		 */
++		req->error = map_error(-os_sync_file(req->fds[1]));
 +		__atomic_add_fetch(req->error ? &host_flush_errors : &host_flushes, 1, __ATOMIC_RELAXED);
  		return;
  	}
  
-@@ -1516,6 +1522,9 @@
+@@ -1516,6 +1526,9 @@
  			int i;
  
  			io_count++;
