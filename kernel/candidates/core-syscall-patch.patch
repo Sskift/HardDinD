@@ -1243,6 +1243,21 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
    }
  
    /*
+--- a/arch/um/os-Linux/process.c
++++ b/arch/um/os-Linux/process.c
+@@ -69,8 +69,10 @@
+ 
+ pid_t os_reap_child(int *status)
+ {
+-	/* Try to reap a child */
+-	return waitpid(-1, status, WNOHANG);
++	pid_t ret;
++
++	CATCH_EINTR(ret = waitpid(-1, status, WNOHANG));
++	return ret;
+ }
+ 
+ /* Don't use the glibc version, which caches the result in TLS. It misses some
 --- a/arch/um/os-Linux/skas/mem.c
 +++ b/arch/um/os-Linux/skas/mem.c
 @@ -16,6 +16,7 @@

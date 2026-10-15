@@ -20,6 +20,9 @@ class CorePatchTests(unittest.TestCase):
         part = patch.split('+++ b/arch/um/os-Linux/skas/process.c\n')[1].split('--- a/')[0]
         code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
         body = code.split('static int stub_exited(', 1)[1].split('\n}', 1)[0]
+        part = patch.split('+++ b/arch/um/os-Linux/process.c\n')[1].split('--- a/')[0]
+        code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith(('+', ' ')))
+        reap = code.split('pid_t os_reap_child(', 1)[1].split('\n}', 1)[0]
         source = r'''
 #include <assert.h>
 #include <errno.h>
@@ -48,6 +51,16 @@ static int test_kill(int pid, int sig) {
 #define kill test_kill
 static int stub_exited(''' + body + r'''
 }
+static int test_waitpid(int pid, int *status, int flags) {
+    assert(pid == -1 && flags == WNOHANG);
+    waits++;
+    if (interrupts) { interrupts--; errno = EINTR; return -1; }
+    *status = 7 << 8;
+    return 42;
+}
+#define waitpid test_waitpid
+pid_t os_reap_child(''' + reap + r'''
+}
 int main(void) {
     for (int phase = 0; phase < 4; phase++) {
         siginfo_t state = {0};
@@ -56,6 +69,10 @@ int main(void) {
         assert(stub_exited(42, &state) == (phase == 1 || phase == 3));
         assert(waits == 4 && probes == reaped);
     }
+    int status = 0;
+    waits = 0; interrupts = 3;
+    assert(os_reap_child(&status) == 42 && waits == 4);
+    assert(WIFEXITED(status) && WEXITSTATUS(status) == 7);
 }
 '''
         with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as directory:
