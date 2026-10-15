@@ -19,38 +19,71 @@ class CorePatchTests(unittest.TestCase):
         patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
         part = patch.split('+++ b/arch/um/kernel/skas/stub_exe.c\n')[1].split('--- a/')[0]
         code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith(('+', ' ')))
+        prefix = code.split('struct sock_filter filter[] = {')[1].split('#endif')[0]
+        prefix = prefix.replace('#ifdef __x86_64__', '')
         fragment = code.split('/* Each match is followed by its action: no fragile jump counts. */')[1]
         fragment = fragment.split('BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_recvmsg')[0]
         source = r'''
 #include <assert.h>
-enum { BPF_JMP=1, BPF_JEQ=2, BPF_K=0, BPF_RET=4,
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+#define UML_PATCH_BASE 0x60000
+#define UML_PATCH_END 0x70000
+#define UM_SECCOMP_ARCH_NATIVE 0xc000003eU
+enum { BPF_LD=0, BPF_W=0, BPF_ABS=0x20, BPF_JMP=5, BPF_JEQ=0x10, BPF_JGE=0x30, BPF_K=0, BPF_RET=6,
        __NR_getpid=39, __NR_gettid=186, __NR_futex=202,
        SECCOMP_RET_ALLOW=10, SECCOMP_RET_TRAP=11, SECCOMP_RET_KILL_PROCESS=12 };
 struct instruction { unsigned int op, k, yes, no; };
+struct seccomp_data { int nr; unsigned int arch; uint64_t instruction_pointer; };
 #define BPF_JUMP(op,k,y,n) {op,k,y,n}
 #define BPF_STMT(op,k) {op,k,0,0}
-static unsigned int evaluate(unsigned int nr, int enabled) {
+static unsigned int evaluate(unsigned int nr, int enabled, uint64_t ip, unsigned int arch, int trampoline) {
     struct { int syscall_patch; } init_data = {enabled};
-    struct instruction filter[] = {
+    struct instruction stub_filter[] = {
 ''' + fragment + r'''
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS)
     };
-    for (unsigned int i = 0; i < sizeof(filter)/sizeof(filter[0]); i++) {
+    struct instruction entry_filter[] = {
+''' + prefix + r'''
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP)
+    };
+    struct instruction *filter = trampoline ? entry_filter : stub_filter;
+    unsigned int count = (trampoline ? sizeof(entry_filter) : sizeof(stub_filter)) / sizeof(*filter);
+    struct seccomp_data input = {(int)nr, arch, ip};
+    unsigned int a = nr;
+    for (unsigned int i = 0; i < count; i++) {
         struct instruction f = filter[i];
         if (f.op == BPF_RET) return f.k;
-        assert(f.op == (BPF_JMP | BPF_JEQ));
-        i += nr == f.k ? f.yes : f.no;
+        if (f.op == (BPF_LD | BPF_W | BPF_ABS)) {
+            assert(f.k <= sizeof(input) - sizeof(a));
+            memcpy(&a, (char *)&input + f.k, sizeof(a));
+        } else {
+            assert(f.op == (BPF_JMP | BPF_JEQ) || f.op == (BPF_JMP | BPF_JGE));
+            i += (f.op == (BPF_JMP | BPF_JEQ) ? a == f.k : a >= f.k) ? f.yes : f.no;
+        }
     }
     assert(0); return 0;
 }
 int main(void) {
+    const uint64_t ips[] = {UML_PATCH_BASE - 1, UML_PATCH_BASE, UML_PATCH_END - 1,
+                            UML_PATCH_END, 0x100000000ULL + UML_PATCH_BASE};
     for (int enabled = 0; enabled < 2; enabled++) {
-        assert(evaluate(__NR_getpid, enabled) == SECCOMP_RET_TRAP);
-        assert(evaluate(__NR_gettid, enabled) == (enabled ? SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS));
-        assert(evaluate(__NR_futex, enabled) == SECCOMP_RET_ALLOW);
+        assert(evaluate(__NR_getpid, enabled, 0, 0, 0) == SECCOMP_RET_TRAP);
+        assert(evaluate(__NR_gettid, enabled, 0, 0, 0) == (enabled ? SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS));
+        assert(evaluate(__NR_futex, enabled, 0, 0, 0) == SECCOMP_RET_ALLOW);
+        assert(evaluate(~0U, enabled, 0, 0, 0) == SECCOMP_RET_KILL_PROCESS);
         for (unsigned int nr = 0; nr < 512; nr++)
             if (nr != __NR_getpid && nr != __NR_gettid && nr != __NR_futex)
-                assert(evaluate(nr, enabled) == SECCOMP_RET_KILL_PROCESS);
+                assert(evaluate(nr, enabled, 0, 0, 0) == SECCOMP_RET_KILL_PROCESS);
+        for (unsigned int i = 0; i < sizeof(ips)/sizeof(*ips); i++)
+            for (unsigned int nr = 0; nr < 512; nr++) {
+                int allowed = enabled && nr == __NR_gettid && ips[i] >= UML_PATCH_BASE && ips[i] < UML_PATCH_END;
+                assert(evaluate(nr, enabled, ips[i], UM_SECCOMP_ARCH_NATIVE, 1) ==
+                       (allowed ? SECCOMP_RET_ALLOW : SECCOMP_RET_TRAP));
+                assert(evaluate(nr, enabled, ips[i], 0, 1) == SECCOMP_RET_TRAP);
+            }
+        assert(evaluate(~0U, enabled, UML_PATCH_BASE, UM_SECCOMP_ARCH_NATIVE, 1) == SECCOMP_RET_TRAP);
     }
 }
 '''
