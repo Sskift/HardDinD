@@ -175,8 +175,7 @@ def cmd_up(a):
     path = config.INSTANCES / a.name
     if a.recreate and path.exists():
         instance.stop(path); instance.remove(path)
-    config.LOCKS.mkdir(parents=True, exist_ok=True)
-    state = instance.start(path, measure_lock=config.LOCKS / 'measure.lock', **opts)
+    state = instance.start(path, hold_measure=True, **opts)
     print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
 
 
@@ -212,7 +211,8 @@ def cmd_gc(a):
     """Drop old runs, dead instances and store entries no kept run refers to."""
     require_linux()
     from pipeline import build, instance
-    with build.lock('build'), build.lock('measure'):
+    from pipeline import locks
+    with build.lock('build'), locks.measure():
         runs = sorted(p for p in config.RUNS.glob('*') if p.is_dir()) if config.RUNS.exists() else []
         drop = runs[:-a.keep_runs] if len(runs) > a.keep_runs else []
         for path in drop:
@@ -235,41 +235,44 @@ def cmd_gc(a):
 
 
 def run_suite(kind, a):
-    """Shared driver for test/bench/ci: build, boot, run the suite(s), score."""
+    """Shared driver for test/bench/ci: build, boot, run the suite(s), score.
+
+    The functional phase holds the measure lock shared; the bench phase holds it
+    exclusively, so measurements never overlap another guest of this pipeline."""
     require_linux()
-    from pipeline import build, instance, runs, score
-    exclusive = kind in ('bench', 'ci')
-    with build.lock('measure', shared=not exclusive):
-        run_id, run_dir, rev = runs.new_run(kind, a.label)
-        print(f'run {run_id}', flush=True)
-        summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
-                   'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
-                   'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
-        try:
-            artifacts = build.everything(a.with_, shares=True)
-            summary['artifacts'] = artifacts['ids']
-            if kind in ('test', 'ci'):
+    from pipeline import build, locks, runs, score
+    run_id, run_dir, rev = runs.new_run(kind, a.label)
+    print(f'run {run_id}', flush=True)
+    summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
+               'candidates': a.with_, 'kernel_args': a.kernel_arg, 'started': time.time(),
+               'host': runs.host_info(), 'only': a.only, 'quick': getattr(a, 'quick', False)}
+    try:
+        artifacts = build.everything(a.with_, shares=True)
+        summary['artifacts'] = artifacts['ids']
+        if kind in ('test', 'ci'):
+            with locks.measure(shared=True):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
-                summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
-                summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
-            if kind in ('bench', 'ci'):
+            summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
+            summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
+        if kind in ('bench', 'ci'):
+            with locks.measure():
                 summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
-                state = summary['bench'].pop('guest_state')
-                if shutdown_check(state)['status'] != 'pass':
-                    summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
-        except Exception as error:
-            summary['error'] = f'{type(error).__name__}: {error}'
-            traceback.print_exc()
-        summary['finished'] = time.time()
-        summary['host_end'] = runs.host_info()
-        runs.write_json(run_dir / 'summary.json', summary)
-        card = score.scorecard(summary)
-        previous = latest_card(kind, exclude=run_id)
-        text = score.markdown(card, previous)
-        if summary.get('error'):
-            text += f"\n**Run error**: {summary['error']}\n"
-        (run_dir / 'scorecard.md').write_text(text)
-        print(text)
+            state = summary['bench'].pop('guest_state')
+            if shutdown_check(state)['status'] != 'pass':
+                summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
+    except Exception as error:
+        summary['error'] = f'{type(error).__name__}: {error}'
+        traceback.print_exc()
+    summary['finished'] = time.time()
+    summary['host_end'] = runs.host_info()
+    runs.write_json(run_dir / 'summary.json', summary)
+    card = score.scorecard(summary)
+    previous = latest_card(kind, exclude=run_id)
+    text = score.markdown(card, previous)
+    if summary.get('error'):
+        text += f"\n**Run error**: {summary['error']}\n"
+    (run_dir / 'scorecard.md').write_text(text)
+    print(text)
     return 2 if summary.get('error') else 0
 
 
