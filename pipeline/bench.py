@@ -72,7 +72,7 @@ FLUSH_COUNTERS = '/sys/module/ubd/parameters/host_flushes /sys/module/ubd/parame
 
 
 def durability_error(before, after, fsyncs):
-    """Each guest fsync must complete a host sync of the COW file (kernel patch 0030 counters)."""
+    """Counters must count FLUSH of the writable image (UBD fds[1]), not its backing file."""
     if before is None or after is None:
         return 'guest fsync durability unverified: kernel exposes no host flush counters'
     done, failed = after[0] - before[0], after[1] - before[1]
