@@ -150,7 +150,8 @@ def cmd_up(a):
     path = config.INSTANCES / a.name
     if a.recreate and path.exists():
         instance.stop(path); instance.remove(path)
-    state = instance.start(path, **opts)
+    config.LOCKS.mkdir(parents=True, exist_ok=True)
+    state = instance.start(path, measure_lock=config.LOCKS / 'measure.lock', **opts)
     print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
 
 
