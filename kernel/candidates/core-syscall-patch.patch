@@ -1025,7 +1025,18 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #include <init.h>
  #include <kern_util.h>
  #include <mem.h>
-@@ -331,6 +332,7 @@
+@@ -232,6 +233,10 @@
+ 						    WEXITED | WNOHANG | WNOWAIT);
+ 				if ((status == 0 && state.si_pid) ||
+ 				    (status < 0 && errno == ECHILD)) {
++					printk(UM_KERN_ERR "UML runner died during handoff: pid=%d waitid=%d errno=%d code=%d status=%d signal=%d fast=%u active=%u\n",
++					       mm_idp->pid, status, status < 0 ? errno : 0,
++					       state.si_code, state.si_status, data->signal,
++					       data->fast_enabled, data->fast_active);
+ 					mm_idp->pid = -1;
+ 					goto out_kill;
+ 				}
+@@ -331,6 +336,7 @@
  		 * never widen the filter when gpu_bridge is off. */
  		.gpu_async = uml_gpu_async_wait && uml_gpu_bridge,
  		.stub_start = STUB_START,
@@ -1033,7 +1044,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	};
  	int ret;
  
-@@ -609,6 +611,8 @@
+@@ -609,6 +615,8 @@
  
  	while (1) {
  		struct mm_id *mm_id = current_mm_enter();
@@ -1042,7 +1053,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  		/*
  		 * At any given time, only one CPU thread can enter the
-@@ -695,7 +699,14 @@
+@@ -695,7 +703,14 @@
  				panic("%s - Invalid siginfo offset from child", __func__);
  
  			si = &si_local;
@@ -1058,7 +1069,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  			regs->is_user = 1;
  
-@@ -813,6 +824,8 @@
+@@ -813,6 +828,8 @@
  		current_mm_exit(mm_id);
  
  		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
