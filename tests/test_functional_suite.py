@@ -15,6 +15,7 @@ from pipeline import functional as f
 class FakeContext:
     def __init__(self, root, only=None, responses=None):
         self.run_dir = pathlib.Path(root)
+        self.share = self.run_dir / 'share'
         self.only = only
         self.responses = list(responses or [])
         self.calls = []

@@ -203,6 +203,7 @@ def serve(instance):
         if libc.prctl(1, signal.SIGKILL, 0, 0, 0) or os.getppid() != parent:
             os._exit(1)
     cpuset = parse_cpus(config['cpuset']) if config.get('cpuset') else None
+    # The guest, its network backend and virtiofsd are one virtual machine: same CPUs.
     def guest_setup():
         parent_death()
         if cpuset:
@@ -226,7 +227,7 @@ def serve(instance):
             if share_opts.get('posix_locks'): cmd.append('--shared-posix-locks')
             with (instance / f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                                      start_new_session=True, preexec_fn=parent_death)
+                                      start_new_session=True, preexec_fn=guest_setup)
             filesystems.append((fs, path, share, cmd))
             until = time.monotonic() + 5
             while not path.exists():
@@ -243,7 +244,7 @@ def serve(instance):
             helper = subprocess.Popen([config['network_backend'], str(helper_end.fileno()), str(ctl),
                                        str(config['network_batch']), str(config['mtu'])],
                                       pass_fds=(helper_end.fileno(),), stdout=log, stderr=subprocess.STDOUT,
-                                      start_new_session=True, preexec_fn=parent_death)
+                                      start_new_session=True, preexec_fn=guest_setup)
         helper_end.close()
         until = time.monotonic() + 5
         while not ctl.exists():

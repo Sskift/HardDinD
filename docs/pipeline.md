@@ -84,4 +84,4 @@ Starpub 与其他租户共用 72 核，负载常在 40 左右。性能运行持�
 - `ctx.forward('add tcp 127.0.0.1 HOSTPORT GUESTPORT')`：显式端口转发；`docker run -p` 由发布驱动自动处理。
 - `ctx.selected(name)`：是否被 `--only` 选中。
 - `ctx.bench_cpus`、`ctx.quick`、`ctx.instance_options`。
-- 功能测试的 guest 额外挂载一个外层目录 `ctx.run_dir / 'share'`（virtiofs，guest 内同路径），可用于外层 bind mount 检查。
+- `ctx.share`：外层目录，以 virtiofs 挂载到 guest 内同一路径，可在容器里 `-v ctx.share:...` 做外层 bind mount。

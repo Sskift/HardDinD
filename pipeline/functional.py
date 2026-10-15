@@ -288,7 +288,7 @@ class Case:
                 self.d('image', 'prune', '-af', '--filter', 'label=' + self.label, timeout=10)
             except Exception as error:
                 errors.append(str(error))
-        shutil.rmtree(self.ctx.run_dir / 'share' / self.id, ignore_errors=True)
+        shutil.rmtree(self.ctx.share / self.id, ignore_errors=True)
         if errors:
             raise RuntimeError('cleanup: ' + '; '.join(errors))
 
@@ -645,7 +645,7 @@ def tmpfs(c):
 
 @check('storage.bind_metadata', 'run|container exec', timeout=90)
 def bind_metadata(c):
-    share = c.ctx.run_dir / 'share' / c.id
+    share = c.ctx.share / c.id
     share.mkdir(parents=True)
     source = share / 'from-outer'
     source.write_bytes(b'outer')
