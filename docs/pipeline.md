@@ -12,6 +12,14 @@ git add -A && git commit && git push        # 提交改动和它的评分
 
 只想快速看一项：`./hd job b -- bench --only 'micro\.|cpu\.' --quick`，或 `./hd job t -- test --only volume`。`--only` 以外的项目记为未测，这种运行只用于定位，不能作为结论。
 
+内核改动的定向对照用 `./hd probe`：同一个静态程序（仓库里的 `.c` 文件会静态编译并缓存）在外层原生、guest A、guest B 中交替运行，guest B 是同一内核加上 `--ab` 参数，用于默认关闭的候选自比较：
+
+```sh
+./hd job p1 -- probe --with anon-faultaround --ab uml_faultaround=1 --reps 5 src/core_faults.c anon 65536
+```
+
+原始记录在 `runs/<id>/probe.jsonl`（每次运行的退出码、耗时、程序最后一行 JSON 输出）。probe 持有测量排它锁。
+
 ## 位置
 
 | 位置 | 内容 |

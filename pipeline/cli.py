@@ -321,6 +321,12 @@ def find_summary(ref):
     raise SystemExit(f'no summary for {ref}')
 
 
+def cmd_probe(a):
+    require_linux()
+    from pipeline import probe
+    sys.exit(probe.run(a))
+
+
 def cmd_score(a):
     from pipeline import score
     card = score.scorecard(score.load(find_summary(a.run)))
@@ -380,6 +386,15 @@ def main(argv=None):
                        ('ci', 'test then bench in one run')):
         s = sub.add_parser(kind, help=text); runopts(s, bench=kind != 'test')
         s.set_defaults(fn=lambda a, kind=kind: sys.exit(run_suite(kind, a)))
+    s = sub.add_parser('probe', help='run one static program natively and in guests, interleaved (kernel A/B)')
+    s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE')
+    s.add_argument('--kernel-arg', action='append', default=[], metavar='K=V', help='boot parameter for every guest')
+    s.add_argument('--ab', action='append', default=[], metavar='K=V', help='also boot guest B with these parameters')
+    s.add_argument('--reps', type=int, default=3); s.add_argument('--timeout', type=float, default=300)
+    s.add_argument('--privileged', action='store_true'); s.add_argument('--label')
+    s.add_argument('program', help='repo C file (built static) or static binary path')
+    s.add_argument('args', nargs=argparse.REMAINDER)
+    s.set_defaults(fn=cmd_probe)
     s = sub.add_parser('score', help='print a scorecard for a run')
     s.add_argument('run'); s.add_argument('--vs', help='compare with another run'); s.add_argument('--json', action='store_true')
     s.set_defaults(fn=cmd_score)
