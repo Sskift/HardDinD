@@ -388,9 +388,114 @@ static int boot_expectation(int *guest)
     return *guest && !enabled ? 2 : 1;
 }
 
+/* The kernel brackets independent host reads with guest timekeeper reads.
+   Using sysfs avoids network/runner handoff latency in the clock comparison. */
+static int host_drift(int seconds)
+{
+    int guest = 0, enabled = 0, samples = 0, rejected = 0, backwards = 0;
+    long ppb = 0;
+    unsigned long updates = 0, steps = 0;
+    int64_t first_host = 0, first_error[2] = {0}, last_error[2] = {0};
+    int64_t maximum[2] = {0}, maximum_bound[2] = {0}, all_maximum[2] = {0}, previous_mono = 0;
+    int64_t stable_start = 0;
+    long double sx = 0, sxx = 0, sy[2] = {0}, sxy[2] = {0};
+    int stable = 0, failed = 0;
+    if (boot_expectation(&guest) < 0) {
+        emit("host_drift.environment", 1, NULL); return 1;
+    }
+    struct timespec start, now;
+    if (rawclock(CLOCK_MONOTONIC_RAW, &start)) {
+        emit("host_drift.clock", 1, NULL); return 1;
+    }
+    for (;;) {
+        long long hm, gm, hr, gr, raw;
+        unsigned long long span;
+        if (guest) {
+            FILE *f = fopen("/sys/kernel/harddind_clock", "r");
+            if (!f) { emit("host_drift.reference", 1, "\"reason\":\"missing live host cross timestamp\""); return 1; }
+            int n = fscanf(f, "%lld %lld %lld %lld %lld %llu %d %ld %lu %lu",
+                           &hm, &gm, &hr, &gr, &raw, &span, &enabled, &ppb, &updates, &steps);
+            int error = ferror(f) ? errno : 0;
+            fclose(f);
+            if (n != 10) {
+                if (error == EAGAIN && ++rejected < 60) goto sleep;
+                emit("host_drift.reference", 1, "\"reason\":\"invalid cross timestamp\""); return 1;
+            }
+        } else {
+            struct timespec a, b, c, d;
+            if (rawclock(CLOCK_MONOTONIC, &a) || clock_gettime(CLOCK_MONOTONIC, &b) ||
+                rawclock(CLOCK_REALTIME, &c) || clock_gettime(CLOCK_REALTIME, &d)) {
+                emit("host_drift.clock", 1, NULL); return 1;
+            }
+            hm = ns(a); gm = ns(b); hr = ns(c); gr = ns(d);
+            span = 0;
+        }
+        if (!samples) first_host = hm;
+        if (samples && gm < previous_mono) backwards++;
+        previous_mono = gm;
+        int64_t error[2] = {gm - hm, gr - hr};
+        for (int c = 0; c < 2; c++) {
+            if (!samples) first_error[c] = error[c];
+            last_error[c] = error[c];
+            if (llabs(error[c]) > all_maximum[c]) all_maximum[c] = llabs(error[c]);
+        }
+        if (hm - first_host >= 120000000000LL) {
+            if (!stable) stable_start = hm;
+            long double x = (hm - stable_start) / 1e9L;
+            sx += x; sxx += x * x;
+            for (int c = 0; c < 2; c++) {
+                if (llabs(error[c]) > maximum[c]) maximum[c] = llabs(error[c]);
+                int64_t bound = llabs(error[c]) + (int64_t)span;
+                if (bound > maximum_bound[c]) maximum_bound[c] = bound;
+                sy[c] += error[c]; sxy[c] += x * error[c];
+            }
+            stable++;
+        }
+        samples++;
+        printf("{\"check\":\"host_drift.sample\",\"elapsed_s\":%.3f,\"mono_offset_ns\":%lld,"
+               "\"real_offset_ns\":%lld,\"span_ns\":%llu,\"frequency_ppb\":%ld,\"updates\":%lu}\n",
+               (hm - first_host) / 1e9, (long long)error[0], (long long)error[1], span, ppb, updates);
+        fflush(stdout);
+sleep:
+        if (rawclock(CLOCK_MONOTONIC_RAW, &now)) {
+            emit("host_drift.clock", 1, NULL); return 1;
+        }
+        if (ns(now) - ns(start) >= (int64_t)seconds * 1000000000) break;
+        struct timespec delay = {.tv_sec = 1};
+        while (nanosleep(&delay, &delay) && errno == EINTR) {}
+    }
+    int coverage = seconds >= 600 && stable >= 450;
+    int bounded = stable && maximum_bound[0] <= 100000 && maximum_bound[1] <= 100000;
+    failed = backwards || (coverage && !bounded) || (guest && enabled && !updates && seconds >= 30) ||
+             samples < seconds - 60;
+    printf("{\"check\":\"summary\",\"status\":\"%s\",\"mode\":\"host_drift\",\"source\":\"%s\","
+           "\"sync_enabled\":%s,\"seconds\":%d,\"warmup_s\":120,\"samples\":%d,\"stable_samples\":%d,"
+           "\"rejected\":%d,\"backwards\":%d,\"updates\":%lu,\"host_steps\":%lu,\"within_100us\":%s,\"clocks\":{",
+           failed ? "fail" : coverage ? "pass" : "not_tested", guest ? "kernel_host_cross_timestamp" : "native_self",
+           enabled ? "true" : "false", seconds, samples, stable, rejected, backwards, updates, steps,
+           bounded ? "true" : "false");
+    for (int c = 0; c < 2; c++) {
+        long double denom = stable * sxx - sx * sx;
+        long double slope = denom > 0 ? (stable * sxy[c] - sx * sy[c]) / denom : 0;
+        printf("%s\"%s\":{\"first_ns\":%lld,\"last_ns\":%lld,\"max_abs_ns\":%lld,"
+               "\"after_warmup_max_abs_ns\":%lld,\"after_warmup_max_bound_ns\":%lld,\"drift_ppm\":%.6Lf}",
+               c ? "," : "", c ? "realtime" : "monotonic", (long long)first_error[c],
+               (long long)last_error[c], (long long)all_maximum[c], (long long)maximum[c],
+               (long long)maximum_bound[c], slope / 1000);
+    }
+    printf("}}\n");
+    return failed ? 1 : 0;
+}
+
 int main(int argc, char **argv)
 {
-    int mutate = 0, expect_fallback = 0, expected = 0, initial_time = 0;
+    if (argc == 3 && !strcmp(argv[1], "--host-drift")) {
+        char *end;
+        long seconds = strtol(argv[2], &end, 10);
+        if (*end || seconds < 1 || seconds > 86400) return 2;
+        return host_drift((int)seconds);
+    }
+    int mutate = 0, expect_fallback = 0, expected = 0, initial_time = 0, path_only = 0;
     int expect_boot = 0, mutate_guest = 0, guest = 0, initial_path = 77, ns_rc = 77;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--mutate-clock")) mutate = 1;
@@ -400,6 +505,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--expect-syscall")) expected = 2;
         else if (!strcmp(argv[i], "--expect-boot")) expect_boot = 1;
         else if (!strcmp(argv[i], "--mutate-guest")) mutate_guest = 1;
+        else if (!strcmp(argv[i], "--path-only")) path_only = 1;
         else { fprintf(stderr, "usage: %s [--mutate-clock|--mutate-guest] [--expect-timens-fallback] [--expect-fast|--expect-syscall|--expect-boot] [--initial-time]\n", argv[0]); return 2; }
     }
     if (expect_boot || mutate_guest) {
@@ -424,6 +530,12 @@ int main(int argc, char **argv)
     if (!vclock || !vgtod || !vtime) { emit("vdso.symbols", 1, "\"reason\":\"missing ELF symbols\""); goto summary; }
     emit("vdso.symbols", 0, NULL);
     initial_path = path_probe("path.initial", expected);
+    if (path_only) {
+        printf("{\"check\":\"summary\",\"mode\":\"path_only\",\"status\":\"%s\","
+               "\"pass\":%d,\"fail\":%d,\"not_tested\":%d}\n",
+               counts[1] ? "fail" : counts[2] ? "not_tested" : "pass", counts[0], counts[1], counts[2]);
+        return counts[1] ? 1 : 0;
+    }
     if (sched_getaffinity(0, sizeof(allowed), &allowed)) { emit("affinity", 1, NULL); goto summary; }
     for (int c = 0; c < NCLOCKS; c++) report_sample(names[c], samples(clocks[c], SAMPLES, 0, 0));
     pthread_t threads[4]; struct worker workers[4] = {0}; int started = 0;
