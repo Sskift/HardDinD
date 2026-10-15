@@ -1,43 +1,43 @@
-# Scorecard `20261015-131801-ddd53ed9-ci-fsync-fixed`
+# Scorecard `20261015-143352-754812b6-ci-vdso-virtiofs`
 
-revision `ddd53ed91cb1` Merge branch 'codex/bench'
+revision `754812b6413c` Merge codex/share; promote virtio-fs large requests into the series (patch 0032)
 
-**Functional**: 126/130 pass, 4 fail, 0 not tested → FAIL
+**Functional**: 132/135 pass, 3 fail, 0 not tested → FAIL
 
-**Performance** (guest/native, higher is better): key 5/10, important 5/13, other 2/7
+**Performance** (guest/native, higher is better): key 4/10, important 4/13, other 3/7
 
 | tier | metric | native | guest | ratio | target | pair range | Δ prev | status |
 |---|---|---:|---:|---:|---:|---|---:|---|
-| key | cpu.single | 4,159,001,310 | 3,964,720,270 ops/s | 0.953 | 0.80 | 0.94–0.98 | +4% | pass |
-| key | cpu.multi | 15,693,578,000 | 16,102,575,100 ops/s | 1.03 | 0.80 | 0.99–1.07 | +38% | pass |
-| key | mem.bandwidth | 5.4 | 5.38 GB/s | 0.996 | 0.80 | 0.99–1.02 | -28% | pass |
-| key | mem.touch | 1.58 | 0.318 GB/s | 0.201 | 0.80 | 0.15–0.21 | +22% | fail |
-| key | disk.seq_write | 160.7 | 138.1 MB/s | 0.859 | 0.80 | 0.68–1.07 | -79% | pass |
-| key | disk.seq_read | 4,484 | 2,578 MB/s | 0.575 | 0.80 | 0.57–0.75 | -30% | fail |
-| key | disk.volume_write | 139.8 | 126.7 MB/s | 0.906 | 0.80 | 0.73–1.15 | -84% | pass |
-| key | net.publish_stream | 3,209 | 243.0 MB/s | 0.0757 | 0.80 | 0.07–0.08 | +5% | fail |
-| key | net.egress_stream | 3,200 | 79.9 MB/s | 0.025 | 0.80 | 0.02–0.03 | -15% | fail |
-| key | net.bridge_stream | 3,160 | 1,590 MB/s | 0.503 | 0.80 | 0.42–0.53 | +4% | fail |
+| key | cpu.single | 4,052,233,740 | 3,876,289,370 ops/s | 0.942 | 0.80 | 0.89–1.02 | - | pass |
+| key | cpu.multi | 14,706,613,400 | 15,496,601,700 ops/s | 1.09 | 0.80 | 0.94–1.12 | - | pass |
+| key | mem.bandwidth | 5.45 | 5.39 GB/s | 0.989 | 0.80 | 0.94–1.02 | - | pass |
+| key | mem.touch | 1.63 | 0.321 GB/s | 0.2 | 0.80 | 0.11–0.21 | - | fail |
+| key | disk.seq_write | 102.3 | 78.4 MB/s | 0.766 | 0.80 | 0.63–0.99 | - | fail |
+| key | disk.seq_read | 2,648 | 1,518 MB/s | 0.66 | 0.80 | 0.44–0.84 | - | fail |
+| key | disk.volume_write | 117.9 | 119.8 MB/s | 0.996 | 0.80 | 0.68–1.08 | - | pass |
+| key | net.publish_stream | 667.0 | 138.7 MB/s | 0.208 | 0.80 | 0.11–0.24 | +75% | fail |
+| key | net.egress_stream | 1,633 | 34.3 MB/s | 0.0208 | 0.80 | 0.02–0.02 | -93% | fail |
+| key | net.bridge_stream | 1,722 | 641.0 MB/s | 0.322 | 0.80 | 0.31–0.48 | -7% | fail |
 | key | gpu.compute | - | -  | - | 0.80 | - | - | not_tested |
 | key | gpu.h2d | - | -  | - | 0.80 | - | - | not_tested |
 | key | gpu.d2h | - | -  | - | 0.80 | - | - | not_tested |
-| important | app.compile | 5.06 | 25.2 seconds | 0.201 | 0.50 | 0.14–0.20 | +28% | fail |
-| important | app.untar | 2.05 | 3.8 seconds | 0.541 | 0.50 | 0.45–0.85 | -33% | pass |
-| important | app.gzip | 2.07 | 3.36 seconds | 0.617 | 0.50 | 0.60–0.63 | +16% | pass |
-| important | fs.metadata | 62,070 | 18,014 ops/s | 0.29 | 0.50 | 0.28–0.32 | -10% | fail |
-| important | disk.bind_write | 162.6 | 138.6 MB/s | 0.852 | 0.50 | 0.73–0.95 | - | pass |
-| important | disk.bind_read | 3,811 | 1,151 MB/s | 0.302 | 0.50 | 0.12–0.38 | - | fail |
-| important | fs.bind_metadata | 58,992 | 988.4 ops/s | 0.0168 | 0.50 | 0.01–0.02 | - | fail |
-| important | net.publish_rr | 52,066 | 5,283 round trips/s | 0.102 | 0.50 | 0.02–0.16 | -34% | fail |
-| important | net.bridge_rr | 50,467 | 8,498 round trips/s | 0.168 | 0.50 | 0.13–0.23 | +14% | fail |
-| important | docker.run | ref 0.4 | 1.7 seconds | 0.235 | 0.50 | - | +9% | fail |
-| important | docker.exec | ref 0.08 | 0.335 seconds | 0.238 | 0.50 | - | +40% | fail |
-| important | docker.build_cached | ref 0.6 | 1.09 seconds | 0.551 | 0.50 | - | +3% | pass |
-| important | docker.lifecycle | ref 1.2 | 2.13 seconds | 0.563 | 0.50 | - | -4% | pass |
-| other | micro.syscall | 1,894,393 | 245,753 ops/s | 0.13 | 0.20 | 0.10–0.14 | +3% | fail |
-| other | micro.forkexec | 3,449 | 447.9 ops/s | 0.13 | 0.20 | 0.11–0.18 | -2% | fail |
-| other | micro.mmap | 182,078 | 16,842 ops/s | 0.0925 | 0.20 | 0.08–0.11 | -26% | fail |
-| other | micro.clock | 39,585,070 | 198,996 ops/s | 0.005 | 0.20 | 0.00–0.01 | -18% | fail |
-| other | micro.thread | 25,483 | 5,943 ops/s | 0.233 | 0.20 | 0.20–0.29 | +0% | pass |
-| other | micro.pipe | 120,246 | 14,396 round trips/s | 0.12 | 0.20 | 0.10–0.15 | +0% | fail |
-| other | micro.signal | 399,030 | 100,739 ops/s | 0.253 | 0.20 | 0.24–0.26 | -0% | pass |
+| important | app.compile | 3.73 | 24.1 seconds | 0.161 | 0.50 | 0.14–0.17 | - | fail |
+| important | app.untar | 1.97 | 4.09 seconds | 0.491 | 0.50 | 0.47–0.73 | - | fail |
+| important | app.gzip | 2.12 | 3.61 seconds | 0.586 | 0.50 | 0.46–0.64 | - | pass |
+| important | fs.metadata | 47,872 | 14,249 ops/s | 0.273 | 0.50 | 0.16–0.36 | - | fail |
+| important | disk.bind_write | 162.0 | 147.8 MB/s | 0.975 | 0.50 | 0.82–1.02 | - | pass |
+| important | disk.bind_read | 3,854 | 1,617 MB/s | 0.396 | 0.50 | 0.32–0.60 | - | fail |
+| important | fs.bind_metadata | 41,844 | 573.4 ops/s | 0.0171 | 0.50 | 0.01–0.04 | - | fail |
+| important | net.publish_rr | 20,470 | 7,292 round trips/s | 0.36 | 0.50 | 0.33–0.39 | +129% | fail |
+| important | net.bridge_rr | 52,745 | 9,475 round trips/s | 0.18 | 0.50 | 0.14–0.20 | +8% | fail |
+| important | docker.run | ref 0.4 | 1.5 seconds | 0.267 | 0.50 | - | - | fail |
+| important | docker.exec | ref 0.08 | 0.288 seconds | 0.277 | 0.50 | - | - | fail |
+| important | docker.build_cached | ref 0.6 | 1.03 seconds | 0.585 | 0.50 | - | - | pass |
+| important | docker.lifecycle | ref 1.2 | 1.88 seconds | 0.64 | 0.50 | - | - | pass |
+| other | micro.syscall | 1,836,424 | 242,433 ops/s | 0.133 | 0.20 | 0.13–0.14 | - | fail |
+| other | micro.forkexec | 3,513 | 509.0 ops/s | 0.141 | 0.20 | 0.10–0.17 | - | fail |
+| other | micro.mmap | 187,820 | 21,779 ops/s | 0.116 | 0.20 | 0.11–0.13 | - | fail |
+| other | micro.clock | 37,879,538 | 30,599,681 ops/s | 0.771 | 0.20 | 0.74–0.88 | - | pass |
+| other | micro.thread | 22,176 | 5,649 ops/s | 0.266 | 0.20 | 0.23–0.27 | - | pass |
+| other | micro.pipe | 119,594 | 12,422 round trips/s | 0.123 | 0.20 | 0.07–0.15 | - | fail |
+| other | micro.signal | 394,694 | 91,294 ops/s | 0.231 | 0.20 | 0.22–0.25 | - | pass |
