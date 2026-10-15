@@ -8,7 +8,6 @@ virtiofsd shares, and tears all of them down on stop.
 import base64
 import ctypes
 import fcntl
-import hashlib
 import http.client
 import json
 import os
@@ -31,13 +30,6 @@ from pipeline.port_driver import PortDriver
 CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
-
-def sha(path):
-    h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for b in iter(lambda: f.read(1024 * 1024), b''):
-            h.update(b)
-    return h.hexdigest()
 
 
 def share_specs(paths):
@@ -406,8 +398,7 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
               'mtu': mtu, 'dns': dns, 'network_batch': network_batch, 'boot_timeout': boot_timeout,
-              'measure_lock': str(measure_lock) if measure_lock else None,
-              'kernel_sha256': sha(kernel), 'disk_sha256': sha(disk)}
+              'measure_lock': str(measure_lock) if measure_lock else None}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]
     with (instance / 'supervisor.log').open('a') as log:
