@@ -8,6 +8,8 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 # the ControlMaster connection is reused; the jump host bans new-connection bursts.
 REMOTE = os.environ.get('HD_REMOTE', 'starpub-root')
 REMOTE_ROOT = os.environ.get('HD_REMOTE_ROOT', '/root/harddind-rebuild/hd')
+# Multiplexing master that every remote connection must reuse; empty disables the check.
+JUMP = os.environ.get('HD_JUMP', 'star-jump')
 
 # Remote side layout (also valid on any Linux host that runs the pipeline).
 ROOT = pathlib.Path(os.environ.get('HD_ROOT', REMOTE_ROOT))

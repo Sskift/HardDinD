@@ -27,8 +27,16 @@ REMOTE_SRC = f'{config.REMOTE_ROOT}/src/{CHECKOUT}'
 
 # ---------------------------------------------------------------- local side
 
+def require_master():
+    """Refuse to open bare TCP connections: the jump host bans bursts of them."""
+    if config.JUMP and subprocess.run(['ssh', '-O', 'check', config.JUMP], capture_output=True).returncode:
+        raise SystemExit(f'ssh master for {config.JUMP} is down; wait for it to reconnect (launchd keepalive) '
+                         'instead of retrying, or set HD_JUMP= to skip this check')
+
+
 def ssh(script, check=True, capture=False):
     """Run one shell script remotely in a single ssh invocation."""
+    require_master()
     result = subprocess.run(['ssh', config.REMOTE, 'bash -s'], input=script, text=True,
                             capture_output=capture)
     if check and result.returncode:
@@ -47,9 +55,9 @@ def cmd_sync(_a=None):
            'diff_sha256': hashlib.sha256(diff.encode()).hexdigest() if diff else None,
            'synced_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
     (REPO / '.hd-revision.json').write_text(json.dumps(rev, indent=2) + '\n')
-    cmd = ['rsync', '-az', '--delete', *[f'--exclude={e}' for e in RSYNC_EXCLUDES], f'{REPO}/',
-           f'{config.REMOTE}:{REMOTE_SRC}/']
-    subprocess.run(['ssh', config.REMOTE, f'mkdir -p {REMOTE_SRC}'], check=True)
+    cmd = ['rsync', '-az', '--delete', f'--rsync-path=mkdir -p {REMOTE_SRC} && rsync',
+           *[f'--exclude={e}' for e in RSYNC_EXCLUDES], f'{REPO}/', f'{config.REMOTE}:{REMOTE_SRC}/']
+    require_master()
     subprocess.run(cmd, check=True)
     print(f"synced {rev['git'][:12]}{' (dirty)' if rev['dirty'] else ''} -> {config.REMOTE}:{REMOTE_SRC}")
 
@@ -101,6 +109,7 @@ def cmd_wait(a):
 def cmd_fetch(_a):
     dest = REPO / 'results/runs'
     dest.mkdir(parents=True, exist_ok=True)
+    require_master()
     subprocess.run(['rsync', '-a', '--prune-empty-dirs', '--include=*/', '--include=summary.json',
                     '--include=scorecard.md', '--exclude=*', f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
                    check=True)
