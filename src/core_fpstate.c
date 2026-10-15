@@ -36,7 +36,8 @@ static struct vector pattern(int tag) {
 #define CALL_LOOP \
     "1: mov $39, %%eax; syscall; cmp %[pid], %%rax; je 2f; mov $1, %[bad]; 2:\n" \
     "dec %[n]; jz 3f; test $127, %[n]; jnz 1b; mov $24, %%eax; syscall; jmp 1b; 3:\n"
-static void preserve(const struct vector *in, struct vector *out, unsigned long count, int avx) {
+static __attribute__((target("avx"))) void
+preserve(const struct vector *in, struct vector *out, unsigned long count, int avx) {
     unsigned long bad = 0, n = count;
     long pid = syscall(SYS_getpid);
     if (avx) {
@@ -76,7 +77,8 @@ static void threads(unsigned long count, int avx) {
     for (int i = 0; i < 2; i++) CHECK(!pthread_join(ids[i], NULL));
     CHECK(!pthread_barrier_destroy(&barrier));
 }
-static void stop_with_vector(int sig, const struct vector *in, struct vector *out) {
+static __attribute__((target("avx"))) void
+stop_with_vector(int sig, const struct vector *in, struct vector *out) {
     long pid = syscall(SYS_getpid), tid = syscall(SYS_gettid), result;
     __asm__ volatile("vmovdqu %[in], %%ymm15; syscall; vmovdqu %%ymm15, %[out]; vzeroupper"
                      : "=a"(result), [out] "=m"(*out)
