@@ -981,6 +981,16 @@ class CompletedWorkTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'does not match'):
                 checks.completed_work(self.protocol, [worker], 1)
 
+    def test_full_period_cannot_alias_completed_work(self):
+        # The unchanged result is consistent with both n and n + 2**55
+        # iterations of the block recurrence. Only its first period is an
+        # unambiguous count; this must fail before computing throughput.
+        for blocks in (0, 1, 17):
+            worker = self.worker(3, blocks)
+            worker['work_blocks'] += 1 << 55
+            with self.subTest(blocks=blocks), self.assertRaisesRegex(ValueError, 'completed-work evidence'):
+                checks.completed_work(self.protocol, [worker], 1)
+
     def test_bad_protocol_and_counters_are_rejected(self):
         for protocol in ({'workload_revision': 2, 'steps_per_block': 1024},
                          {'workload_revision': True, 'steps_per_block': 1024},

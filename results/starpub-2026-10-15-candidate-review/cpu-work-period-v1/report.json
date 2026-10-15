@@ -1,0 +1,25 @@
+{
+  "kind": "arithmetic_validator_regression",
+  "full_acceptance": false,
+  "performance_acceptance": false,
+  "inputs": {
+    "scripts/cpu_limit_checks.py": "ebe9c235fc5a6b3aaeeeeaf175b98b2ae4cff8b82071589c25fc08b089fb85eb",
+    "tests/test_cpu_limit_checks.py": "5612c0b31761921bff2e73cb209c6c7a8cb9e4dc172b77f228ffff2696883644"
+  },
+  "exit_code": 0,
+  "original_work": {
+    "status": "pass",
+    "worker_blocks": [
+      373347,
+      419673,
+      318234,
+      373335
+    ],
+    "total_blocks": 1484589,
+    "steps_per_block": 1024,
+    "blocks_per_wall_second": 1454038.4368653262,
+    "scope": "count and arithmetic result only; no performance acceptance"
+  },
+  "raw_sha256": "042ecf0646674f96bd3c15b67d11fac51eb74ead07ecc456e00c53478c1fdf9f",
+  "period_alias_rejected": "missing or invalid completed-work evidence"
+}

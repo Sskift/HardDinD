@@ -94,10 +94,16 @@ def completed_work(start, workers, wall_s):
     for k in range(1024):
         mul = (mul * 6364136223846793005) & mask
         add = (add * 6364136223846793005 + k + 1) & mask
+    # For one block, v2(mul - 1) = 12 and v2(add) = 9. Each seed's
+    # increment therefore has valuation 9; the block recurrence has exact
+    # period 2**55 modulo 2**64. Larger counts alias a smaller count's result
+    # and cannot be verified uniquely. This is an arithmetic protocol bound,
+    # not a workload speed or performance tolerance.
+    block_period = 1 << 55
     counts = []
     for worker in workers:
         blocks, sink = worker.get('work_blocks'), worker.get('sink')
-        if (type(blocks) is not int or not 0 <= blocks <= mask
+        if (type(blocks) is not int or not 0 <= blocks < block_period
                 or type(sink) is not int or not 0 <= sink <= mask):
             raise ValueError('missing or invalid completed-work evidence')
         value, a, b, n = 0x9e3779b97f4a7c15 ^ worker['idx'], mul, add, blocks
