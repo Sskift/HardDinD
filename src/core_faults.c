@@ -287,7 +287,7 @@ static void measure(const char *mode, size_t count) {
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "child")) return 0;
     if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: %s semantics | anon|file|cow|fork|exec|mmap|mprotect|getpid|faults|process [count]\n", argv[0]);
+        fprintf(stderr, "usage: %s semantics | anon|file|cow|fork|exec|mmap|mprotect|getpid|faults|process|all [count]\n", argv[0]);
         return 2;
     }
     page = (size_t)sysconf(_SC_PAGESIZE);
@@ -302,15 +302,18 @@ int main(int argc, char **argv) {
         CHECK(!errno && *argv[2] && !*tail && value > 0 && value <= 1048576);
         count = value;
     }
-    if (!strcmp(argv[1], "faults") || !strcmp(argv[1], "process")) {
+    if (!strcmp(argv[1], "faults") || !strcmp(argv[1], "process") || !strcmp(argv[1], "all")) {
+        int all = !strcmp(argv[1], "all");
+        if (all || !strcmp(argv[1], "process")) CHECK(count <= 1024);
         grouped = 1;
         printf("{\"schema\":\"hd.core-group/1\",\"samples\":[");
-        if (!strcmp(argv[1], "faults")) {
-            measure("anon", count);
-            measure("file", count);
-            measure("cow", count);
-        } else {
-            CHECK(count <= 1024);
+        if (all || !strcmp(argv[1], "faults")) {
+            size_t pages = all ? count * 256 : count;
+            measure("anon", pages);
+            measure("file", pages);
+            measure("cow", pages);
+        }
+        if (all || !strcmp(argv[1], "process")) {
             measure("fork", count);
             measure("exec", count);
             measure("mmap", count * 32);

@@ -36,7 +36,8 @@ class CoreFaultsTests(unittest.TestCase):
                     self.assertGreater(sample['ns_per_op'], 0)
                     self.assertGreaterEqual(sample['minor_faults'], 0)
             for group, modes in [('faults', ['anon', 'file', 'cow']),
-                                 ('process', ['fork', 'exec', 'mmap', 'mprotect', 'getpid'])]:
+                                 ('process', ['fork', 'exec', 'mmap', 'mprotect', 'getpid']),
+                                 ('all', ['anon', 'file', 'cow', 'fork', 'exec', 'mmap', 'mprotect', 'getpid'])]:
                 result = subprocess.run([str(binary), group, '2'], cwd=d, capture_output=True,
                                         text=True, timeout=30, check=True)
                 samples = json.loads(result.stdout)['samples']
