@@ -11,7 +11,7 @@ from suites.functional.peer import Peer as ProbePeer
 
 # Guest->outer inotify is checked with an outer UID 1001 watcher only: outer root
 # shares its 128 inotify instances with every root process on the Starpub host.
-NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks', 'outer_metadata_churn', 'outer_replace_churn', 'outer_negative_lookup', 'outer_mtime', 'outer_permission_revoked', 'outer_mmap_window', 'outer_attr_window', 'outer_read_window', 'outer_mapped_write', 'notification_mmap_latency', 'outer_directory_inotify']
+NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks', 'outer_metadata_churn', 'outer_replace_churn', 'outer_negative_lookup', 'outer_mtime', 'outer_permission_revoked', 'outer_mmap_window', 'outer_attr_window', 'outer_read_window', 'outer_mapped_write', 'notification_mmap_latency', 'outer_directory_inotify', 'outer_readdir_preserved_mtime']
 
 
 def expect_metadata(row, size, mode):
@@ -27,15 +27,16 @@ def metadata_churn(peer, path, rounds=32):
         os.chmod(path, mode)
         expect_metadata(peer.ask('stat'), size, mode)
 
-def change_window(read, expected, clock=time.monotonic_ns, timeout_ns=3_000_000_000):
+def change_window(read, expected, clock=time.monotonic_ns, timeout_ns=3_000_000_000, started_ns=None):
     """Bound visibility by RPC observations; preserve the first-access verdict."""
-    started, stale, last_stale = clock(), 0, 0
+    started, stale, last_stale = clock() if started_ns is None else started_ns, 0, 0
     while True:
         before = clock() - started
         value = read()
         elapsed = clock() - started
         if value == expected:
             return {'first_access': stale == 0, 'stale_reads': stale,
+                    'origin': 'outer_change_start' if started_ns is not None else 'first_read_start',
                     'last_stale_ms': last_stale / 1e6, 'visible_by_ms': elapsed / 1e6}
         stale += 1
         last_stale = before
@@ -125,13 +126,13 @@ def mmap_delivery(c, share):
         samples = []
         with path.open('r+b', buffering=0) as outer:
             for value in range(66, 98):
-                os.pwrite(outer.fileno(), bytes([value]), 0)
                 written = time.monotonic_ns()
+                os.pwrite(outer.fileno(), bytes([value]), 0)
                 receive(value)
                 samples.append((time.monotonic_ns() - written) / 1e6)
         assert process.wait(timeout=c.remaining(5)) == 0, process.returncode
         ordered = sorted(samples)
-        c.write('mmap_delivery: ' + json.dumps({'mode': mode, 'samples_ms': samples,
+        c.write('mmap_delivery: ' + json.dumps({'mode': mode, 'origin': 'before_pwrite', 'samples_ms': samples,
                  'p50_visible_by_ms': ordered[16], 'p95_visible_by_ms': ordered[30],
                  'max_visible_by_ms': max(ordered)}, sort_keys=True))
 
@@ -243,6 +244,28 @@ def run(c, name):
         return directory_events(c, share)
     if name == 'notification_mmap_latency':
         return mmap_delivery(c, share)
+    if name == 'outer_readdir_preserved_mtime':
+        for mode in ('native', 'docker'):
+            directory = share / mode
+            directory.mkdir()
+            if mode == 'native':
+                listing = lambda: sorted(os.listdir(directory))
+            else:
+                container = c.container('sleep', '120', detached=True,
+                                        opts=('--mount', f'type=bind,src={directory},dst=/share'))
+                listing = lambda: sorted(c.d('exec', container, 'ls', '-A', '/share').splitlines())
+            assert listing() == []
+            stamp = directory.stat()
+            original, renamed = directory / 'original', directory / 'renamed'
+            for change, expected in ((lambda: original.write_bytes(b'content'), ['original']),
+                                     (lambda: original.rename(renamed), ['renamed']),
+                                     (renamed.unlink, [])):
+                change()
+                os.utime(directory, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+                actual = listing()
+                c.write('readdir_visibility: ' + json.dumps({'mode': mode, 'expected': expected, 'actual': actual}))
+                assert actual == expected, (mode, expected, actual)
+        return
     if name == 'outer_mtime':
         path = share / 'timestamp'
         path.write_bytes(b'timestamp')
@@ -300,18 +323,20 @@ def run(c, name):
                     for i in range(32):
                         peer.ask(operation)
                         expected = (0o640 if i % 2 else 0o600) if operation == 'stat' else 66 + i
+                        started = time.monotonic_ns()
                         if operation == 'stat':
                             os.chmod(path, expected)
                         else:
                             with path.open('r+b', buffering=0) as outer:
                                 outer.write(bytes([expected]))
-                        row = change_window(lambda: peer.ask(operation)[field], expected)
+                        row = change_window(lambda: peer.ask(operation)[field], expected, started_ns=started)
                         row['mode'] = mode
                         samples.append(row)
                         c.write('coherence_sample: ' + json.dumps(row, sort_keys=True))
                     windows = sorted(row['visible_by_ms'] for row in samples)
                     misses = sum(not row['first_access'] for row in samples)
-                    result = {'mode': mode, 'rounds': len(samples), 'first_access_misses': misses,
+                    result = {'mode': mode, 'origin': 'outer_change_start',
+                              'rounds': len(samples), 'first_access_misses': misses,
                               'p50_visible_by_ms': windows[len(windows) // 2],
                               'p95_visible_by_ms': windows[int(len(windows) * .95)],
                               'max_visible_by_ms': max(windows)}
@@ -323,10 +348,11 @@ def run(c, name):
                     peer.ask('map');expect_byte(peer, 'mapped', 65)
                     with path.open('r+b', buffering=0) as outer:
                         with mmap.mmap(outer.fileno(), 8192, access=mmap.ACCESS_WRITE) as mapped:
+                            started = time.monotonic_ns()
                             mapped[0] = 66
                             mapped.flush()
                             try:
-                                row = change_window(lambda: peer.ask('mapped')['byte'], 66)
+                                row = change_window(lambda: peer.ask('mapped')['byte'], 66, started_ns=started)
                             except AssertionError as error:
                                 c.write('mmap_store_window: ' + json.dumps({'mode': mode, 'error': str(error)}))
                                 raise

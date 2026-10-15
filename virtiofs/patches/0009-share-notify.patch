@@ -5,7 +5,7 @@ event extension. Keep --notify-changes off unless the matching kernel is used.
 
 --- /dev/null
 +++ b/src/change_notify.rs
-@@ -0,0 +1,302 @@
+@@ -0,0 +1,307 @@
 +// SPDX-License-Identifier: Apache-2.0
 +//! Experimental outer changes; enabled only by --notify-changes.
 +use std::convert::TryInto;
@@ -61,10 +61,12 @@ event extension. Keep --notify-changes off unless the matching kernel is used.
 +fn messages(inode: u64, mask: u32, cookie: u32, name: &[u8]) -> Vec<Vec<u8>> {
 +    let mut out = Vec::new();
 +    let mut payload = inode.to_ne_bytes().to_vec();
-+    let offset: i64 = if name.is_empty() && mask & libc::IN_MODIFY != 0 { 0 } else { -1 };
++    let namespace = mask & (libc::IN_CREATE | libc::IN_DELETE | libc::IN_MOVED_FROM | libc::IN_MOVED_TO) != 0;
++    // Drop directory pages even when the writer preserves the directory mtime.
++    let data_changed = namespace || (name.is_empty() && mask & libc::IN_MODIFY != 0);
++    let offset: i64 = if data_changed { 0 } else { -1 };
 +    payload.extend_from_slice(&offset.to_ne_bytes());
 +    payload.extend_from_slice(&0i64.to_ne_bytes());
-+    let namespace = mask & (libc::IN_CREATE | libc::IN_DELETE | libc::IN_MOVED_FROM | libc::IN_MOVED_TO) != 0;
 +    if name.is_empty() || namespace {
 +        out.push(packet(2, &payload)); // FUSE_NOTIFY_INVAL_INODE
 +    }
@@ -282,7 +284,10 @@ event extension. Keep --notify-changes off unless the matching kernel is used.
 +        assert!(state.pending.is_empty());
 +        // Child data updates affect its inode, not the parent/name identity.
 +        assert_eq!(messages(8, libc::IN_MODIFY, 0, b"child").len(), 1);
-+        assert_eq!(messages(8, libc::IN_MOVED_FROM, 123, b"child").len(), 3);
++        let renamed = messages(8, libc::IN_MOVED_FROM, 123, b"child");
++        assert_eq!(renamed.len(), 3);
++        assert_eq!(&renamed[0][24..32], &0i64.to_ne_bytes());
++        assert_eq!(&messages(8, libc::IN_ATTRIB, 0, b"")[0][24..32], &(-1i64).to_ne_bytes());
 +        let mut bad = [0u8; 16];
 +        bad[12..16].copy_from_slice(&u32::MAX.to_ne_bytes());
 +        assert!(state.events(&bad).is_err());

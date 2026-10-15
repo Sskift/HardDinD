@@ -25,6 +25,13 @@ class ChangeWindow(unittest.TestCase):
         self.assertEqual(row['last_stale_ms'], 3)
         self.assertEqual(row['visible_by_ms'], 6)
 
+    def test_window_includes_outer_operation(self):
+        started = self.clock()
+        self.now += 5_000_000
+        row = change_window(lambda: 7, 7, clock=self.clock, started_ns=started)
+        self.assertTrue(row['first_access'])
+        self.assertEqual(row['visible_by_ms'], 7)
+
     def test_missing_error_and_stale_fail(self):
         for reply in (None, -1, 6):
             with self.subTest(reply=reply), self.assertRaises(AssertionError):
