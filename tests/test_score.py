@@ -26,9 +26,14 @@ class ScoreTests(unittest.TestCase):
                           'app.compile': metric([10, 10], [25, 15], higher=False)})
         self.assertAlmostEqual(rows['cpu.single']['ratio'], 0.80)
         self.assertEqual(rows['cpu.single']['status'], 'pass')
-        self.assertAlmostEqual(rows['app.compile']['ratio'], 0.5)
+        self.assertAlmostEqual(rows['app.compile']['ratio'], (0.4 + 10 / 15) / 2, places=4)
         self.assertEqual(rows['app.compile']['status'], 'pass')
         self.assertEqual(rows['app.compile']['spread'], [0.4, 0.6667])
+
+    def test_pair_median_ignores_one_contended_pair(self):
+        rows = self.rows({'cpu.multi': metric([12.0, 12.8, 12.4, 8.5, 9.9], [10.4, 11.3, 3.4, 8.7, 8.9])})
+        self.assertAlmostEqual(rows['cpu.multi']['ratio'], 11.3 / 12.8, places=4)
+        self.assertEqual(rows['cpu.multi']['status'], 'pass')
 
     def test_reference_metrics_use_reference_seconds(self):
         rows = self.rows({'docker.run': {'unit': 's', 'higher_is_better': False, 'guest': [0.8, 1.0, 1.2]}})

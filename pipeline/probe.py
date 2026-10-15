@@ -52,8 +52,9 @@ def run(a):
     binary = program(a.program)
     artifacts = build.everything(a.with_)
     cpus = runs.instance_options(artifacts)['cpus']
-    affinity = instance.parse_cpus(config.BENCH_CPUS)
     with locks.measure():
+        bench_cpus = runs.pick_cpus(cpus)
+        affinity = instance.parse_cpus(bench_cpus)
         run_id, run_dir, rev = runs.new_run('probe', a.label)
         print(f'run {run_id}', flush=True)
         guests = {'A': list(a.kernel_arg)}
@@ -64,7 +65,7 @@ def run(a):
         try:
             for side, args in guests.items():
                 path = config.INSTANCES / f'p{side.lower()}{run_id[-12:].replace("-", "")}'[:30]
-                instance.start(path, **runs.instance_options(artifacts, cpuset=config.BENCH_CPUS, kernel_args=args))
+                instance.start(path, **runs.instance_options(artifacts, cpuset=bench_cpus, kernel_args=args))
                 paths[side] = path
                 argv, env = instance.docker_env(path)
                 subprocess.run([*argv, 'import', '-', 'hd-probe:latest'], input=image_tar(binary), env=env,
@@ -106,7 +107,7 @@ def run(a):
             runs.write_json(run_dir / 'summary.json', {
                 'schema': 'hd.probe/1', 'run_id': run_id, 'kind': 'probe', 'revision': rev,
                 'program': str(a.program), 'args': a.args, 'candidates': a.with_, 'kernel_args': a.kernel_arg,
-                'ab': a.ab, 'cpus': cpus, 'bench_cpus': config.BENCH_CPUS, 'artifacts': artifacts['ids'],
+                'ab': a.ab, 'cpus': cpus, 'bench_cpus': bench_cpus, 'artifacts': artifacts['ids'],
                 'records': records})
     failed = [r for r in records if r['rc'] != 0]
     print(f'{len(records)} runs, {len(failed)} failed; raw: {run_dir}/probe.jsonl')

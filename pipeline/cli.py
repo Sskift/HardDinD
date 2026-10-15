@@ -256,7 +256,9 @@ def run_suite(kind, a):
             summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
         if kind in ('bench', 'ci'):
             with locks.measure():
-                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
+                cpus = runs.pick_cpus(config.GUEST_CPUS)
+                summary['bench_cpus'] = cpus
+                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=cpus)
             state = summary['bench'].pop('guest_state')
             if shutdown_check(state)['status'] != 'pass':
                 summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
@@ -313,7 +315,7 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     shares = [share]
     opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares)
     ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
-                       instance_options=opts, bench_cpus=config.BENCH_CPUS, quick=getattr(a, 'quick', False),
+                       instance_options=opts, bench_cpus=cpuset, quick=getattr(a, 'quick', False),
                        only=a.only, share=share)
     result = {}
     try:

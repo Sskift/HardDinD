@@ -22,7 +22,8 @@ LOCKS = ROOT / 'locks'
 
 JOBS = int(os.environ.get('HD_JOBS', '12'))
 RUST_TOOLCHAIN = os.environ.get('HD_RUST_TOOLCHAIN', str(ROOT / 'toolchains/rust-1.98.1'))
-# Host CPUs used for measurements; native and guest runs are pinned to the same set.
-BENCH_CPUS = os.environ.get('HD_BENCH_CPUS', '8-11')
+# Host CPUs for measurements; native and guest runs are pinned to the same set.
+# 'auto' picks the quietest physical cores at the start of each run.
+BENCH_CPUS = os.environ.get('HD_BENCH_CPUS', 'auto')
 GUEST_CPUS = int(os.environ.get('HD_GUEST_CPUS', '4'))
 GUEST_MEMORY = os.environ.get('HD_GUEST_MEMORY', '4G')
