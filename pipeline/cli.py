@@ -234,6 +234,7 @@ def run_suite(kind, a):
             summary['artifacts'] = artifacts['ids']
             if kind in ('test', 'ci'):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
+                summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
             if kind in ('bench', 'ci'):
                 summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
         except Exception as error:
@@ -250,6 +251,21 @@ def run_suite(kind, a):
         (run_dir / 'scorecard.md').write_text(text)
         print(text)
     return 2 if summary.get('error') else 0
+
+
+def backend_selftest(run_dir, artifacts, only):
+    """Native tests of the network backend binary (tests/publish); no guest needed."""
+    import re
+    check = {'id': 'network_backend_selftest', 'covers': [], 'seconds': 0.0}
+    if only and not re.search(only, check['id']):
+        return {**check, 'status': 'not_tested'}
+    started = time.monotonic()
+    env = {**os.environ, 'HARDDIND_NETWORK_BACKEND': str(artifacts['network_backend'])}
+    result = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(REPO / 'tests/publish')],
+                            cwd=REPO, env=env, capture_output=True, text=True, timeout=900)
+    (run_dir / 'network-backend-selftest.log').write_text(result.stdout + result.stderr)
+    return {**check, 'status': 'pass' if result.returncode == 0 else 'fail',
+            'seconds': round(time.monotonic() - started, 2), 'detail': (result.stdout + result.stderr)[-800:]}
 
 
 def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
