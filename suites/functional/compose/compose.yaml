@@ -1,0 +1,66 @@
+{
+  "services": {
+    "db": {
+      "image": "hd-base:latest",
+      "pull_policy": "never",
+      "command": [
+        "sh",
+        "-ec",
+        "printf \"HTTP/1.0 200 OK\\r\\nContent-Length: 10\\r\\n\\r\\ndb-payload\" >/response; sleep 3; touch /ready; exec nc -lk -p 8080 -e cat /response"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "test -f /ready"
+        ],
+        "interval": "1s",
+        "timeout": "1s",
+        "retries": 30
+      },
+      "volumes": [
+        "data:/data"
+      ]
+    },
+    "web": {
+      "image": "hd-base:latest",
+      "pull_policy": "never",
+      "depends_on": {
+        "db": {
+          "condition": "service_healthy"
+        }
+      },
+      "command": [
+        "sh",
+        "-ec",
+        "echo web-started; exec sleep 600"
+      ]
+    },
+    "worker": {
+      "image": "hd-base:latest",
+      "pull_policy": "never",
+      "command": [
+        "sh",
+        "-ec",
+        "hostname >/hostname; { printf \"HTTP/1.0 200 OK\\r\\nContent-Length: %s\\r\\n\\r\\n\" \"$$(wc -c </hostname)\"; cat /hostname; } >/response; exec nc -lk -p 8080 -e cat /response"
+      ]
+    },
+    "builder": {
+      "image": "hd-compose:local",
+      "pull_policy": "never",
+      "build": {
+        "context": "./builder",
+        "pull": false
+      },
+      "command": [
+        "cat",
+        "/built"
+      ]
+    }
+  },
+  "volumes": {
+    "data": {}
+  },
+  "networks": {
+    "default": {}
+  }
+}

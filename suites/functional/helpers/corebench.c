@@ -29,11 +29,20 @@ static void *send_signals(void *unused) {
     }
     return NULL;
 }
+static uint64_t expected_compute(void) {
+    uint64_t n = 150000000, a = 6364136223846793005ULL, b = 1;
+    uint64_t mul = 1, add = 0;
+    while (n) {
+        if (n & 1) { add = add * a + b; mul *= a; }
+        b *= a + 1; a *= a; n >>= 1;
+    }
+    return mul + add;
+}
 static void *compute(void *unused) {
     (void)unused;
     volatile uint64_t x = 1;
     for (uint64_t i = 0; i < 150000000; ++i) x = x * 6364136223846793005ULL + 1;
-    return NULL;
+    return (void *)(uintptr_t)x;
 }
 static int child_status(pid_t pid) {
     int s; pid_t rc;
@@ -70,17 +79,19 @@ int main(int argc, char **argv) {
             int e = pthread_create(&ids[i], NULL, compute, NULL);
             if (e) { fprintf(stderr, "pthread_create: %s\n", strerror(e)); return 1; }
         }
-        for (int i = 0; i < workers; ++i)
-            if (pthread_join(ids[i], NULL)) return 1;
+        for (int i = 0; i < workers; ++i) {
+            void *result;
+            if (pthread_join(ids[i], &result) || (uint64_t)(uintptr_t)result != expected_compute()) return 1;
+        }
     } else if (!strcmp(argv[1], "processes")) {
         pid_t ids[64];
         for (int i = 0; i < workers; ++i) {
             ids[i] = fork();
             if (ids[i] < 0) { perror("fork"); return 1; }
-            if (!ids[i]) { compute(NULL); _exit(0); }
+            if (!ids[i]) { _exit((uint64_t)(uintptr_t)compute(NULL) != expected_compute()); }
         }
         for (int i = 0; i < workers; ++i) if (child_status(ids[i])) return 1;
     } else return 2;
-    printf("{\"test\":\"%s\",\"workers\":%d,\"seconds\":%.9f}\n", argv[1], workers, now()-t);
+    printf("{\"test\":\"%s\",\"workers\":%d,\"seconds\":%.9f,\"verified\":true}\n", argv[1], workers, now()-t);
     return 0;
 }

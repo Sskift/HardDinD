@@ -217,6 +217,9 @@ def serve(instance):
             cmd = [config['virtiofsd'], '--socket-path', str(path), '--shared-dir', share['source'],
                    '--tag', share['tag'], '--sandbox', 'chroot', '--cache', share_opts.get('cache', 'never'),
                    '--inode-file-handles=never', '--xattr', '--posix-acl', '--announce-submounts', '--shared-flock',
+                   # MAP_SHARED with cache=never (FUSE_DIRECT_IO_ALLOW_MMAP); mapped pages are
+                   # not invalidated by outer writes, unlike a native bind mount.
+                   '--allow-mmap',
                    '--thread-pool-size', '4']
             if share_opts.get('profile'): cmd.append('--profile-requests')
             if share_opts.get('inline_flock'): cmd.append('--inline-flock')
