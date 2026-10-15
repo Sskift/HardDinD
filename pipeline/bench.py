@@ -64,90 +64,19 @@ def metric_budget(name, quick):
     return 120 if quick else 400
 
 
-def ubd_flush_analysis(source):
-    """Recognize the zero-descriptor FLUSH dispatch bug, not arbitrary kernels."""
-    zero = bool(re.search(r'if\s*\(op == REQ_OP_FLUSH\)\s*segs = 0;', source))
-    dispatch = source.partition('void *io_thread(void *arg)')[2]
-    only_segments = bool(re.search(r'for \(i = 0; !req->error && i < req->desc_cnt; i\+\+\)\s*do_io\(', dispatch))
-    return {'sha256': hashlib.sha256(source.encode()).hexdigest(),
-            'zero_segment_flush': zero, 'segment_only_dispatch': only_segments,
-            'flush_skipped': zero and 'io_req->desc_cnt = segs;' in source and only_segments and
-                             'REQ_OP_FLUSH' not in dispatch}
+FLUSH_COUNTERS = '/sys/module/ubd/parameters/host_flushes /sys/module/ubd/parameters/host_flush_errors'
 
 
-def ubd_source_evidence(ctx):
-    """Tie an unmodified UBD file to the pinned source and running build key."""
-    relative = 'arch/um/drivers/ubd_kern.c'
-    path = config.WORK / ('linux-' + build.LOCK['linux']['version']) / relative
-    source = path.read_text()
-    patches = build.series() + build.candidate_paths(ctx.artifacts.get('candidates', []))
-    key = build.key_of('kernel/1', build.LOCK['linux'], config.REPO / 'kernel/config',
-                       config.REPO / 'scripts/build-kernel.sh', config.REPO / 'pipeline/patches.py',
-                       config.REPO / 'scripts/check-stub-relocations.py', *patches)
-    member_name = 'linux-' + build.LOCK['linux']['version'] + '/' + relative
-    with tarfile.open(build.fetch('linux'), 'r|*') as archive:
-        member = next(member for member in archive if member.name == member_name)
-        original = archive.extractfile(member).read()
-    touching = [p.name for p in patches if relative in p.read_text()]
-    matched = (source.encode() == original and not touching and
-               pathlib.Path(ctx.artifacts['kernel']).parent.name == key)
-    return {'path': str(path), **ubd_flush_analysis(source), 'matches_running_kernel': matched,
-            'kernel_key': key, 'patches_touching_ubd': touching,
-            'pinned_source_sha256': hashlib.sha256(original).hexdigest()}
-
-
-def durability_error(evidence):
-    if not evidence['same_filesystem']:
-        return 'native scratch and guest COW are on different host filesystems'
-    descriptors = evidence['cow_descriptors']
-    synchronous = bool(descriptors) and all(fd['synchronous'] for fd in descriptors)
-    source = evidence['ubd_source']
-    if (source['matches_running_kernel'] and source['flush_skipped'] and descriptors and not synchronous):
-        trace = (f"{evidence['guest_syncs']} host COW syncs observed" if evidence['attached_pids'] else
-                 'host trace unavailable: ptrace attach denied')
-        return ('guest fsync not durable: pinned UBD FLUSH desc_cnt=0 skips do_io/os_sync_file; '
-                f'COW lacks O_DSYNC/O_SYNC; {trace}')
-    if evidence['native_syncs'] < 3 or (evidence['guest_syncs'] < 3 and not synchronous):
-        return ('guest fsync durability unverified: '
-                f"native={evidence['native_syncs']}, guest COW={evidence['guest_syncs']} host syncs; "
-                f"attached {len(evidence['attached_pids'])} UML processes")
+def durability_error(before, after, fsyncs):
+    """Each guest fsync must complete a host sync of the COW file (kernel patch 0030 counters)."""
+    if before is None or after is None:
+        return 'guest fsync durability unverified: kernel exposes no host flush counters'
+    done, failed = after[0] - before[0], after[1] - before[1]
+    if failed:
+        return f'guest fsync not durable: {failed} host flushes failed'
+    if done < fsyncs:
+        return f'guest fsync not durable: {fsyncs} guest fsyncs, {done} host flushes'
     return None
-
-
-def successful_syncs(trace, path):
-    pending, count = set(), 0
-    for line in trace.splitlines():
-        pid = line.split()[0] if line.split() else ''
-        if path in line and re.search(r'\b(?:fsync|fdatasync)\(', line):
-            if re.search(r'= 0\s*$', line):
-                count += 1
-            elif '<unfinished ...>' in line:
-                pending.add(pid)
-        elif pid in pending and re.search(r'<\.\.\. (?:fsync|fdatasync) resumed>', line):
-            count += bool(re.search(r'= 0\s*$', line))
-            pending.remove(pid)
-    return count
-
-
-def guest_disk_processes(cow, group):
-    pids, descriptors = [], []
-    for path in pathlib.Path('/proc').iterdir():
-        if not path.name.isdigit():
-            continue
-        pid = int(path.name)
-        try:
-            if os.getpgid(pid) != group:
-                continue
-            pids.append(pid)
-            for fd in (path / 'fd').iterdir():
-                if os.readlink(fd) == str(cow):
-                    info = (path / 'fdinfo' / fd.name).read_text()
-                    flags = int(re.search(r'^flags:\s*(\d+)', info, re.M)[1], 8)
-                    descriptors.append({'pid': pid, 'fd': int(fd.name), 'flags': oct(flags),
-                                        'synchronous': bool(flags & os.O_DSYNC)})
-        except (ProcessLookupError, FileNotFoundError, PermissionError):
-            continue
-    return sorted(pids), descriptors
 
 
 def metric_info(name):
@@ -289,73 +218,23 @@ class Workloads:
         return self.process(['chroot', self.root, *args], timeout=timeout,
                             preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
 
-    def durability(self):
-        """Unmeasured host trace of three checked guest fsyncs; cached per run."""
-        if self.disk_evidence is not None:
-            return self.disk_evidence
-        evidence = {'error': None}
-        self.disk_evidence = evidence
+    def flush_counters(self):
         try:
-            cow = self.ctx.instance / 'root.cow'
-            evidence['filesystems'] = []
-            for path in (self.root / 'work', cow):
-                mount = subprocess.run(['findmnt', '-J', '-T', str(path), '-o', 'SOURCE,FSTYPE,TARGET,OPTIONS'],
-                                       capture_output=True, text=True, check=True)
-                evidence['filesystems'].append({'path': str(path), 'device': os.stat(path).st_dev,
-                                                'mount': json.loads(mount.stdout)})
-            evidence['same_filesystem'] = len({item['device'] for item in evidence['filesystems']}) == 1
-            source = config.WORK / ('linux-' + build.LOCK['linux']['version']) / 'arch/um/drivers/ubd_kern.c'
-            evidence['ubd_source'] = ubd_source_evidence(self.ctx)
-            host_source = source.parents[1] / 'os-Linux/file.c'
-            text = host_source.read_text()
-            evidence['os_sync_file'] = text[text.index('int os_sync_file('):].split('\n}', 1)[0] + '\n}'
-            state = json.loads((self.ctx.instance / 'state.json').read_text())
-            pids, descriptors = guest_disk_processes(cow, state['guest_pid'])
-            evidence['traced_pids'] = pids; evidence['cow_descriptors'] = descriptors
-            native_trace = self.ctx.run_dir / 'fsync-native.strace'
-            trace_args = ['strace', '-f', '-tt', '-yy', '-e', 'trace=fsync,fdatasync,sync_file_range']
-            output = self.process([*trace_args, '-o', native_trace, 'chroot', self.root,
-                                   '/bench/workload', 'disk.fsync_probe', '1'], timeout=30,
-                                  preexec_fn=lambda: os.sched_setaffinity(0, self.cpus))
-            evidence['native_probe'] = parse_output(output)
-            evidence['native_syncs'] = successful_syncs(native_trace.read_text(), 'fsync-probe')
-            if not pids:
-                raise RuntimeError('no UML processes found for fsync trace')
-            guest_trace = self.ctx.run_dir / 'fsync-guest.strace'
-            tracer_log = self.ctx.run_dir / 'fsync-tracer.log'
-            # Attach existing UML processes (including its persistent I/O helper)
-            # without taking over UML's ptrace ownership of new guest tasks.
-            args = [arg for arg in trace_args if arg != '-f']
-            args += ['-o', str(guest_trace), *[a for pid in pids for a in ('-p', str(pid))]]
-            with tracer_log.open('w') as log:
-                tracer = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=log)
-                try:
-                    time.sleep(0.3)
-                    evidence['attached_pids'] = []
-                    for pid in pids:
-                        try:
-                            status = pathlib.Path(f'/proc/{pid}/status').read_text()
-                            if int(re.search(r'^TracerPid:\s*(\d+)', status, re.M)[1]) == tracer.pid:
-                                evidence['attached_pids'].append(pid)
-                        except FileNotFoundError:
-                            pass
-                    output = self.guest('/bench/workload', 'disk.fsync_probe', '1', timeout=30)
-                    evidence['guest_probe'] = parse_output(output)
-                finally:
-                    if tracer.poll() is None:
-                        tracer.send_signal(signal.SIGINT)
-                    try:
-                        tracer.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        tracer.kill(); tracer.wait()
-            evidence['guest_syncs'] = successful_syncs(guest_trace.read_text(), str(cow))
-            evidence['tracer_log'] = tracer_log.read_text()[-8000:]
-            evidence['trace_files'] = [native_trace.name, guest_trace.name, tracer_log.name]
-            evidence['error'] = durability_error(evidence)
-        except Exception as error:
-            evidence['error'] = f'guest fsync durability unverified: {type(error).__name__}: {error}'
-        self.ctx.log('bench durability: ' + (evidence['error'] or 'host flushes verified'))
-        return evidence
+            values = self.guest('cat', *FLUSH_COUNTERS.split(), timeout=30).split()
+            return int(values[0]), int(values[1])
+        except (RuntimeError, ValueError, IndexError):
+            return None
+
+    def durability(self):
+        """Host flush counters around three checked guest fsyncs; cached per run."""
+        if self.disk_evidence is None:
+            before = self.flush_counters()
+            probe = parse_output(self.guest('/bench/workload', 'disk.fsync_probe', '1', timeout=30))
+            after = self.flush_counters()
+            self.disk_evidence = {'before': before, 'after': after, 'probe': probe,
+                                  'error': durability_error(before, after, 3)}
+            self.ctx.log('bench durability: ' + (self.disk_evidence['error'] or f'host flushes {before} -> {after}'))
+        return self.disk_evidence
 
     def docker(self, *args, timeout=120, combined=False):
         completed = self.ctx.docker(*args, timeout=self.timeout(timeout))
