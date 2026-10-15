@@ -83,7 +83,8 @@ class Peer:
             if self.proc.poll() is None:
                 self.send('quit')
                 self.proc.stdin.close()
-                self.proc.wait(timeout=self.c.remaining(8))
+                # Container exit and --rm cleanup; the check's own deadline still bounds it.
+                self.proc.wait(timeout=self.c.remaining(30))
             if not self.expected_kill and self.proc.returncode != 0:
                 raise AssertionError(f'probe exited {self.proc.returncode}')
         finally:
