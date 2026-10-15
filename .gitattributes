@@ -14,3 +14,4 @@ results/**/sources/* -text -whitespace
 # Fixed kernel snapshots and patch-reapplication proofs retain upstream bytes.
 results/**/source/** -text -whitespace
 results/**/reapplied/** -text -whitespace
+results/**/baseline-source/** -text -whitespace

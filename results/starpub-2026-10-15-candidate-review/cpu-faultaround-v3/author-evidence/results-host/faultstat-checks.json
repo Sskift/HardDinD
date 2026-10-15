@@ -1,0 +1,15 @@
+{"check": "one-clock-source", "result": "pass"}
+{"check": "no-local_clock-in-timed-paths", "result": "pass"}
+{"check": "process-uses-bracket-not-clock_gettime", "result": "pass"}
+{"check": "begin-gates-before-clock", "clock_at": 96, "gate_at": 49, "result": "pass"}
+{"check": "end-gates-before-clock", "result": "pass"}
+{"check": "inc-gated", "result": "pass"}
+{"check": "original-map-unmap-restored-when-off", "result": "pass"}
+{"check": "fsmap-returns-op-result", "result": "pass"}
+{"check": "fsunmap-returns-op-result", "result": "pass"}
+{"check": "proc-atomic-snapshots", "result": "pass"}
+{"check": "run-ns-labelled-inclusive", "result": "pass"}
+{"check": "unit-compiles-clean", "result": "pass", "stderr": ""}
+{"check": "unit-output-valid-json", "lines": [{"result": "PASS", "test": "faultstat_unit"}], "result": "pass"}
+{"check": "unit-passes", "rc": 0, "result": "pass"}
+{"check": "summary", "failures": [], "result": "pass"}

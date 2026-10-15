@@ -1,0 +1,102 @@
+{
+ "binary_rc": 0,
+ "cases": [
+  {
+   "case": "dense",
+   "minflt": 128,
+   "pages": 128,
+   "result": "pass"
+  },
+  {
+   "case": "sparse_zero",
+   "minflt": 16,
+   "pages": 512,
+   "result": "pass",
+   "touched": 16
+  },
+  {
+   "case": "sparse_residency",
+   "resident_pages": 1,
+   "result": "pass",
+   "speculative_residency": false,
+   "window_pages": 32
+  },
+  {
+   "case": "read_then_write",
+   "result": "pass"
+  },
+  {
+   "case": "fork_cow",
+   "result": "pass",
+   "status": 0
+  },
+  {
+   "case": "mprotect_ro",
+   "result": "pass",
+   "status": 10752
+  },
+  {
+   "case": "mprotect_protnone",
+   "result": "pass",
+   "status": 10752
+  },
+  {
+   "case": "munmap_mid",
+   "result": "pass",
+   "status": 10752
+  },
+  {
+   "case": "threads",
+   "created": 4,
+   "requested": 4,
+   "result": "pass"
+  },
+  {
+   "case": "uffd_negatives",
+   "errno": 1,
+   "reason": "unavailable",
+   "result": "skip"
+  },
+  {
+   "case": "userfaultfd",
+   "errno": 1,
+   "reason": "unavailable",
+   "result": "skip"
+  },
+  {
+   "case": "memcg_oom",
+   "errno": 30,
+   "reason": "mkdir",
+   "result": "skip"
+  }
+ ],
+ "checks": [
+  {
+   "bad_lines": [],
+   "check": "selfcheck_emission",
+   "rc": 3,
+   "result": "pass",
+   "stderr_tail": ""
+  },
+  {
+   "check": "json_protocol",
+   "result": "pass"
+  },
+  {
+   "check": "per_case_integrity",
+   "result": "pass"
+  },
+  {
+   "check": "semantics",
+   "result": "pass"
+  }
+ ],
+ "label": "host",
+ "result": "pass",
+ "tally": {
+  "fail": 0,
+  "pass": 9,
+  "skip": 3
+ },
+ "test": "faultaround_semantics_v2"
+}
