@@ -79,7 +79,8 @@ void *stub_fast_handoff(void *d) {
     mcontext_t *mc = d + UML_FAST_MC;
     assert(mc->gregs[REG_RAX] == 39);
     assert(mc->gregs[REG_RDI] == 11 && mc->gregs[REG_RSI] == 22);
-    assert(mc->gregs[REG_RDX] == 33 && mc->gregs[REG_R8] == 55 && mc->gregs[REG_R9] == 66);
+    assert(mc->gregs[REG_RDX] == 33 && mc->gregs[REG_R10] == 44);
+    assert(mc->gregs[REG_R8] == 55 && mc->gregs[REG_R9] == 66);
     assert((unsigned long)mc->gregs[REG_RIP] == expected_rip);
     assert(mc->gregs[REG_RCX] == mc->gregs[REG_RIP]);
     assert(mc->gregs[REG_R11] == mc->gregs[REG_EFL]);
@@ -89,7 +90,7 @@ void *stub_fast_handoff(void *d) {
 }
 ''' + assembly + r'''
 __asm__(".text\n.global leaf_start, leaf_site, leaf_after, leaf_end\n"
-        "leaf_start: movabs $0x123456789abcdef0,%rax\n"
+        "leaf_start: mov %rcx,%r10; movabs $0x123456789abcdef0,%rax\n"
         ".set offset,8\n.rept 16\nmov %rax,-offset(%rsp)\n.set offset,offset+8\n.endr\n"
         "leaf_site: mov $39,%eax; syscall\n"
         "leaf_after: movabs $0x123456789abcdef0,%r11\n"
