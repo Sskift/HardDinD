@@ -23,6 +23,7 @@
 static size_t page;
 static volatile uint64_t sink;
 static const char *self;
+static int grouped, group_items;
 static sigjmp_buf recovery;
 static volatile sig_atomic_t expected, caught;
 
@@ -74,9 +75,10 @@ static void end(struct sample *s) {
 }
 static void report(const char *mode, size_t count, const struct sample *s) {
     CHECK(s->ns > 0 && s->first.count == s->last.count);
+    if (grouped && group_items++) putchar(',');
     printf("{\"schema\":\"hd.core/1\",\"mode\":\"%s\",\"operations\":%zu,"
            "\"seconds\":%.9f,\"ns_per_op\":%.3f,\"minor_faults\":%ld,"
-           "\"major_faults\":%ld,\"counter_scope\":\"machine\",\"counters_enabled\":%d,"
+           "\"major_faults\":%ld,\"fault_scope\":\"self\",\"counter_scope\":\"machine\",\"counters_enabled\":%d,"
            "\"counters\":{", mode, count, s->ns / 1e9, (double)s->ns / count,
            s->after.ru_minflt - s->before.ru_minflt,
            s->after.ru_majflt - s->before.ru_majflt, s->last.enabled);
@@ -86,7 +88,7 @@ static void report(const char *mode, size_t count, const struct sample *s) {
         printf("%s\"%s\":%" PRIu64, i ? "," : "", s->first.names[i],
                s->last.values[i] - s->first.values[i]);
     }
-    puts("}}");
+    printf("}}%s", grouped ? "" : "\n");
 }
 static void child_ok(pid_t child) {
     int status;
@@ -207,6 +209,7 @@ static void semantics(void) {
     CHECK(!munmap(p, bytes));
     puts("CORE_CHECK file_cow_dirty_truncate_fixed pass");
     puts("CORE_SEMANTICS_END status=0");
+    puts("{\"schema\":\"hd.core/1\",\"mode\":\"semantics\",\"verified\":true}");
 }
 static void measure(const char *mode, size_t count) {
     struct sample local = {0}, *s = &local;
@@ -284,7 +287,7 @@ static void measure(const char *mode, size_t count) {
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "child")) return 0;
     if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: %s semantics | anon|file|cow|fork|exec|mmap|mprotect|getpid [count]\n", argv[0]);
+        fprintf(stderr, "usage: %s semantics | anon|file|cow|fork|exec|mmap|mprotect|getpid|faults|process [count]\n", argv[0]);
         return 2;
     }
     page = (size_t)sysconf(_SC_PAGESIZE);
@@ -299,6 +302,22 @@ int main(int argc, char **argv) {
         CHECK(!errno && *argv[2] && !*tail && value > 0 && value <= 1048576);
         count = value;
     }
-    measure(argv[1], count);
+    if (!strcmp(argv[1], "faults") || !strcmp(argv[1], "process")) {
+        grouped = 1;
+        printf("{\"schema\":\"hd.core-group/1\",\"samples\":[");
+        if (!strcmp(argv[1], "faults")) {
+            measure("anon", count);
+            measure("file", count);
+            measure("cow", count);
+        } else {
+            CHECK(count <= 1024);
+            measure("fork", count);
+            measure("exec", count);
+            measure("mmap", count * 32);
+            measure("mprotect", count * 32);
+            measure("getpid", count * 2048);
+        }
+        puts("]}");
+    } else measure(argv[1], count);
     return 0;
 }

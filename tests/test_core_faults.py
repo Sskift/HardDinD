@@ -23,6 +23,7 @@ class CoreFaultsTests(unittest.TestCase):
             result = subprocess.run([str(binary), 'semantics'], cwd=d, capture_output=True,
                                     text=True, timeout=60, check=True)
             self.assertIn('CORE_SEMANTICS_END status=0', result.stdout)
+            self.assertTrue(json.loads(result.stdout.splitlines()[-1])['verified'])
             for mode in ('anon', 'file', 'cow', 'fork', 'exec', 'mmap', 'mprotect', 'getpid'):
                 with self.subTest(mode=mode):
                     result = subprocess.run([str(binary), mode, '8'], cwd=d, capture_output=True,
@@ -34,3 +35,10 @@ class CoreFaultsTests(unittest.TestCase):
                     self.assertGreater(sample['seconds'], 0)
                     self.assertGreater(sample['ns_per_op'], 0)
                     self.assertGreaterEqual(sample['minor_faults'], 0)
+            for group, modes in [('faults', ['anon', 'file', 'cow']),
+                                 ('process', ['fork', 'exec', 'mmap', 'mprotect', 'getpid'])]:
+                result = subprocess.run([str(binary), group, '2'], cwd=d, capture_output=True,
+                                        text=True, timeout=30, check=True)
+                samples = json.loads(result.stdout)['samples']
+                self.assertEqual([s['mode'] for s in samples], modes)
+                self.assertTrue(all(s['seconds'] > 0 for s in samples))
