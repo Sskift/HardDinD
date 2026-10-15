@@ -151,7 +151,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,420 @@
+@@ -0,0 +1,421 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -433,6 +433,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +
 +    if (!uml_syscall_patch || !parallel_userspace || !mm)
 +        return 0;
++    size = PAGE_ALIGN(size);
 +    end = size > ULONG_MAX - start ? ULONG_MAX : start + size;
 +    switch (syscall) {
 +    case __NR_mremap:

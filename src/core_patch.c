@@ -263,10 +263,15 @@ int main(int argc, char **argv) {
     trampoline_lifetime();
     void *target = mmap(NULL, SITES * page_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     CHECK(target != MAP_FAILED);
-    mapping = mremap(mapping, SITES * page_size, SITES * page_size, MREMAP_MAYMOVE | MREMAP_FIXED, target);
-    CHECK(mapping == target && is_original(mapping + OFFSET));
-    CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
-    verify_site(mapping + OFFSET);
+    size_t length = (SITES - 1) * page_size + 1;
+    mapping = mremap(mapping, length, length, MREMAP_MAYMOVE | MREMAP_FIXED, target);
+    CHECK(mapping == target);
+    for (unsigned int i = 0; i < SITES; i++) {
+        unsigned char *site = mapping + i * page_size + OFFSET;
+        CHECK(is_original(site));
+        CHECK(((long (*)(void))site)() == pid);
+        verify_site(site);
+    }
     CHECK(!madvise(mapping, page_size, MADV_DONTNEED));
     CHECK(is_original(mapping + OFFSET));
     CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
@@ -275,7 +280,7 @@ int main(int argc, char **argv) {
     CHECK(is_original(mapping + OFFSET));
     CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
     verify_site(mapping + OFFSET);
-    CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_WRITE));
+    CHECK(!mprotect(mapping, 1, PROT_READ | PROT_WRITE));
     CHECK(is_original(mapping + OFFSET));
     uint32_t replacement_nr = SYS_getppid;
     memcpy(mapping + OFFSET + 1, &replacement_nr, sizeof(replacement_nr));
