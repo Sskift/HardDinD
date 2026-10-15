@@ -93,6 +93,8 @@ CPU 限制另用 `scripts/run-cpu-limits.py WORK --kernel KERNEL --disk DISK --n
 
 [IPv6 与地址发布候选实测](results/starpub-2026-10-15-publish/) 在实际 Docker 中为 11 pass、1 IPv6 fail、9 not_tested。新增的实际 guest 地址共享、释放、复用和失败回滚已通过。后续诊断确认 IPv6 TCP 64 KiB 可用，而 MTU 1500 下 IPv6 UDP 从 1453 字节起失败，报头与固定版 libslirp 源码指向缺少 IPv6 分片和重组。失败记录、构建源码和进程清理证据均保留，候选实现尚未合入。
 
+[IPv6 分片原生复验](results/starpub-2026-10-15-candidate-review/publish-fragment-native-v2/README.md) 已用冻结的最终候选重新构建，普通与 ASAN/UBSAN 构建各通过 108 项独立分片检查和 29 项网络后端测试；同一测试源码仍能检出旧实现的缺陷。上一轮独立测试的时钟表示、队列寿命假设错误已纠正，原失败记录保留。此轮仅为原生复验，不代表内部 Docker、完整 IPv6 或性能验收通过。
+
 ```sh
 make moby port-agent network WORK=/root/harddind-rebuild
 bash scripts/make-runtime-root.sh /root/harddind-rebuild \
