@@ -20,10 +20,11 @@
     __LINE__, #x, errno); exit(1); } } while (0)
 #define SITES 32
 #define CALLS 1024
+#define OFFSET 32
 static const unsigned char original[] = {0xb8, 39, 0, 0, 0, 0x0f, 0x05, 0xc3};
 extern long core_patch_site(void);
 __asm__(".text\n.global core_patch_site\n.type core_patch_site,@function\n"
-        "core_patch_site: mov $39,%eax; syscall; ret\n.size core_patch_site,.-core_patch_site\n");
+        ".rept 14; nop; .endr\ncore_patch_site: mov $39,%eax; syscall; ret\n.size core_patch_site,.-core_patch_site\n");
 static pthread_barrier_t gate;
 static _Atomic unsigned int done, delivered;
 static _Atomic int tids[4];
@@ -43,7 +44,7 @@ static void *worker(void *arg) {
     unsigned int id = (unsigned int)(uintptr_t)arg;
     atomic_store(&tids[id], (int)syscall(SYS_gettid));
     for (unsigned int site = 0; site < SITES; site++) {
-        long (*call)(void) = (void *)(mapping + site * page_size);
+        long (*call)(void) = (void *)(mapping + site * page_size + OFFSET);
         barrier();
         for (unsigned int n = 0; n < CALLS; n++) CHECK(call() == pid);
         barrier();
@@ -105,9 +106,10 @@ static void restart_and_long_form(void) {
                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     CHECK(p != MAP_FAILED);
     unsigned char read_code[] = {0xb8, 0, 0, 0, 0, 0x0f, 0x05, 0xc3};
-    memcpy(p, read_code, sizeof(read_code));
+    memset(p, 0x90, OFFSET);
+    memcpy(p + OFFSET, read_code, sizeof(read_code));
     CHECK(!mprotect(p, page_size, PROT_READ | PROT_EXEC));
-    long (*read_call)(long, void *, long) = (void *)p;
+    long (*read_call)(long, void *, long) = (void *)(p + OFFSET);
     for (int restart = 0; restart < 2; restart++) {
         int pipefd[2]; char value = 0;
         CHECK(!pipe(pipefd));
@@ -128,12 +130,36 @@ static void restart_and_long_form(void) {
     }
     CHECK(!mprotect(p, page_size, PROT_READ | PROT_WRITE));
     unsigned char long_code[] = {0x48, 0xc7, 0xc0, 39, 0, 0, 0, 0x0f, 0x05, 0xc3};
-    memcpy(p, long_code, sizeof(long_code));
+    memcpy(p + OFFSET, long_code, sizeof(long_code));
     CHECK(!mprotect(p, page_size, PROT_READ | PROT_EXEC));
-    CHECK(((long (*)(void))p)() == pid);
-    if (enabled) CHECK(p[0] == 0xff && p[7] == 0x06 && p[8] == 0x06);
-    else CHECK(!memcmp(p, long_code, sizeof(long_code)));
+    CHECK(((long (*)(void))(p + OFFSET))() == pid);
+    if (enabled) CHECK(p[OFFSET] == 0xff && p[OFFSET + 7] == 0x06 && p[OFFSET + 8] == 0x06);
+    else CHECK(!memcmp(p + OFFSET, long_code, sizeof(long_code)));
     CHECK(!munmap(p, page_size));
+}
+static void ambiguous_instructions(void) {
+    static const unsigned char rex[] = {0xb8,39,0,0,0,0x45,0x31,0xc0,
+        0x41,0xb8,39,0,0,0,0x0f,0x05,0x4c,0x89,0xc0,0xc3};
+    static const unsigned char fs[] = {0x64,0xb8,39,0,0,0,0x0f,0x05,0xc3};
+    static const unsigned char store[] = {0xb8,39,0,0,0,0xc7,0x87,0,0,0,0xb8,
+        39,0,0,0,0x0f,0x05,0xc3};
+    const unsigned char *codes[] = {rex, fs, store};
+    const size_t sizes[] = {sizeof(rex), sizeof(fs), sizeof(store)};
+    for (unsigned int i = 0; i < 3; i++) {
+        unsigned char *p = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        CHECK(p != MAP_FAILED);
+        memset(p, 0x90, OFFSET); memcpy(p + OFFSET, codes[i], sizes[i]);
+        CHECK(!mprotect(p, page_size, PROT_READ | PROT_EXEC));
+        unsigned int value = 0;
+        long (*call)(uintptr_t) = (void *)(p + OFFSET);
+        for (int n = 0; n < 8; n++) {
+            CHECK(call((uintptr_t)&value + 0x48000000UL) == (i == 0 ? 39 : pid));
+            if (i == 2) CHECK(value == 39);
+            CHECK(!memcmp(p + OFFSET, codes[i], sizes[i]));
+        }
+        CHECK(!munmap(p, page_size));
+    }
 }
 int main(int argc, char **argv) {
     read_enabled();
@@ -153,15 +179,18 @@ int main(int argc, char **argv) {
     char path[] = "/tmp/core-patch-XXXXXX";
     int fd = mkstemp(path); CHECK(fd >= 0 && !unlink(path));
     CHECK(!ftruncate(fd, SITES * page_size));
-    for (unsigned int i = 0; i < SITES; i++)
-        CHECK(pwrite(fd, original, sizeof(original), (off_t)(i * page_size)) == sizeof(original));
+    for (unsigned int i = 0; i < SITES; i++) {
+        unsigned char code[OFFSET + sizeof(original)];
+        memset(code, 0x90, OFFSET); memcpy(code + OFFSET, original, sizeof(original));
+        CHECK(pwrite(fd, code, sizeof(code), (off_t)(i * page_size)) == sizeof(code));
+    }
     for (int writable = 0; writable < 2; writable++) {
         unsigned char *shared = mmap(NULL, page_size,
             PROT_READ | PROT_EXEC | (writable ? PROT_WRITE : 0),
             writable ? MAP_PRIVATE : MAP_SHARED, fd, 0);
-        CHECK(shared != MAP_FAILED && is_original(shared));
-        CHECK(((long (*)(void))shared)() == pid);
-        CHECK(is_original(shared));
+        CHECK(shared != MAP_FAILED && is_original(shared + OFFSET));
+        CHECK(((long (*)(void))(shared + OFFSET))() == pid);
+        CHECK(is_original(shared + OFFSET));
         CHECK(!munmap(shared, page_size));
     }
     mapping = mmap(NULL, SITES * page_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
@@ -178,14 +207,14 @@ int main(int argc, char **argv) {
             for (unsigned int i = 0; i < 4; i++)
                 CHECK(!syscall(SYS_tgkill, pid, atomic_load(&tids[i]), SIGUSR1));
         barrier();
-        verify_site(mapping + site * page_size);
+        verify_site(mapping + site * page_size + OFFSET);
     }
     for (unsigned int i = 0; i < 4; i++) CHECK(!pthread_join(threads[i], NULL));
     CHECK(atomic_load(&done) == 4 && atomic_load(&delivered) > 0);
     CHECK(!pthread_barrier_destroy(&gate));
     for (unsigned int i = 0; i < SITES; i++) {
         unsigned char data[sizeof(original)];
-        CHECK(pread(fd, data, sizeof(data), (off_t)(i * page_size)) == sizeof(data));
+        CHECK(pread(fd, data, sizeof(data), (off_t)(i * page_size + OFFSET)) == sizeof(data));
         CHECK(!memcmp(data, original, sizeof(data)));
     }
     pid_t child = fork(); CHECK(child >= 0);
@@ -194,7 +223,7 @@ int main(int argc, char **argv) {
         verify_site((void *)core_patch_site);
         CHECK(core_patch_site() == expected);
         for (unsigned int i = 0; i < SITES; i++) {
-            long (*call)(void) = (void *)(mapping + i * page_size);
+            long (*call)(void) = (void *)(mapping + i * page_size + OFFSET);
             verify_site((void *)call); CHECK(call() == expected);
         }
         _exit(0);
@@ -205,23 +234,24 @@ int main(int argc, char **argv) {
     wait_ok(child);
     ptrace_after_patch();
     restart_and_long_form();
+    ambiguous_instructions();
     CHECK(!madvise(mapping, page_size, MADV_DONTNEED));
-    CHECK(is_original(mapping));
-    CHECK(((long (*)(void))mapping)() == pid);
-    verify_site(mapping);
+    CHECK(is_original(mapping + OFFSET));
+    CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
+    verify_site(mapping + OFFSET);
     CHECK(mmap(mapping, page_size, PROT_READ | PROT_EXEC, MAP_PRIVATE | MAP_FIXED, fd, 0) == mapping);
-    CHECK(is_original(mapping));
-    CHECK(((long (*)(void))mapping)() == pid);
-    verify_site(mapping);
+    CHECK(is_original(mapping + OFFSET));
+    CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
+    verify_site(mapping + OFFSET);
     CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_WRITE));
     unsigned char replacement[] = {0xb8, 123, 0, 0, 0, 0xc3, 0x90, 0x90};
-    memcpy(mapping, replacement, sizeof(replacement));
+    memcpy(mapping + OFFSET, replacement, sizeof(replacement));
     CHECK(!mprotect(mapping, page_size, PROT_READ | PROT_EXEC));
-    CHECK(((long (*)(void))mapping)() == 123);
+    CHECK(((long (*)(void))(mapping + OFFSET))() == 123);
     CHECK(!munmap(mapping, SITES * page_size) && !close(fd));
     printf("{\"schema\":\"hd.core-patch/1\",\"enabled\":%s,\"sites\":%d,\"calls\":%d,"
            "\"signals\":%u,\"fork\":true,\"exec_clean\":true,\"file_clean\":true,"
-           "\"ptrace\":true,\"restart\":true,\"long_form\":true,\"discard_remap_write\":true,\"verified\":true}\n",
+           "\"ptrace\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"discard_remap_write\":true,\"verified\":true}\n",
            enabled ? "true" : "false", SITES, SITES * CALLS * 4, atomic_load(&delivered));
     return 0;
 }

@@ -155,6 +155,6 @@ int main(void) {
             self.assertEqual(row['sites'], 32)
             self.assertEqual(row['calls'], 131072)
             self.assertGreater(row['signals'], 0)
-            for key in ('fork', 'exec_clean', 'file_clean', 'ptrace', 'restart', 'long_form', 'discard_remap_write', 'verified'):
+            for key in ('fork', 'exec_clean', 'file_clean', 'ptrace', 'restart', 'long_form', 'ambiguous_fallback', 'discard_remap_write', 'verified'):
                 self.assertIs(row[key], True)
             self.assertIs(row['enabled'], False)

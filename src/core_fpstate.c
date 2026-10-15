@@ -26,6 +26,19 @@ struct worker { unsigned long count; int cpu, avx, tag; };
 static pthread_barrier_t barrier;
 static volatile sig_atomic_t delivered;
 static struct vector replacement;
+static int patch_enabled;
+
+static uint64_t fast_calls(void) {
+    FILE *f = fopen("/proc/uml_syscall_patch", "r");
+    if (!f) { CHECK(errno == ENOENT); return 0; }
+    char key[64]; uint64_t value, calls = 0;
+    while (fscanf(f, "%63s %" SCNu64, key, &value) == 2) {
+        if (!strcmp(key, "enabled")) { CHECK(value <= 1); patch_enabled = (int)value; }
+        if (!strcmp(key, "fast_calls")) calls = value;
+    }
+    CHECK(feof(f) && !ferror(f) && !fclose(f));
+    return calls;
+}
 
 static struct vector pattern(int tag) {
     struct vector v;
@@ -34,7 +47,7 @@ static struct vector pattern(int tag) {
 }
 
 #define CALL_LOOP \
-    "1: mov $39, %%eax; syscall; cmp %[pid], %%rax; je 2f; mov $1, %[bad]; 2:\n" \
+    "1: .rept 14; nop; .endr; mov $39, %%eax; syscall; cmp %[pid], %%rax; je 2f; mov $1, %[bad]; 2:\n" \
     "dec %[n]; jz 3f; test $127, %[n]; jnz 1b; mov $24, %%eax; syscall; jmp 1b; 3:\n"
 static __attribute__((target("avx"))) void
 preserve(const struct vector *in, struct vector *out, unsigned long count, int avx) {
@@ -80,9 +93,9 @@ static void threads(unsigned long count, int avx) {
 static __attribute__((target("avx"))) void
 stop_with_vector(int sig, const struct vector *in, struct vector *out) {
     long pid = syscall(SYS_getpid), tid = syscall(SYS_gettid), result;
-    __asm__ volatile("vmovdqu %[in], %%ymm15; syscall; vmovdqu %%ymm15, %[out]; vzeroupper"
+    __asm__ volatile("vmovdqu %[in], %%ymm15; .rept 14; nop; .endr; mov $234, %%eax; syscall; vmovdqu %%ymm15, %[out]; vzeroupper"
                      : "=a"(result), [out] "=m"(*out)
-                     : "0"(SYS_tgkill), "D"(pid), "S"(tid), "d"((long)sig), [in] "m"(*in)
+                     : "D"(pid), "S"(tid), "d"((long)sig), [in] "m"(*in)
                      : "rcx", "r11", "ymm15", "cc", "memory");
     CHECK(!result);
 }
@@ -105,8 +118,10 @@ static void signals(void) {
     struct sigaction sa = {.sa_sigaction = signal_edit, .sa_flags = SA_SIGINFO};
     sigemptyset(&sa.sa_mask);
     CHECK(!sigaction(SIGUSR1, &sa, NULL));
-    stop_with_vector(SIGUSR1, &in, &out);
-    CHECK(delivered == 1 && !memcmp(&out, &expected, sizeof(out)));
+    for (int n = 1; n <= 2; n++) {
+        stop_with_vector(SIGUSR1, &in, &out);
+        CHECK(delivered == n && !memcmp(&out, &expected, sizeof(out)));
+    }
 }
 static void traced(void) {
     struct vector in = pattern(43), expected = in;
@@ -146,7 +161,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "AVX state unavailable; required checks not tested\n");
         return 77;
     }
+    uint64_t before = fast_calls();
     threads(count, 0); threads(count, 1); signals(); traced();
+    uint64_t after = fast_calls();
+    if (patch_enabled) CHECK(after >= before && after - before >= count * 4 - 4);
     printf("{\"schema\":\"hd.core-fpstate/1\",\"sse_calls\":%lu,\"avx_calls\":%lu,"
            "\"signal_upper_edit\":true,\"ptrace_upper_edit\":true,\"verified\":true}\n", count * 2, count * 2);
     return 0;

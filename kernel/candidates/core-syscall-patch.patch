@@ -77,7 +77,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,38 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
@@ -103,6 +103,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +          ((unsigned long)p[3] << 24);
 +    return imm == nr && p[4] == 0x0f && p[5] == 0x05;
 +}
++int uml_patch_boundary(const unsigned char *p, unsigned int before, unsigned int len);
 +extern int uml_syscall_patch;
 +struct uml_pt_regs;
 +struct mm_struct;
@@ -148,7 +149,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,282 @@
+@@ -0,0 +1,313 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -301,7 +302,10 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +		0xff, 0x61, 65,
 +	};
 +	struct patch_header h;
-+	struct page *text = NULL, *entry = NULL, *header = NULL;
++	struct page *text = NULL, *entry = NULL, *header = NULL, *previous = NULL;
++	struct vm_area_struct *vma;
++	unsigned char window[23];
++	unsigned int before = 14, offset, split;
 +	void *bytes;
 +	u64 value;
 +	u32 imm;
@@ -342,8 +346,35 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	}
 +	if (!text || !entry || !header)
 +		goto out;
++	/* Pin any preceding page before parking runners; never trust writable or
++	 * shared bytes for instruction boundaries. An unmapped page is a boundary. */
++	offset = offset_in_page(addr);
++	split = offset < before ? before - offset : 0;
++	if (split) {
++		vma = find_vma(mm, addr - offset - 1);
++		if (!vma || vma->vm_start > addr - offset - 1) {
++			before = offset;
++			split = 0;
++		} else if ((vma->vm_flags & (VM_SHARED | VM_WRITE)) ||
++			   !(vma->vm_flags & VM_EXEC) ||
++			   get_user_pages_remote(mm, (addr & PAGE_MASK) - PAGE_SIZE, 1,
++					 FOLL_FORCE, &previous, NULL) != 1) {
++			goto out;
++		}
++	}
 +	stop_mm(mm);
++	if (previous) {
++		bytes = kmap_local_page(previous);
++		memcpy(window, bytes + PAGE_SIZE - split, split);
++		kunmap_local(bytes);
++	}
 +	bytes = kmap_local_page(text);
++	memcpy(window + split, bytes + (offset + split - before), before + len - split);
++	if (!uml_patch_boundary(window, before, len)) {
++		kunmap_local(bytes);
++		resume_mm(mm);
++		goto out;
++	}
 +	if (memcmp(bytes + offset_in_page(addr), old + sizeof(old) - len, len)) {
 +		kunmap_local(bytes);
 +		resume_mm(mm);
@@ -378,6 +409,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +    atomic64_inc(&patched);
 +	resume_mm(mm);
 +out:
++	if (previous) put_page(previous);
 +	if (header) put_page(header);
 +	if (entry) put_page(entry);
 +	if (text) put_page(text);
@@ -905,6 +937,57 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  		if (sig) {
  			switch (sig) {
+--- a/arch/x86/um/Makefile
++++ b/arch/x86/um/Makefile
+@@ -26,7 +26,16 @@
+ 
+ else
+ 
+-obj-y += mem_64.o syscalls_64.o vdso/
++obj-y += mem_64.o syscalls_64.o vdso/ core-insn.o
++CFLAGS_core-insn.o += -I$(obj)
++core_inat_script = $(srctree)/arch/x86/tools/gen-insn-attr-x86.awk
++core_inat_map = $(srctree)/arch/x86/lib/x86-opcode-map.txt
++quiet_cmd_core_inat = GEN     $@
++      cmd_core_inat = $(AWK) -f $(core_inat_script) $(core_inat_map) > $@
++$(obj)/inat-tables.c: $(core_inat_script) $(core_inat_map) FORCE
++	$(call if_changed,core_inat)
++$(obj)/core-insn.o: $(obj)/inat-tables.c
++targets += inat-tables.c
+ 
+ subarch-y = ../lib/csum-partial_64.o ../lib/memcpy_64.o \
+ 	../lib/memmove_64.o ../lib/memset_64.o
+--- a/arch/x86/um/core-insn.c
++++ b/arch/x86/um/core-insn.c
+@@ -0,0 +1,28 @@
++// SPDX-License-Identifier: GPL-2.0
++#include "../lib/insn.c"
++#include "../lib/inat.c"
++#include <core-patch.h>
++
++/* Reject any instruction stream crossing the proposed MOV boundary that
++ * can also reach the observed SYSCALL. False negatives keep SIGSYS. */
++int uml_patch_boundary(const unsigned char *p, unsigned int before, unsigned int len)
++{
++    unsigned int syscall = before + len - 2;
++    struct insn insn;
++    for (unsigned int start = 0; start < before; start++) {
++        unsigned int pos = start;
++        if (insn_decode(&insn, p + pos, before + len - pos, INSN_MODE_64))
++            continue;
++        pos += insn.length;
++        if (pos <= before)
++            continue;
++        while (pos < syscall) {
++            if (insn_decode(&insn, p + pos, before + len - pos, INSN_MODE_64))
++                break;
++            pos += insn.length;
++        }
++        if (pos == syscall)
++            return 0;
++    }
++    return 1;
++}
 --- a/arch/x86/um/os-Linux/mcontext.c
 +++ b/arch/x86/um/os-Linux/mcontext.c
 @@ -14,6 +14,7 @@
