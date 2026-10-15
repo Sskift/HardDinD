@@ -1,0 +1,28 @@
+{
+  "command": [
+    "python3",
+    "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v7/repo/scripts/harddind.py",
+    "/root/harddind-rebuild/gpu-cuda-lifecycle-owner-v7/run",
+    "cuda-life-v7",
+    "docker",
+    "exec",
+    "--privileged",
+    "cuda-life-v7",
+    "/proc-snapshot",
+    "1"
+  ],
+  "at": "2026-10-15T02:18:48.354169+00:00",
+  "pid": 3806984,
+  "exit_code": 0,
+  "cleanup": {
+    "process_group": 3806984,
+    "forced_cleanup": false,
+    "initial_live_pids": [],
+    "initial_zombie_pids": [],
+    "initial_processes": [],
+    "forced_processes": [],
+    "remaining_live_pids": [],
+    "remaining_zombie_pids": [],
+    "clean_shutdown": true
+  }
+}
