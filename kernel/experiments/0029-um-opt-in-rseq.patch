@@ -1,0 +1,72 @@
+--- a/arch/um/Kconfig
++++ b/arch/um/Kconfig
+@@ -46,6 +46,17 @@
+ 	select SPARSE_IRQ
+ 	select MMU_GATHER_RCU_TABLE_FREE
+ 
++config UML_X86_RSEQ
++	bool "Experimental x86-64 restartable sequences"
++	depends on X86_64
++	select HAVE_RSEQ
++	default n
++	help
++	  Enable the generic rseq ABI for x86-64 UML tasks. CPU IDs come
++	  from the guest scheduler; scheduling and signal return use the
++	  generic rseq fixups. This experimental option is off by default
++	  pending migration, signal, fork/exec and workload validation.
++
+ config MMU
+ 	bool
+ 	default y
+--- a/arch/um/include/asm/ptrace-generic.h
++++ b/arch/um/include/asm/ptrace-generic.h
+@@ -27,6 +27,12 @@
+ 
+ #define instruction_pointer(regs) PT_REGS_IP(regs)
+ 
++static inline void instruction_pointer_set(struct pt_regs *regs,
++				   unsigned long val)
++{
++	PT_REGS_IP(regs) = val;
++}
++
+ #define PTRACE_OLDSETOPTIONS 21
+ 
+ struct task_struct;
+--- a/arch/um/kernel/signal.c
++++ b/arch/um/kernel/signal.c
+@@ -5,6 +5,7 @@
+ 
+ #include <linux/module.h>
+ #include <linux/ptrace.h>
++#include <linux/rseq.h>
+ #include <linux/sched.h>
+ #include <linux/ftrace.h>
+ #include <asm/siginfo.h>
+@@ -78,6 +79,9 @@
+ 		}
+ 	}
+ 
++	/* Fix up an interrupted rseq before the signal frame saves its IP. */
++	rseq_signal_deliver(ksig, regs);
++
+ 	sp = PT_REGS_SP(regs);
+ 	if ((ksig->ka.sa.sa_flags & SA_ONSTACK) && (sas_ss_flags(sp) == 0))
+ 		sp = current->sas_ss_sp + current->sas_ss_size;
+--- a/arch/um/kernel/skas/syscall.c
++++ b/arch/um/kernel/skas/syscall.c
+@@ -5,6 +5,7 @@
+ 
+ #include <linux/kernel.h>
+ #include <linux/ptrace.h>
++#include <linux/rseq.h>
+ #include <linux/seccomp.h>
+ #include <kern_util.h>
+ #include <sysdep/ptrace.h>
+@@ -71,4 +72,6 @@
+ 
+ out:
+ 	syscall_trace_leave(regs);
++	/* Generic debug validation; the normal resume hook handles ID updates. */
++	rseq_syscall(regs);
+ }
