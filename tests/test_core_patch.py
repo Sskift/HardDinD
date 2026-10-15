@@ -349,7 +349,7 @@ int main(void) {
             self.assertEqual(row['schema'], 'hd.core-dynamic/1')
             self.assertEqual(row['calls'], 98304)
             self.assertGreater(row['signals'], 0)
-            for key in ('arguments', 'fork', 'exec', 'verified'):
+            for key in ('restart', 'arguments', 'fork', 'exec', 'verified'):
                 self.assertIs(row[key], True)
             self.assertIs(row['enabled'], False)
 

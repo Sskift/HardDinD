@@ -76,10 +76,10 @@ class CoreFunctionalTests(unittest.TestCase):
 
     def test_dynamic_requires_both_wrappers_and_all_semantics(self):
         row = {'schema': 'hd.core-dynamic/1', 'calls': 98304, 'enabled': True, 'signals': 4,
-               'arguments': True, 'fork': True, 'exec': True, 'verified': True}
+               'restart': True, 'arguments': True, 'fork': True, 'exec': True, 'verified': True}
         f.core_summary(json.dumps(row), 'core_dynamic', 'registers', patch_enabled=True)
         for key, value in (('calls', 32768), ('enabled', False), ('signals', 0),
-                           ('arguments', False), ('fork', False), ('exec', False), ('verified', 1)):
+                           ('restart', False), ('arguments', False), ('fork', False), ('exec', False), ('verified', 1)):
             with self.subTest(key=key), self.assertRaises(AssertionError):
                 f.core_summary(json.dumps(dict(row, **{key: value})), 'core_dynamic', 'registers', patch_enabled=True)
 

@@ -68,6 +68,26 @@ static void wait_ok(long child) {
     CHECK(waitpid((pid_t)child, &status, 0) == child);
     CHECK(WIFEXITED(status) && !WEXITSTATUS(status));
 }
+static void interrupted_read(call_fn call) {
+    for (int restart = 0; restart < 2; restart++) {
+        int fd[2]; char value = 0;
+        CHECK(!pipe(fd));
+        struct sigaction sa = {.sa_handler = caught, .sa_flags = restart ? SA_RESTART : 0};
+        CHECK(!sigemptyset(&sa.sa_mask) && !sigaction(SIGUSR1, &sa, NULL));
+        unsigned int before = atomic_load(&signals);
+        pid_t child = fork(); CHECK(child >= 0);
+        if (!child) {
+            CHECK(!usleep(100000) && !kill((pid_t)pid, SIGUSR1) && !usleep(100000));
+            CHECK(write(fd[1], "x", 1) == 1);
+            _exit(0);
+        }
+        long result = call(SYS_read, fd[0], (long)&value, 1, 0, 0, 0);
+        CHECK(restart ? result == 1 && value == 'x' : result == -EINTR);
+        CHECK(atomic_load(&signals) > before);
+        wait_ok(child);
+        CHECK(!close(fd[0]) && !close(fd[1]));
+    }
+}
 int main(int argc, char **argv) {
     FILE *f = fopen("/proc/uml_syscall_patch", "r");
     if (f) {
@@ -92,6 +112,7 @@ int main(int argc, char **argv) {
     site_check();
     for (unsigned int form = 0; form < 3; form++) {
         call_fn call = calls[form];
+        interrupted_read(call);
         long addr = call(SYS_mmap, 0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         CHECK(addr > 0);
         memset((void *)addr, 0x5a, 4096);
@@ -114,7 +135,7 @@ int main(int argc, char **argv) {
         wait_ok(child);
     }
     printf("{\"schema\":\"hd.core-dynamic/1\",\"enabled\":%s,\"calls\":%d,"
-           "\"signals\":%u,\"arguments\":true,\"fork\":true,\"exec\":true,\"verified\":true}\n",
+           "\"signals\":%u,\"restart\":true,\"arguments\":true,\"fork\":true,\"exec\":true,\"verified\":true}\n",
            enabled ? "true" : "false", N * 24, atomic_load(&signals));
     return 0;
 }
