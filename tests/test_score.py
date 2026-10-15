@@ -35,6 +35,11 @@ class ScoreTests(unittest.TestCase):
         self.assertAlmostEqual(rows['cpu.multi']['ratio'], 11.3 / 12.8, places=4)
         self.assertEqual(rows['cpu.multi']['status'], 'pass')
 
+    def test_native_drift_is_flagged(self):
+        rows = self.rows({'cpu.single': metric([100, 140], [90, 120]), 'cpu.multi': metric([100, 110], [90, 99])})
+        self.assertTrue(rows['cpu.single']['noisy'])
+        self.assertFalse(rows['cpu.multi']['noisy'])
+
     def test_reference_metrics_use_reference_seconds(self):
         rows = self.rows({'docker.run': {'unit': 's', 'higher_is_better': False, 'guest': [0.8, 1.0, 1.2]}})
         self.assertAlmostEqual(rows['docker.run']['ratio'], 0.4)
