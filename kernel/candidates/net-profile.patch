@@ -1,0 +1,389 @@
+--- a/arch/um/drivers/vector_kern.c
++++ b/arch/um/drivers/vector_kern.c
+@@ -34,6 +34,7 @@
+ #include "mconsole_kern.h"
+ #include "vector_user.h"
+ #include "vector_kern.h"
++#include <net-profile.h>
+ 
+ /*
+  * Adapted from network devices with the following major changes:
+@@ -883,6 +884,8 @@
+ 			skb->protocol = eth_type_trans(skb, skb->dev);
+ 			vp->dev->stats.rx_bytes += skb->len;
+ 			vp->dev->stats.rx_packets++;
++			if (skb_is_gso(skb))
++				uml_net_add(UML_NET_RX_GSO, 1);
+ 			napi_gro_receive(&vp->napi, skb);
+ 		} else {
+ 			dev_kfree_skb_irq(skb);
+@@ -1014,6 +1017,8 @@
+ 			 */
+ 			vp->dev->stats.rx_bytes += skb->len;
+ 			vp->dev->stats.rx_packets++;
++			if (skb_is_gso(skb))
++				uml_net_add(UML_NET_RX_GSO, 1);
+ 			napi_gro_receive(&vp->napi, skb);
+ 		} else {
+ 			/* Overlay header too short to do anything - discard.
+@@ -1042,6 +1047,12 @@
+ 	struct vector_private *vp = netdev_priv(dev);
+ 	int queue_depth = 0;
+ 
++	uml_net_add(UML_NET_TX_SKB, 1);
++	if (skb_is_gso(skb)) {
++		uml_net_add(UML_NET_TX_GSO, 1);
++		uml_net_add(UML_NET_TX_GSO_BYTES, skb->len);
++	}
++
+ 	if (vp->in_error) {
+ 		deactivate_fd(vp->fds->rx_fd, vp->rx_irq);
+ 		if ((vp->fds->rx_fd != vp->fds->tx_fd) && (vp->tx_irq != 0))
+@@ -1078,6 +1089,8 @@
+ 	struct net_device *dev = dev_id;
+ 	struct vector_private *vp = netdev_priv(dev);
+ 
++	uml_net_add(UML_NET_RX_IRQ, 1);
++
+ 	if (!netif_running(dev))
+ 		return IRQ_NONE;
+ 	napi_schedule(&vp->napi);
+@@ -1089,6 +1102,10 @@
+ {
+ 	struct net_device *dev = dev_id;
+ 	struct vector_private *vp = netdev_priv(dev);
++
++	uml_net_add(UML_NET_TX_IRQ, 1);
++	if (!vp->in_write_poll)
++		uml_net_add(UML_NET_TX_IRQ_IDLE, 1);
+ 
+ 	if (!netif_running(dev))
+ 		return IRQ_NONE;
+@@ -1164,6 +1181,8 @@
+ 	int err;
+ 	bool tx_enqueued = false;
+ 
++	uml_net_add(UML_NET_NAPI_POLL, 1);
++
+ 	if ((vp->options & VECTOR_TX) != 0)
+ 		tx_enqueued = (vector_send(vp->tx_queue) > 0);
+ 	spin_lock(&vp->rx_queue->head_lock);
+@@ -1180,6 +1199,8 @@
+ 
+ 	if (tx_enqueued || err > 0)
+ 		napi_schedule(napi);
++	if (work_done >= budget)
++		uml_net_add(UML_NET_NAPI_FULL, 1);
+ 	if (work_done <= budget)
+ 		napi_complete_done(napi, work_done);
+ 	return work_done;
+--- a/arch/um/drivers/vector_user.c
++++ b/arch/um/drivers/vector_user.c
+@@ -31,6 +31,7 @@
+ #include <limits.h>
+ #include <um_malloc.h>
+ #include "vector_user.h"
++#include <net-profile.h>
+ 
+ #define ID_GRE 0
+ #define ID_L2TPV3 1
+@@ -808,7 +809,21 @@
+ {
+ 	int n;
+ 
+-	CATCH_EINTR(n = sendmmsg(fd, (struct mmsghdr *) msgvec, vlen, flags));
++	do {
++		uml_net_add(UML_NET_TX_CALLS, 1);
++		n = sendmmsg(fd, (struct mmsghdr *)msgvec, vlen, flags);
++	} while (n < 0 && errno == EINTR);
++	if (n > 0 && uml_net_profile_enabled) {
++		unsigned long bytes = 0;
++		int i;
++
++		for (i = 0; i < n; i++)
++			bytes += ((struct mmsghdr *)msgvec)[i].msg_len;
++		uml_net_add(UML_NET_TX_PACKETS, n);
++		uml_net_add(UML_NET_TX_BYTES, bytes);
++	}
++	if (n <= 0)
++		uml_net_add(UML_NET_TX_BLOCKED, 1);
+ 	if ((n < 0) && ((errno == EAGAIN) || (errno == ENOBUFS)))
+ 		return 0;
+ 	if (n >= 0)
+@@ -825,8 +840,21 @@
+ {
+ 	int n;
+ 
+-	CATCH_EINTR(
+-		n = recvmmsg(fd, (struct mmsghdr *) msgvec, vlen, flags, 0));
++	do {
++		uml_net_add(UML_NET_RX_CALLS, 1);
++		n = recvmmsg(fd, (struct mmsghdr *)msgvec, vlen, flags, 0);
++	} while (n < 0 && errno == EINTR);
++	if (n > 0 && uml_net_profile_enabled) {
++		unsigned long bytes = 0;
++		int i;
++
++		for (i = 0; i < n; i++)
++			bytes += ((struct mmsghdr *)msgvec)[i].msg_len;
++		uml_net_add(UML_NET_RX_PACKETS, n);
++		uml_net_add(UML_NET_RX_BYTES, bytes);
++	}
++	if (n <= 0)
++		uml_net_add(UML_NET_RX_EMPTY, 1);
+ 	if ((n < 0) && (errno == EAGAIN))
+ 		return 0;
+ 	if (n >= 0)
+--- a/arch/um/include/shared/net-profile.h
++++ b/arch/um/include/shared/net-profile.h
+@@ -0,0 +1,46 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef UML_NET_PROFILE_H
++#define UML_NET_PROFILE_H
++
++#define UML_NET_EVENTS(X) \
++	X(SIGIO) \
++	X(SIGIO_DEFERRED) \
++	X(SIGIO_DISPATCH) \
++	X(TIMER) \
++	X(IPI) \
++	X(EPOLL_WAIT) \
++	X(EPOLL_EVENTS) \
++	X(EPOLL_CTL) \
++	X(RX_IRQ) \
++	X(TX_IRQ) \
++	X(TX_IRQ_IDLE) \
++	X(NAPI_POLL) \
++	X(NAPI_FULL) \
++	X(RX_CALLS) \
++	X(RX_EMPTY) \
++	X(RX_PACKETS) \
++	X(RX_BYTES) \
++	X(TX_CALLS) \
++	X(TX_BLOCKED) \
++	X(TX_PACKETS) \
++	X(TX_BYTES) \
++	X(TX_SKB) \
++	X(TX_GSO) \
++	X(TX_GSO_BYTES) \
++	X(RX_GSO)
++#define UML_NET_ENUM(name) UML_NET_##name,
++enum { UML_NET_EVENTS(UML_NET_ENUM) UML_NET_EVENTS_COUNT };
++#undef UML_NET_ENUM
++struct uml_net_profile {
++	unsigned long tid;
++	unsigned long count[UML_NET_EVENTS_COUNT];
++} __attribute__((aligned(128)));
++extern int uml_net_profile_enabled;
++extern struct uml_net_profile uml_net_profiles[CONFIG_NR_CPUS];
++void uml_net_count(unsigned int event, unsigned long amount);
++static inline void uml_net_add(unsigned int event, unsigned long amount)
++{
++	if (uml_net_profile_enabled)
++		uml_net_count(event, amount);
++}
++#endif
+--- a/arch/um/kernel/irq.c
++++ b/arch/um/kernel/irq.c
+@@ -21,6 +21,55 @@
+ #include <irq_user.h>
+ #include <irq_kern.h>
+ #include <linux/time-internal.h>
++#include <linux/proc_fs.h>
++#include <linux/init.h>
++#include <net-profile.h>
++
++int uml_net_profile_enabled;
++struct uml_net_profile uml_net_profiles[CONFIG_NR_CPUS];
++
++static int __init net_profile_setup(char *str)
++{
++	unsigned int value;
++
++	if (kstrtouint(str, 0, &value) || value > 1)
++		return 0;
++	uml_net_profile_enabled = value;
++	return 1;
++}
++__setup("uml_net_profile=", net_profile_setup);
++
++static int net_profile_show(struct seq_file *m, void *unused)
++{
++	int cpu, event;
++
++	seq_puts(m, "cpu tid");
++#define UML_NET_NAME(name) seq_puts(m, " " #name);
++	UML_NET_EVENTS(UML_NET_NAME)
++#undef UML_NET_NAME
++	seq_putc(m, '\n');
++	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
++		struct uml_net_profile *p = &uml_net_profiles[cpu];
++		unsigned long tid = __atomic_load_n(&p->tid, __ATOMIC_RELAXED);
++
++		if (!tid)
++			continue;
++		seq_printf(m, "%d %lu", cpu, tid);
++		for (event = 0; event < UML_NET_EVENTS_COUNT; event++)
++			seq_printf(m, " %lu", __atomic_load_n(&p->count[event], __ATOMIC_RELAXED));
++		seq_putc(m, '\n');
++	}
++	return 0;
++}
++
++static int __init net_profile_init(void)
++{
++	if (uml_net_profile_enabled &&
++	    !proc_create_single("uml_net_profile", 0400, NULL, net_profile_show))
++		return -ENOMEM;
++	return 0;
++}
++late_initcall(net_profile_init);
+ 
+ DEFINE_PER_CPU_SHARED_ALIGNED(irq_cpustat_t, irq_stat);
+ 
+@@ -243,6 +292,7 @@
+ 		   void *mc)
+ {
+ 	preempt_disable();
++	uml_net_add(UML_NET_SIGIO_DISPATCH, 1);
+ 	_sigio_handler(regs, irqs_suspended);
+ 	preempt_enable();
+ }
+--- a/arch/um/os-Linux/irq.c
++++ b/arch/um/os-Linux/irq.c
+@@ -13,6 +13,19 @@
+ #include <irq_user.h>
+ #include <os.h>
+ #include <um_malloc.h>
++#include <unistd.h>
++#include <sys/syscall.h>
++#include <smp.h>
++#include <net-profile.h>
++
++void uml_net_count(unsigned int event, unsigned long amount)
++{
++	struct uml_net_profile *p = &uml_net_profiles[uml_curr_cpu()];
++
++	if (!__atomic_load_n(&p->tid, __ATOMIC_RELAXED))
++		__atomic_store_n(&p->tid, syscall(SYS_gettid), __ATOMIC_RELAXED);
++	__atomic_fetch_add(&p->count[event], amount, __ATOMIC_RELAXED);
++}
+ 
+ /* Epoll support */
+ 
+@@ -70,6 +83,7 @@
+ {
+ 	int n, err;
+ 
++	uml_net_add(UML_NET_EPOLL_WAIT, 1);
+ 	n = epoll_wait(epollfd,
+ 		(struct epoll_event *) &epoll_events, MAX_EPOLL_EVENTS, 0);
+ 	if (n < 0) {
+@@ -82,6 +96,8 @@
+ 			);
+ 		return err;
+ 	}
++	if (n > 0)
++		uml_net_add(UML_NET_EPOLL_EVENTS, n);
+ 	return n;
+ }
+ 
+@@ -96,6 +112,7 @@
+ 
+ 	event.data.ptr = data;
+ 	event.events = events | EPOLLET;
++	uml_net_add(UML_NET_EPOLL_CTL, 1);
+ 	result = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+ 	if ((result) && (errno == EEXIST))
+ 		result = os_mod_epoll_fd(events, fd, data);
+@@ -114,6 +131,7 @@
+ 
+ 	event.data.ptr = data;
+ 	event.events = events;
++	uml_net_add(UML_NET_EPOLL_CTL, 1);
+ 	result = epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event);
+ 	if (result)
+ 		printk(UM_KERN_ERR
+@@ -130,6 +148,7 @@
+ 	/* This is quiet as we use this as IO ON/OFF - so it is often
+ 	 * invoked on a non-existent fd
+ 	 */
++	uml_net_add(UML_NET_EPOLL_CTL, 1);
+ 	return epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &event);
+ }
+ 
+--- a/arch/um/os-Linux/sigio.c
++++ b/arch/um/os-Linux/sigio.c
+@@ -12,6 +12,8 @@
+ #include <signal.h>
+ #include <string.h>
+ #include <sys/epoll.h>
++#include <sys/prctl.h>
++#include <net-profile.h>
+ #include <asm/unistd.h>
+ #include <kern_util.h>
+ #include <init.h>
+@@ -37,6 +39,8 @@
+ 	int r;
+ 
+ 	os_fix_helper_thread_signals();
++	if (uml_net_profile_enabled)
++		prctl(PR_SET_NAME, "uml-sigio", 0, 0, 0);
+ 
+ 	while (1) {
+ 		r = epoll_wait(epollfd, epoll_events, MAX_EPOLL_EVENTS, -1);
+--- a/arch/um/os-Linux/signal.c
++++ b/arch/um/os-Linux/signal.c
+@@ -21,6 +21,7 @@
+ #include <um_malloc.h>
+ #include <sys/ucontext.h>
+ #include <timetravel.h>
++#include <net-profile.h>
+ #include "internal.h"
+ 
+ void (*sig_info[NSIG])(int, struct siginfo *, struct uml_pt_regs *, void *mc) = {
+@@ -78,6 +79,9 @@
+ {
+ 	int enabled = signals_enabled;
+ 
++	if (sig == SIGIO)
++		uml_net_add(UML_NET_SIGIO, 1);
++
+ #if IS_ENABLED(CONFIG_UML_TIME_TRAVEL_SUPPORT)
+ 	if ((signals_blocked ||
+ 	     __atomic_load_n(&signals_blocked_pending, __ATOMIC_SEQ_CST)) &&
+@@ -90,6 +94,7 @@
+ #endif
+ 
+ 	if (!enabled && (sig == SIGIO)) {
++		uml_net_add(UML_NET_SIGIO_DEFERRED, 1);
+ 		/*
+ 		 * In TT_MODE_EXTERNAL, need to still call time-travel
+ 		 * handlers. This will mark signals_pending by itself
+@@ -132,6 +137,7 @@
+ {
+ 	int enabled;
+ 
++	uml_net_add(UML_NET_TIMER, 1);
+ 	enabled = signals_enabled;
+ 	if (!signals_enabled) {
+ 		signals_pending |= SIGALRM_MASK;
+--- a/arch/um/os-Linux/smp.c
++++ b/arch/um/os-Linux/smp.c
+@@ -14,6 +14,7 @@
+ #include <os.h>
+ #include <smp.h>
+ #include <ipi-defer.h>
++#include <net-profile.h>
+ #include "internal.h"
+ 
+ struct cpu_thread_data {
+@@ -206,6 +207,8 @@
+ {
+ 	int save_errno = errno;
+ 
++	uml_net_add(UML_NET_IPI, 1);
++
+ 	if (defer_ipi) {
+ 		int vector = si->si_value.sival_int;
+ 		if (vector < 0 || vector >= 31)

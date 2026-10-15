@@ -1,0 +1,22 @@
+diff --git a/pipeline/bench.py b/pipeline/bench.py
+index 4b5a807..13fbeea 100644
+--- a/pipeline/bench.py
++++ b/pipeline/bench.py
+@@ -467,6 +467,17 @@ class Workloads:
+                     port = published_port(self.docker('port', server, '9000/tcp'))
+                     guest = lambda: self.native('/bench/network', 'client', '127.0.0.1', str(port), mode, seconds)
+             yield native, guest
++            if 'uml_net_profile=1' in getattr(self.ctx, 'instance_options', {}).get('kernel_args', []):
++                import importlib.util
++                spec = importlib.util.spec_from_file_location('net_transfer', config.REPO / 'tests/publish/net_transfer.py')
++                diagnostics = importlib.util.module_from_spec(spec)
++                spec.loader.exec_module(diagnostics)
++                if name.startswith('net.egress'):
++                    diagnostics.run(self, name, '10.0.2.2', native_port)
++                elif name.startswith('net.bridge'):
++                    diagnostics.run(self, name, address, 9000, options)
++                else:
++                    diagnostics.run(self, name, '127.0.0.1', port)
+ 
+     def guest(self, *command, options=(), timeout=120):
+         name = self.unique('sample')
