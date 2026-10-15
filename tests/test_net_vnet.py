@@ -2,9 +2,10 @@ import pathlib
 import struct
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent / 'publish'))
-from slirp_peer import csum, window_option
+from slirp_peer import csum, window_option, recv_exact
 from vnet_peer import VnetPeer
 
 
@@ -18,6 +19,15 @@ class Link:
 
 
 class VnetPeerTests(unittest.TestCase):
+    def test_exact_read_handles_short_receives_and_eof(self):
+        sock = mock.Mock()
+        sock.recv.side_effect = [b'abc', b'de']
+        self.assertEqual(recv_exact(sock, 5), b'abcde')
+        self.assertEqual(sock.recv.call_args_list, [mock.call(5), mock.call(2)])
+        sock.recv.side_effect = [b'ab', b'']
+        with self.assertRaises(EOFError):
+            recv_exact(sock, 5)
+
     def test_window_option_padding_and_truncation(self):
         self.assertEqual(window_option(bytes([2, 4, 5, 180, 1, 3, 3, 5])), 5)
         for data in (b'\x03', b'\x03\x03', b'\x03\x00', b'\x00\x03\x03\x05'):
