@@ -175,8 +175,7 @@ def cmd_up(a):
     path = config.INSTANCES / a.name
     if a.recreate and path.exists():
         instance.stop(path); instance.remove(path)
-    config.LOCKS.mkdir(parents=True, exist_ok=True)
-    state = instance.start(path, measure_lock=config.LOCKS / 'measure.lock', **opts)
+    state = instance.start(path, hold_measure=True, **opts)
     print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
 
 
@@ -212,7 +211,8 @@ def cmd_gc(a):
     """Drop old runs, dead instances and store entries no kept run refers to."""
     require_linux()
     from pipeline import build, instance
-    with build.lock('build'), build.lock('measure'):
+    from pipeline import locks
+    with build.lock('build'), locks.measure():
         runs = sorted(p for p in config.RUNS.glob('*') if p.is_dir()) if config.RUNS.exists() else []
         drop = runs[:-a.keep_runs] if len(runs) > a.keep_runs else []
         for path in drop:
@@ -240,7 +240,7 @@ def run_suite(kind, a):
     The functional phase holds the measure lock shared; the bench phase holds it
     exclusively, so measurements never overlap another guest of this pipeline."""
     require_linux()
-    from pipeline import build, runs, score
+    from pipeline import build, locks, runs, score
     run_id, run_dir, rev = runs.new_run(kind, a.label)
     print(f'run {run_id}', flush=True)
     summary = {'schema': 'hd.summary/1', 'run_id': run_id, 'kind': kind, 'revision': rev,
@@ -250,12 +250,12 @@ def run_suite(kind, a):
         artifacts = build.everything(a.with_, shares=True)
         summary['artifacts'] = artifacts['ids']
         if kind in ('test', 'ci'):
-            with build.lock('measure', shared=True):
+            with locks.measure(shared=True):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
             summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
             summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
         if kind in ('bench', 'ci'):
-            with build.lock('measure'):
+            with locks.measure():
                 summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=config.BENCH_CPUS)
             state = summary['bench'].pop('guest_state')
             if shutdown_check(state)['status'] != 'pass':

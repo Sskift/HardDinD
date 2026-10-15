@@ -13,7 +13,7 @@ import subprocess
 import tarfile
 import time
 
-from pipeline import build, config, instance, runs
+from pipeline import build, config, instance, locks, runs
 
 FLAGS = ['-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread']
 
@@ -53,7 +53,7 @@ def run(a):
     artifacts = build.everything(a.with_)
     cpus = runs.instance_options(artifacts)['cpus']
     affinity = instance.parse_cpus(config.BENCH_CPUS)
-    with build.lock('measure'):
+    with locks.measure():
         run_id, run_dir, rev = runs.new_run('probe', a.label)
         print(f'run {run_id}', flush=True)
         guests = {'A': list(a.kernel_arg)}
