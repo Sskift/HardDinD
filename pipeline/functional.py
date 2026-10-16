@@ -18,7 +18,7 @@ import tarfile
 import threading
 import time
 
-from pipeline import build, config
+from pipeline import build, config, runs
 
 FIXTURES = config.REPO / 'suites/functional'
 BASE = 'hd-base:latest'
@@ -336,7 +336,7 @@ class Case:
 def run_checks(suite, specs):
     rows = []
     for name, covers, seconds, base, helpers, fn in specs:
-        row = {'id': name, 'status': 'not_tested', 'seconds': 0.0, 'covers': covers, 'detail': ''}
+        row = {'id': name, 'status': 'not_tested', 'seconds': 0.0, 'covers': covers, 'detail': '', 'throttled': None}
         rows.append(row)
         if not suite.ctx.selected(name) or time.monotonic() >= suite.end:
             row['detail'] = 'not selected' if not suite.ctx.selected(name) else 'suite time budget exhausted'
@@ -344,6 +344,7 @@ def run_checks(suite, specs):
             continue
         seconds = min(seconds, suite.end - time.monotonic())
         started = time.monotonic()
+        before = runs.throttle()
         case = Case(suite, name, seconds)
         suite.ctx.log('functional ' + name)
         try:
@@ -364,6 +365,7 @@ def run_checks(suite, specs):
             except Exception as error:
                 row.update(status='fail', detail=(row['detail'] + '\n' + str(error))[-800:])
             row['seconds'] = round(time.monotonic() - started, 3)
+            row['throttled'] = runs.throttle_delta(before, runs.throttle())
             case.write(json.dumps(row))
             case.log.close()
         suite.ctx.log(f'functional {name}: {row["status"]} ({row["seconds"]:.1f}s)')
@@ -377,13 +379,16 @@ def run(ctx):
         rows = run_checks(suite, CHECKS)
     finally:
         if suite.images:
+            started, before = time.monotonic(), runs.throttle()
             with (suite.root / 'fixture.cleanup.log').open('w') as log:
                 try:
                     result = ctx.docker('image', 'rm', '-f', *reversed(suite.images), timeout=30)
                     log.write(result.stdout + result.stderr)
                     require(result.returncode == 0, result.stdout + result.stderr)
                 except Exception as error:
-                    rows.append({'id': 'fixture.cleanup', 'status': 'fail', 'seconds': 0.0,
+                    rows.append({'id': 'fixture.cleanup', 'status': 'fail',
+                                 'seconds': round(time.monotonic() - started, 3),
+                                 'throttled': runs.throttle_delta(before, runs.throttle()),
                                  'covers': [], 'detail': str(error)[-800:]})
     return {'schema': 'hd.test/1', 'checks': rows, 'coverage': coverage(rows)}
 

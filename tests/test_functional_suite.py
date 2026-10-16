@@ -70,6 +70,27 @@ class FunctionalSuiteTests(unittest.TestCase):
         self.assertEqual(data['coverage']['missing'], data['coverage']['commands'])
         self.assertEqual(self.ctx.calls, [])
 
+    def test_throttle_window_includes_cleanup_and_keeps_failures(self):
+        self.ctx.only = '^(pass|fail|skip)$'
+        counters = [100, 10]
+        def cleanup(*_args, **_kwargs):
+            counters[:] = [110, 12]
+            return subprocess.CompletedProcess([], 0, '', '')
+        def fail(_c):
+            counters[:] = [120, 15]
+            raise ValueError('failed check')
+        def skip(_c):
+            raise f.NotTested('unavailable')
+        with mock.patch.object(f.runs, 'throttle', side_effect=lambda: tuple(counters)), \
+             mock.patch.object(self.ctx, 'docker', side_effect=cleanup):
+            rows = self.execute([spec('pass', lambda c: c.defer('rm', '-f', 'owned')),
+                                 spec('fail', fail), spec('skip', skip),
+                                 spec('omitted', lambda _: self.fail('not selected'))])['checks']
+        self.assertEqual([r['status'] for r in rows], ['pass', 'fail', 'not_tested', 'not_tested'])
+        self.assertEqual([r['throttled'] for r in rows], [.2, .3, None, None])
+        saved = json.loads((self.ctx.run_dir / 'functional/pass.log').read_text().splitlines()[-1])
+        self.assertEqual(saved['throttled'], .2)
+
     def test_failures_and_skips_do_not_count_as_coverage(self):
         data = f.coverage([{'status': 'pass', 'covers': ['run']},
                            {'status': 'fail', 'covers': ['container exec']},

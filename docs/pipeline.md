@@ -68,7 +68,7 @@ bench A/B 位于 `instance-bench-A`/`instance-bench-B`，各自的基准日志�
 
 `summary.json`（`hd.summary/1`）包含版本、构建产物 id、候选、启动参数、宿主负载，以及：
 
-- `test`（`hd.test/1`）：`checks: [{id, status: pass|fail|not_tested, seconds, covers: [docker 子命令…], detail}]`
+- `test`（`hd.test/1`）：`quiet` 记录启动前的安静等待，`throttled` 记录功能阶段的限流周期比例；`checks: [{id, status: pass|fail|not_tested, seconds, throttled, covers: [docker 子命令…], detail}]`。每项的 `throttled` 包含该项清理耗时；未运行或无可用计数窗口时为 null。
 - `bench`（`hd.bench/1`）：`metrics: {name: {unit, higher_is_better, native: [样本…], guest: [样本…], error}}`
 
 `pipeline/score.py` 按 `bench/targets.json` 评分。`ratio = guest / native`（耗时类取倒数），1.0 即与原生相同。三档门槛：
@@ -94,6 +94,8 @@ bench A/B 位于 `instance-bench-A`/`instance-bench-B`，各自的基准日志�
 Starpub 与其他租户共用 72 核，负载常在 40–60，高峰超过 100。外层容器还有 36 核的 CPU 配额（`cpu.max`），容器内总负载超过 36 时，每个 100 ms 周期都可能被限流；guest 靠多个宿主线程相互交接，受限流的影响远大于单个原生进程。每个样本记录了 `throttled`（采样期间被限流的配额周期比例），超过 10% 的指标在评分表中标为 `~noisy`。非 quick 的 bench 在拿到测量锁后先等外层容器安静下来（20 秒内被限流的配额周期不超过 10%），最多等 `HD_QUIET_WAIT` 秒（默认 45 分钟）；等不到就照常测，评分表顶部标明该次性能数据不可用于决策。性能运行持有 `measure` 排它锁，与其他测试、构建不并行；仍应关注评分表里的成对范围，范围很宽时重测，不要据此下结论。
 
 ## 并行开发
+
+`test` 和 `ci` 的功能阶段同样在启动 guest 前调用上述安静等待（相同 10% 门槛、`HD_QUIET_WAIT` 和默认 45 分钟上限）。等待失败、功能阶段或任一检查的限流比例超过 10% 时，评分表标明功能结果不可用于决策，并列出受限流的检查；通过、失败、未测的计数不变。
 
 - 多个代理可以同时改代码、跑 `./hd check` 和 `./hd test`（共享锁）。构建（包括 `./hd build`、缓存产物和下载）也持有共享测量锁；等待中的测量优先于新构建。`bench` 和 `ci` 的测量阶段持有排它锁，同一时间只有一个在跑。同一调用链可重入，避免测量内检查缓存时自锁。
 - 代理各自用独立的 git worktree 和分支，`./hd job` 用不同的 job 名；主代理合并到 `main` 后推送。
