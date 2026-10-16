@@ -117,6 +117,7 @@ def run(a):
                 state = instance.stop(path)
                 for log in path.glob('guest-*.log'):
                     (run_dir / f'guest-{side}.log').write_bytes(log.read_bytes())
+                instance.archive_logs(path, run_dir / f'instance-{side}')
                 instance.remove(path)
             runs.write_json(run_dir / 'summary.json', {
                 'schema': 'hd.probe/1', 'run_id': run_id, 'kind': 'probe', 'revision': rev,

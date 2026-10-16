@@ -113,11 +113,14 @@ def cmd_fetch(_a):
     dest = REPO / 'results/runs'
     dest.mkdir(parents=True, exist_ok=True)
     require_master()
-    subprocess.run(['rsync', '-a', '--prune-empty-dirs', '--include=*/', '--include=summary.json',
-                    '--include=scorecard.md', '--exclude=*', f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
+    subprocess.run(['rsync', '-a', '--prune-empty-dirs', '--include=/*/', '--include=/*/instance-*/',
+                    '--include=/*/functional/', '--include=summary.json', '--include=scorecard.md',
+                    '--include=*.log', '--include=state.json', '--include=shutdown-diagnostic-*.json',
+                    '--include=ports-*.jsonl', '--exclude=*',
+                    f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
                    check=True)
     runs = sorted(p.parent.name for p in dest.glob('*/summary.json'))
-    print(f'{len(runs)} run summaries in results/runs (not tracked); latest: {runs[-1] if runs else "-"}')
+    print(f'{len(runs)} run summaries with available logs in results/runs (not tracked); latest: {runs[-1] if runs else "-"}')
     # Tracked history: complete ci runs only (no --only, no --quick, no run error).
     from pipeline import score
     complete = []
@@ -178,8 +181,9 @@ def cmd_up(a):
     path = config.INSTANCES / a.name
     if a.recreate and path.exists():
         instance.stop(path); instance.remove(path)
-    state = instance.start(path, hold_measure=True, **opts)
-    print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...")
+    _, log_dir, _ = runs.new_run('up')
+    state = instance.start(path, hold_measure=True, log_dir=log_dir, **opts)
+    print(f"{a.name}: ready, API 127.0.0.1:{state['api_port']}; use ./hd docker {a.name} -- ...; logs: {log_dir}")
 
 
 def cmd_down(a):
@@ -338,10 +342,7 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
         state = instance.stop(path)
         result['guest_state'] = state
         keep = run_dir / f'instance-{suite}'
-        keep.mkdir(exist_ok=True)
-        for log in [*path.glob('*.log'), *path.glob('shutdown-diagnostic-*.json'), *path.glob('ports-*.jsonl')]:
-            shutil.copy2(log, keep / log.name)
-        (keep / 'state.json').write_text(json.dumps(state, indent=2) + '\n')
+        instance.archive_logs(path, keep)
         if not getattr(a, 'keep', False):
             instance.remove(path)
         ctx.log(f'{suite}: guest {name} {state.get("phase")}')
@@ -408,7 +409,7 @@ def main(argv=None):
     s.add_argument('name'); s.add_argument('-n', '--lines', default=40); s.set_defaults(fn=cmd_log)
     s = sub.add_parser('wait', help='[local] wait for a remote job to finish')
     s.add_argument('name'); s.add_argument('-n', '--lines', default=60); s.set_defaults(fn=cmd_wait)
-    sub.add_parser('fetch', help='[local] copy run summaries into results/runs').set_defaults(fn=cmd_fetch)
+    sub.add_parser('fetch', help='[local] copy run summaries and logs into results/runs').set_defaults(fn=cmd_fetch)
     sub.add_parser('check', help='fast local unit and syntax checks').set_defaults(fn=cmd_check)
 
     s = sub.add_parser('build', help='build (or reuse) every artifact')

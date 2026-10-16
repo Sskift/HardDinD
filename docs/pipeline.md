@@ -37,6 +37,15 @@ git add -A && git commit && git push        # 提交改动和它的评分
 
 run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 版本、是否带未提交改动和运行类型。
 
+关机前，supervisor 经现有 UML mconsole 读取 guest 的 `/run/dockerd.log`，只保留末尾 8 MiB，
+按本次 boot id 保存为 `dockerd-<id>.log` 和 `containerd-<id>.log`，与 `guest-<id>.log` 放在一起。
+当前 init 让 dockerd 启动 containerd，后者继承其 stdout/stderr，因此两个文件是同一份合流日志，
+不是按内容猜测拆分；来源、截断信息或采集错误记录在 `state.json`。
+test/bench 位于 `instance-test`/`instance-bench`，probe 位于 `instance-A`/`instance-B`；
+`up` 会打印独立运行目录，`down --rm` 删除实例前仍保留该目录。
+`./hd fetch` 同时拉回这些日志、功能检查日志与实例状态，不拉取 guest 磁盘和基准 rootfs。
+若 guest 已崩溃或 mconsole 不响应，采集不能恢复已丢失的 tmpfs 日志，关机仍继续。
+
 ## 内核
 
 - `kernel/series`：默认补丁顺序，全部应用。还不可信的功能放在启动参数后面，默认关闭。

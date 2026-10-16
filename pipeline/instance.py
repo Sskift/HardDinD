@@ -6,6 +6,7 @@ supervisor (`serve`) that owns the guest, the network backend and optional
 virtiofsd shares, and tears all of them down on stop.
 """
 import base64
+from collections import deque
 import ctypes
 import fcntl
 import http.client
@@ -119,7 +120,7 @@ def api(port, path):
         conn.close()
 
 
-def mconsole(instance, path, command):
+def mconsole(instance, path, command, output=None, timeout=3):
     client = instance / ('m-' + uuid.uuid4().hex[:8])
     # The filesystem path may exceed sockaddr_un.sun_path even though UML
     # bound it relative to its instance cwd. Resolve the same socket through
@@ -127,17 +128,100 @@ def mconsole(instance, path, command):
     with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
         directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
         try:
-            s.bind(str(client)); s.settimeout(3)
+            s.bind(str(client))
+            deadline = time.monotonic() + timeout
             data = command.encode()
+            if len(data) >= 512:
+                raise ValueError('mconsole command too long')
             address = f'/proc/self/fd/{directory}/{path.name}'
+            s.settimeout(timeout)
             s.sendto(struct.pack('=III512s', 0xcafebabe, 2, len(data), data), address)
-            reply = s.recv(524)
-            err, _, length = struct.unpack('=III', reply[:12])
-            if err:
-                raise RuntimeError(reply[12:12 + length].decode(errors='replace'))
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('mconsole response timed out')
+                s.settimeout(remaining)
+                reply = s.recv(524)
+                if len(reply) < 12:
+                    raise RuntimeError('short mconsole response')
+                err, more, length = struct.unpack('=III', reply[:12])
+                if length > 512 or len(reply) < 12 + length:
+                    raise RuntimeError('invalid mconsole response length')
+                payload = reply[12:12 + length].removesuffix(b'\0')
+                if err:
+                    raise RuntimeError(payload.decode(errors='replace'))
+                if output is not None:
+                    output(payload)
+                if not more:
+                    break
         finally:
             os.close(directory)
             client.unlink(missing_ok=True)
+
+
+DAEMON_LOG_LIMIT = 8 * 1024 * 1024
+
+
+class LogTail:
+    """Keep only the final bytes while draining a multipart mconsole reply."""
+    def __init__(self, limit=DAEMON_LOG_LIMIT):
+        if limit <= 0:
+            raise ValueError('log limit must be positive')
+        self.limit, self.total, self.size = limit, 0, 0
+        self.chunks = deque()
+
+    def append(self, data):
+        if not data:
+            return
+        self.total += len(data)
+        data = data[-self.limit:]
+        self.chunks.append(data)
+        self.size += len(data)
+        while self.size > self.limit:
+            chunk = self.chunks.popleft()
+            excess = self.size - self.limit
+            self.size -= len(chunk)
+            if len(chunk) > excess:
+                self.chunks.appendleft(chunk[excess:])
+                self.size += len(chunk) - excess
+
+    def data(self):
+        return b''.join(self.chunks)
+
+
+def capture_daemon_logs(instance, state):
+    """Docker starts containerd with inherited stdout/stderr: both use this file.
+
+    Keep explicit names for both daemons, with their shared source in state.json.
+    Reading through PID 1's root requires neither a working Docker API nor a new
+    container. Do this before cad, while /run is still mounted.
+    """
+    run = state['run']
+    if len(run) != 12 or any(c not in '0123456789abcdef' for c in run):
+        raise ValueError('invalid guest boot id')
+    tail = LogTail()
+    first = True
+    def receive(data):
+        nonlocal first
+        if first:  # mconsole proc prepends a newline, not part of the file.
+            data = data.removeprefix(b'\n')
+            first = False
+        tail.append(data)
+    mconsole(instance, pathlib.Path(state['mconsole']), 'proc 1/root/run/dockerd.log', receive, timeout=15)
+    data = tail.data()
+    files = [f'{name}-{run}.log' for name in ('dockerd', 'containerd')]
+    for name in files:
+        (instance / name).write_bytes(data)
+    return {'source': '/run/dockerd.log', 'combined': ['dockerd', 'containerd'], 'files': files,
+            'bytes_read': tail.total, 'bytes_kept': len(data), 'truncated': tail.total > len(data)}
+
+
+def archive_logs(instance, target):
+    target = pathlib.Path(target)
+    target.mkdir(parents=True, exist_ok=True)
+    for pattern in ('*.log', 'state.json', 'shutdown-diagnostic-*.json', 'ports-*.jsonl'):
+        for path in instance.glob(pattern):
+            shutil.copy2(path, target / path.name)
 
 
 def shutdown_diagnostics(instance, state):
@@ -359,6 +443,10 @@ def serve(instance):
             forced = False
             if guest.poll() is None:
                 try:
+                    state['daemon_logs'] = capture_daemon_logs(instance, state)
+                except Exception as error:
+                    state['daemon_log_error'] = f'{type(error).__name__}: {error}'
+                try:
                     mconsole(instance, pathlib.Path(state['mconsole']), 'cad')
                     deadline = time.monotonic() + 45
                     try:
@@ -374,6 +462,8 @@ def serve(instance):
                     forced = True
                     os.killpg(guest.pid, signal.SIGKILL)
                     guest.wait()
+            else:
+                state['daemon_log_error'] = 'guest exited before daemon log collection'
             state['guest_exit_code'] = guest.returncode
             state['guest_cleanup'] = cleanup_group(guest.pid)
             state['forced_shutdown'] = forced
@@ -409,12 +499,15 @@ def serve(instance):
         state['phase'] = 'stopped' if clean and not state.get('error') and not state.get('forced_shutdown') else 'failed'
         state['stopped_at'] = time.time()
         write_state(instance, state)
+        if config.get('log_dir'):
+            archive_logs(instance, config['log_dir'])
     return 0 if state['phase'] == 'stopped' else 1
 
 
 def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cpus=4, memory='4G',
           cpuset=None, kernel_args=(), shares=(), share_options=None, publish_ports=True,
-          mtu=1500, dns=None, network_batch=1, net_vnet=False, boot_timeout=180, fresh=True, hold_measure=False):
+          mtu=1500, dns=None, network_batch=1, net_vnet=False, boot_timeout=180, fresh=True, hold_measure=False,
+          log_dir=None):
     """Boot a guest in `instance` and wait until dockerd answers.
 
     fresh=True requires a new instance; fresh=False reboots on the existing COW disk."""
@@ -435,7 +528,7 @@ def start(instance, *, kernel, disk, network_backend, client, virtiofsd=None, cp
               'cpus': cpus, 'memory': memory, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
               'shares': shares, 'share_options': share_options or {}, 'publish_ports': publish_ports,
               'mtu': mtu, 'dns': dns or default_dns(), 'network_batch': network_batch, 'net_vnet': net_vnet, 'boot_timeout': boot_timeout,
-              'hold_measure': hold_measure}
+              'hold_measure': hold_measure, 'log_dir': str(log_dir) if log_dir is not None else None}
     (instance / 'config.json').write_text(json.dumps(config, indent=2) + '\n')
     cmd = [sys.executable, str(pathlib.Path(__file__).resolve()), 'serve', str(instance)]
     with (instance / 'supervisor.log').open('a') as log:
