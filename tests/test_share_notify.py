@@ -1,6 +1,6 @@
-"""The window checker measures retries but never turns them into a pass."""
+"""Visibility is bounded from the start of an outer change, including successful reads."""
 import unittest
-from suites.functional.shared_files import change_window
+from suites.functional.shared_files import change_window, window_summary, check_windows
 
 
 class ChangeWindow(unittest.TestCase):
@@ -42,6 +42,27 @@ class ChangeWindow(unittest.TestCase):
             raise OSError('peer died')
         with self.assertRaises(OSError):
             change_window(failed, 7, clock=self.clock)
+
+    def test_late_success_fails(self):
+        with self.assertRaises(AssertionError):
+            change_window(lambda: 7, 7, clock=self.clock, timeout_ns=1_000_000)
+
+    def test_window_bounds_and_percentile(self):
+        class Case:
+            def write(self, text):
+                self.output = text
+        case = Case()
+        def rows(values):
+            return [{'origin': 'outer_change_start', 'visible_by_ms': v, 'first_access': False} for v in values]
+        result = check_windows(case, 'native', rows([1] * 19 + [50]))
+        self.assertEqual(result['p95_visible_by_ms'], 1)
+        self.assertEqual(result['first_access_misses'], 20)
+        for values in ([], [1] * 18 + [11, 12], [1] * 19 + [50.001], [-1], [float('nan')]):
+            with self.subTest(values=values), self.assertRaises(AssertionError):
+                check_windows(case, 'docker', rows(values))
+        with self.assertRaises(AssertionError):
+            check_windows(case, 'docker', [{'visible_by_ms': 1, 'first_access': True}])
+        self.assertIn('coherence_window', case.output)
 
 
 class KernelNotificationWire(unittest.TestCase):

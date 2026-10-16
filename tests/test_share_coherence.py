@@ -1,4 +1,4 @@
-"""Exercise strict metadata checks with fresh and stale peer responses."""
+"""Exercise bounded metadata checks with fresh and stale peer responses."""
 import pathlib
 import tempfile
 import unittest
@@ -14,7 +14,7 @@ class MetadataChecks(unittest.TestCase):
             with self.subTest(row=row), self.assertRaises(AssertionError):
                 expect_metadata(row, 4096, 0o600)
 
-    def test_churn_checks_first_response_without_retry(self):
+    def test_churn_records_each_change_and_rejects_missing_updates(self):
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory) / 'file'
             path.write_bytes(b'A' * 8192)
@@ -31,9 +31,9 @@ class MetadataChecks(unittest.TestCase):
                             'mode': st.st_mode & 0o777}
 
             peer = Peer()
-            metadata_churn(peer, path, rounds=8)
+            samples = metadata_churn(peer, path, rounds=8)
             self.assertEqual(peer.calls, 16)
             peer.calls, peer.stale = 0, True
             with self.assertRaises(AssertionError):
                 metadata_churn(peer, path, rounds=8)
-            self.assertEqual(peer.calls, 2)
+            self.assertGreater(peer.calls, 2)

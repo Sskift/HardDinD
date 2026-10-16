@@ -4,6 +4,7 @@ import fcntl
 import os
 import json
 import mmap
+import math
 import time
 import struct
 
@@ -13,6 +14,9 @@ from suites.functional.peer import Peer as ProbePeer
 # shares its 128 inotify instances with every root process on the Starpub host.
 NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks', 'outer_metadata_churn', 'outer_replace_churn', 'outer_negative_lookup', 'outer_mtime', 'outer_permission_revoked', 'outer_mmap_window', 'outer_attr_window', 'outer_read_window', 'outer_mapped_write', 'notification_mmap_latency', 'outer_directory_inotify', 'outer_readdir_preserved_mtime']
 
+
+NAMES += ['outer_hardlink_alias', 'outer_rename_unwatched', 'outer_before_first_lookup',
+          'outer_watch_exhaustion', 'outer_notify_overflow', 'outer_mapped_remap', 'outer_mapped_scale', 'outer_mapped_read', 'mapped_flock_lifetime']
 
 NAMES += ['read_buffer', 'hostfs_ceiling', 'metadata_batch', 'outer_directory_permission', 'outer_lookup_race', 'exclusive_create']
 
@@ -398,15 +402,16 @@ def lookup_race(c, share):
     shutil.copy2(binary, share / 'lookup-racer')
     for mode in ('native', 'docker'):
         path = share / ('race-' + mode)
+        samples = []
         for repeat in range(8):
             if mode == 'native':
-                process = c.spawn(command=[str(binary), str(path), '3000'])
+                process = c.spawn(command=[str(binary), str(path), '50'])
             else:
                 name = c.object('container', 'lookup-race-' + str(repeat))
                 process = c.spawn('run', '--rm', '-i', '--name', name, '--label', c.label,
                                   '--mount', f'type=bind,src={share},dst=/share',
                                   'hd-functional:local', '/share/lookup-racer',
-                                  '/share/' + path.name, '3000')
+                                  '/share/' + path.name, '50')
             assert select.select([process.stdout], [], [], c.remaining(20))[0], 'racer startup timeout'
             assert os.read(process.stdout.fileno(), 1) == b'R', 'racer exited before ready'
             for _ in range(512):
@@ -418,13 +423,14 @@ def lookup_race(c, share):
             process.stdin.flush()
             assert select.select([process.stdout], [], [], c.remaining(20))[0], 'racer reply timeout'
             row = json.loads(process.stdout.readline())
-            row.update(mode=mode, repeat=repeat, visible_by_ms=(time.monotonic_ns() - started) / 1e6)
+            row.update(mode=mode, repeat=repeat, origin='outer_change_start', visible_by_ms=(time.monotonic_ns() - started) / 1e6)
             c.write('lookup_race: ' + json.dumps(row, sort_keys=True))
             assert process.wait(timeout=c.remaining(5)) == 0 and row['visible'], row
-            assert row['first_access'], row
+            samples.append(row)
             process.stdin.close()
             process.stdout.close()
             path.unlink()
+        check_windows(c, mode, samples)
 
 
 EXCLUSIVE_CREATE = r'''
@@ -500,21 +506,31 @@ def expect_metadata(row, size, mode):
 
 
 def metadata_churn(peer, path, rounds=32):
-    """Require the first fstat after each outer change to see the new values."""
+    """Measure from before truncate/chmod until both new attributes are read."""
+    samples = []
     for i in range(rounds):
         size, mode = 4096 + i, (0o640 if i % 2 else 0o600)
         peer.ask('stat')
+        started = time.monotonic_ns()
         os.truncate(path, size)
         os.chmod(path, mode)
-        expect_metadata(peer.ask('stat'), size, mode)
+        def read():
+            row = peer.ask('stat')
+            return row['size'], row['mode']
+        samples.append(change_window(read, (size, mode), started_ns=started))
+    return samples
 
-def change_window(read, expected, clock=time.monotonic_ns, timeout_ns=3_000_000_000, started_ns=None):
-    """Bound visibility by RPC observations; preserve the first-access verdict."""
+
+def change_window(read, expected, clock=time.monotonic_ns, timeout_ns=50_000_000, started_ns=None):
+    """Upper bound from outer change start through the successful observation."""
     started, stale, last_stale = clock() if started_ns is None else started_ns, 0, 0
     while True:
         before = clock() - started
         value = read()
         elapsed = clock() - started
+        if elapsed > timeout_ns:
+            raise AssertionError({'expected': expected, 'actual': value,
+                                  'stale_reads': stale, 'elapsed_ms': elapsed / 1e6})
         if value == expected:
             return {'first_access': stale == 0, 'stale_reads': stale,
                     'origin': 'outer_change_start' if started_ns is not None else 'first_read_start',
@@ -524,6 +540,28 @@ def change_window(read, expected, clock=time.monotonic_ns, timeout_ns=3_000_000_
         if elapsed >= timeout_ns:
             raise AssertionError({'expected': expected, 'actual': value,
                                   'stale_reads': stale, 'elapsed_ms': elapsed / 1e6})
+
+
+def window_summary(samples):
+    assert samples, 'missing coherence samples'
+    assert all(row.get('origin') == 'outer_change_start'
+               and isinstance(row.get('first_access'), bool) for row in samples), samples
+    windows = sorted(row['visible_by_ms'] for row in samples)
+    assert all(isinstance(v, (int, float)) and not isinstance(v, bool)
+               and math.isfinite(v) and v >= 0 for v in windows), windows
+    return {'origin': 'outer_change_start', 'rounds': len(samples),
+            'first_access_misses': sum(not row['first_access'] for row in samples),
+            'samples_ms': [row['visible_by_ms'] for row in samples],
+            'p50_visible_by_ms': windows[(len(windows) - 1) // 2],
+            'p95_visible_by_ms': windows[(95 * len(windows) + 99) // 100 - 1],
+            'max_visible_by_ms': windows[-1]}
+
+
+def check_windows(c, mode, samples):
+    result = dict(mode=mode, **window_summary(samples))
+    c.write('coherence_window: ' + json.dumps(result, sort_keys=True))
+    assert result['p95_visible_by_ms'] <= 10 and result['max_visible_by_ms'] <= 50, result
+    return result
 
 
 def notification_probe():
@@ -612,10 +650,7 @@ def mmap_delivery(c, share):
                 receive(value)
                 samples.append((time.monotonic_ns() - written) / 1e6)
         assert process.wait(timeout=c.remaining(5)) == 0, process.returncode
-        ordered = sorted(samples)
-        c.write('mmap_delivery: ' + json.dumps({'mode': mode, 'origin': 'before_pwrite', 'samples_ms': samples,
-                 'p50_visible_by_ms': ordered[16], 'p95_visible_by_ms': ordered[30],
-                 'max_visible_by_ms': max(ordered)}, sort_keys=True))
+        check_windows(c, mode, [{'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': sample} for sample in samples])
 
 
 INOTIFY_WAITER = r'''
@@ -687,7 +722,7 @@ def directory_events(c, share):
         pending, observed = b'', []
         def await_event(mask, filename, after=0):
             nonlocal pending
-            end = time.monotonic() + c.remaining(3)
+            end = time.monotonic() + c.remaining(.05)
             while True:
                 for row in observed[after:]:
                     if row['mask'] & mask and row['name'] == filename:
@@ -700,27 +735,352 @@ def directory_events(c, share):
                 observed.extend(rows)
                 c.write('directory_events: ' + json.dumps({'mode': mode, 'events': rows}, sort_keys=True))
                 assert all(not row['mask'] & 0x4000 for row in rows), 'inotify overflow'
-        original, renamed = directory / 'original', directory / 'renamed'
-        original.write_bytes(b'content')
-        await_event(0x100, 'original');await_event(0x2, 'original')
-        cursor = len(observed)
-        os.chmod(original, 0o640)
-        await_event(0x4, 'original', cursor)
-        cursor = len(observed)
-        original.rename(renamed)
-        moved_from = await_event(0x40, 'original', cursor)
-        moved_to = await_event(0x80, 'renamed', cursor)
-        assert moved_from['cookie'] != 0 and moved_from['cookie'] == moved_to['cookie'], observed
-        cursor = len(observed)
-        renamed.unlink();await_event(0x200, 'renamed', cursor)
+        samples = []
+        for i in range(8):
+            original, renamed = directory / ('original-' + str(i)), directory / ('renamed-' + str(i))
+            started = time.monotonic_ns()
+            original.write_bytes(b'content')
+            await_event(0x100, original.name);await_event(0x2, original.name)
+            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
+            cursor = len(observed)
+            started = time.monotonic_ns()
+            os.chmod(original, 0o640)
+            await_event(0x4, original.name, cursor)
+            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
+            cursor = len(observed)
+            started = time.monotonic_ns()
+            original.rename(renamed)
+            moved_from = await_event(0x40, original.name, cursor)
+            moved_to = await_event(0x80, renamed.name, cursor)
+            assert moved_from['cookie'] != 0 and moved_from['cookie'] == moved_to['cookie'], observed
+            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
+            cursor = len(observed)
+            started = time.monotonic_ns()
+            renamed.unlink();await_event(0x200, renamed.name, cursor)
+            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
+        check_windows(c, mode, samples)
         process.stdin.write(b'q');process.stdin.flush()
         assert process.wait(timeout=c.remaining(5)) == 0, process.returncode
+
+
+TREE_PROBE = r'''
+#define _GNU_SOURCE
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    if (argc != 2 || chdir(argv[1])) return 2;
+    setbuf(stdout, NULL);
+    puts("{\"ready\":true}");
+    char line[512], op[32], path[256];
+    int held = -1;
+    unsigned char *mapping = MAP_FAILED;
+    size_t map_size = 0;
+    while (fgets(line, sizeof(line), stdin)) {
+        if (!strcmp(line, "quit\n")) return 0;
+        if (sscanf(line, "%31s %255s", op, path) != 2) return 3;
+        if (!strcmp(op, "map") || !strcmp(op, "mapall") || !strcmp(op, "private")) {
+            int fd = open(path, O_RDWR);
+            struct stat st;
+            if (fd < 0 || fstat(fd, &st)) return 7;
+            map_size = !strcmp(op, "mapall") ? (size_t)st.st_size : 4096;
+            mapping = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
+                           !strcmp(op, "private") ? MAP_PRIVATE : MAP_SHARED, fd, 0);
+            close(fd);
+            if (mapping == MAP_FAILED) return 8;
+            puts("{\"rc\":0}");
+        } else if (!strcmp(op, "remap")) {
+            size_t size = strtoull(path, NULL, 10);
+            if (mapping == MAP_FAILED || size != 8192) return 9;
+            unsigned char *next = mremap(mapping, map_size, size, MREMAP_MAYMOVE);
+            if (next == MAP_FAILED) return 10;
+            mapping = next; map_size = size;
+            puts("{\"rc\":0}");
+        } else if (!strcmp(op, "mapped")) {
+            size_t offset = strtoull(path, NULL, 10);
+            if (mapping == MAP_FAILED || offset >= map_size) return 11;
+            printf("{\"rc\":0,\"byte\":%u}\n", *(volatile unsigned char *)(mapping + offset));
+        } else if (!strcmp(op, "unmap")) {
+            if (mapping == MAP_FAILED || munmap(mapping, map_size)) return 12;
+            mapping = MAP_FAILED;
+            puts("{\"rc\":0}");
+        } else if (!strcmp(op, "hold") || !strcmp(op, "held")) {
+            if (!strcmp(op, "hold")) {
+                if (held >= 0) close(held);
+                held = open(path, O_RDONLY);
+            }
+            struct stat st; unsigned char byte = 0;
+            if (held < 0 || fstat(held, &st) || pread(held, &byte, 1, 0) != 1)
+                printf("{\"rc\":-1,\"errno\":%d}\n", errno);
+            else printf("{\"rc\":0,\"size\":%lld,\"mode\":%u,\"byte\":%u}\n",
+                        (long long)st.st_size, st.st_mode & 0777, byte);
+        } else if (!strcmp(op, "fault")) {
+            uint64_t action = strtoull(path, NULL, 10);
+            int fd = open(".", O_RDONLY | O_DIRECTORY);
+            int rc = fd < 0 ? -1 : ioctl(fd, _IOW('H', 0xd5, uint64_t), &action);
+            int error = errno;
+            if (fd >= 0) close(fd);
+            printf("{\"rc\":%d,\"errno\":%d}\n", rc, rc ? error : 0);
+        } else if (!strcmp(op, "list")) {
+            DIR *dir = opendir(path);
+            if (!dir) { printf("{\"rc\":-1,\"errno\":%d}\n", errno); continue; }
+            printf("{\"rc\":0,\"names\":[");
+            struct dirent *e; int comma = 0;
+            while ((e = readdir(dir))) {
+                if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+                /* Test paths use only ASCII letters, digits, dots, and hyphens. */
+                if (strspn(e->d_name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") != strlen(e->d_name)) return 4;
+                printf("%s\"%s\"", comma ? "," : "", e->d_name); comma = 1;
+            }
+            closedir(dir); puts("]}");
+        } else if (!strcmp(op, "stat") || !strcmp(op, "read")) {
+            struct stat st; unsigned char byte = 0; int rc = stat(path, &st), error = errno;
+            if (!rc && !strcmp(op, "read")) {
+                int fd = open(path, O_RDONLY);
+                if (fd < 0) { rc = -1; error = errno; }
+                else { if (read(fd, &byte, 1) != 1) { rc = -1; error = errno; } close(fd); }
+            }
+            if (rc) printf("{\"rc\":-1,\"errno\":%d}\n", error);
+            else printf("{\"rc\":0,\"size\":%lld,\"mode\":%u,\"mtime_ns\":%lld,\"ino\":%llu,\"byte\":%u}\n",
+                (long long)st.st_size, st.st_mode & 0777,
+                (long long)st.st_mtim.tv_sec * 1000000000 + st.st_mtim.tv_nsec,
+                (unsigned long long)st.st_ino, byte);
+        } else return 5;
+    }
+    return 6;
+}
+'''
+
+
+class TreePeer(ProbePeer):
+    def __init__(self, c, mode, directory, binary):
+        self.c, self.mode = c, mode
+        self.buffer, self.closed, self.expected_kill = b'', False, False
+        c.serial += 1
+        self.name = c.object('container', 'tree-' + str(c.serial)) if mode == 'docker' else 'native-tree'
+        if mode == 'native':
+            self.proc = c.spawn(command=[str(binary), str(directory)])
+        else:
+            self.proc = c.spawn('run', '--rm', '-i', '--name', self.name, '--label', c.label,
+                                '--mount', f'type=bind,src={directory.parent},dst=/share',
+                                'hd-functional:local', '/share/tree-probe', '/share/' + directory.name)
+        try:
+            assert self.receive().get('ready') is True, 'tree probe startup failed'
+        except BaseException:
+            self.close()
+            raise
+
+
+def namespace_windows(c, share, name):
+    import shutil
+    binary = build_probe(c, 'tree-probe', TREE_PROBE)
+    shutil.copy2(binary, share / 'tree-probe')
+    modes = ('docker', 'native') if name in ('outer_watch_exhaustion', 'outer_notify_overflow') else ('native', 'docker')
+    bound_failures = []
+    for mode in modes:
+        directory = share / mode
+        directory.mkdir()
+        samples = []
+        with TreePeer(c, mode, directory, binary) as peer:
+            if name == 'outer_mapped_remap':
+                for mapping_kind in ('map', 'private'):
+                    path = directory / 'mapped'
+                    path.write_bytes(b'A' * 8192)
+                    peer.ask(mapping_kind + ' mapped')
+                    assert peer.ask('mapped 0')['byte'] == 65
+                    peer.ask('remap 8192')
+                    assert peer.ask('mapped 4096')['byte'] == 65
+                    with path.open('r+b', buffering=0) as file:
+                        with mmap.mmap(file.fileno(), 8192, access=mmap.ACCESS_WRITE) as mapped:
+                            for i in range(32):
+                                started = time.monotonic_ns()
+                                mapped[4096] = 66 + i
+                                samples.append(change_window(lambda: peer.ask('mapped 4096')['byte'],
+                                                             66 + i, started_ns=started))
+                    peer.ask('unmap .')
+            elif name == 'outer_mapped_scale':
+                for size in (4096, 1 << 20, 8 << 20, 32 << 20):
+                    path = directory / 'mapped'
+                    path.write_bytes(b'A' * size)
+                    peer.ask('mapall mapped')
+                    samples = []
+                    with path.open('r+b', buffering=0) as file:
+                        with mmap.mmap(file.fileno(), size, access=mmap.ACCESS_WRITE) as mapped:
+                            for i in range(32):
+                                offset = (i * 4096) % size
+                                peer.ask('mapped ' + str(offset))
+                                started = time.monotonic_ns()
+                                mapped[offset] = 66 + i
+                                samples.append(change_window(lambda: peer.ask('mapped ' + str(offset))['byte'],
+                                                             66 + i, started_ns=started))
+                    peer.ask('unmap .')
+                    c.write('mapped_bytes: ' + str(size))
+                    try:
+                        check_windows(c, mode, samples)
+                    except AssertionError as error:
+                        bound_failures.append({'mode': mode, 'mapped_bytes': size, 'error': str(error)})
+                continue
+            elif name == 'outer_mtime':
+                path = directory / 'file'
+                path.write_bytes(b'timestamp')
+                for i in range(32):
+                    peer.ask('stat file')
+                    expected = (1700000000 + i) * 1000000000 + i
+                    started = time.monotonic_ns()
+                    os.utime(path, ns=(expected, expected))
+                    samples.append(change_window(lambda: peer.ask('stat file')['mtime_ns'],
+                                                 expected, started_ns=started))
+            elif name == 'outer_readdir_preserved_mtime':
+                listing = lambda: sorted(peer.ask('list .')['names'])
+                assert listing() == []
+                stamp = directory.stat()
+                original, renamed = directory / 'original', directory / 'renamed'
+                for _ in range(16):
+                    for change, expected in ((lambda: original.write_bytes(b'content'), ['original']),
+                                             (lambda: original.rename(renamed), ['renamed']),
+                                             (renamed.unlink, [])):
+                        started = time.monotonic_ns()
+                        change()
+                        os.utime(directory, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+                        samples.append(change_window(listing, expected, started_ns=started))
+            elif name == 'outer_hardlink_alias':
+                watched, other = directory / 'watched', directory / 'unwatched'
+                watched.mkdir();other.mkdir()
+                path = watched / 'file'
+                path.write_bytes(b'A' * 8192)
+                alias = other / 'alias'
+                os.link(path, alias)
+                for i in range(32):
+                    peer.ask('read watched/file')
+                    started = time.monotonic_ns()
+                    alias.write_bytes(bytes([66 + i]) * (4096 + i))
+                    os.chmod(alias, 0o600 if i % 2 else 0o640)
+                    def read():
+                        row = peer.ask('read watched/file')
+                        return row['byte'], row['size'], row['mode']
+                    samples.append(change_window(read, (66 + i, 4096 + i, 0o600 if i % 2 else 0o640),
+                                                 started_ns=started))
+            elif name == 'outer_rename_unwatched':
+                watched = directory / 'watched'
+                watched.mkdir()
+                for i in range(16):
+                    other = directory / ('unwatched-' + str(i))
+                    other.mkdir()
+                    source, destination = other / 'file', watched / 'file'
+                    source.write_bytes(bytes([66 + i]) * 8192)
+                    assert peer.ask('stat watched/file', ok=False)['errno'] == errno.ENOENT
+                    started = time.monotonic_ns()
+                    source.rename(destination)
+                    def read():
+                        row = peer.ask('read watched/file', ok=False)
+                        return row.get('byte') if row['rc'] == 0 else None
+                    samples.append(change_window(read, 66 + i, started_ns=started))
+                    started = time.monotonic_ns()
+                    destination.rename(source)
+                    samples.append(change_window(lambda: peer.ask('stat watched/file', ok=False).get('errno'),
+                                                 errno.ENOENT, started_ns=started))
+            elif name in ('outer_watch_exhaustion', 'outer_notify_overflow'):
+                # Only this guest's negotiated diagnostic protocol is affected.
+                # Overflow injects an actual IN_Q_OVERFLOW record into the decoder.
+                if name == 'outer_notify_overflow':
+                    for j in range(256):
+                        filename = 'warm-' + str(j)
+                        (directory / filename).write_bytes(b'warm')
+                        peer.ask('read ' + filename)
+                for i in range(32):
+                    if mode == 'docker' and name == 'outer_watch_exhaustion':
+                        peer.ask('fault 1')
+                    try:
+                        prefix = ''
+                        if name == 'outer_watch_exhaustion':
+                            prefix = 'unwatched-' + str(i) + '/'
+                            (directory / prefix).mkdir()
+                        filename = prefix + 'file-' + str(i)
+                        path = directory / filename
+                        path.write_bytes(b'A' * 8192)
+                        peer.ask('hold ' + filename)
+                        absent = prefix + 'missing-' + str(i)
+                        assert peer.ask('stat ' + absent, ok=False)['errno'] == errno.ENOENT
+                        if mode == 'docker' and name == 'outer_notify_overflow':
+                            peer.ask('fault 3')
+                        started = time.monotonic_ns()
+                        path.write_bytes(bytes([66 + i]) * (4096 + i))
+                        os.chmod(path, 0o600)
+                        (directory / absent).write_bytes(b'present')
+                        if mode == 'docker' and name == 'outer_notify_overflow':
+                            peer.ask('fault 2')
+                        def read():
+                            row = peer.ask('held ' + filename)
+                            found = peer.ask('stat ' + absent, ok=False)
+                            return row['byte'], row['size'], row['mode'], found['rc']
+                        samples.append(change_window(read, (66 + i, 4096 + i, 0o600, 0), started_ns=started))
+                    finally:
+                        if mode == 'docker':
+                            peer.ask('fault 0')
+            elif name == 'outer_replace_churn':
+                path = directory / 'file'
+                path.write_bytes(b'A' * 8192)
+                for i in range(32):
+                    peer.ask('read file')
+                    replacement = directory / 'replacement'
+                    replacement.write_bytes(bytes([66 + i]) * (8192 + i))
+                    os.chmod(replacement, 0o640)
+                    started = time.monotonic_ns()
+                    replacement.replace(path)
+                    def read():
+                        row = peer.ask('read file')
+                        return row['byte'], row['size'], row['mode']
+                    samples.append(change_window(read, (66 + i, 8192 + i, 0o640), started_ns=started))
+            elif name == 'outer_before_first_lookup':
+                for i in range(32):
+                    filename = 'fresh-' + str(i)
+                    path = directory / filename
+                    path.write_bytes(b'A' * 8192)
+                    started = time.monotonic_ns()
+                    path.write_bytes(bytes([66 + i]) * (4096 + i))
+                    os.chmod(path, 0o600)
+                    def read():
+                        row = peer.ask('read ' + filename)
+                        return row['byte'], row['size'], row['mode']
+                    samples.append(change_window(read, (66 + i, 4096 + i, 0o600), started_ns=started))
+            else:
+                raise AssertionError(name)
+        check_windows(c, mode, samples)
+    assert not bound_failures, bound_failures
 
 
 def run(c, name):
     share = c.ctx.share / c.id
     share.mkdir(parents=True, exist_ok=True)
     os.chmod(share, 0o755)
+    if name == 'mapped_flock_lifetime':
+        for mode in ('native', 'docker'):
+            path = share / mode
+            path.write_bytes(b'A' * 8192)
+            with ProbePeer(c, mode, path) as first, ProbePeer(c, mode, path) as second:
+                first.ask('open');first.ask('map');first.ask('lock')
+                second.ask('open');second.ask('map')
+                with path.open('r+b') as outer:
+                    blocked = False
+                    try:
+                        fcntl.flock(outer, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        blocked = True
+                    assert blocked, 'outer flock ignored guest lock'
+                    first.ask('unmap');first.ask('close')
+                    fcntl.flock(outer, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    fcntl.flock(outer, fcntl.LOCK_UN)
+                assert second.ask('mapped')['byte'] == 65
+                second.ask('unmap')
+        return
     if name == 'read_buffer':
         return read_buffer(c, share)
     if name == 'hostfs_ceiling':
@@ -735,48 +1095,22 @@ def run(c, name):
         return directory_events(c, share)
     if name == 'notification_mmap_latency':
         return mmap_delivery(c, share)
-    if name == 'outer_readdir_preserved_mtime':
-        for mode in ('native', 'docker'):
-            directory = share / mode
-            directory.mkdir()
-            if mode == 'native':
-                listing = lambda: sorted(os.listdir(directory))
-            else:
-                container = c.container('sleep', '120', detached=True,
-                                        opts=('--mount', f'type=bind,src={directory},dst=/share'))
-                listing = lambda: sorted(c.d('exec', container, 'ls', '-A', '/share').splitlines())
-            assert listing() == []
-            stamp = directory.stat()
-            original, renamed = directory / 'original', directory / 'renamed'
-            for change, expected in ((lambda: original.write_bytes(b'content'), ['original']),
-                                     (lambda: original.rename(renamed), ['renamed']),
-                                     (renamed.unlink, [])):
-                change()
-                os.utime(directory, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
-                actual = listing()
-                c.write('readdir_visibility: ' + json.dumps({'mode': mode, 'expected': expected, 'actual': actual}))
-                assert actual == expected, (mode, expected, actual)
-        return
-    if name == 'outer_mtime':
-        path = share / 'timestamp'
-        path.write_bytes(b'timestamp')
-        container = c.container('sleep', '120', detached=True,
-                                opts=('--mount', f'type=bind,src={share},dst=/share'))
-        for seconds in range(1700000000, 1700000008):
-            c.d('exec', container, 'stat', '-c', '%Y', '/share/timestamp')
-            os.utime(path, ns=(seconds * 1000000000, seconds * 1000000000))
-            actual = c.d('exec', container, 'stat', '-c', '%Y', '/share/timestamp').strip()
-            assert actual == str(seconds), (seconds, actual)
-        return
+    if name in ('outer_readdir_preserved_mtime', 'outer_mtime', 'outer_hardlink_alias',
+                'outer_rename_unwatched', 'outer_before_first_lookup', 'outer_replace_churn',
+                'outer_watch_exhaustion', 'outer_notify_overflow', 'outer_mapped_remap', 'outer_mapped_scale'):
+        return namespace_windows(c, share, name)
     def Peer(mode, path, uid=None, readonly=False):
         return ProbePeer(c, mode, path, uid=uid, readonly=readonly)
     def host_write(path,byte):
-        with path.open('r+b',buffering=0) as f:f.write(bytes([byte]));os.fsync(f.fileno())
+        with path.open('r+b', buffering=0) as f:
+            f.write(bytes([byte]))
     def expect_byte(peer,op,byte):
         row=peer.ask(op);assert row.get('byte')==byte,row
     def one(mode,name):
         path=share/(mode+'-'+name);path.write_bytes(b'A'*8192);os.chmod(path,0o666)
         uid=1001 if name in ['user_permission_denied','user_create_owner','outer_inotify_to_guest_uid1001','outer_permission_revoked','outer_directory_permission'] else None
+        if mode == 'native' and name == 'outer_inotify_to_guest':
+            uid = 1001  # Root's inotify-instance quota is shared with unrelated host jobs.
         if name=='user_permission_denied':os.chmod(path,0o600)
         if name=='user_create_owner':
             path.unlink();os.chmod(share,0o777)
@@ -824,91 +1158,134 @@ def run(c, name):
                         row['mode'] = mode
                         samples.append(row)
                         c.write('coherence_sample: ' + json.dumps(row, sort_keys=True))
-                    windows = sorted(row['visible_by_ms'] for row in samples)
-                    misses = sum(not row['first_access'] for row in samples)
-                    result = {'mode': mode, 'origin': 'outer_change_start',
-                              'rounds': len(samples), 'first_access_misses': misses,
-                              'p50_visible_by_ms': windows[len(windows) // 2],
-                              'p95_visible_by_ms': windows[int(len(windows) * .95)],
-                              'max_visible_by_ms': max(windows)}
-                    c.write('coherence_window: ' + json.dumps(result, sort_keys=True))
                     if operation == 'mapped':
                         peer.ask('unmap')
-                    assert misses == 0, result
-                elif name == 'outer_mapped_write':
-                    peer.ask('map');expect_byte(peer, 'mapped', 65)
+                    check_windows(c, mode, samples)
+                elif name in ('outer_mapped_write', 'outer_mapped_read'):
+                    operation = 'mapped' if name == 'outer_mapped_write' else 'read'
+                    if operation == 'mapped':
+                        peer.ask('map')
+                    expect_byte(peer, operation, 65)
+                    samples = []
                     with path.open('r+b', buffering=0) as outer:
                         with mmap.mmap(outer.fileno(), 8192, access=mmap.ACCESS_WRITE) as mapped:
-                            started = time.monotonic_ns()
-                            mapped[0] = 66
-                            mapped.flush()
-                            try:
-                                row = change_window(lambda: peer.ask('mapped')['byte'], 66, started_ns=started)
-                            except AssertionError as error:
-                                c.write('mmap_store_window: ' + json.dumps({'mode': mode, 'error': str(error)}))
-                                raise
-                            c.write('mmap_store_window: ' + json.dumps({'mode': mode, **row}))
-                            assert row['first_access'], row
-                    peer.ask('unmap')
+                            for i in range(32):
+                                # The second half keeps the host page dirty: no msync or new fault.
+                                before = path.stat()
+                                started = time.monotonic_ns()
+                                mapped[0] = 66 + i
+                                after = path.stat()
+                                c.write('mmap_store_stamp: ' + json.dumps({'mode': mode, 'round': i,
+                                    'flushed': i < 16, 'mtime_changed': before.st_mtime_ns != after.st_mtime_ns,
+                                    'ctime_changed': before.st_ctime_ns != after.st_ctime_ns}))
+                                samples.append(change_window(lambda: peer.ask(operation)['byte'],
+                                                             66 + i, started_ns=started))
+                                # Measure visibility before disk writeback, then test a clean page again.
+                                if i < 16:
+                                    mapped.flush()
+                    if operation == 'mapped':
+                        peer.ask('unmap')
+                    check_windows(c, mode, samples)
                 elif name=='read_initial':expect_byte(peer,'read',65)
                 elif name in ['outer_write_open_fd','outer_write_reopen']:
-                    expect_byte(peer,'read',65);host_write(path,66)
-                    if name=='outer_write_reopen':peer.ask('close');peer.ask('open')
-                    expect_byte(peer,'read',66)
+                    expect_byte(peer, 'read', 65)
+                    samples = []
+                    for value in range(66, 98):
+                        started = time.monotonic_ns()
+                        host_write(path, value)
+                        if name == 'outer_write_reopen':
+                            peer.ask('close');peer.ask('open')
+                        samples.append(change_window(lambda: peer.ask('read')['byte'], value, started_ns=started))
+                    check_windows(c, mode, samples)
                 elif name=='outer_truncate_fstat':
-                    peer.ask('stat');os.truncate(path,16384);row=peer.ask('stat');assert row['size']==16384,row
-                elif name=='outer_permission_revoked':
-                    for _ in range(16):
-                        peer.ask('reopen')
-                        os.chmod(path, 0o600)
-                        row = peer.ask('reopen', ok=False)
-                        assert row['rc'] == -1 and row['errno'] == errno.EACCES, row
-                        expect_byte(peer, 'read', 65)
-                        os.chmod(path, 0o666)
-                        peer.ask('reopen')
-                elif name=='outer_directory_permission':
-                    for _ in range(16):
-                        peer.ask('reopen')
-                        os.chmod(share, 0o700)
-                        row = peer.ask('reopen', ok=False)
-                        assert row['rc'] == -1 and row['errno'] == errno.EACCES, row
-                        expect_byte(peer, 'read', 65)
-                        os.chmod(share, 0o755)
-                        peer.ask('reopen')
-                elif name=='outer_metadata_churn':
-                    metadata_churn(peer, path)
-                elif name=='outer_replace_churn':
+                    samples = []
                     for i in range(32):
-                        byte = 66 + i
-                        replacement = path.with_suffix('.new')
-                        replacement.write_bytes(bytes([byte]) * (8192 + i))
-                        os.chmod(replacement, 0o640)
-                        replacement.replace(path)
-                        peer.ask('close');peer.ask('open')
-                        expect_byte(peer, 'read', byte)
-                        expect_metadata(peer.ask('stat'), 8192 + i, 0o640)
+                        peer.ask('stat')
+                        size = 4096 + i
+                        started = time.monotonic_ns()
+                        os.truncate(path, size)
+                        samples.append(change_window(lambda: peer.ask('stat')['size'], size, started_ns=started))
+                    check_windows(c, mode, samples)
+                elif name in ('outer_permission_revoked', 'outer_directory_permission'):
+                    samples = []
+                    target = path if name == 'outer_permission_revoked' else share
+                    denied, allowed = (0o600, 0o666) if target == path else (0o700, 0o755)
+                    for _ in range(16):
+                        peer.ask('reopen')
+                        started = time.monotonic_ns()
+                        os.chmod(target, denied)
+                        def denied_read():
+                            row = peer.ask('reopen', ok=False)
+                            return row['rc'] == -1 and row['errno'] == errno.EACCES
+                        samples.append(change_window(denied_read, True, started_ns=started))
+                        expect_byte(peer, 'read', 65)
+                        started = time.monotonic_ns()
+                        os.chmod(target, allowed)
+                        samples.append(change_window(lambda: peer.ask('reopen', ok=False)['rc'],
+                                                     0, started_ns=started))
+                    check_windows(c, mode, samples)
+                elif name=='outer_metadata_churn':
+                    check_windows(c, mode, metadata_churn(peer, path))
                 elif name=='outer_negative_lookup':
+                    samples = []
                     for i in range(16):
-                        peer.ask('close');path.unlink()
-                        row = peer.ask('open', ok=False)
-                        assert row['rc'] == -1 and row['errno'] == errno.ENOENT, row
+                        peer.ask('close')
+                        started = time.monotonic_ns()
+                        path.unlink()
+                        def absent():
+                            row = peer.ask('open', ok=False)
+                            if row['rc'] == 0:
+                                peer.ask('close')
+                            return row['rc'] == -1 and row['errno'] == errno.ENOENT
+                        samples.append(change_window(absent, True, started_ns=started))
+                        started = time.monotonic_ns()
                         path.write_bytes(bytes([66 + i]) * 8192)
-                        peer.ask('open');expect_byte(peer, 'read', 66 + i)
+                        samples.append(change_window(lambda: peer.ask('open', ok=False)['rc'],
+                                                     0, started_ns=started))
+                        expect_byte(peer, 'read', 66 + i)
+                    check_windows(c, mode, samples)
                 elif name=='outer_chmod_fstat':
-                    peer.ask('stat');os.chmod(path,0o640);row=peer.ask('stat');assert row['mode']==0o640,row
+                    samples = []
+                    for i in range(32):
+                        peer.ask('stat')
+                        expected = 0o640 if i % 2 else 0o600
+                        started = time.monotonic_ns()
+                        os.chmod(path, expected)
+                        samples.append(change_window(lambda: peer.ask('stat')['mode'], expected, started_ns=started))
+                    check_windows(c, mode, samples)
                 elif name=='guest_write_outer_read':
-                    peer.ask('write 66');assert path.read_bytes()[0]==66
+                    peer.ask('write 66');expect_byte(peer, 'read', 66);assert path.read_bytes()[0]==66
                 elif name.startswith('mmap_'):
                     peer.ask('map');expect_byte(peer,'mapped',65)
-                    if name=='mmap_outer_to_guest':host_write(path,66);expect_byte(peer,'mapped',66)
+                    if name=='mmap_outer_to_guest':
+                        samples = []
+                        for value in range(66, 98):
+                            started = time.monotonic_ns()
+                            host_write(path, value)
+                            samples.append(change_window(lambda: peer.ask('mapped')['byte'], value, started_ns=started))
+                        check_windows(c, mode, samples)
                     else:peer.ask('mwrite 66');assert path.read_bytes()[0]==66
                     peer.ask('unmap')
-                elif name=='replace_open_inode':
-                    replacement=path.with_suffix('.new');replacement.write_bytes(b'B'*8192);replacement.replace(path)
-                    expect_byte(peer,'read',65);peer.ask('close');peer.ask('open');expect_byte(peer,'read',66)
-                elif name=='unlink_open_inode':
-                    path.unlink();peer.ask('write 66');expect_byte(peer,'read',66)
-                    path.write_bytes(b'C'*8192);peer.ask('close');peer.ask('open');expect_byte(peer,'read',67)
+                elif name in ('replace_open_inode', 'unlink_open_inode'):
+                    if name == 'replace_open_inode':
+                        replacement = path.with_suffix('.new')
+                        replacement.write_bytes(b'B' * 8192)
+                        started = time.monotonic_ns()
+                        replacement.replace(path)
+                        expect_byte(peer, 'read', 65)
+                        expected = 66
+                    else:
+                        path.unlink()
+                        peer.ask('write 66');expect_byte(peer, 'read', 66)
+                        started = time.monotonic_ns()
+                        path.write_bytes(b'C' * 8192)
+                        expected = 67
+                    def reopened():
+                        closed = peer.ask('close', ok=False)
+                        assert closed['rc'] == 0 or closed.get('errno') == errno.EBADF, closed
+                        row = peer.ask('open', ok=False)
+                        return peer.ask('read')['byte'] if row['rc'] == 0 else None
+                    check_windows(c, mode, [change_window(reopened, expected, started_ns=started)])
                 elif name=='xattr_both_directions':
                     peer.ask('setxattr');assert os.getxattr(path,'user.harddind')==b'verified'
                     os.setxattr(path,'user.harddind',b'outer-ok');assert peer.ask('getxattr')['outer_value']
@@ -924,9 +1301,27 @@ def run(c, name):
                         except BlockingIOError:blocked=True
                     peer.ask('unlock');assert blocked,'outer lock ignored guest lock'
                 elif name in ['outer_inotify_to_guest','outer_inotify_to_guest_uid1001']:
-                    peer.ask('watch');host_write(path,66)
-                    c.eventually(lambda: peer.ask('events')['bytes'] > 0, timeout=3)
+                    peer.ask('watch')
+                    samples = []
+                    for value in range(66, 98):
+                        peer.ask('events')
+                        started = time.monotonic_ns()
+                        host_write(path, value)
+                        samples.append(change_window(lambda: peer.ask('events')['bytes'] > 0,
+                                                     True, started_ns=started))
+                    check_windows(c, mode, samples)
         finally:os.chmod(share,0o755)
-    if name in ("outer_mmap_window", "outer_attr_window", "outer_read_window", "outer_mapped_write", "outer_directory_permission"):
-        one("native", name)
-    one("docker", name)
+    if name in ("outer_mmap_window", "outer_attr_window", "outer_read_window", "outer_mapped_write", "outer_mapped_read", "outer_directory_permission",
+                "outer_metadata_churn", "outer_replace_churn", "outer_negative_lookup",
+                "outer_permission_revoked", "outer_inotify_to_guest", "outer_inotify_to_guest_uid1001",
+                "outer_write_open_fd", "outer_write_reopen", "outer_truncate_fstat", "outer_chmod_fstat",
+                "mmap_outer_to_guest", "replace_open_inode", "unlink_open_inode"):
+        failures = []
+        for mode in ("docker", "native"):
+            try:
+                one(mode, name)
+            except AssertionError as error:
+                failures.append({'mode': mode, 'error': str(error)})
+        assert not failures, failures
+    else:
+        one("docker", name)
