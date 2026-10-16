@@ -13,7 +13,7 @@ class AdaptiveFaultTests(unittest.TestCase):
         compiler = shutil.which('cc')
         if compiler is None:
             self.skipTest('C compiler unavailable')
-        patch = (config.REPO / 'kernel/patches/0040-um-fault-adaptive.patch').read_text()
+        patch = (config.REPO / 'kernel/candidates/fault-adaptive.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         helpers = []

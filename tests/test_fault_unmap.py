@@ -13,7 +13,7 @@ class FaultUnmapTests(unittest.TestCase):
         cc = shutil.which('cc')
         if not cc:
             self.skipTest('C compiler unavailable')
-        patch = (config.REPO / 'kernel/patches/0044-um-fault-unmap.patch').read_text()
+        patch = (config.REPO / 'kernel/candidates/fault-unmap.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith(('+', ' ')) and not line.startswith('+++'))
         start = added.index('int unmap(struct')
