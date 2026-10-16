@@ -269,9 +269,14 @@ def run_suite(kind, a):
             bench.bench_root(artifacts.get('alpine_tar'))
         if kind in ('test', 'ci'):
             with locks.measure(shared=True):
-                summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
-                summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
-            summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
+                test = summary['test'] = {'quiet': runs.wait_quiet()}
+                before = runs.throttle()
+                try:
+                    test.update(with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None))
+                    test['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
+                    test['checks'].append(shutdown_check(test.pop('guest_state'), test.pop('shutdown')))
+                finally:
+                    test['throttled'] = runs.throttle_delta(before, runs.throttle())
         if kind in ('bench', 'ci'):
             with locks.measure():
                 summary['quiet'] = runs.wait_quiet(max_wait=0 if getattr(a, 'quick', False) else None)
@@ -306,19 +311,22 @@ def run_suite(kind, a):
 def backend_selftest(run_dir, artifacts, only):
     """Native tests of the network backend binary (tests/publish); no guest needed."""
     import re
-    check = {'id': 'network_backend_selftest', 'covers': [], 'seconds': 0.0}
+    from pipeline import runs
+    check = {'id': 'network_backend_selftest', 'covers': [], 'seconds': 0.0, 'throttled': None}
     if only and not re.search(only, check['id']):
         return {**check, 'status': 'not_tested'}
     started = time.monotonic()
+    before = runs.throttle()
     env = {**os.environ, 'HARDDIND_NETWORK_BACKEND': str(artifacts['network_backend'])}
     result = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(REPO / 'tests/publish')],
                             cwd=REPO, env=env, capture_output=True, text=True, timeout=900)
     (run_dir / 'network-backend-selftest.log').write_text(result.stdout + result.stderr)
     return {**check, 'status': 'pass' if result.returncode == 0 else 'fail',
+            'throttled': runs.throttle_delta(before, runs.throttle()),
             'seconds': round(time.monotonic() - started, 2), 'detail': (result.stdout + result.stderr)[-800:]}
 
 
-def shutdown_check(state):
+def shutdown_check(state, measurement=None):
     """An orderly guest shutdown is part of the functional gate (daemon state must persist)."""
     problems = [k for k in ('error', 'shutdown_error') if state.get(k)]
     if state.get('forced_shutdown'):
@@ -328,7 +336,7 @@ def shutdown_check(state):
     detail = '; '.join(f'{k}: {state[k]}' if k in state and k != 'forced_shutdown' else k for k in problems)
     return {'id': 'guest.clean_shutdown', 'status': 'fail' if problems else 'pass', 'covers': [],
             'seconds': round(state.get('stopped_at', 0) - state.get('ready_at', 0), 2) if not problems else 0.0,
-            'detail': detail}
+            'detail': detail, **(measurement or {})}
 
 
 def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
@@ -356,7 +364,11 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
             result = bench.run(ctx)
         return result
     finally:
+        started, before = time.monotonic(), runs.throttle()
         state = instance.stop(path)
+        if suite == 'test':
+            result['shutdown'] = {'seconds': round(time.monotonic() - started, 3),
+                                  'throttled': runs.throttle_delta(before, runs.throttle())}
         result['guest_state'] = state
         keep = run_dir / f'instance-{suite}'
         instance.archive_logs(path, keep)

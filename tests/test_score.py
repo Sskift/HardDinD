@@ -59,6 +59,25 @@ class ScoreTests(unittest.TestCase):
         self.assertIn('| key | cpu.single |', text)
         self.assertIn('+50%', text)
 
+    def test_functional_throttle_warning_does_not_change_gate(self):
+        checks = [{'id': 'quiet', 'status': 'pass', 'throttled': .10},
+                  {'id': 'busy', 'status': 'pass', 'throttled': .25},
+                  {'id': 'unknown', 'status': 'pass', 'throttled': None}]
+        test = {'checks': checks, 'quiet': {'quiet': True}, 'throttled': .05}
+        card = score.scorecard({'run_id': 'test', 'test': test})
+        self.assertTrue(card['test']['gate'])
+        self.assertEqual(card['test']['pass'], 3)
+        text = score.markdown(card)
+        self.assertIn('Host was CPU-throttled', text)
+        self.assertIn('functional result is not decision-grade', text)
+        self.assertIn('`busy`: 25.0%', text)
+        self.assertNotIn('`quiet`', text)
+        for quiet, fraction, warning in [(True, .10, False), (True, .101, True), (False, 0, True)]:
+            test.update(checks=checks[:1], quiet={'quiet': quiet}, throttled=fraction)
+            card = score.scorecard({'run_id': 'test', 'test': test})
+            self.assertEqual('Host was CPU-throttled' in score.markdown(card), warning)
+            self.assertTrue(card['test']['gate'])
+
     def test_ab_throughput_duration_reference_and_missing_pairs(self):
         metrics = {'cpu.single': metric([100, 200, 300], [50, 100, 150], guest_b=[100, 150, 300]),
                    'app.compile': metric([1, 2], [4, 8], higher=False, guest_b=[2, 4]),

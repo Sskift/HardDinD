@@ -42,6 +42,12 @@ def throttled_fraction(seconds=20):
     return (b[1] - a[1]) / (b[0] - a[0])
 
 
+def throttle_delta(before, after):
+    if not before or not after or after[0] <= before[0] or after[1] < before[1]:
+        return None
+    return (after[1] - before[1]) / (after[0] - before[0])
+
+
 def wait_quiet(limit=0.10, max_wait=None, log=print):
     """Wait until the outer container is rarely throttled; returns what was observed.
 

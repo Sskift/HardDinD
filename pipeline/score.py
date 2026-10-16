@@ -109,7 +109,10 @@ def score_test(test):
     counts = {'pass': 0, 'fail': 0, 'not_tested': 0}
     for check in checks:
         counts[check['status'] if check['status'] in counts else 'fail'] += 1
-    return {'checks': len(checks), **counts, 'gate': bool(checks) and counts['pass'] == len(checks)}
+    return {'checks': len(checks), **counts, 'gate': bool(checks) and counts['pass'] == len(checks),
+            'quiet': (test or {}).get('quiet'), 'throttled': (test or {}).get('throttled'),
+            'throttled_checks': [{'id': c['id'], 'throttled': c['throttled']} for c in checks
+                                 if c.get('throttled') is not None and c['throttled'] > .10]}
 
 
 def scorecard(summary):
@@ -157,8 +160,16 @@ def markdown(card, previous=None):
     lines.append('')
     if 'test' in card:
         t = card['test']
+        quiet = t.get('quiet')
+        if (quiet and not quiet.get('quiet')) or (t.get('throttled') or 0) > .10 or t['throttled_checks']:
+            observed = f"{t['throttled']:.1%}" if t.get('throttled') is not None else 'unknown'
+            lines += [f'**Host was CPU-throttled** (functional quota periods throttled: {observed}; '
+                      f"pre-boot: {quiet}); functional result is not decision-grade.", '']
         lines += [f"**Functional**: {t['pass']}/{t['checks']} pass, {t['fail']} fail, {t['not_tested']} not tested "
                   f"→ {'PASS' if t['gate'] else 'FAIL'}", '']
+        if t['throttled_checks']:
+            lines += ['Checks throttled in more than 10% of quota periods:', '',
+                      *[f"- `{c['id']}`: {c['throttled']:.1%}" for c in t['throttled_checks']], '']
     if 'bench' in card:
         prev = {r['metric']: r for r in (previous or {}).get('bench', [])}
         summary = ', '.join(f"{tier} {v['pass']}/{v['total']}" for tier, v in card['tiers'].items())
