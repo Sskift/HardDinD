@@ -93,6 +93,15 @@ bench A/B 位于 `instance-bench-A`/`instance-bench-B`，各自的基准日志�
 
 Starpub 与其他租户共用 72 核，负载常在 40–60，高峰超过 100。外层容器还有 36 核的 CPU 配额（`cpu.max`），容器内总负载超过 36 时，每个 100 ms 周期都可能被限流；guest 靠多个宿主线程相互交接，受限流的影响远大于单个原生进程。每个样本记录了 `throttled`（采样期间被限流的配额周期比例），超过 10% 的指标在评分表中标为 `~noisy`。非 quick 的 bench 在拿到测量锁后先等外层容器安静下来（20 秒内被限流的配额周期不超过 10%），最多等 `HD_QUIET_WAIT` 秒（默认 45 分钟）；等不到就照常测，评分表顶部标明该次性能数据不可用于决策。性能运行持有 `measure` 排它锁，与其他测试、构建不并行；仍应关注评分表里的成对范围，范围很宽时重测，不要据此下结论。
 
+PSI additionally gates every 20-second quiet window: `some avg10` must stay below
+20% CPU, 10% IO and 2% memory. Reads prefer the container's own
+`/sys/fs/cgroup/{cpu,io,memory}.pressure`, falling back per resource to
+`/proc/pressure/*`. Quiet windows and benchmark samples record `psi`, the peak
+percentages observed at both endpoints and once per second. Missing PSI cannot
+prove quiet. A sample reaching a PSI limit is marked `~noisy`, independently for
+A and B; native pressure does not mark B/A noisy. These are noise gates, not
+acceptance thresholds. The functional pre-boot wait uses the same PSI gate.
+
 ## 并行开发
 
 `test` 和 `ci` 的功能阶段同样在启动 guest 前调用上述安静等待（相同 10% 门槛、`HD_QUIET_WAIT` 和默认 45 分钟上限）。等待失败、功能阶段或任一检查的限流比例超过 10% 时，评分表标明功能结果不可用于决策，并列出受限流的检查；通过、失败、未测的计数不变。
