@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 
-from suites.functional.shared_files import EXCLUSIVE_CREATE, LOOKUP_RACER, METADATA_BATCH, metadata_profile
+from suites.functional.shared_files import EXCLUSIVE_CREATE, TREE_PROBE, METADATA_BATCH, metadata_profile
 
 
 class MetadataProfile(unittest.TestCase):
@@ -90,30 +90,33 @@ class MetadataProfile(unittest.TestCase):
 
 
 class LookupRace(unittest.TestCase):
-    @unittest.skipUnless(shutil.which('cc'), 'C compiler unavailable')
-    def test_first_access_and_missing_result(self):
+    @unittest.skipUnless(sys.platform == 'linux' and shutil.which('gcc'), 'Linux inotify ABI')
+    def test_concurrent_lookup_then_timestamped_result(self):
+        import time
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
             source, binary, target = root / 'race.c', root / 'race', root / 'target'
-            source.write_text(LOOKUP_RACER)
-            flags = ['-static'] if sys.platform == 'linux' else []
-            subprocess.run(['cc', '-O2', '-Wall', '-Wextra', '-Werror', *flags,
-                            str(source), '-o', str(binary)], check=True, capture_output=True)
+            source.write_text(TREE_PROBE)
+            subprocess.run(['gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                            source, '-o', binary], check=True, capture_output=True)
             for present in (True, False):
                 target.unlink(missing_ok=True)
-                with subprocess.Popen([str(binary), str(target), '10'], stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-                    self.assertEqual(process.stdout.read(1), b'R')
+                with subprocess.Popen([str(binary), str(root)], stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE, text=True) as process:
+                    self.assertTrue(json.loads(process.stdout.readline())['ready'])
+                    process.stdin.write('race target\n');process.stdin.flush()
+                    self.assertEqual(json.loads(process.stdout.readline())['rc'], 0)
                     for _ in range(32):
-                        target.write_bytes(b'old')
-                        target.unlink()
+                        target.write_bytes(b'old');target.unlink()
                     if present:
                         target.write_bytes(b'x' * 8192)
-                    output, _ = process.communicate(b'S', timeout=5)
-                    row = json.loads(output)
-                    self.assertEqual(process.returncode, 0 if present else 10)
-                    self.assertEqual(row['visible'], present)
-                    self.assertEqual(row['first_access'], present)
+                    deadline = time.time_ns() + 10_000_000
+                    output, _ = process.communicate(f'poll {deadline} 9 0 0 0 8192 0 0 0 0|stat target\nquit\n', timeout=5)
+                    rows = [json.loads(line) for line in output.splitlines()]
+                    self.assertEqual(process.returncode, 0)
+                    self.assertTrue(rows[-1]['last'])
+                    self.assertEqual(rows[-1]['value'][3] == 8192, present)
+                    self.assertLessEqual(rows[0]['start_ns'], rows[-1]['end_ns'])
 
 
 class ExclusiveCreate(unittest.TestCase):

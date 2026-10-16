@@ -346,90 +346,25 @@ def read_buffer(c, share):
         c.write('read_buffer: ' + json.dumps({'mode': mode, 'rows': read_buffer_results(output)}, sort_keys=True))
 
 
-LOOKUP_RACER = r'''
-#define _DEFAULT_SOURCE
-#include <errno.h>
-#include <poll.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
-static double seconds(void) {
-    struct timespec t;
-    if (clock_gettime(CLOCK_MONOTONIC, &t)) exit(2);
-    return t.tv_sec + t.tv_nsec * 1e-9;
-}
-int main(int argc, char **argv) {
-    if (argc != 3) return 3;
-    long timeout_ms = strtol(argv[2], NULL, 10);
-    if (timeout_ms <= 0 || timeout_ms > 3000) return 4;
-    struct stat st;
-    struct pollfd control = {0, POLLIN, 0};
-    if (write(1, "R", 1) != 1) return 5;
-    for (;;) {
-        int ready = poll(&control, 1, 0);
-        if (ready < 0) return 6;
-        if (ready) {
-            char command;
-            if (read(0, &command, 1) != 1 || command != 'S') return 7;
-            break;
-        }
-        if (stat(argv[1], &st) && errno != ENOENT) return 8;
-    }
-    double start = seconds();
-    unsigned stale = 0;
-    bool visible = false;
-    do {
-        int rc = stat(argv[1], &st);
-        if (rc && errno != ENOENT) return 9;
-        if (!rc && st.st_size == 8192) { visible = true; break; }
-        stale++;
-    } while ((seconds() - start) * 1000 < timeout_ms);
-    printf("{\"first_access\":%s,\"visible\":%s,\"stale_reads\":%u,\"probe_ms\":%.6f}\n",
-           !stale && visible ? "true" : "false", visible ? "true" : "false",
-           stale, (seconds() - start) * 1000);
-    return visible ? 0 : 10;
-}
-'''
-
-
 def lookup_race(c, share):
-    import select
     import shutil
-    binary = build_probe(c, 'lookup-racer', LOOKUP_RACER)
-    shutil.copy2(binary, share / 'lookup-racer')
+    binary = build_probe(c, 'tree-probe', TREE_PROBE)
+    shutil.copy2(binary, share / 'tree-probe')
     for mode in ('native', 'docker'):
-        path = share / ('race-' + mode)
+        directory = share / mode
+        directory.mkdir()
+        path = directory / 'race'
         samples = []
-        for repeat in range(8):
-            if mode == 'native':
-                process = c.spawn(command=[str(binary), str(path), '50'])
-            else:
-                name = c.object('container', 'lookup-race-' + str(repeat))
-                process = c.spawn('run', '--rm', '-i', '--name', name, '--label', c.label,
-                                  '--mount', f'type=bind,src={share},dst=/share',
-                                  'hd-functional:local', '/share/lookup-racer',
-                                  '/share/' + path.name, '50')
-            assert select.select([process.stdout], [], [], c.remaining(20))[0], 'racer startup timeout'
-            assert os.read(process.stdout.fileno(), 1) == b'R', 'racer exited before ready'
-            for _ in range(512):
-                path.write_bytes(b'old')
+        with TreePeer(c, mode, directory, binary) as peer:
+            for _ in range(8):
+                peer.ask('race race')
+                for _ in range(512):
+                    path.write_bytes(b'old')
+                    path.unlink()
+                started = time.time_ns()
+                path.write_bytes(b'new-data' * 1024)
+                samples.append(peer.window('stat race', {'rc': 0, 'size': 8192}, started))
                 path.unlink()
-            started = time.monotonic_ns()
-            path.write_bytes(b'new-data' * 1024)
-            process.stdin.write(b'S')
-            process.stdin.flush()
-            assert select.select([process.stdout], [], [], c.remaining(20))[0], 'racer reply timeout'
-            row = json.loads(process.stdout.readline())
-            row.update(mode=mode, repeat=repeat, origin='outer_change_start', visible_by_ms=(time.monotonic_ns() - started) / 1e6)
-            c.write('lookup_race: ' + json.dumps(row, sort_keys=True))
-            assert process.wait(timeout=c.remaining(5)) == 0 and row['visible'], row
-            samples.append(row)
-            process.stdin.close()
-            process.stdout.close()
-            path.unlink()
         check_windows(c, mode, samples)
 
 
@@ -501,6 +436,232 @@ def exclusive_create(c, share):
         assert not list(directory.iterdir()), mode
 
 
+WINDOW_PROBE = r'''
+#include <dirent.h>
+#include <stdint.h>
+#include <time.h>
+#include <poll.h>
+#include <sys/inotify.h>
+static long long realtime_ns(void) {
+    struct timespec t;
+    if (clock_gettime(CLOCK_REALTIME, &t)) exit(90);
+    return (long long)t.tv_sec * 1000000000 + t.tv_nsec;
+}
+/* Fixed numeric fields keep the protocol independent of a JSON parser. */
+static int window_command(char *line, const char *path, int *held,
+                          unsigned char *map, size_t map_size, int notify, int tree) {
+    if (!strcmp(line, "clock\n")) {
+        long long start = realtime_ns(), end = realtime_ns();
+        printf("{\"rc\":0,\"start_ns\":%lld,\"end_ns\":%lld}\n", start, end);
+        return 1;
+    }
+    if (!strncmp(line, "race ", 5)) {
+        char name[256]; struct stat st;
+        if (sscanf(line + 5, "%255s", name) != 1) exit(94);
+        puts("{\"rc\":0}");
+        struct pollfd input = {0, POLLIN, 0};
+        while (poll(&input, 1, 0) == 0) {
+            if (stat(name, &st) && errno != ENOENT) exit(95);
+        }
+        return 1;
+    }
+    if (strncmp(line, "poll ", 5)) return 0;
+    long long deadline, expected[8]; unsigned mask;
+    char *command = strchr(line, '|'), op[32], arg[256] = ".";
+    if (!command || sscanf(line, "poll %lld %u %lld %lld %lld %lld %lld %lld %lld %lld",
+        &deadline, &mask, &expected[0], &expected[1], &expected[2], &expected[3],
+        &expected[4], &expected[5], &expected[6], &expected[7]) != 10) exit(91);
+    if (sscanf(command + 1, "%31s %255s", op, arg) < 1) exit(92);
+    unsigned count = 0; int matched = 0;
+    do {
+        struct sample { long long start, end, value[8]; } row = {0}, *r = &row;
+        count++;
+        r->start = realtime_ns();
+        struct stat st; int fd = *held, temporary = 0, rc = 0, error = 0;
+        const char *name = tree ? arg : path;
+        if (!strcmp(op, "mapped")) {
+            size_t offset = tree ? strtoull(arg, NULL, 10) : 0;
+            if (map == MAP_FAILED || offset >= map_size) { rc = -1; error = EINVAL; }
+            else r->value[2] = *(volatile unsigned char *)(map + offset);
+        } else if (!strcmp(op, "event")) {
+            static char pending[65536]; static size_t used;
+            char *slash = strchr(arg, '/');
+            if (!slash) exit(96);
+            unsigned wanted = (unsigned)strtoul(arg, NULL, 10);
+            ssize_t n = read(notify, pending + used, sizeof(pending) - used);
+            if (n > 0) used += n;
+            else if (n < 0 && errno != EAGAIN) { rc = -1; error = errno; }
+            size_t pos = 0;
+            while (used - pos >= sizeof(struct inotify_event)) {
+                struct inotify_event *e = (void *)(pending + pos);
+                size_t len = sizeof(*e) + e->len;
+                if (len > used - pos || e->mask & IN_Q_OVERFLOW) exit(97);
+                if ((e->mask & wanted) && e->len && !strcmp(e->name, slash + 1)) {
+                    r->value[6] = e->cookie; r->value[7] = 1;
+                    memmove(pending + pos, pending + pos + len, used - pos - len);
+                    used -= len; break;
+                }
+                pos += len;
+            }
+        } else if (!strcmp(op, "events")) {
+            char data[4096]; ssize_t n = read(notify, data, sizeof(data));
+            if (n < 0 && errno != EAGAIN) { rc = -1; error = errno; }
+            r->value[7] = n > 0;
+        } else if (!strcmp(op, "list")) {
+            struct dirent **entries;
+            int n = scandir(name, &entries, NULL, alphasort);
+            if (n < 0) { rc = -1; error = errno; }
+            else {
+                uint64_t hash = 0;
+                for (int i = 0; i < n; i++) {
+                    const unsigned char *s = (void *)entries[i]->d_name;
+                    if (strcmp((void *)s, ".") && strcmp((void *)s, "..")) {
+                        do { hash = (hash * 131 + *s) & INT64_MAX; } while (*s++);
+                    }
+                    free(entries[i]);
+                }
+                free(entries); r->value[7] = (long long)hash;
+            }
+        } else {
+            if (!strcmp(op, "reopen") || !strcmp(op, "open") || !strcmp(op, "reopened")) {
+                if (strcmp(op, "reopen") && *held >= 0) { close(*held); *held = -1; }
+                fd = open(name, O_RDWR | O_CLOEXEC);
+                if (!strcmp(op, "reopen")) temporary = 1;
+                else *held = fd;
+                if (fd < 0) { rc = -1; error = errno; }
+            } else if (tree && !strcmp(op, "read")) {
+                fd = open(name, O_RDONLY | O_CLOEXEC); temporary = 1;
+                if (fd < 0) { rc = -1; error = errno; }
+            }
+            if (!rc) {
+                rc = tree && !strcmp(op, "stat") ? stat(name, &st) : fstat(fd, &st);
+                if (rc) error = errno;
+                else {
+                    r->value[3] = st.st_size; r->value[4] = st.st_mode & 07777;
+                    r->value[5] = (long long)st.st_mtim.tv_sec * 1000000000 + st.st_mtim.tv_nsec;
+                    if (!strcmp(op, "read") || !strcmp(op, "held") || !strcmp(op, "held-found") || !strcmp(op, "reopened")) {
+                        unsigned char byte;
+                        if (pread(fd, &byte, 1, 0) != 1) { rc = -1; error = errno ? errno : EIO; }
+                        else r->value[2] = byte;
+                    }
+                }
+            }
+            if (temporary && fd >= 0) close(fd);
+            if (!strcmp(op, "held-found")) r->value[6] = stat(arg, &st);
+        }
+        r->value[0] = rc; r->value[1] = error;
+        r->end = realtime_ns();
+        matched = 1;
+        for (int i = 0; i < 8; i++) if ((mask & (1u << i)) && expected[i] != r->value[i]) matched = 0;
+        int last = matched || r->end >= deadline || count == 10001;
+        printf("{\"start_ns\":%lld,\"end_ns\":%lld,\"value\":[", r->start, r->end);
+        for (int j = 0; j < 8; j++) printf("%s%lld", j ? "," : "", r->value[j]);
+        printf("],\"last\":%s}\n", last ? "true" : "false");
+        if (last) break;
+        struct timespec pause = {0, 100000};
+        nanosleep(&pause, NULL);
+    } while (count < 10001);
+    return 1;
+}
+'''
+
+WINDOW_FIELDS = ('rc', 'errno', 'byte', 'size', 'mode', 'mtime_ns', 'found_rc', 'names')
+
+
+def clock_offset(samples):
+    """NTP midpoint estimate from the least delayed exchange."""
+    assert samples, 'missing clock exchanges'
+    for a, b, g, h in samples:
+        assert all(isinstance(v, int) and not isinstance(v, bool) for v in (a, b, g, h))
+        assert a <= b and g <= h and b - a >= h - g, 'invalid clock exchange'
+    a, b, g, h = min(samples, key=lambda s: s[1] - s[0] - (s[3] - s[2]))
+    offset = ((g - a) + (h - b)) // 2
+    result = {'offset_ns': offset, 'rtt_ns': b - a - (h - g), 'samples': samples}
+    assert abs(offset) <= 500_000, result
+    return result
+
+
+class WindowPeer(ProbePeer):
+    def __init__(self, c, mode, path, uid=None, readonly=False):
+        import pathlib
+        import shutil
+        code = (pathlib.Path(__file__).parent / 'helpers/share_probe.c').read_text()
+        code = code.replace('int main(int argc, char **argv) {', WINDOW_PROBE + '\nint main(int argc, char **argv) {')
+        code = code.replace('char line[256], op[32];', 'char line[1024], op[32];')
+        marker = 'while (fgets(line, sizeof(line), stdin)) {'
+        code = code.replace(marker, marker + '\n        if (window_command(line, path, &fd, map, 4096, notify, 0)) continue;')
+        binary = build_probe(c, 'window-peer', code)
+        if not (path.parent / 'window-peer').exists():
+            shutil.copy2(binary, path.parent / 'window-peer')
+        self.c, self.mode = c, mode
+        self.buffer, self.closed, self.expected_kill = b'', False, False
+        c.serial += 1
+        self.name = c.object('container', 'window-' + str(c.serial)) if mode == 'docker' else 'native-window'
+        if mode == 'native':
+            self.proc = c.spawn(command=[str(binary), path.name, *([str(uid)] if uid is not None else [])], cwd=path.parent)
+        else:
+            self.proc = c.spawn('run', '--rm', '-i', '--name', self.name, '--label', c.label,
+                *(['--user', f'{uid}:{uid}'] if uid is not None else []),
+                '--mount', f'type=bind,src={path.parent},dst=/share' + (',readonly' if readonly else ''),
+                'hd-functional:local', '/share/window-peer', '/share/' + path.name)
+        try:
+            assert self.receive().get('ready'), 'window probe startup failed'
+            self.calibrate()
+        except BaseException:
+            self.close()
+            raise
+
+    def calibrate(self):
+        samples = []
+        for _ in range(9):
+            a = time.time_ns()
+            self.send('clock')
+            row = self.receive()
+            b = time.time_ns()
+            samples.append((a, b, row['start_ns'], row['end_ns']))
+        self.offset = clock_offset(samples)['offset_ns']
+        self.c.write('coherence_clock: ' + json.dumps({'mode': self.mode, **clock_offset(samples)}))
+
+    def window(self, command, expected, started_ns, ended_ns=None):
+        ended_ns = time.time_ns() if ended_ns is None else ended_ns
+        deadline = ended_ns + 1_000_000_000
+        self.begin_window(command, expected, deadline)
+        return self.finish_window(started_ns, ended_ns, deadline)
+
+    def begin_window(self, command, expected, deadline):
+        self.window_mask = sum(1 << WINDOW_FIELDS.index(k) for k in expected)
+        self.window_values = [expected.get(k, 0) for k in WINDOW_FIELDS]
+        self.send(f'poll {deadline + self.offset} {self.window_mask} ' +
+                  ' '.join(map(str, self.window_values)) + '|' + command)
+
+    def finish_window(self, started_ns, ended_ns, deadline, initial=()):
+        rows = list(initial)
+        while True:
+            left = (deadline - time.time_ns()) / 1e9
+            try:
+                assert left > 0, 'host 1s deadline'
+                row = self.receive(timeout=left)
+            except (TimeoutError, AssertionError) as error:
+                raise AssertionError({'deadline': 'host 1s', 'reads': len(rows),
+                    'last_read': rows[-1] if rows else None,
+                    'staleness_ms': max(0, rows[-1]['start_ns'] - self.offset - ended_ns) / 1e6 if rows else None,
+                    'error': str(error)}) from error
+            rows.append(row)
+            if row['last']:
+                break
+        result = change_window(rows, self.window_values, self.window_mask, started_ns, ended_ns, self.offset)
+        self.c.write('coherence_sample: ' + json.dumps({'mode': self.mode, **result}, sort_keys=True))
+        return result
+
+
+def name_hash(names):
+    result = 0
+    for name in sorted(names):
+        for byte in os.fsencode(name) + b'\0':
+            result = (result * 131 + byte) & ((1 << 63) - 1)
+    return result
+
+
 def expect_metadata(row, size, mode):
     assert row.get('rc') == 0 and (row.get('size'), row.get('mode')) == (size, mode), row
 
@@ -511,56 +672,54 @@ def metadata_churn(peer, path, rounds=32):
     for i in range(rounds):
         size, mode = 4096 + i, (0o640 if i % 2 else 0o600)
         peer.ask('stat')
-        started = time.monotonic_ns()
+        started = time.time_ns()
         os.truncate(path, size)
         os.chmod(path, mode)
-        def read():
-            row = peer.ask('stat')
-            return row['size'], row['mode']
-        samples.append(change_window(read, (size, mode), started_ns=started))
+        ended = time.time_ns()
+        samples.append(peer.window('stat', {'rc': 0, 'size': size, 'mode': mode}, started, ended))
     return samples
 
 
-def change_window(read, expected, clock=time.monotonic_ns, timeout_ns=50_000_000, started_ns=None):
-    """Upper bound from outer change start through the successful observation."""
-    started, stale, last_stale = clock() if started_ns is None else started_ns, 0, 0
-    while True:
-        before = clock() - started
-        value = read()
-        elapsed = clock() - started
-        if elapsed > timeout_ns:
-            raise AssertionError({'expected': expected, 'actual': value,
-                                  'stale_reads': stale, 'elapsed_ms': elapsed / 1e6})
-        if value == expected:
-            return {'first_access': stale == 0, 'stale_reads': stale,
-                    'origin': 'outer_change_start' if started_ns is not None else 'first_read_start',
-                    'last_stale_ms': last_stale / 1e6, 'visible_by_ms': elapsed / 1e6}
-        stale += 1
-        last_stale = before
-        if elapsed >= timeout_ns:
-            raise AssertionError({'expected': expected, 'actual': value,
-                                  'stale_reads': stale, 'elapsed_ms': elapsed / 1e6})
+def change_window(reads, expected, mask, started_ns, ended_ns, offset_ns=0):
+    """Score stale observations in the peer clock, excluding channel latency."""
+    assert started_ns <= ended_ns and reads, 'missing change or observations'
+    stale, last_stale, previous, fresh = 0, 0, None, False
+    for row in reads:
+        start, end, value = row['start_ns'] - offset_ns, row['end_ns'] - offset_ns, row['value']
+        assert start <= end and (previous is None or previous <= start), row
+        assert len(value) == len(expected), row
+        assert not fresh, 'peer kept reading after a fresh observation'
+        previous = end
+        fresh = all(not mask & (1 << i) or v == expected[i] for i, v in enumerate(value))
+        if not fresh:
+            stale += 1
+            last_stale = max(0, start - ended_ns)
+    result = {'origin': 'outer_change_end', 'change_start_ns': started_ns, 'change_end_ns': ended_ns,
+              'first_access': stale == 0, 'stale_reads': stale, 'staleness_ms': last_stale / 1e6,
+              'fresh': fresh, 'last_read': reads[-1], 'offset_ns': offset_ns}
+    assert fresh and last_stale <= 50_000_000 and previous <= ended_ns + 1_000_000_000, result
+    return result
 
 
 def window_summary(samples):
     assert samples, 'missing coherence samples'
-    assert all(row.get('origin') == 'outer_change_start'
+    assert all(row.get('origin') == 'outer_change_end' and row.get('fresh') is True
                and isinstance(row.get('first_access'), bool) for row in samples), samples
-    windows = sorted(row['visible_by_ms'] for row in samples)
+    windows = sorted(row['staleness_ms'] for row in samples)
     assert all(isinstance(v, (int, float)) and not isinstance(v, bool)
                and math.isfinite(v) and v >= 0 for v in windows), windows
-    return {'origin': 'outer_change_start', 'rounds': len(samples),
+    return {'origin': 'outer_change_end', 'rounds': len(samples),
             'first_access_misses': sum(not row['first_access'] for row in samples),
-            'samples_ms': [row['visible_by_ms'] for row in samples],
-            'p50_visible_by_ms': windows[(len(windows) - 1) // 2],
-            'p95_visible_by_ms': windows[(95 * len(windows) + 99) // 100 - 1],
-            'max_visible_by_ms': windows[-1]}
+            'samples_ms': [row['staleness_ms'] for row in samples],
+            'p50_staleness_ms': windows[(len(windows) - 1) // 2],
+            'p95_staleness_ms': windows[(95 * len(windows) + 99) // 100 - 1],
+            'max_staleness_ms': windows[-1]}
 
 
 def check_windows(c, mode, samples):
     result = dict(mode=mode, **window_summary(samples))
     c.write('coherence_window: ' + json.dumps(result, sort_keys=True))
-    assert result['p95_visible_by_ms'] <= 10 and result['max_visible_by_ms'] <= 50, result
+    assert result['p95_staleness_ms'] <= 10 and result['max_staleness_ms'] <= 50, result
     return result
 
 
@@ -581,32 +740,6 @@ def notification_probe():
     return result
 
 
-MMAP_WAITER = r'''
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
-int main(int argc, char **argv) {
-    if (argc != 2) return 2;
-    int fd = open(argv[1], O_RDONLY);
-    if (fd < 0) return 3;
-    volatile unsigned char *map = mmap(0, 4096, PROT_READ, MAP_SHARED, fd, 0);
-    if (map == MAP_FAILED || *map != 65) return 4;
-    unsigned char ready = 65;
-    if (write(1, &ready, 1) != 1) return 5;
-    for (unsigned char value = 66; value < 98; value++) {
-        alarm(3);
-        while (*map != value) {}
-        if (write(1, &value, 1) != 1) return 6;
-    }
-    alarm(0);
-    munmap((void *)map, 4096);
-    close(fd);
-    return 0;
-}
-'''
-
-
-
 def build_probe(c, name, code):
     from pipeline import build
     flags = ['-static', '-O2', '-Wall', '-Wextra', '-Werror']
@@ -620,69 +753,24 @@ def build_probe(c, name, code):
     return build.artifact(kind, key, compile_probe) / 'waiter'
 
 def mmap_delivery(c, share):
-    """A guest already polling mmap: no post-write request to hide stale time."""
-    import select
-    import shutil
-    import subprocess
-    binary = build_probe(c, 'mmap-waiter', MMAP_WAITER)
-    shutil.copy2(binary, share / 'waiter')
+    """Begin guest polling before the outer write."""
     for mode in ('native', 'docker'):
         path = share / ('data-' + mode)
-        path.write_bytes(b'A' * 4096)
-        if mode == 'native':
-            process = c.spawn(command=[str(binary), str(path)], stdin=subprocess.DEVNULL)
-        else:
-            name = c.object('container', 'mmap-latency')
-            process = c.spawn('run', '--rm', '--name', name, '--label', c.label,
-                              '--mount', f'type=bind,src={share},dst=/share',
-                              'hd-functional:local', '/share/waiter', '/share/' + path.name,
-                              stdin=subprocess.DEVNULL)
-        def receive(expected):
-            assert select.select([process.stdout], [], [], c.remaining(20))[0], 'waiter timeout'
-            actual = os.read(process.stdout.fileno(), 1)
-            assert actual == bytes([expected]), (mode, expected, actual, process.poll())
-        receive(65)
-        samples = []
-        with path.open('r+b', buffering=0) as outer:
+        path.write_bytes(b'A' * 8192)
+        with WindowPeer(c, mode, path) as peer, path.open('r+b', buffering=0) as outer:
+            peer.ask('open');peer.ask('map')
+            samples = []
             for value in range(66, 98):
-                written = time.monotonic_ns()
+                deadline = time.time_ns() + 1_000_000_000
+                peer.begin_window('mapped', {'rc': 0, 'byte': value}, deadline)
+                armed = peer.receive(timeout=1)
+                assert not armed['last'] and armed['value'][2] == value - 1, armed
+                started = time.time_ns()
                 os.pwrite(outer.fileno(), bytes([value]), 0)
-                receive(value)
-                samples.append((time.monotonic_ns() - written) / 1e6)
-        assert process.wait(timeout=c.remaining(5)) == 0, process.returncode
-        check_windows(c, mode, [{'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': sample} for sample in samples])
-
-
-INOTIFY_WAITER = r'''
-#define _GNU_SOURCE
-#include <grp.h>
-#include <poll.h>
-#include <sys/inotify.h>
-#include <unistd.h>
-int main(int argc, char **argv) {
-    if (argc != 2) return 2;
-    if (geteuid() == 0 && (setgroups(0, 0) || setgid(1001) || setuid(1001))) return 3;
-    int fd = inotify_init1(IN_CLOEXEC);
-    if (fd < 0 || inotify_add_watch(fd, argv[1], IN_CREATE | IN_DELETE | IN_ATTRIB |
-                                   IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO) < 0) return 4;
-    if (write(1, "R", 1) != 1) return 5;
-    struct pollfd fds[2] = {{fd, POLLIN, 0}, {0, POLLIN, 0}};
-    for (;;) {
-        if (poll(fds, 2, 20000) <= 0) return 6;
-        if (fds[1].revents) return 0;
-        if (fds[0].revents) {
-            char buffer[4096];
-            ssize_t count = read(fd, buffer, sizeof(buffer));
-            if (count <= 0) return 7;
-            for (ssize_t sent = 0; sent < count;) {
-                ssize_t n = write(1, buffer + sent, count - sent);
-                if (n <= 0) return 8;
-                sent += n;
-            }
-        }
-    }
-}
-'''
+                ended = time.time_ns()
+                samples.append(peer.finish_window(started, ended, ended + 1_000_000_000, [armed]))
+            peer.ask('unmap')
+        check_windows(c, mode, samples)
 
 
 def inotify_records(data):
@@ -703,68 +791,47 @@ def inotify_records(data):
 
 
 def directory_events(c, share):
-    import select
     import shutil
-    binary = build_probe(c, 'inotify-waiter', INOTIFY_WAITER)
-    shutil.copy2(binary, share / 'waiter')
+    binary = build_probe(c, 'tree-probe', TREE_PROBE)
+    shutil.copy2(binary, share / 'tree-probe')
     for mode in ('native', 'docker'):
         directory = share / mode
         directory.mkdir(mode=0o755)
-        if mode == 'native':
-            process = c.spawn(command=[str(binary), directory.name], cwd=share)
-        else:
-            name = c.object('container', 'directory-events')
-            process = c.spawn('run', '--rm', '-i', '--name', name, '--label', c.label,
-                              '--user', '1001:1001', '--mount', f'type=bind,src={share},dst=/share',
-                              'hd-functional:local', '/share/waiter', '/share/docker')
-        assert select.select([process.stdout], [], [], c.remaining(20))[0], 'watcher startup timeout'
-        assert os.read(process.stdout.fileno(), 1) == b'R', 'watcher failed'
-        pending, observed = b'', []
-        def await_event(mask, filename, after=0):
-            nonlocal pending
-            end = time.monotonic() + c.remaining(.05)
-            while True:
-                for row in observed[after:]:
-                    if row['mask'] & mask and row['name'] == filename:
-                        return row
-                left = end - time.monotonic()
-                assert left > 0 and select.select([process.stdout], [], [], left)[0], (mode, mask, filename, observed)
-                chunk = os.read(process.stdout.fileno(), 4096)
-                assert chunk, ('watcher exited', process.poll())
-                rows, pending = inotify_records(pending + chunk)
-                observed.extend(rows)
-                c.write('directory_events: ' + json.dumps({'mode': mode, 'events': rows}, sort_keys=True))
-                assert all(not row['mask'] & 0x4000 for row in rows), 'inotify overflow'
         samples = []
-        for i in range(8):
-            original, renamed = directory / ('original-' + str(i)), directory / ('renamed-' + str(i))
-            started = time.monotonic_ns()
-            original.write_bytes(b'content')
-            await_event(0x100, original.name);await_event(0x2, original.name)
-            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
-            cursor = len(observed)
-            started = time.monotonic_ns()
-            os.chmod(original, 0o640)
-            await_event(0x4, original.name, cursor)
-            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
-            cursor = len(observed)
-            started = time.monotonic_ns()
-            original.rename(renamed)
-            moved_from = await_event(0x40, original.name, cursor)
-            moved_to = await_event(0x80, renamed.name, cursor)
-            assert moved_from['cookie'] != 0 and moved_from['cookie'] == moved_to['cookie'], observed
-            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
-            cursor = len(observed)
-            started = time.monotonic_ns()
-            renamed.unlink();await_event(0x200, renamed.name, cursor)
-            samples.append({'origin': 'outer_change_start', 'first_access': True, 'visible_by_ms': (time.monotonic_ns() - started) / 1e6})
+        with TreePeer(c, mode, directory, binary, uid=1001) as peer:
+            peer.ask('watch .')
+            def event(mask, name, started, ended):
+                row = peer.window(f'event {mask}/{name}', {'rc': 0, 'names': 1}, started, ended)
+                samples.append(row)
+                return row['last_read']['value'][6]
+            for i in range(8):
+                original, renamed = directory / ('original-' + str(i)), directory / ('renamed-' + str(i))
+                started = time.time_ns()
+                original.write_bytes(b'content')
+                ended = time.time_ns()
+                event(0x100, original.name, started, ended)
+                event(0x2, original.name, started, ended)
+                started = time.time_ns()
+                os.chmod(original, 0o640)
+                ended = time.time_ns()
+                event(0x4, original.name, started, ended)
+                started = time.time_ns()
+                original.rename(renamed)
+                ended = time.time_ns()
+                moved_from = event(0x40, original.name, started, ended)
+                moved_to = event(0x80, renamed.name, started, ended)
+                assert moved_from and moved_from == moved_to, (moved_from, moved_to)
+                started = time.time_ns()
+                renamed.unlink()
+                ended = time.time_ns()
+                event(0x200, renamed.name, started, ended)
         check_windows(c, mode, samples)
-        process.stdin.write(b'q');process.stdin.flush()
-        assert process.wait(timeout=c.remaining(5)) == 0, process.returncode
 
 
 TREE_PROBE = r'''
 #define _GNU_SOURCE
+#include <grp.h>
+#include <sys/inotify.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -777,17 +844,26 @@ TREE_PROBE = r'''
 #include <sys/stat.h>
 #include <unistd.h>
 int main(int argc, char **argv) {
-    if (argc != 2 || chdir(argv[1])) return 2;
+    if ((argc != 2 && argc != 3) || chdir(argv[1])) return 2;
+    if (argc == 3) {
+        unsigned uid = strtoul(argv[2], NULL, 10);
+        if (setgroups(0, NULL) || setgid(uid) || setuid(uid)) return 13;
+    }
     setbuf(stdout, NULL);
     puts("{\"ready\":true}");
     char line[512], op[32], path[256];
-    int held = -1;
+    int held = -1, notify = -1;
     unsigned char *mapping = MAP_FAILED;
     size_t map_size = 0;
     while (fgets(line, sizeof(line), stdin)) {
         if (!strcmp(line, "quit\n")) return 0;
         if (sscanf(line, "%31s %255s", op, path) != 2) return 3;
-        if (!strcmp(op, "map") || !strcmp(op, "mapall") || !strcmp(op, "private")) {
+        if (!strcmp(op, "watch")) {
+            notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
+            int rc = notify < 0 ? -1 : inotify_add_watch(notify, path,
+                IN_CREATE | IN_DELETE | IN_MODIFY | IN_ATTRIB | IN_MOVED_FROM | IN_MOVED_TO);
+            printf("{\"rc\":%d,\"errno\":%d}\n", rc < 0 ? -1 : 0, rc < 0 ? errno : 0);
+        } else if (!strcmp(op, "map") || !strcmp(op, "mapall") || !strcmp(op, "private")) {
             int fd = open(path, O_RDWR);
             struct stat st;
             if (fd < 0 || fstat(fd, &st)) return 7;
@@ -860,23 +936,49 @@ int main(int argc, char **argv) {
 '''
 
 
-class TreePeer(ProbePeer):
-    def __init__(self, c, mode, directory, binary):
+TREE_PROBE = TREE_PROBE.replace('int main(int argc, char **argv) {', WINDOW_PROBE + '\nint main(int argc, char **argv) {').replace(
+    'while (fgets(line, sizeof(line), stdin)) {',
+    'while (fgets(line, sizeof(line), stdin)) {\n        if (window_command(line, NULL, &held, mapping, map_size, notify, 1)) continue;')
+
+
+class TreePeer(WindowPeer):
+    def __init__(self, c, mode, directory, binary, uid=None):
         self.c, self.mode = c, mode
         self.buffer, self.closed, self.expected_kill = b'', False, False
         c.serial += 1
         self.name = c.object('container', 'tree-' + str(c.serial)) if mode == 'docker' else 'native-tree'
         if mode == 'native':
-            self.proc = c.spawn(command=[str(binary), str(directory)])
+            self.proc = c.spawn(command=[str(binary), str(directory), *([str(uid)] if uid is not None else [])])
         else:
             self.proc = c.spawn('run', '--rm', '-i', '--name', self.name, '--label', c.label,
                                 '--mount', f'type=bind,src={directory.parent},dst=/share',
-                                'hd-functional:local', '/share/tree-probe', '/share/' + directory.name)
+                                'hd-functional:local', '/share/tree-probe', '/share/' + directory.name,
+                                *([str(uid)] if uid is not None else []))
         try:
             assert self.receive().get('ready') is True, 'tree probe startup failed'
+            self.calibrate()
         except BaseException:
             self.close()
             raise
+
+
+def fault_control(c, action):
+    """Fault injection is reachable only in the outer instance directory."""
+    import socket
+    paths = list(c.ctx.instance.glob('*.sock.notify-control'))
+    assert len(paths) == 1, paths
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(c.remaining(1))
+        client.connect(str(paths[0]))
+        client.sendall(bytes([action]))
+        data = b''
+        while len(data) < 4:
+            chunk = client.recv(4 - len(data))
+            assert chunk, 'notification control disconnected'
+            data += chunk
+    error, = struct.unpack('<i', data)
+    assert error == 0, {'fault': action, 'errno': error}
+    c.write('notification_fault: ' + str(action))
 
 
 def namespace_windows(c, share, name):
@@ -901,10 +1003,9 @@ def namespace_windows(c, share, name):
                     with path.open('r+b', buffering=0) as file:
                         with mmap.mmap(file.fileno(), 8192, access=mmap.ACCESS_WRITE) as mapped:
                             for i in range(32):
-                                started = time.monotonic_ns()
+                                started = time.time_ns()
                                 mapped[4096] = 66 + i
-                                samples.append(change_window(lambda: peer.ask('mapped 4096')['byte'],
-                                                             66 + i, started_ns=started))
+                                samples.append(peer.window('mapped 4096', {'rc': 0, 'byte': 66 + i}, started))
                     peer.ask('unmap .')
             elif name == 'outer_mapped_scale':
                 for size in (4096, 1 << 20, 8 << 20, 32 << 20):
@@ -917,10 +1018,9 @@ def namespace_windows(c, share, name):
                             for i in range(32):
                                 offset = (i * 4096) % size
                                 peer.ask('mapped ' + str(offset))
-                                started = time.monotonic_ns()
+                                started = time.time_ns()
                                 mapped[offset] = 66 + i
-                                samples.append(change_window(lambda: peer.ask('mapped ' + str(offset))['byte'],
-                                                             66 + i, started_ns=started))
+                                samples.append(peer.window('mapped ' + str(offset), {'rc': 0, 'byte': 66 + i}, started))
                     peer.ask('unmap .')
                     c.write('mapped_bytes: ' + str(size))
                     try:
@@ -934,10 +1034,9 @@ def namespace_windows(c, share, name):
                 for i in range(32):
                     peer.ask('stat file')
                     expected = (1700000000 + i) * 1000000000 + i
-                    started = time.monotonic_ns()
+                    started = time.time_ns()
                     os.utime(path, ns=(expected, expected))
-                    samples.append(change_window(lambda: peer.ask('stat file')['mtime_ns'],
-                                                 expected, started_ns=started))
+                    samples.append(peer.window('stat file', {'rc': 0, 'mtime_ns': expected}, started))
             elif name == 'outer_readdir_preserved_mtime':
                 listing = lambda: sorted(peer.ask('list .')['names'])
                 assert listing() == []
@@ -947,10 +1046,10 @@ def namespace_windows(c, share, name):
                     for change, expected in ((lambda: original.write_bytes(b'content'), ['original']),
                                              (lambda: original.rename(renamed), ['renamed']),
                                              (renamed.unlink, [])):
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         change()
                         os.utime(directory, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
-                        samples.append(change_window(listing, expected, started_ns=started))
+                        samples.append(peer.window('list .', {'rc': 0, 'names': name_hash(expected)}, started))
             elif name == 'outer_hardlink_alias':
                 watched, other = directory / 'watched', directory / 'unwatched'
                 watched.mkdir();other.mkdir()
@@ -960,14 +1059,12 @@ def namespace_windows(c, share, name):
                 os.link(path, alias)
                 for i in range(32):
                     peer.ask('read watched/file')
-                    started = time.monotonic_ns()
+                    started = time.time_ns()
                     alias.write_bytes(bytes([66 + i]) * (4096 + i))
                     os.chmod(alias, 0o600 if i % 2 else 0o640)
-                    def read():
-                        row = peer.ask('read watched/file')
-                        return row['byte'], row['size'], row['mode']
-                    samples.append(change_window(read, (66 + i, 4096 + i, 0o600 if i % 2 else 0o640),
-                                                 started_ns=started))
+                    ended = time.time_ns()
+                    samples.append(peer.window('read watched/file', {'rc': 0, 'byte': 66 + i, 'size': 4096 + i,
+                                                        'mode': 0o600 if i % 2 else 0o640}, started, ended))
             elif name == 'outer_rename_unwatched':
                 watched = directory / 'watched'
                 watched.mkdir()
@@ -977,18 +1074,15 @@ def namespace_windows(c, share, name):
                     source, destination = other / 'file', watched / 'file'
                     source.write_bytes(bytes([66 + i]) * 8192)
                     assert peer.ask('stat watched/file', ok=False)['errno'] == errno.ENOENT
-                    started = time.monotonic_ns()
+                    started = time.time_ns()
                     source.rename(destination)
-                    def read():
-                        row = peer.ask('read watched/file', ok=False)
-                        return row.get('byte') if row['rc'] == 0 else None
-                    samples.append(change_window(read, 66 + i, started_ns=started))
-                    started = time.monotonic_ns()
+                    ended = time.time_ns()
+                    samples.append(peer.window('read watched/file', {'rc': 0, 'byte': 66 + i}, started, ended))
+                    started = time.time_ns()
                     destination.rename(source)
-                    samples.append(change_window(lambda: peer.ask('stat watched/file', ok=False).get('errno'),
-                                                 errno.ENOENT, started_ns=started))
+                    samples.append(peer.window('stat watched/file', {'rc': -1, 'errno': errno.ENOENT}, started))
             elif name in ('outer_watch_exhaustion', 'outer_notify_overflow'):
-                # Only this guest's negotiated diagnostic protocol is affected.
+                # The daemon control socket is outside the exported tree.
                 # Overflow injects an actual IN_Q_OVERFLOW record into the decoder.
                 if name == 'outer_notify_overflow':
                     for j in range(256):
@@ -997,7 +1091,7 @@ def namespace_windows(c, share, name):
                         peer.ask('read ' + filename)
                 for i in range(32):
                     if mode == 'docker' and name == 'outer_watch_exhaustion':
-                        peer.ask('fault 1')
+                        fault_control(c, 1)
                     try:
                         prefix = ''
                         if name == 'outer_watch_exhaustion':
@@ -1010,21 +1104,19 @@ def namespace_windows(c, share, name):
                         absent = prefix + 'missing-' + str(i)
                         assert peer.ask('stat ' + absent, ok=False)['errno'] == errno.ENOENT
                         if mode == 'docker' and name == 'outer_notify_overflow':
-                            peer.ask('fault 3')
-                        started = time.monotonic_ns()
+                            fault_control(c, 3)
+                        started = time.time_ns()
                         path.write_bytes(bytes([66 + i]) * (4096 + i))
                         os.chmod(path, 0o600)
                         (directory / absent).write_bytes(b'present')
+                        ended = time.time_ns()
                         if mode == 'docker' and name == 'outer_notify_overflow':
-                            peer.ask('fault 2')
-                        def read():
-                            row = peer.ask('held ' + filename)
-                            found = peer.ask('stat ' + absent, ok=False)
-                            return row['byte'], row['size'], row['mode'], found['rc']
-                        samples.append(change_window(read, (66 + i, 4096 + i, 0o600, 0), started_ns=started))
+                            fault_control(c, 2)
+                        samples.append(peer.window('held-found ' + absent, {'rc': 0, 'byte': 66 + i,
+                            'size': 4096 + i, 'mode': 0o600, 'found_rc': 0}, started, ended))
                     finally:
                         if mode == 'docker':
-                            peer.ask('fault 0')
+                            fault_control(c, 0)
             elif name == 'outer_replace_churn':
                 path = directory / 'file'
                 path.write_bytes(b'A' * 8192)
@@ -1033,24 +1125,20 @@ def namespace_windows(c, share, name):
                     replacement = directory / 'replacement'
                     replacement.write_bytes(bytes([66 + i]) * (8192 + i))
                     os.chmod(replacement, 0o640)
-                    started = time.monotonic_ns()
+                    started = time.time_ns()
                     replacement.replace(path)
-                    def read():
-                        row = peer.ask('read file')
-                        return row['byte'], row['size'], row['mode']
-                    samples.append(change_window(read, (66 + i, 8192 + i, 0o640), started_ns=started))
+                    ended = time.time_ns()
+                    samples.append(peer.window('read file', {'rc': 0, 'byte': 66 + i, 'size': 8192 + i, 'mode': 0o640}, started, ended))
             elif name == 'outer_before_first_lookup':
                 for i in range(32):
                     filename = 'fresh-' + str(i)
                     path = directory / filename
                     path.write_bytes(b'A' * 8192)
-                    started = time.monotonic_ns()
+                    started = time.time_ns()
                     path.write_bytes(bytes([66 + i]) * (4096 + i))
                     os.chmod(path, 0o600)
-                    def read():
-                        row = peer.ask('read ' + filename)
-                        return row['byte'], row['size'], row['mode']
-                    samples.append(change_window(read, (66 + i, 4096 + i, 0o600), started_ns=started))
+                    ended = time.time_ns()
+                    samples.append(peer.window('read ' + filename, {'rc': 0, 'byte': 66 + i, 'size': 4096 + i, 'mode': 0o600}, started, ended))
             else:
                 raise AssertionError(name)
         check_windows(c, mode, samples)
@@ -1100,7 +1188,7 @@ def run(c, name):
                 'outer_watch_exhaustion', 'outer_notify_overflow', 'outer_mapped_remap', 'outer_mapped_scale'):
         return namespace_windows(c, share, name)
     def Peer(mode, path, uid=None, readonly=False):
-        return ProbePeer(c, mode, path, uid=uid, readonly=readonly)
+        return WindowPeer(c, mode, path, uid=uid, readonly=readonly)
     def host_write(path,byte):
         with path.open('r+b', buffering=0) as f:
             f.write(bytes([byte]))
@@ -1148,13 +1236,13 @@ def run(c, name):
                     for i in range(32):
                         peer.ask(operation)
                         expected = (0o640 if i % 2 else 0o600) if operation == 'stat' else 66 + i
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         if operation == 'stat':
                             os.chmod(path, expected)
                         else:
                             with path.open('r+b', buffering=0) as outer:
                                 outer.write(bytes([expected]))
-                        row = change_window(lambda: peer.ask(operation)[field], expected, started_ns=started)
+                        row = peer.window(operation, {'rc': 0, field: expected}, started)
                         row['mode'] = mode
                         samples.append(row)
                         c.write('coherence_sample: ' + json.dumps(row, sort_keys=True))
@@ -1172,14 +1260,14 @@ def run(c, name):
                             for i in range(32):
                                 # The second half keeps the host page dirty: no msync or new fault.
                                 before = path.stat()
-                                started = time.monotonic_ns()
+                                started = time.time_ns()
                                 mapped[0] = 66 + i
+                                ended = time.time_ns()
                                 after = path.stat()
                                 c.write('mmap_store_stamp: ' + json.dumps({'mode': mode, 'round': i,
                                     'flushed': i < 16, 'mtime_changed': before.st_mtime_ns != after.st_mtime_ns,
                                     'ctime_changed': before.st_ctime_ns != after.st_ctime_ns}))
-                                samples.append(change_window(lambda: peer.ask(operation)['byte'],
-                                                             66 + i, started_ns=started))
+                                samples.append(peer.window(operation, {'rc': 0, 'byte': 66 + i}, started, ended))
                                 # Measure visibility before disk writeback, then test a clean page again.
                                 if i < 16:
                                     mapped.flush()
@@ -1191,20 +1279,20 @@ def run(c, name):
                     expect_byte(peer, 'read', 65)
                     samples = []
                     for value in range(66, 98):
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         host_write(path, value)
-                        if name == 'outer_write_reopen':
-                            peer.ask('close');peer.ask('open')
-                        samples.append(change_window(lambda: peer.ask('read')['byte'], value, started_ns=started))
+                        ended = time.time_ns()
+                        samples.append(peer.window('reopened' if name == 'outer_write_reopen' else 'read',
+                                                   {'rc': 0, 'byte': value}, started, ended))
                     check_windows(c, mode, samples)
                 elif name=='outer_truncate_fstat':
                     samples = []
                     for i in range(32):
                         peer.ask('stat')
                         size = 4096 + i
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         os.truncate(path, size)
-                        samples.append(change_window(lambda: peer.ask('stat')['size'], size, started_ns=started))
+                        samples.append(peer.window('stat', {'rc': 0, 'size': size}, started))
                     check_windows(c, mode, samples)
                 elif name in ('outer_permission_revoked', 'outer_directory_permission'):
                     samples = []
@@ -1212,17 +1300,14 @@ def run(c, name):
                     denied, allowed = (0o600, 0o666) if target == path else (0o700, 0o755)
                     for _ in range(16):
                         peer.ask('reopen')
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         os.chmod(target, denied)
-                        def denied_read():
-                            row = peer.ask('reopen', ok=False)
-                            return row['rc'] == -1 and row['errno'] == errno.EACCES
-                        samples.append(change_window(denied_read, True, started_ns=started))
+                        ended = time.time_ns()
+                        samples.append(peer.window('reopen', {'rc': -1, 'errno': errno.EACCES}, started, ended))
                         expect_byte(peer, 'read', 65)
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         os.chmod(target, allowed)
-                        samples.append(change_window(lambda: peer.ask('reopen', ok=False)['rc'],
-                                                     0, started_ns=started))
+                        samples.append(peer.window('reopen', {'rc': 0}, started))
                     check_windows(c, mode, samples)
                 elif name=='outer_metadata_churn':
                     check_windows(c, mode, metadata_churn(peer, path))
@@ -1230,18 +1315,13 @@ def run(c, name):
                     samples = []
                     for i in range(16):
                         peer.ask('close')
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         path.unlink()
-                        def absent():
-                            row = peer.ask('open', ok=False)
-                            if row['rc'] == 0:
-                                peer.ask('close')
-                            return row['rc'] == -1 and row['errno'] == errno.ENOENT
-                        samples.append(change_window(absent, True, started_ns=started))
-                        started = time.monotonic_ns()
+                        ended = time.time_ns()
+                        samples.append(peer.window('open', {'rc': -1, 'errno': errno.ENOENT}, started, ended))
+                        started = time.time_ns()
                         path.write_bytes(bytes([66 + i]) * 8192)
-                        samples.append(change_window(lambda: peer.ask('open', ok=False)['rc'],
-                                                     0, started_ns=started))
+                        samples.append(peer.window('open', {'rc': 0}, started))
                         expect_byte(peer, 'read', 66 + i)
                     check_windows(c, mode, samples)
                 elif name=='outer_chmod_fstat':
@@ -1249,9 +1329,9 @@ def run(c, name):
                     for i in range(32):
                         peer.ask('stat')
                         expected = 0o640 if i % 2 else 0o600
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         os.chmod(path, expected)
-                        samples.append(change_window(lambda: peer.ask('stat')['mode'], expected, started_ns=started))
+                        samples.append(peer.window('stat', {'rc': 0, 'mode': expected}, started))
                     check_windows(c, mode, samples)
                 elif name=='guest_write_outer_read':
                     peer.ask('write 66');expect_byte(peer, 'read', 66);assert path.read_bytes()[0]==66
@@ -1260,9 +1340,9 @@ def run(c, name):
                     if name=='mmap_outer_to_guest':
                         samples = []
                         for value in range(66, 98):
-                            started = time.monotonic_ns()
+                            started = time.time_ns()
                             host_write(path, value)
-                            samples.append(change_window(lambda: peer.ask('mapped')['byte'], value, started_ns=started))
+                            samples.append(peer.window('mapped', {'rc': 0, 'byte': value}, started))
                         check_windows(c, mode, samples)
                     else:peer.ask('mwrite 66');assert path.read_bytes()[0]==66
                     peer.ask('unmap')
@@ -1270,22 +1350,19 @@ def run(c, name):
                     if name == 'replace_open_inode':
                         replacement = path.with_suffix('.new')
                         replacement.write_bytes(b'B' * 8192)
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         replacement.replace(path)
+                        ended = time.time_ns()
                         expect_byte(peer, 'read', 65)
                         expected = 66
                     else:
                         path.unlink()
                         peer.ask('write 66');expect_byte(peer, 'read', 66)
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         path.write_bytes(b'C' * 8192)
+                        ended = time.time_ns()
                         expected = 67
-                    def reopened():
-                        closed = peer.ask('close', ok=False)
-                        assert closed['rc'] == 0 or closed.get('errno') == errno.EBADF, closed
-                        row = peer.ask('open', ok=False)
-                        return peer.ask('read')['byte'] if row['rc'] == 0 else None
-                    check_windows(c, mode, [change_window(reopened, expected, started_ns=started)])
+                    check_windows(c, mode, [peer.window('reopened', {'rc': 0, 'byte': expected}, started, ended)])
                 elif name=='xattr_both_directions':
                     peer.ask('setxattr');assert os.getxattr(path,'user.harddind')==b'verified'
                     os.setxattr(path,'user.harddind',b'outer-ok');assert peer.ask('getxattr')['outer_value']
@@ -1305,10 +1382,9 @@ def run(c, name):
                     samples = []
                     for value in range(66, 98):
                         peer.ask('events')
-                        started = time.monotonic_ns()
+                        started = time.time_ns()
                         host_write(path, value)
-                        samples.append(change_window(lambda: peer.ask('events')['bytes'] > 0,
-                                                     True, started_ns=started))
+                        samples.append(peer.window('events', {'rc': 0, 'names': 1}, started))
                     check_windows(c, mode, samples)
         finally:os.chmod(share,0o755)
     if name in ("outer_mmap_window", "outer_attr_window", "outer_read_window", "outer_mapped_write", "outer_mapped_read", "outer_directory_permission",

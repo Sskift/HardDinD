@@ -1,0 +1,150 @@
+--- a/src/change_notify.rs
++++ b/src/change_notify.rs
+@@ -102,6 +102,7 @@
+     batch: bool,
+     directory_cache: bool,
+     recovery: bool,
++    uncached: bool,
+     watch_exhausted: bool,
+     drop_events: bool,
+     dropped_events: u64,
+@@ -185,10 +186,10 @@
+     }
+ 
+     fn recover(&mut self) {
+-        if !self.recovery { self.fail(); return; }
++        if !self.recovery && !self.uncached { self.fail(); return; }
+         self.pending.clear();
+         // Epoch first: expire positive/negative dentries, including unknown names.
+-        self.pending.push_back(packet(RESET, &[]));
++        if self.recovery { self.pending.push_back(packet(RESET, &[])); }
+         for inode in self.inodes.keys() {
+             let mut payload = inode.to_ne_bytes().to_vec();
+             payload.extend_from_slice(&[0; 16]);
+@@ -276,9 +277,41 @@
+         })
+     }
+ 
++    pub fn allow_uncached_recovery(&self, enabled: bool) {
++        self.state.lock().unwrap().uncached = enabled;
++    }
++
++    pub fn uncached_recovery(&self) -> bool {
++        self.state.lock().unwrap().uncached
++    }
++
++    /// Host-only socket, opened beside the vhost socket before entering chroot.
++    pub fn control(self: &Arc<Self>, listener: std::os::unix::net::UnixListener) -> io::Result<()> {
++        use std::io::{Read, Write};
++        use std::os::unix::io::{FromRawFd, IntoRawFd};
++        let weak = Arc::downgrade(self);
++        std::thread::spawn(move || loop {
++            if weak.strong_count() == 0 { break; }
++            let mut pfd = libc::pollfd { fd: listener.as_raw_fd(), events: libc::POLLIN, revents: 0 };
++            if unsafe { libc::poll(&mut pfd, 1, 100) } <= 0 { continue; }
++            let Ok((stream, _)) = listener.accept() else { continue; };
++            let mut stream = unsafe { std::fs::File::from_raw_fd(stream.into_raw_fd()) };
++            // A stalled outer client must not block notification teardown.
++            let mut pfd = libc::pollfd { fd: stream.as_raw_fd(), events: libc::POLLIN, revents: 0 };
++            if unsafe { libc::poll(&mut pfd, 1, 100) } <= 0 { continue; }
++            let mut action = [0u8; 1];
++            if stream.read_exact(&mut action).is_err() { continue; }
++            let Some(changes) = weak.upgrade() else { break; };
++            let result = changes.fault(u64::from(action[0]));
++            let code = result.err().and_then(|e| e.raw_os_error()).unwrap_or(0);
++            let _ = stream.write_all(&code.to_le_bytes());
++        });
++        Ok(())
++    }
++
+     pub fn fault(&self, action: u64) -> io::Result<()> {
+         let mut state = self.state.lock().unwrap();
+-        if !state.recovery { return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)); }
++        if !state.recovery && !state.uncached { return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)); }
+         match action {
+             0 => {
+                 state.watch_exhausted = false;
+@@ -678,3 +712,23 @@
+         std::fs::remove_file(path).unwrap();
+     }
+ }
++
++#[test]
++fn harddind_uncached_overflow_without_recovery_feature() {
++    let mut state = State { uncached: true, ..Default::default() };
++    state.inodes.insert(7, 1);
++    let mut event = (-1i32).to_ne_bytes().to_vec();
++    event.extend_from_slice(&libc::IN_Q_OVERFLOW.to_ne_bytes());
++    event.extend_from_slice(&[0; 8]);
++    state.events(&event).unwrap();
++    assert!(!state.failed);
++    assert_eq!(state.pending.len(), 1);
++    assert_eq!(i32::from_ne_bytes(state.pending[0][4..8].try_into().unwrap()), 2);
++    let uid = unsafe { libc::geteuid() };
++    let changes = ChangeNotify::new(if uid == 0 { 1001 } else { uid }).unwrap();
++    changes.allow_uncached_recovery(true);
++    changes.fault(1).unwrap();
++    assert!(changes.state.lock().unwrap().watch_exhausted);
++    changes.fault(0).unwrap();
++    assert!(!changes.state.lock().unwrap().watch_exhausted);
++}
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -528,6 +528,10 @@
+ 
+ impl PassthroughFs {
+     pub fn new(mut cfg: Config) -> io::Result<PassthroughFs> {
++        if let Some(changes) = &cfg.changes {
++            changes.allow_uncached_recovery(matches!(&cfg.cache_policy, CachePolicy::Never)
++                && cfg.entry_timeout.is_zero() && cfg.attr_timeout.is_zero() && cfg.negative_timeout.is_zero());
++        }
+         if cfg.getattr_cache_only && (cfg.changes.is_none() || !cfg.entry_timeout.is_zero()
+             || !cfg.negative_timeout.is_zero() || !matches!(&cfg.cache_policy, CachePolicy::Never)) {
+             return Err(io::Error::new(io::ErrorKind::InvalidInput,
+@@ -1019,7 +1023,7 @@
+             let name = CString::new(format!("{}", file.as_raw_fd())).unwrap();
+             let _cwd = set_working_directory(self.proc_self_fd.as_raw_fd(), self.root_fd.as_raw_fd());
+             if let Err(error) = changes.watch(inode.inode, &name) {
+-                if !changes.coherent() { return Err(error); }
++                if !changes.coherent() && !changes.uncached_recovery() { return Err(error); }
+                 // An unwatched inode must never advertise reusable caches.
+                 log::warn!("share watch {}: {error}; using uncached replies", inode.inode);
+             }
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -844,6 +844,24 @@
+     if guest_fd_limit < 128 {
+         warn!("File descriptor count limit is very small, leaving only {guest_fd_limit} file descriptors for the guest");
+     }
++
++    let notify_control = if opt.notify_changes {
++        opt.socket_path.as_ref().map(|socket| {
++            use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
++            let path = format!("{socket}.notify-control");
++            if let Ok(st) = std::fs::symlink_metadata(&path) {
++                assert!(st.file_type().is_socket() && st.uid() == unsafe { libc::geteuid() },
++                        "unexpected notification control path");
++                std::fs::remove_file(&path).expect("remove stale notification control socket");
++            }
++            let listener = std::os::unix::net::UnixListener::bind(&path)
++                .expect("bind notification control socket");
++            listener.set_nonblocking(true).expect("nonblocking notification control socket");
++            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
++                .expect("notification control socket permissions");
++            listener
++        })
++    } else { None };
+ 
+     let mut sandbox = Sandbox::new(
+         shared_dir.to_string(),
+@@ -925,6 +942,10 @@
+         drop_capabilities(fs_cfg.inode_file_handles, opt.modcaps);
+     }
+ 
++    if let Some(listener) = notify_control {
++        changes.as_ref().unwrap().control(listener).expect("notification control thread");
++    }
++
+     if opt.readonly {
+         let fs = PassthroughFsRo::new(fs_cfg).unwrap_or_else(|e| {
+             error!("Failed to create internal filesystem representation: {e}");

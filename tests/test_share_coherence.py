@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import unittest
 
-from suites.functional.shared_files import expect_metadata, metadata_churn
+from suites.functional.shared_files import expect_metadata, metadata_churn, change_window
 
 
 class MetadataChecks(unittest.TestCase):
@@ -25,10 +25,16 @@ class MetadataChecks(unittest.TestCase):
 
                 def ask(self, operation):
                     self.calls += 1
-                    assert operation == 'stat'
+                    return {'rc': 0}
+
+                def window(self, operation, expected, started, ended):
+                    import time
+                    self.calls += 1
                     st = path.stat()
-                    return {'rc': 0, 'size': 8192 if self.stale else st.st_size,
-                            'mode': st.st_mode & 0o777}
+                    values = [8192 if self.stale else st.st_size, st.st_mode & 0o777]
+                    now = time.time_ns()
+                    return change_window([{'start_ns': now, 'end_ns': now, 'value': values}],
+                                         [expected['size'], expected['mode']], 3, started, ended)
 
             peer = Peer()
             samples = metadata_churn(peer, path, rounds=8)
@@ -36,4 +42,4 @@ class MetadataChecks(unittest.TestCase):
             peer.calls, peer.stale = 0, True
             with self.assertRaises(AssertionError):
                 metadata_churn(peer, path, rounds=8)
-            self.assertGreater(peer.calls, 2)
+            self.assertEqual(peer.calls, 2)

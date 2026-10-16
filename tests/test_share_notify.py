@@ -1,51 +1,52 @@
-"""Visibility is bounded from the start of an outer change, including successful reads."""
+"""Peer timestamps distinguish stale observations from delayed replies."""
 import unittest
 from suites.functional.shared_files import change_window, window_summary, check_windows
 
 
 class ChangeWindow(unittest.TestCase):
-    def clock(self):
-        self.now += 1_000_000
-        return self.now
+    @staticmethod
+    def read(start, value, duration=1_000_000):
+        return {'start_ns': start, 'end_ns': start + duration, 'value': [value]}
 
-    def setUp(self):
-        self.now = 0
+    def score(self, reads, offset=0):
+        return change_window(reads, [7], 1, 0, 5_000_000, offset)
 
-    def test_immediate(self):
-        row = change_window(lambda: 7, 7, clock=self.clock)
+    def test_fresh_first_read_ignores_late_start_and_reply(self):
+        row = self.score([self.read(57_000_000, 7)])
         self.assertTrue(row['first_access'])
-        self.assertEqual(row['stale_reads'], 0)
-        self.assertEqual(row['visible_by_ms'], 2)
+        self.assertEqual(row['staleness_ms'], 0)
 
-    def test_delayed_keeps_first_access_failure(self):
-        replies = iter([6, 6, 7])
-        row = change_window(lambda: next(replies), 7, clock=self.clock)
-        self.assertFalse(row['first_access'])
+    def test_last_stale_read_start_not_end_or_fresh_reply(self):
+        row = self.score([self.read(6_000_000, 6, 10_000_000), self.read(20_000_000, 6),
+                          self.read(100_000_000, 7)])
+        self.assertEqual(row['staleness_ms'], 15)
         self.assertEqual(row['stale_reads'], 2)
-        self.assertEqual(row['last_stale_ms'], 3)
-        self.assertEqual(row['visible_by_ms'], 6)
 
-    def test_window_includes_outer_operation(self):
-        started = self.clock()
-        self.now += 5_000_000
-        row = change_window(lambda: 7, 7, clock=self.clock, started_ns=started)
-        self.assertTrue(row['first_access'])
-        self.assertEqual(row['visible_by_ms'], 7)
+    def test_stale_read_overlapping_change_is_zero(self):
+        self.assertEqual(self.score([self.read(1_000_000, 6, 5_000_000),
+                                     self.read(10_000_000, 7)])['staleness_ms'], 0)
 
-    def test_missing_error_and_stale_fail(self):
-        for reply in (None, -1, 6):
-            with self.subTest(reply=reply), self.assertRaises(AssertionError):
-                change_window(lambda: reply, 7, clock=self.clock, timeout_ns=4_000_000)
+    def test_offset_is_subtracted(self):
+        self.assertEqual(self.score([self.read(6_100_000, 6), self.read(8_100_000, 7)],
+                                     100_000)['staleness_ms'], 1)
 
-    def test_transport_failure_propagates(self):
-        def failed():
-            raise OSError('peer died')
-        with self.assertRaises(OSError):
-            change_window(failed, 7, clock=self.clock)
+    def test_missing_stale_late_and_malformed_fail(self):
+        for reads in ([], [self.read(6_000_000, 6)],
+                      [self.read(55_000_001, 6), self.read(57_000_000, 7)],
+                      [self.read(1_006_000_000, 7)], [self.read(6_000_000, 7, -1)],
+                      [self.read(7_000_000, 6), self.read(6_000_000, 7)]):
+            with self.subTest(reads=reads), self.assertRaises(AssertionError):
+                self.score(reads)
 
-    def test_late_success_fails(self):
-        with self.assertRaises(AssertionError):
-            change_window(lambda: 7, 7, clock=self.clock, timeout_ns=1_000_000)
+    def test_clock_uses_minimum_network_rtt_and_checks_bound(self):
+        from suites.functional.shared_files import clock_offset
+        result = clock_offset([(0, 20_000_000, 15_000_000, 15_000_000),
+                               (0, 200_000, 110_000, 110_000)])
+        self.assertEqual(result['offset_ns'], 10_000)
+        for samples in ([], [(0, 100_000, 600_001, 600_001)],
+                        [(0, 100_000, -500_001, -500_001)], [(2, 1, 0, 0)]):
+            with self.subTest(samples=samples), self.assertRaises(AssertionError):
+                clock_offset(samples)
 
     def test_window_bounds_and_percentile(self):
         class Case:
@@ -53,15 +54,16 @@ class ChangeWindow(unittest.TestCase):
                 self.output = text
         case = Case()
         def rows(values):
-            return [{'origin': 'outer_change_start', 'visible_by_ms': v, 'first_access': False} for v in values]
+            return [{'origin': 'outer_change_end', 'fresh': True, 'staleness_ms': v,
+                     'first_access': False} for v in values]
         result = check_windows(case, 'native', rows([1] * 19 + [50]))
-        self.assertEqual(result['p95_visible_by_ms'], 1)
+        self.assertEqual(result['p95_staleness_ms'], 1)
         self.assertEqual(result['first_access_misses'], 20)
         for values in ([], [1] * 18 + [11, 12], [1] * 19 + [50.001], [-1], [float('nan')]):
             with self.subTest(values=values), self.assertRaises(AssertionError):
                 check_windows(case, 'docker', rows(values))
         with self.assertRaises(AssertionError):
-            check_windows(case, 'docker', [{'visible_by_ms': 1, 'first_access': True}])
+            check_windows(case, 'docker', [{'staleness_ms': 1, 'first_access': True}])
         self.assertIn('coherence_window', case.output)
 
 
@@ -148,41 +150,49 @@ int main(void) {
             subprocess.run([str(binary)], check=True)
 
 
-class MmapWaiter(unittest.TestCase):
-    def test_native_waiter_observes_each_outer_write(self):
+class WindowHelper(unittest.TestCase):
+    @unittest.skipUnless(__import__('sys').platform == 'linux', 'Linux inotify ABI')
+    def test_peer_loops_and_timestamps_stale_and_fresh_reads(self):
+        import json
         import os
         import pathlib
-        import select
-        import shutil
         import subprocess
-        import sys
         import tempfile
-        from suites.functional.shared_files import MMAP_WAITER
-        if not shutil.which('cc'):
-            self.skipTest('C compiler unavailable')
+        import time
+        from suites.functional.shared_files import TREE_PROBE
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            source, binary, data = root / 'waiter.c', root / 'waiter', root / 'data'
-            source.write_text(MMAP_WAITER)
-            data.write_bytes(b'A' * 4096)
-            flags = ['-static'] if sys.platform.startswith('linux') else []
-            subprocess.run(['cc', '-O2', '-Wall', '-Wextra', '-Werror', *flags,
-                            str(source), '-o', str(binary)], check=True)
-            process = subprocess.Popen([str(binary), str(data)], stdout=subprocess.PIPE)
+            source, binary = root / 'probe.c', root / 'probe'
+            source.write_text(TREE_PROBE)
+            subprocess.run(['gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror', source, '-o', binary], check=True)
+            data = root / 'data'
+            data.write_bytes(b'A' * 8192)
+            proc = subprocess.Popen([str(binary), str(root)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
             try:
-                self.assertTrue(select.select([process.stdout], [], [], 5)[0])
-                self.assertEqual(os.read(process.stdout.fileno(), 1), b'A')
-                with data.open('r+b', buffering=0) as file:
-                    for value in range(66, 98):
-                        os.pwrite(file.fileno(), bytes([value]), 0)
-                        self.assertTrue(select.select([process.stdout], [], [], 5)[0])
-                        self.assertEqual(os.read(process.stdout.fileno(), 1), bytes([value]))
-                self.assertEqual(process.wait(timeout=5), 0)
+                self.assertTrue(json.loads(proc.stdout.readline())['ready'])
+                proc.stdin.write('clock\n');proc.stdin.flush()
+                clock = json.loads(proc.stdout.readline())
+                self.assertLessEqual(clock['start_ns'], clock['end_ns'])
+                deadline = time.time_ns() + 1_000_000_000
+                proc.stdin.write(f'poll {deadline} 5 0 0 66 0 0 0 0 0|read data\n');proc.stdin.flush()
+                stale = json.loads(proc.stdout.readline())
+                self.assertEqual(stale['value'][2], 65)
+                self.assertFalse(stale['last'])
+                started = time.time_ns()
+                data.write_bytes(b'B' * 8192)
+                ended = time.time_ns()
+                rows = [stale]
+                while not rows[-1]['last']:
+                    rows.append(json.loads(proc.stdout.readline()))
+                row = change_window(rows, [0, 0, 66, 0, 0, 0, 0, 0], 5, started, ended)
+                self.assertTrue(row['fresh'])
+                self.assertGreater(row['stale_reads'], 0)
+                proc.stdin.write('quit\n');proc.stdin.flush()
+                self.assertEqual(proc.wait(timeout=5), 0)
             finally:
-                if process.poll() is None:
-                    process.kill()
-                    process.wait(timeout=5)
-                process.stdout.close()
+                if proc.poll() is None:
+                    proc.kill();proc.wait()
+                proc.stdin.close();proc.stdout.close()
 
 
 class InotifyRecords(unittest.TestCase):
