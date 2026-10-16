@@ -9,6 +9,33 @@ import time
 from pipeline import bench, config, instance, runs
 
 
+def group_cpu_seconds(group):
+    live, zombies = instance.group_members(group)
+    ticks = 0
+    for pid in live + zombies:
+        try:
+            fields = pathlib.Path(f'/proc/{pid}/stat').read_text().rsplit(') ', 1)[1].split()
+            # Include reaped children so exit during a window does not hide CPU.
+            ticks += sum(int(v) for v in fields[11:15])
+        except (FileNotFoundError, ProcessLookupError):
+            pass
+    return ticks / os.sysconf('SC_CLK_TCK')
+
+
+def settle(group):
+    start = previous_time = time.monotonic()
+    previous_cpu = group_cpu_seconds(group)
+    while True:
+        time.sleep(min(.1, max(0, 2 - (previous_time - start))))
+        now, cpu = time.monotonic(), group_cpu_seconds(group)
+        usage = (cpu - previous_cpu) / (now - previous_time)
+        quiet = 0 <= usage < .05
+        if quiet or now - start >= 2:
+            return {'seconds': round(now - start, 4), 'cpu_fraction': round(usage, 4),
+                    'quiet': quiet, 'resumed': True}
+        previous_time, previous_cpu = now, cpu
+
+
 def suspend(state, stopped):
     # virtiofsd dies with SIGSYS when continued under its seccomp filter. Leave
     # it waiting for requests: the stopped UML guest cannot submit new work.
@@ -63,8 +90,11 @@ def measure(ctx, name, metric, functions, switch, host_load, pairs):
     native = 'native' in functions
     for pair in [None, *range(pairs)]:
         for side in order(0 if pair is None else pair, native):
-            switch(side)
-            value = bench.sample(ctx, name, metric, functions[side], side, pair)
+            settled = switch(side)
+            try:
+                value = bench.sample(ctx, name, metric, functions[side], side, pair)
+            finally:
+                metric['detail']['samples'][-1]['settle'] = settled or {'seconds': 0, 'resumed': False}
             if pair is not None:
                 metric[side].append(value)
         if pair is not None:
@@ -152,6 +182,7 @@ def run(run_id, run_dir, artifacts, artifacts_b, args, cpus):
         if side in paused:
             suspend(states[side], False)
             paused.remove(side)
+            return settle(states[side]['guest_pid'])
     try:
         for side, label, built in [('guest', 'A', artifacts), ('guest_b', 'B', artifacts_b)]:
             switch('native')

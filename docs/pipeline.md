@@ -15,6 +15,7 @@ git add -A && git commit && git push        # 提交改动和它的评分
 同一次 bench 内比较两个 guest：`./hd job ab1 -- bench --ab uml_net_idle_wait=0 --only '^micro\.'`。
 A 使用普通配置；B 叠加可重复的 `--ab K=V`、`--ab-with CANDIDATE`、`--ab-share-opt K=V`。
 两者绑定同一组 CPU；切换时暂停非活动 guest 和网络进程组，并确认已停止。virtiofsd 保持等待请求（其 seccomp 过滤器下 SIGCONT 会导致 SIGSYS），停止的 guest 不再提交工作。
+恢复后先等待 guest 进程组在 100 ms 窗口内 CPU 使用率低于单核的 5%，最多 2 秒；每个样本的 `settle` 记录等待秒数、末窗口 CPU 使用率和是否达到安静条件，等待不计入测量耗时。
 每组按原生/A/B、A/B/原生、B/原生/A 轮换，预热不计入样本；Docker 控制面只轮换 A/B，原生仍是参考值。
 `summary.json` 的 `guest`、`guest_b` 分别保存 A、B 的对应样本；评分表列出 A/native、B/native 和逐组 B/A 的中位数及范围。
 所有比值都以越大越好表示（耗时类取倒数），B/A > 1 表示 B 更快。不带 `--ab` 时保留原有单 guest 路径。

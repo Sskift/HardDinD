@@ -11,6 +11,19 @@ from pipeline import bench_ab, config
 
 
 class ABTests(unittest.TestCase):
+    def test_settle_quiet_busy_then_quiet_and_cap(self):
+        cases = [([0, .1], [0, .004], .1, True),
+                 ([0, .1, .2], [0, .01, .014], .2, True),
+                 ([i / 10 for i in range(21)], [i / 10 for i in range(21)], 2, False)]
+        for times, cpus, seconds, quiet in cases:
+            with self.subTest(seconds=seconds, quiet=quiet), \
+                 patch.object(bench_ab.time, 'monotonic', side_effect=times), \
+                 patch.object(bench_ab.time, 'sleep'), \
+                 patch.object(bench_ab, 'group_cpu_seconds', side_effect=cpus):
+                result = bench_ab.settle(123)
+            self.assertEqual(result['seconds'], seconds)
+            self.assertEqual(result['quiet'], quiet)
+
     def test_suspend_leaves_seccomp_filesystem_waiting(self):
         state = {'guest_pid': 111, 'network_pid': 222, 'filesystems': [{'pid': 333}]}
         with patch.object(bench_ab.os, 'getpgrp', return_value=444), \
@@ -26,6 +39,7 @@ class ABTests(unittest.TestCase):
         active, calls, counts = [None], [], dict.fromkeys(('native', 'guest', 'guest_b'), 0)
         def switch(side):
             active[0] = side
+            return {'seconds': .1, 'resumed': side != 'native'}
         def function(side):
             def run():
                 self.assertEqual(active[0], side)
@@ -42,6 +56,7 @@ class ABTests(unittest.TestCase):
         self.assertEqual(metric['guest_b'], [150, 225, 300])
         rows = metric['detail']['samples']
         self.assertEqual([r['pair'] for r in rows], [None] * 3 + [0] * 3 + [1] * 3 + [2] * 3)
+        self.assertTrue(all(r['settle']['seconds'] == .1 for r in rows))
 
     def test_control_pairs_rotate_without_native_and_errors_recorded(self):
         metric = {'native': [], 'guest': [], 'guest_b': []}
@@ -81,10 +96,11 @@ class ABTests(unittest.TestCase):
                 contexts.update(ctxs)
                 switch('guest'); switch('guest_b'); switch('native')
                 return {'metrics': {}}
-            with patch.object(bench_ab.instance, 'start', return_value={}), \
+            with patch.object(bench_ab.instance, 'start', return_value={'guest_pid': 123}), \
                  patch.object(bench_ab.instance, 'stop', return_value={'phase': 'stopped'}) as stop, \
                  patch.object(bench_ab.instance, 'archive_logs'), patch.object(bench_ab.instance, 'remove'), \
-                 patch.object(bench_ab, 'suspend'), patch.object(bench_ab, 'workloads', side_effect=workload):
+                 patch.object(bench_ab, 'suspend'), patch.object(bench_ab, 'settle'), \
+                 patch.object(bench_ab, 'workloads', side_effect=workload):
                 data = bench_ab.run('id', root, built, {**built, 'kernel': 'kernel-b'}, args, '2,4,6,8')
             a, b = contexts['guest'], contexts['guest_b']
             self.assertEqual(a.bench_cpus, b.bench_cpus)
