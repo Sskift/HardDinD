@@ -2,11 +2,18 @@ From: HardDinD developers
 Subject: [EXPERIMENT] um: retain host mapping identity for protection and lazy fork
 
 Default off: uml_fault_hostmap=1 coalesces permission-only changes with mprotect.
-uml_fault_lazy=1 additionally defers never-mapped, non-young PTEs until access.
+uml_fault_lazy=1 defers old PTEs installed into empty slots of a fresh user mm,
+before its first TLB synchronization. Later PFN replacements always use mmap.
 Normal guest fork/COW, memory accounting, and synchronous invalidation remain.
 Copied PTEs never inherit host ownership: set_pte derives it from its old slot.
 No user runners or guest address spaces are shared across fork or exec.
 
+--- a/arch/um/include/asm/mmu.h
++++ b/arch/um/include/asm/mmu.h
+@@ -22,2 +22,3 @@
+ 	struct mutex turnstile;
++	int fault_lazy_init;
+ 	struct mm_id gpu_id;
 --- a/arch/um/include/asm/pgtable.h
 +++ b/arch/um/include/asm/pgtable.h
 @@ -12,2 +12,3 @@
@@ -17,7 +24,7 @@ No user runners or guest address spaces are shared across fork or exec.
  #define _PAGE_NEEDSYNC	0x002
 +#define _PAGE_HOST	0x004 /* this PTE owns a queued/installed host mapping */
  #define _PAGE_RW	0x020
-@@ -203,2 +205,19 @@
+@@ -203,2 +205,25 @@
  
 +static inline unsigned long uml_host_pte_value(unsigned long old, unsigned long value,
 +					      int enabled)
@@ -36,8 +43,14 @@ No user runners or guest address spaces are shared across fork or exec.
 +	return value | _PAGE_NEEDSYNC;
 +}
 +
++static inline int uml_host_lazy_pte(unsigned long old, unsigned long value, int fresh)
++{
++	return fresh && !old && (value & (_PAGE_PRESENT | _PAGE_PROTNONE)) &&
++		!(value & _PAGE_ACCESSED);
++}
++
  static inline void set_pte(pte_t *pteptr, pte_t pteval)
-@@ -210,3 +229,7 @@
+@@ -210,3 +235,7 @@
  
 -	WRITE_ONCE(*pteptr, pte_mkneedsync(pteval));
 +	if (unlikely(uml_fault_hostmap))
@@ -46,7 +59,28 @@ No user runners or guest address spaces are shared across fork or exec.
 +		pteval = pte_mkneedsync(pteval);
 +	WRITE_ONCE(*pteptr, pteval);
  }
-@@ -252,3 +275,3 @@
+@@ -237,5 +266,13 @@
+ 	size_t length = nr * PAGE_SIZE;
++	/* Only construction-time copies may omit host synchronization. */
++	bool fresh = uml_fault_hostmap && uml_fault_lazy && READ_ONCE(mm->context.fault_lazy_init);
++	bool sync = false;
+ 
+ 	for (;;) {
+-		set_pte(ptep, pte);
++		if (fresh && uml_host_lazy_pte(pte_val(READ_ONCE(*ptep)), pte_val(pte), 1))
++			WRITE_ONCE(*ptep, __pte(pte_val(pte) & ~(_PAGE_HOST | _PAGE_NEEDSYNC)));
++		else {
++			set_pte(ptep, pte);
++			sync = true;
++		}
+ 		if (--nr == 0)
+@@ -246,3 +283,4 @@
+ 
+-	um_tlb_mark_sync(mm, addr, addr + length);
++	if (sync)
++		um_tlb_mark_sync(mm, addr, addr + length);
+ }
+@@ -252,3 +290,3 @@
  {
 -	return !((pte_val(pte_a) ^ pte_val(pte_b)) & ~_PAGE_NEEDSYNC);
 +	return !((pte_val(pte_a) ^ pte_val(pte_b)) & ~(_PAGE_NEEDSYNC | _PAGE_HOST));
@@ -71,6 +105,12 @@ No user runners or guest address spaces are shared across fork or exec.
  
 +#define STUB_HAS_MPROTECT 1
  #define STUB_MEMFD_SLOT (-1)
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -181,2 +181,3 @@
+ 	mm->context.sync_tlb_range_to = 0;
++	mm->context.fault_lazy_init = 1;
+ 	mm->context.faultaround_last = ~0UL;
 --- a/arch/um/kernel/skas/stub.c
 +++ b/arch/um/kernel/skas/stub.c
 @@ -337,2 +337,18 @@
@@ -112,11 +152,12 @@ No user runners or guest address spaces are shared across fork or exec.
 +#include <init.h>
 +#include <fault-hostmap.h>
  #include <linux/sched/signal.h>
-@@ -17,4 +21,38 @@
+@@ -17,4 +21,39 @@
  
 +int uml_fault_hostmap;
 +int uml_fault_lazy;
 +EXPORT_SYMBOL(uml_fault_hostmap);
++EXPORT_SYMBOL(uml_fault_lazy);
 +
 +static int __init uml_fault_hostmap_setup(char *line, int *add)
 +{
@@ -144,35 +185,41 @@ No user runners or guest address spaces are shared across fork or exec.
 +}
 +__uml_setup("uml_fault_lazy=", uml_fault_lazy_setup,
 +"uml_fault_lazy=<0|1>\n"
-+"    Default 0. With uml_fault_hostmap=1, leave never-mapped old PTEs\n"
-+"    absent in the host until accessed. Guest page tables and COW remain.\n\n");
++"    Default 0. With uml_fault_hostmap=1, defer old PTEs in a new mm\n"
++"    until accessed. Later PFN changes always replace host mappings.\n\n");
 +
  struct vm_ops {
  	struct mm_id *mm_idp;
 +	bool hostmap;
  
-@@ -83,4 +121,6 @@
+@@ -83,4 +122,6 @@
  
 -			ret = ops->mmap(ops->mm_idp, addr, PAGE_SIZE,
 -					prot, fd, offset);
 +			if (ops->hostmap && (pte_val(entry) & _PAGE_HOST))
 +				ret = uml_host_protect(ops->mm_idp, addr, PAGE_SIZE, prot);
-+			else if (!(ops->hostmap && uml_fault_lazy && !pte_young(entry)))
++			else
 +				ret = ops->mmap(ops->mm_idp, addr, PAGE_SIZE, prot, fd, offset);
  		} else
-@@ -88,4 +128,9 @@
+@@ -88,4 +129,8 @@
  
 -		cmpxchg(&pte_val(*pte), pte_val(entry),
 -			pte_val(pte_mkuptodate(entry)));
 +		{
 +			pte_t updated = pte_mkuptodate(entry);
-+			if (!ret && ops->hostmap && pte_present(entry) &&
-+			    ((pte_val(entry) & _PAGE_HOST) || !uml_fault_lazy || pte_young(entry)))
++			if (!ret && ops->hostmap && pte_present(entry))
 +				pte_val(updated) |= _PAGE_HOST;
 +			cmpxchg(&pte_val(*pte), pte_val(entry), pte_val(updated));
 +		}
  	} while (pte++, addr += PAGE_SIZE, ((addr < end) && !ret));
-@@ -183,2 +228,3 @@
+@@ -178,2 +223,6 @@
+ 
++	/* Initial lazy PTEs were installed while the new user mm was empty. */
++	if (READ_ONCE(mm->context.fault_lazy_init))
++		WRITE_ONCE(mm->context.fault_lazy_init, 0);
++
+ 	if (mm->context.sync_tlb_range_to == 0)
+@@ -183,2 +232,3 @@
  	ops.mm_idp = &mm->context.id;
 +	ops.hostmap = uml_fault_hostmap && mm != &init_mm;
  	if (mm == &init_mm) {

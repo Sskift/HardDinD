@@ -17,7 +17,8 @@ class FaultHostmapTests(unittest.TestCase):
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         helpers = []
-        for start in ('static inline unsigned long uml_host_pte_value', 'int uml_host_protect('):
+        for start in ('static inline unsigned long uml_host_pte_value',
+                      'static inline int uml_host_lazy_pte', 'int uml_host_protect('):
             pos = added.rindex(start)
             helpers.append(added[pos:added.index('\n}', pos) + 2])
         source = '''
@@ -29,6 +30,7 @@ class FaultHostmapTests(unittest.TestCase):
 #define _PAGE_NEEDSYNC 2
 #define _PAGE_HOST 4
 #define _PAGE_PROTNONE 16
+#define _PAGE_ACCESSED 128
 #define RW 32
 #define STUB_SYSCALL_MPROTECT 6
 struct stub_syscall { struct { unsigned long addr, length; int prot; } mem; int syscall; };
@@ -63,6 +65,12 @@ int main(void) {
     assert(uml_host_pte_value(mapped, mapped, 0) == (mapped | _PAGE_NEEDSYNC));
     unsigned long none = 4096 | _PAGE_PROTNONE;
     assert(uml_host_pte_value(mapped, none, 1) & _PAGE_HOST);
+    assert(uml_host_lazy_pte(0, mapped, 1));
+    assert(!uml_host_lazy_pte(0, mapped, 0));
+    assert(!uml_host_lazy_pte(0, mapped | _PAGE_ACCESSED, 1));
+    assert(!uml_host_lazy_pte(_PAGE_NEEDSYNC, mapped, 1));
+    assert(!uml_host_lazy_pte(mapped, mapped + 4096, 1));
+    assert(!uml_host_lazy_pte(0, 0, 1));
     struct mm_id id = {0};
     assert(!uml_host_protect(&id, 4096, 4096, 1));
     assert(!uml_host_protect(&id, 8192, 4096, 1));

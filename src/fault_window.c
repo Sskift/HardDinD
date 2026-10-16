@@ -51,18 +51,26 @@ int main(int argc, char **argv) {
     denied(p - page); denied(p + hole * page); denied(p + bytes);
     CHECK(!mprotect((void *)(p + hole * page), page, PROT_READ | PROT_WRITE));
     CHECK(p[hole * page] == 0); p[hole * page] = value(hole);
+    int gate[2]; CHECK(!pipe(gate));
     pid_t child = fork(); CHECK(child >= 0);
     if (!child) {
+        CHECK(!close(gate[1]));
+        char ready; CHECK(read(gate[0], &ready, 1) == 1 && ready == 'G');
+        CHECK(!close(gate[0]));
+        for (size_t i = 0; i < pages; i++) CHECK(p[i * page] == value(i));
         for (size_t i = 0; i < pages; i++) p[i * page] = 0xa5;
         CHECK(!madvise((void *)(p + 1500 * page), 5000 * page, MADV_DONTNEED));
         for (size_t i = 0; i < pages; i++)
             CHECK(p[i * page] == (i >= 1500 && i < 6500 ? 0 : 0xa5));
         _exit(0);
     }
+    CHECK(!close(gate[0]));
+    for (size_t i = 0; i < pages; i++) p[i * page] = 0x3c;
+    CHECK(write(gate[1], "G", 1) == 1); CHECK(!close(gate[1]));
     int status; pid_t ret;
     do { ret = waitpid(child, &status, 0); } while (ret < 0 && errno == EINTR);
     CHECK(ret == child && WIFEXITED(status) && WEXITSTATUS(status) == 0);
-    for (size_t i = 0; i < pages; i++) CHECK(p[i * page] == value(i));
+    for (size_t i = 0; i < pages; i++) CHECK(p[i * page] == 0x3c);
     for (size_t i = 0; i < bytes; i++) p[i] = 0x6d;
     CHECK(!madvise((void *)p, bytes, MADV_DONTNEED));
     for (size_t i = 0; i < pages; i++) p[i * page] = value(i);
