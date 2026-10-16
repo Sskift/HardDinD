@@ -18,7 +18,7 @@ struct snapshot {
     char names[VALUES][80];
     uint64_t values[VALUES];
     unsigned int count;
-    int faults, profile;
+    int faults, profile, fp;
     uint64_t khz;
 };
 static struct snapshot *first, *last;
@@ -49,6 +49,7 @@ static void snapshot_file(struct snapshot *s, const char *file, const char *pref
 static void snapshot(struct snapshot *s) {
     snapshot_file(s, "/proc/uml_faultstat", "fault_", &s->faults);
     snapshot_file(s, "/proc/uml_syscall_profile", "", &s->profile);
+    snapshot_file(s, "/proc/uml_fp_lazy", "fp_", &s->fp);
 }
 static void wait_ok(pid_t child) {
     int status;
@@ -129,14 +130,14 @@ static void measure(const char *mode, uint64_t count, char *program) {
         shell("rm -rf lua");
     }
     CHECK((elapsed || !strcmp(mode, "snapshot")) && first->count == last->count && first->faults == last->faults &&
-          first->profile == last->profile && first->khz == last->khz);
+          first->profile == last->profile && first->fp == last->fp && first->khz == last->khz);
     printf("{\"schema\":\"hd.core-cost/1\",\"mode\":\"%s\",\"verified\":true,\"operations\":%" PRIu64
            ",\"seconds\":%.9f,\"cpu_seconds\":%.6f,\"minor_faults\":%ld,\"major_faults\":%ld,"
-           "\"faults_enabled\":%d,\"profile_enabled\":%d,\"tsc_khz\":%" PRIu64 ",\"counters\":{",
+           "\"faults_enabled\":%d,\"profile_enabled\":%d,\"fp_enabled\":%d,\"tsc_khz\":%" PRIu64 ",\"counters\":{",
            mode, count, elapsed / 1e9, cpu_seconds(&self_b) + cpu_seconds(&child_b) -
            cpu_seconds(&self_a) - cpu_seconds(&child_a), self_b.ru_minflt + child_b.ru_minflt -
            self_a.ru_minflt - child_a.ru_minflt, self_b.ru_majflt + child_b.ru_majflt -
-           self_a.ru_majflt - child_a.ru_majflt, last->faults, last->profile, last->khz);
+           self_a.ru_majflt - child_a.ru_majflt, last->faults, last->profile, last->fp, last->khz);
     int printed = 0;
     for (unsigned int i = 0; i < first->count; i++) {
         CHECK(!strcmp(first->names[i], last->names[i]) && last->values[i] >= first->values[i]);

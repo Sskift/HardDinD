@@ -57,10 +57,11 @@ Do not combine with core-fp-compare (both replace the same restoration copy).
  	 * If no time passes, then sched_yield may not actually yield, causing
 --- a/arch/um/os-Linux/skas/process.c
 +++ b/arch/um/os-Linux/skas/process.c
-@@ -33,6 +33,31 @@
- #include <timetravel.h>
- #include <asm-generic/rwonce.h>
- #include "../internal.h"
+@@ -37,6 +37,31 @@
+ int is_skas_winch(int pid, int fd, void *data)
+ {
+ 	return pid == getpgrp();
++}
 +
 +extern int uml_fp_lazy;
 +
@@ -85,10 +86,9 @@ Do not combine with core-fp-compare (both replace the same restoration copy).
 +#else
 +    return 0;
 +#endif
-+}
+ }
  
- int is_skas_winch(int pid, int fd, void *data)
- {
+ static const char *ptrace_reg_name(int idx)
 --- a/arch/um/os-Linux/start_up.c
 +++ b/arch/um/os-Linux/start_up.c
 @@ -337,7 +337,7 @@

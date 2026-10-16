@@ -29,6 +29,7 @@ class CoreCostTests(unittest.TestCase):
                 self.assertTrue(row['verified'])
                 self.assertGreater(row['seconds'], 0)
                 self.assertGreaterEqual(row['cpu_seconds'], 0)
+                self.assertEqual(row['fp_enabled'], 0)
             result = subprocess.run([binary, 'group', '8'], capture_output=True,
                                     text=True, check=True, timeout=30)
             group = json.loads(result.stdout)
