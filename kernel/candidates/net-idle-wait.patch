@@ -1,0 +1,126 @@
+--- a/arch/um/os-Linux/internal.h
++++ b/arch/um/os-Linux/internal.h
+@@ -21,6 +21,8 @@
+  */
+ extern __thread int signals_enabled;
+ int timer_alarm_pending(void);
++int os_irq_signals_pending(void);
++int os_defer_ipi_enabled(void);
+ 
+ /*
+  * skas/process.c
+--- a/arch/um/os-Linux/signal.c
++++ b/arch/um/os-Linux/signal.c
+@@ -156,6 +156,11 @@
+ void timer_set_signal_handler(void)
+ {
+ 	set_handler(SIGALRM);
++}
++
++int os_irq_signals_pending(void)
++{
++	return !!signals_pending;
+ }
+ 
+ int timer_alarm_pending(void)
+--- a/arch/um/os-Linux/smp.c
++++ b/arch/um/os-Linux/smp.c
+@@ -190,6 +190,11 @@
+ 	__local_ipi_set(1);
+ }
+ 
++int os_defer_ipi_enabled(void)
++{
++	return defer_ipi;
++}
++
+ int os_local_ipi_pending(void)
+ {
+ 	return defer_ipi && uml_ipi_defer_pending(&pending_ipis);
+--- a/arch/um/os-Linux/time.c
++++ b/arch/um/os-Linux/time.c
+@@ -18,6 +18,7 @@
+ #include <sys/signalfd.h>
+ #include <sys/time.h>
+ #include <kern_util.h>
++#include <init.h>
+ #include <os.h>
+ #include <smp.h>
+ #include <string.h>
+@@ -145,10 +146,29 @@
+ }
+ 
+ static __thread int wake_signals;
++static int net_idle_wait;
++
++static int __init setup_net_idle_wait(char *str, int *add)
++{
++	if (strcmp(str, "0") && strcmp(str, "1"))
++		return -1;
++	net_idle_wait = str[0] == '1';
++	*add = 0;
++	return 0;
++}
++__uml_setup("uml_net_idle_wait=", setup_net_idle_wait,
++"uml_net_idle_wait=<0|1>\n"
++"    Use a per-thread signal wait for idle; requires defer_ipi=1.\n");
+ 
+ void os_idle_prepare(void)
+ {
+ 	sigset_t set;
++
++	if (net_idle_wait) {
++		if (!os_defer_ipi_enabled())
++			panic("uml_net_idle_wait=1 requires defer_ipi=1");
++		return;
++	}
+ 
+ 	sigemptyset(&set);
+ 	sigaddset(&set, SIGALRM);
+@@ -170,7 +190,7 @@
+  */
+ void os_idle_sleep(void)
+ {
+-	sigset_t set, previous;
++	sigset_t set, previous, wake_mask;
+ 
+ 	/* Software IRQ masking can consume an IPI into pending_ipis before
+ 	 * poll starts. Block host delivery across the pending check and sleep:
+@@ -179,12 +199,35 @@
+ 	sigemptyset(&set);
+ 	sigaddset(&set, SIGALRM);
+ 	sigaddset(&set, IPI_SIGNAL);
++	if (net_idle_wait) {
++		/* Close the pending-check/sleep race for asynchronous IRQs too.
++		 * sigsuspend restores each CPU's original SIGIO/CHLD mask.
++		 */
++		sigaddset(&set, SIGIO);
++		sigaddset(&set, SIGCHLD);
++	}
+ 	if (sigprocmask(SIG_BLOCK, &set, &previous) < 0)
+ 		panic("Failed to block idle wake signals, errno = %d", errno);
+ 
+ 	if (!uml_need_resched() && !timer_alarm_pending() &&
+-	    !os_local_ipi_pending())
+-		os_poll(1, &wake_signals);
++	    !os_local_ipi_pending() &&
++	    (!net_idle_wait || !os_irq_signals_pending())) {
++		if (net_idle_wait) {
++			if (signals_enabled)
++				panic("signal wait requires IRQ-disabled idle");
++			/* signalfd pollers share sighand->signalfd_wqh: an IPI
++			 * wakes every idle vCPU. Signal delivery targets one CPU.
++			 * Deferred handlers retain the vector while IRQs are off.
++			 */
++			wake_mask = previous;
++			sigdelset(&wake_mask, SIGALRM);
++			sigdelset(&wake_mask, IPI_SIGNAL);
++			if (sigsuspend(&wake_mask) != -1 || errno != EINTR)
++				panic("Idle signal wait failed, errno = %d", errno);
++		} else {
++			os_poll(1, &wake_signals);
++		}
++	}
+ 
+ 	/* The default path keeps IPI blocked until local IRQ enable. The
+ 	 * deferred path restores host delivery, retaining guest IRQ masking.
