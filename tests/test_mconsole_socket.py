@@ -20,7 +20,7 @@ with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
     magic, version, length, data = struct.unpack('=III512s', request)
     assert (magic, version, data[:length]) == (0xcafebabe, 2, b'cad')
     message = b'rejected' if int(sys.argv[1]) else b''
-    s.sendto(struct.pack('=III', int(sys.argv[1]), 0, len(message)) + message, address)
+    s.sendto(struct.pack('=III', int(sys.argv[1]), 0, len(message) + 1) + message + b'\0', address)
 '''
 
 

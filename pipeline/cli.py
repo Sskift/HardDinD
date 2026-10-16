@@ -115,6 +115,7 @@ def cmd_fetch(_a):
     require_master()
     subprocess.run(['rsync', '-a', '--bwlimit=2000', '--prune-empty-dirs', '--include=/*/', '--include=/*/instance-*/',
                     '--include=/*/functional/', '--include=summary.json', '--include=scorecard.md',
+                    '--include=/*/bench-A/', '--include=/*/bench-B/',
                     '--include=*.log', '--include=state.json', '--include=shutdown-diagnostic-*.json',
                     '--include=ports-*.jsonl', '--exclude=*',
                     f'{config.REMOTE}:{config.REMOTE_ROOT}/runs/', f'{dest}/'],
@@ -256,6 +257,16 @@ def run_suite(kind, a):
     try:
         artifacts = build.everything(a.with_, shares=True)
         summary['artifacts'] = artifacts['ids']
+        artifacts_b = None
+        if getattr(a, 'ab', None):
+            artifacts_b = build.everything(a.with_ + a.ab_with, shares=True)
+            summary['ab'] = {'candidates': a.with_ + a.ab_with,
+                             'kernel_args': a.kernel_arg + a.ab,
+                             'share_options': runs.share_options(a.share_opt + a.ab_share_opt),
+                             'artifacts': artifacts_b['ids']}
+        if kind in ('bench', 'ci'):
+            from pipeline import bench
+            bench.bench_root(artifacts.get('alpine_tar'))
         if kind in ('test', 'ci'):
             with locks.measure(shared=True):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
@@ -266,10 +277,16 @@ def run_suite(kind, a):
                 summary['quiet'] = runs.wait_quiet(max_wait=0 if getattr(a, 'quick', False) else None)
                 cpus = runs.pick_cpus(config.GUEST_CPUS)
                 summary['bench_cpus'] = cpus
-                summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=cpus)
-            state = summary['bench'].pop('guest_state')
-            if shutdown_check(state)['status'] != 'pass':
-                summary['error'] = 'bench guest did not shut down cleanly: ' + shutdown_check(state)['detail']
+                if artifacts_b:
+                    from pipeline import bench_ab
+                    summary['bench'] = bench_ab.run(run_id, run_dir, artifacts, artifacts_b, a, cpus)
+                else:
+                    summary['bench'] = with_guest(run_id, run_dir, artifacts, a, 'bench', cpuset=cpus)
+            states = (summary['bench'].pop('guest_states') if artifacts_b else
+                      {'guest': summary['bench'].pop('guest_state')})
+            for side, state in states.items():
+                if shutdown_check(state)['status'] != 'pass':
+                    summary['error'] = f'bench {side} did not shut down cleanly: ' + shutdown_check(state)['detail']
     except Exception as error:
         summary['error'] = f'{type(error).__name__}: {error}'
         traceback.print_exc()
@@ -433,6 +450,10 @@ def main(argv=None):
                        ('bench', 'performance matrix, native vs guest, exclusive'),
                        ('ci', 'test then bench in one run')):
         s = sub.add_parser(kind, help=text); runopts(s, bench=kind != 'test')
+        if kind == 'bench':
+            s.add_argument('--ab', action='append', default=[], metavar='K=V', help='guest B boot parameter; enables rotating native/A/B samples')
+            s.add_argument('--ab-with', action='append', default=[], metavar='CANDIDATE', help='extra kernel candidate for guest B')
+            s.add_argument('--ab-share-opt', action='append', default=[], metavar='K=V', help='guest B share option override')
         s.set_defaults(fn=lambda a, kind=kind: sys.exit(run_suite(kind, a)))
     s = sub.add_parser('probe', help='run one static program natively and in guests, interleaved (kernel A/B)')
     s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE')
@@ -448,6 +469,8 @@ def main(argv=None):
     s.add_argument('run'); s.add_argument('--vs', help='compare with another run'); s.add_argument('--json', action='store_true')
     s.set_defaults(fn=cmd_score)
     a = p.parse_args(argv)
+    if a.command == 'bench' and (a.ab_with or a.ab_share_opt) and not a.ab:
+        p.error('--ab-with and --ab-share-opt require --ab')
     if getattr(a, 'args', None) and a.args[:1] == ['--'] and a.command in ('remote', 'job'):
         a.args = a.args[1:]
     return a.fn(a)

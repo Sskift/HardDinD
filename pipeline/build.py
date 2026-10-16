@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-from pipeline import config
+from pipeline import config, locks
 
 REPO = config.REPO
 LOCK = json.loads((REPO / 'sources.lock.json').read_text())
@@ -71,6 +71,7 @@ def run(cmd, log_file=None, **kwargs):
         raise RuntimeError(f'command failed ({result.returncode}): {cmd[0]} ...; see {log_file}\n' + '\n'.join(tail))
 
 
+@locks.measure(shared=True)
 def artifact(kind, key, builder):
     """Return STORE/kind/key, building it with builder(tmp, final) when absent."""
     final = config.STORE / kind / key
@@ -94,6 +95,7 @@ def artifact(kind, key, builder):
     return final
 
 
+@locks.measure(shared=True)
 def fetch(name):
     out = subprocess.run([sys.executable, REPO / 'scripts/fetch-artifact.py', name, config.WORK / 'cache'],
                          check=True, capture_output=True, text=True)
@@ -230,6 +232,7 @@ def client():
     return artifact('client', key, build)
 
 
+@locks.measure(shared=True)
 def everything(candidates=(), shares=False):
     """Build what an instance needs; returns paths plus the ids that identify the build."""
     kern = kernel(candidates)

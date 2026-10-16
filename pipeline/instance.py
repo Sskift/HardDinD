@@ -145,9 +145,9 @@ def mconsole(instance, path, command, output=None, timeout=3):
                 if len(reply) < 12:
                     raise RuntimeError('short mconsole response')
                 err, more, length = struct.unpack('=III', reply[:12])
-                if length > 512 or len(reply) < 12 + length:
+                if more not in (0, 1) or not 1 <= length <= 512 or len(reply) != 12 + length or reply[-1:] != b'\0':
                     raise RuntimeError('invalid mconsole response length')
-                payload = reply[12:12 + length].removesuffix(b'\0')
+                payload = reply[12:-1]
                 if err:
                     raise RuntimeError(payload.decode(errors='replace'))
                 if output is not None:
@@ -160,6 +160,30 @@ def mconsole(instance, path, command, output=None, timeout=3):
 
 
 DAEMON_LOG_LIMIT = 8 * 1024 * 1024
+
+
+def read_guest_file(instance, state, source, receive):
+    """Drain proc replies with backpressure, preserving the file's leading byte.
+
+    UML normally uses a nonblocking mconsole socket: proc ignores sendto errors
+    and skips the rest of a page when the datagram queue fills. stop makes that
+    socket blocking until go; do not change the global host queue limit.
+    """
+    path = pathlib.Path(state['mconsole'])
+    first = True
+    def output(data):
+        nonlocal first
+        if first:
+            if data != b'\n':
+                raise RuntimeError('missing mconsole proc prefix')
+            first = False
+        else:
+            receive(data)
+    mconsole(instance, path, 'stop')
+    try:
+        mconsole(instance, path, 'proc 1/root' + source, output, timeout=15)
+    finally:
+        mconsole(instance, path, 'go')
 
 
 class LogTail:
@@ -200,14 +224,7 @@ def capture_daemon_logs(instance, state):
     if len(run) != 12 or any(c not in '0123456789abcdef' for c in run):
         raise ValueError('invalid guest boot id')
     tail = LogTail()
-    first = True
-    def receive(data):
-        nonlocal first
-        if first:  # mconsole proc prepends a newline, not part of the file.
-            data = data.removeprefix(b'\n')
-            first = False
-        tail.append(data)
-    mconsole(instance, pathlib.Path(state['mconsole']), 'proc 1/root/run/dockerd.log', receive, timeout=15)
+    read_guest_file(instance, state, '/run/dockerd.log', tail.append)
     data = tail.data()
     files = [f'{name}-{run}.log' for name in ('dockerd', 'containerd')]
     for name in files:

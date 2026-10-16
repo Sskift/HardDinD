@@ -6,11 +6,14 @@ the `measure-gate` lock, which new shared holders must pass through, then waits
 for the current shared holders to drain.
 """
 import contextlib
+import contextvars
 import fcntl
 import sys
 import time
 
 from pipeline import config
+
+_held = contextvars.ContextVar('measure_lock', default=None)
 
 
 def _open(name):
@@ -37,6 +40,22 @@ def acquire_shared():
 
 @contextlib.contextmanager
 def measure(shared=False):
+    held = _held.get()
+    if held is not None:
+        if held == 'shared' and not shared:
+            raise RuntimeError('cannot upgrade a shared measure lock')
+        yield
+        return
+    token = _held.set('shared' if shared else 'exclusive')
+    try:
+        with _measure(shared):
+            yield
+    finally:
+        _held.reset(token)
+
+
+@contextlib.contextmanager
+def _measure(shared):
     if shared:
         f = acquire_shared()
         try:

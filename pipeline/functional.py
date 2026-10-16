@@ -388,6 +388,33 @@ def run(ctx):
     return {'schema': 'hd.test/1', 'checks': rows, 'coverage': coverage(rows)}
 
 
+@check('system.daemon_logs', 'run|container exec')
+def daemon_logs(c):
+    from pipeline import instance
+    name = c.container('sleep', '120', opts=('-v', '/run:/host-run'), detached=True)
+    previous = b''
+    try:
+        for capture in range(2):
+            # Snapshot the real, growing daemon log so guest size/hash and the
+            # control-path read refer to exactly the same bytes.
+            output = c.d('exec', name, 'sh', '-ec',
+                         'cp /host-run/dockerd.log /host-run/hd-log-check; '
+                         'wc -c < /host-run/hd-log-check; sha256sum /host-run/hd-log-check')
+            size, digest, _ = output.split()
+            tail = instance.LogTail()
+            instance.read_guest_file(c.ctx.instance, instance.read_state(c.ctx.instance),
+                                     '/run/hd-log-check', tail.append)
+            data = tail.data()
+            require(5110 < int(size) <= instance.DAEMON_LOG_LIMIT, 'capture fixture size')
+            require(len(data) == int(size) and hashlib.sha256(data).hexdigest() == digest,
+                    'mconsole capture differs from guest file')
+            require(data.startswith(previous), 'daemon log prefix changed')
+            c.write(json.dumps({'capture': capture, 'bytes': len(data), 'sha256': digest, 'prefix': True}))
+            previous = data
+    finally:
+        c.d('exec', name, 'rm', '-f', '/host-run/hd-log-check')
+
+
 @check('system.version_info', 'version|system info', base=False)
 def version_info(c):
     version = json.loads(c.d('version', '--format', '{{json .}}'))
