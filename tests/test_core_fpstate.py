@@ -115,3 +115,4 @@ int main(void) {
             self.assertEqual(row['sse_calls'], 8192)
             self.assertEqual(row['avx_calls'], 8192)
             self.assertTrue(row['signal_upper_edit'] and row['ptrace_upper_edit'] and row['verified'])
+            self.assertEqual(row['fp_lazy'], {'enabled': False, 'borrowed': 0, 'reused': 0, 'materialized': 0})

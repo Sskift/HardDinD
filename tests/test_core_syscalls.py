@@ -54,8 +54,27 @@ int main(int argc, char **argv) {
         start = header.index('static inline __attribute__((always_inline)) unsigned long long uml_sp_clock')
         end = header.index('\n}', start) + 2
         header = header[:start] + 'static unsigned long long tick;\nstatic unsigned long long uml_sp_clock(void) { return ++tick; }' + header[end:]
+        part = patch.split('+++ b/arch/um/kernel/core-profile.c\n')[1].split('\n--- ')[0]
+        code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
+        seed = code.split('unsigned int uml_sp_seed(', 1)[1].split('\n}', 1)[0]
         source = '#include <assert.h>\n' + header + '''
+int uml_sp_enabled;
+static unsigned int stub_sequence;
+unsigned int uml_sp_seed(''' + seed + '''
+}
 int main(void) {
+    assert(!uml_sp_seed() && !stub_sequence);
+    uml_sp_enabled = 1;
+    int early[16] = {0}, samples = 0;
+    for (int runner = 0; runner < 4096; runner++) {
+        struct uml_sp_stub child = {.enabled = 1, .sequence = uml_sp_seed()};
+        for (int call = 0; call < 16; call++) {
+            uml_sp_enter(&child, 1);
+            early[call] += child.active; samples += child.active;
+        }
+    }
+    assert(samples > 200 && samples < 320);
+    for (int call = 0; call < 16; call++) assert(early[call] > 5 && early[call] < 30);
     struct uml_sp_stub p = {0};
     for (int i = 0; i < 1024; i++) uml_sp_enter(&p, 1);
     assert(!p.sequence && !p.active && !tick);

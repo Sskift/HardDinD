@@ -1110,7 +1110,7 @@ for _mode in ('threads', 'processes', 'signals', 'exec', 'syscall'):
         lambda c, mode=_mode: semantic(c, 'corebench', (mode, '4')))
 
 
-def core_summary(output, program, mode, count=256, patch_enabled=None):
+def core_summary(output, program, mode, count=256, patch_enabled=None, fp_lazy=False):
     row = json.loads(output.strip().splitlines()[-1])
     if program == 'core_faults':
         require(row == {'schema': 'hd.core/1', 'mode': 'semantics', 'verified': True}, row)
@@ -1121,6 +1121,12 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
         require(all(row[k] is True for k in ('fork', 'exec_clean', 'file_clean', 'ptrace',
                     'poketext', 'proc_mem', 'single_step', 'alignment_flags', 'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')), row)
     elif program == 'core_fpstate':
+        fp = row.pop('fp_lazy', None)
+        require(isinstance(fp, dict) and set(fp) == {'enabled', 'borrowed', 'reused', 'materialized'}
+                and fp['enabled'] is fp_lazy, row)
+        require(all(type(fp[k]) is int and fp[k] >= 0 for k in ('borrowed', 'reused', 'materialized')), fp)
+        require((fp['borrowed'] >= count and fp['reused'] >= count and fp['materialized'] > 0)
+                if fp_lazy else not any(fp[k] for k in ('borrowed', 'reused', 'materialized')), fp)
         require(row == {'schema': 'hd.core-fpstate/1', 'sse_calls': count * 2,
                         'avx_calls': count * 2, 'signal_upper_edit': True,
                         'ptrace_upper_edit': True, 'verified': True}, row)
@@ -1161,7 +1167,8 @@ def core_semantic(c, program, mode, count=256):
     # Ptrace and nested seccomp are guest semantics, independent of Docker's default filter.
     output = c.output('/' + program, *args, image=HELPERS, opts=('--privileged',))
     enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
-    core_summary(output, program, mode, count, patch_enabled=enabled)
+    lazy = 'uml_fp_lazy=1' in c.ctx.instance_options.get('kernel_args', [])
+    core_summary(output, program, mode, count, patch_enabled=enabled, fp_lazy=lazy)
 
 
 check('process.core_faults', 'run', helpers=True, timeout=180)(

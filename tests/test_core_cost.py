@@ -29,6 +29,13 @@ class CoreCostTests(unittest.TestCase):
                 self.assertTrue(row['verified'])
                 self.assertGreater(row['seconds'], 0)
                 self.assertGreaterEqual(row['cpu_seconds'], 0)
+            result = subprocess.run([binary, 'group', '8'], capture_output=True,
+                                    text=True, check=True, timeout=30)
+            group = json.loads(result.stdout)
+            self.assertTrue(group['verified'])
+            self.assertEqual([(s['mode'], s['operations']) for s in group['samples']],
+                             [('snapshot', 1), ('forkexec', 8), ('pipe', 512)])
+            self.assertTrue(all(s['verified'] for s in group['samples']))
             result = subprocess.run([binary, 'forkexec', '1', '/missing/core-program'],
                                     capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
@@ -42,15 +49,21 @@ class CoreCostTests(unittest.TestCase):
         part = patch.split('+++ b/arch/um/kernel/core-profile.c\n', 1)[1].split('\n--- ')[0]
         source = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
         body = source.split('void uml_sp_syscall(', 1)[1].split('\n}', 1)[0]
+        count = source.split('void uml_sp_count(', 1)[1].split('\n}', 1)[0]
         harness = '''#include <assert.h>
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define UML_SP_syscall 0
+#define raw_smp_processor_id() 0
 static int uml_sp_enabled;
-static unsigned long long syscall_counts[512], total;
-static void uml_sp_count(unsigned int stage, unsigned int n) { assert(!stage); total += n; }
+static unsigned long long syscall_counts[512];
+static struct { unsigned long long count[1]; } stats[1];
+#define total (stats[0].count[0])
+void uml_sp_count(''' + count + '''
+}
 void uml_sp_syscall(''' + body + '''
 }
 int main(void) {
+    uml_sp_count(0, 1); assert(!total);
     uml_sp_syscall(39); assert(!total && !syscall_counts[39]);
     uml_sp_enabled = 1;
     uml_sp_syscall(0); uml_sp_syscall(39); uml_sp_syscall(511);

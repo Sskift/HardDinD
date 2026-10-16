@@ -55,12 +55,20 @@ class CoreFunctionalTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.core_summary(json.dumps(row), 'core_faults', 'semantics')
         row = {'schema': 'hd.core-fpstate/1', 'sse_calls': 8192, 'avx_calls': 8192,
-               'signal_upper_edit': True, 'ptrace_upper_edit': True, 'verified': True}
+               'signal_upper_edit': True, 'ptrace_upper_edit': True, 'verified': True,
+               'fp_lazy': {'enabled': False, 'borrowed': 0, 'reused': 0, 'materialized': 0}}
         f.core_summary(json.dumps(row), 'core_fpstate', 'state', 4096)
         for key in row:
             incomplete = {k: v for k, v in row.items() if k != key}
             with self.subTest(key=key), self.assertRaises(AssertionError):
                 f.core_summary(json.dumps(incomplete), 'core_fpstate', 'state', 4096)
+        row['fp_lazy'] = {'enabled': True, 'borrowed': 8192, 'reused': 4096, 'materialized': 1}
+        f.core_summary(json.dumps(row), 'core_fpstate', 'state', 4096, fp_lazy=True)
+        for key, value in [('enabled', False), ('borrowed', 4095), ('reused', 4095),
+                           ('materialized', 0), ('materialized', True)]:
+            broken = {**row, 'fp_lazy': {**row['fp_lazy'], key: value}}
+            with self.subTest(key=key, value=value), self.assertRaises(AssertionError):
+                f.core_summary(json.dumps(broken), 'core_fpstate', 'state', 4096, fp_lazy=True)
 
     def test_hot_gate_requires_cold_lazy_and_lifetime_evidence(self):
         row = {'schema': 'hd.core-hot/1', 'enabled': True, 'threshold': 64, 'cold_calls': 63,

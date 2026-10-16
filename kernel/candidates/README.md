@@ -14,5 +14,5 @@
 | `share-poll` | virtio-uml 完成轮询（`virtio_uml.poll_iters=N`），保留中断后备 | 未证明元数据收益，不建议开启 |
 | `share-profile` | FUSE 每种请求的往返计时与 tracepoint（诊断用） | 可应用 |
 | `net-profile` | `uml_net_profile=1`：vector 驱动收发/SIGIO/IRQ 计数和按线程的 CPU 拆分；bench 在网络指标后自动跑带标记的传输诊断（诊断用） | 可应用 |
-| `core-syscall-hot` | 依赖 `core-syscall-patch`；`uml_syscall_patch_hot=64` 按 mm/站点延迟改写，首次热站点才分配 trampoline；fork 继承已有站点，exec 前不新增 | 默认 0，保持原候选行为；已构建；冷站点/懒分配/继承检查已注册，guest 与工作负载 A/B 待测 |
-| `core-fp-lazy` | `uml_fp_lazy=1` 借用停驻 runner 的完整 FP 映像；切换、信号、ptrace、fork 前复制，同映像返回省去双向复制 | 默认关闭；不改 XSAVE 格式或掩码；生命周期 syscall 仍立即复制；已构建，不可与 core-fp-compare 组合；guest 与 A/B 待测 |
+| `core-syscall-hot` | 依赖 `core-syscall-patch`；`uml_syscall_patch_hot=64` 按 mm/站点延迟改写，首次热站点才分配 trampoline；fork 继承已有站点，exec 前不新增 | 默认 0，保持原候选行为；已构建；core-50 全套 161/163，core/checker/glibc/musl/Go/strace 与两组启动 burst 均过；失败为 outer_mapped_write、outer_directory_permission，后者待同内核关闭对照；工作负载 A/B 未测，不建议推广 |
+| `core-fp-lazy` | `uml_fp_lazy=1` 借用停驻 runner 的完整 FP 映像；切换、信号、ptrace、fork 前复制，同映像返回省去双向复制 | 默认关闭；不改 XSAVE 格式或掩码；生命周期 syscall 仍立即复制；已构建，不可与 core-fp-compare 组合；core-49 原生/A/B 9 次 FP 语义通过，SSE/AVX 配对中位加速 1.417×/1.217×，范围 1.20–1.54/1.05–1.46；无逐样本 throttle 数据；完整功能、真实工作负载待测 |

@@ -249,6 +249,8 @@ int main(int argc, char **argv) {
     signals(); traced(); fatal_and_redirected();
     struct lazy_counts lazy_after = lazy_counts();
     CHECK(lazy_before.enabled == lazy_after.enabled);
+    CHECK(lazy_after.borrowed >= lazy_before.borrowed && lazy_after.reused >= lazy_before.reused &&
+          lazy_after.materialized >= lazy_before.materialized);
     if (lazy_after.enabled) {
         CHECK(lazy_after.borrowed >= lazy_before.borrowed + count);
         CHECK(lazy_after.reused >= lazy_before.reused + count);
@@ -258,6 +260,10 @@ int main(int argc, char **argv) {
     if (patch_enabled) CHECK(after >= before && after - before >= count * 4 - 4);
     printf("{\"schema\":\"hd.core-fpstate/1\",\"sse_calls\":%lu,\"avx_calls\":%lu,"
            "\"signal_upper_edit\":true,\"ptrace_upper_edit\":true,\"verified\":true", count * 2, count * 2);
+    printf(",\"fp_lazy\":{\"enabled\":%s,\"borrowed\":%" PRIu64 ",\"reused\":%" PRIu64
+           ",\"materialized\":%" PRIu64 "}", lazy_after.enabled ? "true" : "false",
+           lazy_after.borrowed - lazy_before.borrowed, lazy_after.reused - lazy_before.reused,
+           lazy_after.materialized - lazy_before.materialized);
     if (argc == 3) {
         CHECK(sse_seconds > 0 && avx_seconds > 0);
         printf(",\"timing\":{\"threads\":2,\"shared_cpu\":true,\"yield_every\":128,"

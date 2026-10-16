@@ -97,14 +97,7 @@ static double cpu_seconds(const struct rusage *r) {
     return r->ru_utime.tv_sec + r->ru_stime.tv_sec +
         (r->ru_utime.tv_usec + r->ru_stime.tv_usec) / 1e6;
 }
-int main(int argc, char **argv) {
-    if (argc == 2 && !strcmp(argv[1], "child")) return 0;
-    CHECK(argc >= 2 && argc <= 4);
-    const char *mode = argv[1];
-    CHECK(!strcmp(mode, "compile") || !strcmp(mode, "forkexec") || !strcmp(mode, "pipe"));
-    char *end = NULL;
-    uint64_t count = argc >= 3 ? strtoull(argv[2], &end, 10) : 1;
-    CHECK(count && count <= 10000000 && (argc < 3 || (*argv[2] && !*end)));
+static void measure(const char *mode, uint64_t count, char *program) {
     if (!strcmp(mode, "compile")) {
         CHECK(count == 1 && !chdir("/work"));
         shell("rm -rf lua; mkdir lua; tar -xzf /bench/lua.tar.gz -C lua --strip-components=1");
@@ -125,9 +118,9 @@ int main(int argc, char **argv) {
     if (!strcmp(mode, "compile")) {
         shell("cd lua; make -j4 generic > /work/compile.log 2>&1 || { cat /work/compile.log >&2; exit 1; }");
     } else if (!strcmp(mode, "forkexec")) {
-        char *args[] = {argc == 4 ? argv[3] : argv[0], "child", NULL};
+        char *args[] = {program, "child", NULL};
         for (uint64_t i = 0; i < count; i++) command(args);
-    } else pipe_work(count);
+    } else if (!strcmp(mode, "pipe")) pipe_work(count);
     uint64_t elapsed = now() - started;
     CHECK(!getrusage(RUSAGE_SELF, &self_b) && !getrusage(RUSAGE_CHILDREN, &child_b));
     snapshot(last);
@@ -135,7 +128,7 @@ int main(int argc, char **argv) {
         shell("lua/src/lua -e 'local n=0; for i=1,10000 do n=n+i end; assert(n==50005000); assert(_VERSION==\"Lua 5.4\")'; lua/src/luac -p /bench/verify.lua");
         shell("rm -rf lua");
     }
-    CHECK(elapsed && first->count == last->count && first->faults == last->faults &&
+    CHECK((elapsed || !strcmp(mode, "snapshot")) && first->count == last->count && first->faults == last->faults &&
           first->profile == last->profile && first->khz == last->khz);
     printf("{\"schema\":\"hd.core-cost/1\",\"mode\":\"%s\",\"verified\":true,\"operations\":%" PRIu64
            ",\"seconds\":%.9f,\"cpu_seconds\":%.6f,\"minor_faults\":%ld,\"major_faults\":%ld,"
@@ -150,6 +143,29 @@ int main(int argc, char **argv) {
         uint64_t delta = last->values[i] - first->values[i];
         if (delta) printf("%s\"%s\":%" PRIu64, printed++ ? "," : "", first->names[i], delta);
     }
-    puts("}}");
+    printf("}}");
+    CHECK(!munmap(first, bytes));
+}
+int main(int argc, char **argv) {
+    if (argc == 2 && !strcmp(argv[1], "child")) return 0;
+    CHECK(argc >= 2 && argc <= 4);
+    const char *mode = argv[1];
+    CHECK(!strcmp(mode, "compile") || !strcmp(mode, "forkexec") || !strcmp(mode, "pipe") ||
+          !strcmp(mode, "snapshot") || !strcmp(mode, "group"));
+    char *end = NULL;
+    uint64_t count = argc >= 3 ? strtoull(argv[2], &end, 10) : 1;
+    CHECK(count && count <= 10000000 && (argc < 3 || (*argv[2] && !*end)));
+    CHECK(strcmp(mode, "snapshot") || count == 1);
+    char *program = argc == 4 ? argv[3] : argv[0];
+    if (!strcmp(mode, "group")) {
+        CHECK(count <= 10000000 / 64);
+        printf("{\"schema\":\"hd.core-cost-group/1\",\"samples\":[");
+        measure("snapshot", 1, program); putchar(',');
+        measure("forkexec", count, program); putchar(',');
+        measure("pipe", count * 64, program);
+        puts("],\"verified\":true}");
+    } else {
+        measure(mode, count, program); putchar('\n');
+    }
     return 0;
 }
