@@ -1,0 +1,533 @@
+Subject: [PATCH] share: track mapped ranges and compare outer bytes
+
+Enabled by the share-coherent guest with virtiofs.mmap_poll=1 (stat) or 2
+(content). Poll interval is 2 ms after each scan. Content snapshots are bounded
+to 64 MiB, tracked conservatively until RELEASE, and shared across handles.
+The root-only fault ioctl requires the negotiated recovery feature.
+
+--- a/src/change_notify.rs
++++ b/src/change_notify.rs
+@@ -22,6 +22,77 @@
+     | libc::IN_MOVED_FROM | libc::IN_MOVED_TO | libc::IN_DELETE_SELF | libc::IN_MOVE_SELF;
+ type Sink = Box<dyn Fn(&[Vec<u8>]) -> io::Result<usize> + Send + Sync>;
+ 
++const POLL_BUDGET: usize = 64 << 20;
++
++struct MappedRange {
++    inode: u64,
++    handles: BTreeSet<u64>,
++    file: std::fs::File,
++    offset: u64,
++    length: usize,
++    contents: Option<Vec<u8>>,
++    scratch: Vec<u8>,
++    stamp: (u64, i64, i64, i64, i64),
++    scans: u64,
++    scan_ns: u128,
++    scan_cpu_ns: u64,
++}
++
++impl MappedRange {
++    fn stamp(file: &std::fs::File) -> io::Result<(u64, i64, i64, i64, i64)> {
++        use std::os::unix::fs::MetadataExt;
++        let st = file.metadata()?;
++        Ok((st.len(), st.mtime(), st.mtime_nsec(), st.ctime(), st.ctime_nsec()))
++    }
++
++    fn read(file: &std::fs::File, offset: u64, length: usize, mut data: Vec<u8>) -> io::Result<Vec<u8>> {
++        use std::os::unix::fs::FileExt;
++        data.resize(length, 0);
++        let mut done = 0;
++        while done < data.len() {
++            match file.read_at(&mut data[done..], offset + done as u64) {
++                Ok(0) => break,
++                Ok(n) => done += n,
++                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
++                Err(e) => return Err(e),
++            }
++        }
++        data.truncate(done);
++        Ok(data)
++    }
++
++    fn poll(&mut self) -> io::Result<Option<Vec<u8>>> {
++        let started = std::time::Instant::now();
++        let cpu_started = thread_cpu_ns();
++        let stamp = Self::stamp(&self.file)?;
++        let mut changed = stamp != self.stamp;
++        let mut range = (self.offset as i64, self.length as i64);
++        if let Some(previous) = &mut self.contents {
++            let data = Self::read(&self.file, self.offset, self.length, std::mem::take(&mut self.scratch))?;
++            if data == *previous {
++                range = (-1, 0); // Attribute-only change.
++            } else {
++                changed = true;
++                if data.len() == previous.len() {
++                    let first = data.chunks(4096).zip(previous.chunks(4096)).position(|(a, b)| a != b).unwrap();
++                    let last = data.chunks(4096).zip(previous.chunks(4096)).rposition(|(a, b)| a != b).unwrap();
++                    range = ((self.offset + (first * 4096) as u64) as i64, ((last - first + 1) * 4096) as i64);
++                }
++            }
++            self.scratch = std::mem::replace(previous, data);
++        }
++        self.stamp = stamp;
++        self.scans += 1;
++        self.scan_cpu_ns += thread_cpu_ns().saturating_sub(cpu_started);
++        self.scan_ns += started.elapsed().as_nanos();
++        if !changed { return Ok(None); }
++        let mut payload = self.inode.to_ne_bytes().to_vec();
++        payload.extend_from_slice(&range.0.to_ne_bytes());
++        payload.extend_from_slice(&range.1.to_ne_bytes());
++        Ok(Some(packet(2, &payload)))
++    }
++}
++
+ #[derive(Default)]
+ struct State {
+     watches: BTreeMap<i32, BTreeSet<u64>>,
+@@ -31,6 +102,15 @@
+     batch: bool,
+     directory_cache: bool,
+     recovery: bool,
++    watch_exhausted: bool,
++    drop_events: bool,
++    dropped_events: u64,
++    mapped: BTreeMap<(u64, u64, usize), MappedRange>,
++    poll_rounds: u64,
++    poll_bytes: u64,
++    poll_ns: u128,
++    worker_cpu_ns: u64,
++    worker_wall_ns: u128,
+     sink: Option<Sink>,
+ }
+ 
+@@ -47,6 +127,12 @@
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         f.debug_struct("ChangeNotify").finish_non_exhaustive()
+     }
++}
++
++fn thread_cpu_ns() -> u64 {
++    let mut now = libc::timespec { tv_sec: 0, tv_nsec: 0 };
++    if unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut now) } != 0 { return 0; }
++    now.tv_sec as u64 * 1_000_000_000 + now.tv_nsec as u64
+ }
+ 
+ fn packet(code: i32, payload: &[u8]) -> Vec<u8> {
+@@ -123,6 +209,11 @@
+             if len > b.len() - 16 { return Err(io::ErrorKind::InvalidData.into()); }
+             let name = b[16..16 + len].split(|c| *c == 0).next().unwrap();
+             if name.len() > 255 || name.contains(&b'/') { return Err(io::ErrorKind::InvalidData.into()); }
++            if self.drop_events && mask & libc::IN_Q_OVERFLOW == 0 {
++                self.dropped_events += 1;
++                offset += 16 + len;
++                continue;
++            }
+             if mask & libc::IN_Q_OVERFLOW != 0 { self.recover(); }
+             if mask & libc::IN_UNMOUNT != 0 { self.fail(); }
+             if mask & libc::IN_IGNORED != 0 {
+@@ -185,6 +276,91 @@
+         })
+     }
+ 
++    pub fn fault(&self, action: u64) -> io::Result<()> {
++        let mut state = self.state.lock().unwrap();
++        if !state.recovery { return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)); }
++        match action {
++            0 => {
++                state.watch_exhausted = false;
++                if state.drop_events { state.drop_events = false; state.recover(); }
++            },
++            1 => state.watch_exhausted = true,
++            2 => {
++                // Simulate the lost records preceding a real queue overflow.
++                let mut buf = [0u8; 65536];
++                loop {
++                    let n = unsafe { libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
++                    if n < 0 && io::Error::last_os_error().kind() == io::ErrorKind::WouldBlock { break; }
++                    if n <= 0 { return Err(io::Error::last_os_error()); }
++                    state.events(&buf[..n as usize])?;
++                }
++                state.drop_events = false;
++                eprintln!("HARDDIND_NOTIFY_TEST_DROP {}", state.dropped_events);
++                let mut event = (-1i32).to_ne_bytes().to_vec();
++                event.extend_from_slice(&libc::IN_Q_OVERFLOW.to_ne_bytes());
++                event.extend_from_slice(&[0; 8]);
++                state.events(&event)?;
++            },
++            3 => { state.drop_events = true; state.dropped_events = 0; },
++            _ => return Err(io::Error::from_raw_os_error(libc::EINVAL)),
++        }
++        self.wake.write(1)?;
++        Ok(())
++    }
++
++    pub fn track_mapping(&self, inode: u64, handle: u64, file: &std::fs::File,
++                         offset: u64, length: u64, mode: u64) -> io::Result<()> {
++        if !(1..=2).contains(&mode) || length == 0 || offset.checked_add(length).is_none()
++            || offset + length > i64::MAX as u64 {
++            return Err(io::Error::from_raw_os_error(libc::EINVAL));
++        }
++        // Explicit prototype limit, never silently omit part of a mapping.
++        if mode == 2 && length > POLL_BUDGET as u64 { return Err(io::Error::from_raw_os_error(libc::ENOMEM)); }
++        let length = length as usize;
++        let key = (inode, offset, length);
++        let mut state = self.state.lock().unwrap();
++        for ((id, start, len), mapping) in state.mapped.iter_mut() {
++            if *id == inode && *start <= offset && *start + *len as u64 >= offset + length as u64
++                && (mode == 1 || mapping.contents.is_some()) {
++                mapping.handles.insert(handle);
++                return Ok(());
++            }
++        }
++        let covered: Vec<_> = state.mapped.keys().filter(|(id, start, len)| *id == inode
++            && offset <= *start && offset + length as u64 >= *start + *len as u64).copied().collect();
++        let bytes: usize = state.mapped.iter().filter(|(key, m)| m.contents.is_some() && !covered.contains(key))
++            .map(|(_, m)| m.length).sum();
++        if mode == 2 && bytes + length > POLL_BUDGET { return Err(io::Error::from_raw_os_error(libc::ENOMEM)); }
++        let stamp = MappedRange::stamp(file)?;
++        let contents = if mode == 2 { Some(MappedRange::read(file, offset, length, Vec::new())?) } else { None };
++        let file = file.try_clone()?;
++        let mut handles = BTreeSet::from([handle]);
++        for key in covered {
++            handles.extend(state.mapped.remove(&key).unwrap().handles);
++        }
++        state.mapped.insert(key, MappedRange {
++            inode, handles, file, offset, length, contents, stamp, scratch: Vec::new(),
++            scans: 0, scan_ns: 0, scan_cpu_ns: 0,
++        });
++        let mut payload = inode.to_ne_bytes().to_vec();
++        payload.extend_from_slice(&(offset as i64).to_ne_bytes());
++        payload.extend_from_slice(&(length as i64).to_ne_bytes());
++        state.pending.push_back(packet(2, &payload));
++        self.wake.write(1)?;
++        Ok(())
++    }
++
++    pub fn release_mapping(&self, handle: u64) {
++        self.state.lock().unwrap().mapped.retain(|_, mapping| {
++            mapping.handles.remove(&handle);
++            if mapping.handles.is_empty() {
++                eprintln!("HARDDIND_MMAP_RANGE {} {} {} {} {} {}", mapping.inode,
++                    mapping.offset, mapping.length, mapping.scans, mapping.scan_ns, mapping.scan_cpu_ns);
++                false
++            } else { true }
++        });
++    }
++
+     pub fn enable_directory_cache(&self) {
+         self.state.lock().unwrap().directory_cache = true;
+     }
+@@ -216,6 +392,7 @@
+         let mut state = self.state.lock().unwrap();
+         if state.failed { return Err(io::Error::from_raw_os_error(libc::EIO)); }
+         if state.inodes.contains_key(&inode) { return Ok(()); }
++        if state.watch_exhausted { return Err(io::Error::from_raw_os_error(libc::ENOSPC)); }
+         let wd = unsafe { libc::inotify_add_watch(self.fd.as_raw_fd(), path.as_ptr(), MASK) };
+         if wd < 0 { return Err(io::Error::last_os_error()); }
+         state.watches.entry(wd).or_default().insert(inode);
+@@ -243,6 +420,7 @@
+         state.inodes.clear();
+         state.watches.clear();
+         state.pending.clear();
++        state.mapped.clear();
+     }
+ 
+     pub fn attach(&self, sink: Sink) -> io::Result<()> {
+@@ -260,19 +438,48 @@
+                     libc::pollfd { fd: stop.as_raw_fd(), events: libc::POLLIN, revents: 0 },
+                 ];
+                 let mut buf = [0u8; 65536];
++                let cpu_started = thread_cpu_ns();
++                let worker_started = std::time::Instant::now();
++                let mut next_poll = std::time::Instant::now();
+                 loop {
+-                    let rc = unsafe { libc::poll(fds.as_mut_ptr(), 3, -1) };
++                    let active = !state.lock().unwrap().mapped.is_empty();
++                    let until = next_poll.saturating_duration_since(std::time::Instant::now());
++                    let timeout = if active { ((until.as_nanos() + 999_999) / 1_000_000).min(2) as i32 } else { -1 };
++                    let rc = unsafe { libc::poll(fds.as_mut_ptr(), 3, timeout) };
+                     if rc < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted { continue; }
+                     if rc < 0 || fds[2].revents != 0 { break; }
+                     let _ = wake.read();
+                     let mut state = state.lock().unwrap();
+-                    loop {
++                    // Do not starve mapped-content polling under a continuous event stream.
++                    for _ in 0..4 {
+                         let n = unsafe { libc::read(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
+                         if n < 0 && io::Error::last_os_error().kind() == io::ErrorKind::WouldBlock { break; }
+                         if n <= 0 || state.events(&buf[..n as usize]).is_err() { state.fail(); break; }
+                     }
++                    if active && std::time::Instant::now() >= next_poll {
++                        let started = std::time::Instant::now();
++                        let mut packets = Vec::new();
++                        let mut bytes = 0u64;
++                        let mut failed = false;
++                        for mapping in state.mapped.values_mut() {
++                            if mapping.contents.is_some() { bytes += mapping.length as u64; }
++                            match mapping.poll() {
++                                Ok(Some(packet)) => packets.push(packet),
++                                Ok(None) => {},
++                                Err(e) => { log::error!("share mapped poll: {e}"); failed = true; }
++                            }
++                        }
++                        if failed { state.fail(); } else { state.pending.extend(packets); }
++                        state.poll_rounds += 1;
++                        state.poll_bytes += bytes;
++                        state.poll_ns += started.elapsed().as_nanos();
++                        next_poll = std::time::Instant::now() + std::time::Duration::from_millis(2);
++                    }
+                     if let Err(e) = state.flush() { log::error!("share notification delivery: {e}"); state.fail(); }
+                 }
++                let mut state = state.lock().unwrap();
++                state.worker_cpu_ns = thread_cpu_ns().saturating_sub(cpu_started);
++                state.worker_wall_ns = worker_started.elapsed().as_nanos();
+             })?);
+         }
+         self.wake.write(1)?;
+@@ -284,6 +491,8 @@
+     fn drop(&mut self) {
+         let _ = self.stop.write(1);
+         if let Some(worker) = self.worker.get_mut().unwrap().take() { let _ = worker.join(); }
++        let state = self.state.lock().unwrap();
++        eprintln!("HARDDIND_MMAP_POLL {} {} {} {} {}", state.poll_rounds, state.poll_bytes, state.poll_ns, state.worker_cpu_ns, state.worker_wall_ns);
+     }
+ }
+ 
+@@ -408,3 +617,64 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod coherence_tests {
++    use super::*;
++    #[test]
++    fn harddind_overflow_recovers_all_watches_and_expires_names() {
++        let mut state = State { recovery: true, ..Default::default() };
++        state.inodes.insert(1, 11);
++        state.inodes.insert(2, 12);
++        state.pending.push_back(vec![99]);
++        let mut event = (-1i32).to_ne_bytes().to_vec();
++        event.extend_from_slice(&libc::IN_Q_OVERFLOW.to_ne_bytes());
++        event.extend_from_slice(&[0; 8]);
++        state.events(&event).unwrap();
++        assert!(!state.failed);
++        assert_eq!(state.pending.len(), 3);
++        assert_eq!(state.pending[0], packet(RESET, &[]));
++        assert_eq!(&state.pending[1][16..24], &1u64.to_ne_bytes());
++        assert_eq!(&state.pending[2][16..24], &2u64.to_ne_bytes());
++        assert_eq!(state.inodes.len(), 2);
++        state.watches.insert(11, BTreeSet::from([1]));
++        state.pending.clear();
++        event[..4].copy_from_slice(&11i32.to_ne_bytes());
++        event[4..8].copy_from_slice(&libc::IN_MODIFY.to_ne_bytes());
++        state.events(&event).unwrap();
++        assert_eq!(state.pending.len(), 2);
++        assert_eq!(&state.pending[0][16..24], &1u64.to_ne_bytes());
++    }
++
++    #[test]
++    fn harddind_mapped_content_detects_repeated_dirty_stores_and_limits() {
++        let path = std::env::temp_dir().join(format!("harddind-map-{}", std::process::id()));
++        let file = std::fs::OpenOptions::new().create_new(true).read(true).write(true).open(&path).unwrap();
++        file.set_len(8192).unwrap();
++        let changes = ChangeNotify::new(1001).unwrap();
++        assert!(changes.track_mapping(7, 3, &file, 0, 0, 2).is_err());
++        assert!(changes.track_mapping(7, 3, &file, u64::MAX, 8192, 2).is_err());
++        assert!(changes.track_mapping(7, 3, &file, 0, POLL_BUDGET as u64 + 1, 2).is_err());
++        changes.track_mapping(7, 3, &file, 0, 8192, 2).unwrap();
++        let addr = unsafe { libc::mmap(std::ptr::null_mut(), 8192, libc::PROT_READ | libc::PROT_WRITE,
++                                      libc::MAP_SHARED, file.as_raw_fd(), 0) };
++        assert_ne!(addr, libc::MAP_FAILED);
++        for byte in 1..=32u8 {
++            unsafe { std::ptr::write_volatile(addr.cast::<u8>().add(4096), byte); }
++            let mut state = changes.state.lock().unwrap();
++            let mapping = state.mapped.values_mut().next().unwrap();
++            let packet = mapping.poll().unwrap().unwrap();
++            assert_eq!(&packet[24..32], &4096i64.to_ne_bytes());
++            assert_eq!(&packet[32..40], &4096i64.to_ne_bytes());
++            assert!(mapping.poll().unwrap().is_none());
++        }
++        unsafe { libc::munmap(addr, 8192); }
++        changes.track_mapping(7, 4, &file, 4096, 4096, 2).unwrap();
++        assert_eq!(changes.state.lock().unwrap().mapped.len(), 1);
++        changes.release_mapping(3);
++        assert_eq!(changes.state.lock().unwrap().mapped.len(), 1);
++        changes.release_mapping(4);
++        assert!(changes.state.lock().unwrap().mapped.is_empty());
++        std::fs::remove_file(path).unwrap();
++    }
++}
+--- a/src/filesystem.rs
++++ b/src/filesystem.rs
+@@ -1064,6 +1064,17 @@
+     /// The blocking request `unique` was interrupted or torn down; drop its waiter state.
+     fn setlk_wait_cancel(&self, _unique: u64, _inode: Self::Inode) {}
+ 
++    /// Fault injection for the negotiated experimental notification protocol.
++    fn share_fault(&self, _action: u64) -> io::Result<()> {
++        Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP))
++    }
++
++    /// Experimental mapped range tracking, retained until RELEASE.
++    fn share_mapping(&self, _inode: Self::Inode, _handle: Self::Handle,
++                     _offset: u64, _length: u64, _mode: u64) -> io::Result<()> {
++        Err(io::Error::from_raw_os_error(libc::ENOSYS))
++    }
++
+     /// TODO: support this
+     fn ioctl(&self) -> io::Result<()> {
+         Err(io::Error::from_raw_os_error(libc::ENOSYS))
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -1176,6 +1176,9 @@
+ 
+         if let btree_map::Entry::Occupied(e) = handles.entry(handle) {
+             if e.get().inode == inode {
++                if let Some(changes) = &self.cfg.changes {
++                    if changes.coherent() { changes.release_mapping(handle); }
++                }
+                 // We don't need to close the file here because that will happen automatically when
+                 // the last `Arc` is dropped.
+                 e.remove();
+@@ -2167,6 +2170,19 @@
+ 
+     fn unlink(&self, _ctx: Context, parent: Inode, name: &CStr) -> io::Result<()> {
+         self.do_unlink(parent, name, 0)
++    }
++
++    fn share_fault(&self, action: u64) -> io::Result<()> {
++        self.cfg.changes.as_ref().ok_or_else(|| io::Error::from_raw_os_error(libc::EOPNOTSUPP))?.fault(action)
++    }
++
++    fn share_mapping(&self, inode: Inode, handle: Handle, offset: u64, length: u64, mode: u64) -> io::Result<()> {
++        let changes = self.cfg.changes.as_ref().ok_or_else(|| io::Error::from_raw_os_error(libc::ENOSYS))?;
++        if !changes.coherent() { return Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)); }
++        let _ = self.find_handle(handle, inode)?;
++        // A snapshot must not retain the guest handle's flock/open description.
++        let file = self.open_inode(inode, libc::O_RDONLY)?;
++        changes.track_mapping(inode, handle, &file, offset, length, mode)
+     }
+ 
+     fn read<W: ZeroCopyWriter>(
+@@ -3809,3 +3825,45 @@
+         std::fs::remove_dir_all(base).unwrap();
+     }
+ }
++
++#[cfg(test)]
++mod watch_fallback_tests {
++    use super::*;
++    #[test]
++    fn harddind_exhausted_watch_leaves_every_response_uncached() {
++        let base = std::env::temp_dir().join(format!("virtiofs-watch-full-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        std::fs::write(base.join("file"), b"one").unwrap();
++        let changes = Arc::new(crate::change_notify::ChangeNotify::new(1001).unwrap());
++        changes.negotiated(crate::change_notify::RECOVERY_FEATURE);
++        changes.fault(1).unwrap();
++        let fs = PassthroughFs::new(Config {
++            root_dir: base.to_str().unwrap().into(), changes: Some(changes.clone()),
++            entry_timeout: Duration::from_secs(86400), attr_timeout: Duration::from_secs(86400),
++            negative_timeout: Duration::from_secs(86400), cache_policy: CachePolicy::Always,
++            inode_file_handles: InodeFileHandlesMode::Never, ..Default::default()
++        }).unwrap();
++        fs.init(FsOptions::empty()).unwrap();
++        let ctx = Context { uid: 0.into(), gid: 0.into(), pid: std::process::id() as i32 };
++        assert_eq!(fs.getattr(ctx, 1, None).unwrap().1, Duration::ZERO);
++        let entry = fs.lookup(ctx, 1, &CString::new("file").unwrap()).unwrap();
++        assert_eq!(entry.attr_timeout, Duration::ZERO);
++        assert_eq!(entry.entry_timeout, Duration::ZERO);
++        assert_eq!(fs.lookup(ctx, 1, &CString::new("absent").unwrap()).err().unwrap().raw_os_error(), Some(libc::ENOENT));
++        let (handle, options) = fs.do_open(entry.inode, false, libc::O_RDONLY as u32).unwrap();
++        assert!(options.contains(OpenOptions::DIRECT_IO));
++        assert!(!options.intersects(OpenOptions::KEEP_CACHE | OpenOptions::CACHE_DIR));
++        fs.do_release(entry.inode, handle.unwrap()).unwrap();
++        let (created, handle, options) = fs.create(ctx, 1, &CString::new("created").unwrap(),
++            libc::S_IFREG | 0o600, false, (libc::O_RDWR | libc::O_CREAT | libc::O_EXCL) as u32,
++            0o022, Extensions::default()).unwrap();
++        assert_eq!(created.attr_timeout, Duration::ZERO);
++        assert_eq!(created.entry_timeout, Duration::ZERO);
++        assert!(options.contains(OpenOptions::DIRECT_IO));
++        assert!(!options.contains(OpenOptions::KEEP_CACHE));
++        fs.do_release(created.inode, handle.unwrap()).unwrap();
++        std::fs::remove_file(base.join("created")).unwrap();
++        std::fs::remove_file(base.join("file")).unwrap();
++        std::fs::remove_dir(base).unwrap();
++    }
++}
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -180,6 +180,17 @@
+             );
+         }
+ 
++        if in_header.opcode == 0x4844 {
++            if in_header.len as usize != size_of::<InHeader>() + 32 {
++                return reply_error(io::Error::from_raw_os_error(libc::EINVAL), in_header.unique, w);
++            }
++            let mut r = r;
++            let range: [u64; 4] = r.read_obj().map_err(Error::DecodeMessage)?;
++            return match self.fs.share_mapping(in_header.nodeid.into(), range[0].into(), range[1], range[2], range[3]) {
++                Ok(()) => reply_ok(None::<u8>, None, in_header.unique, w),
++                Err(e) => reply_error(e, in_header.unique, w),
++            };
++        }
+         if let Ok(opcode) = Opcode::try_from(in_header.opcode) {
+             debug!(
+                 "Received request: opcode={opcode:?} ({}), inode={}, unique={}, pid={}",
+@@ -1466,11 +1477,26 @@
+         0
+     }
+ 
+-    fn ioctl(&self, in_header: InHeader, _r: Reader, w: Writer) -> Result<usize> {
+-        if let Err(e) = self.fs.ioctl() {
+-            reply_error(e, in_header.unique, w)
+-        } else {
+-            Ok(0)
++    fn ioctl(&self, in_header: InHeader, mut r: Reader, w: Writer) -> Result<usize> {
++        let input: IoctlIn = r.read_obj().map_err(Error::DecodeMessage)?;
++        if input.cmd == 0x400848d5 {
++            eprintln!("HARDDIND_NOTIFY_TEST_HEADER uid={:?} in={} out={} len={}", in_header.uid, input.in_size, input.out_size, in_header.len);
++            if in_header.uid != 0.into() {
++                return reply_error(io::Error::from_raw_os_error(libc::EPERM), in_header.unique, w);
++            }
++            if input.in_size != 8 || input.out_size != 0
++                || in_header.len as usize != size_of::<InHeader>() + size_of::<IoctlIn>() + 8 {
++                return reply_error(io::Error::from_raw_os_error(libc::EINVAL), in_header.unique, w);
++            }
++            let action: u64 = r.read_obj().map_err(Error::DecodeMessage)?;
++            return match self.fs.share_fault(action) {
++                Ok(()) => reply_ok(Some(IoctlOut::default()), None, in_header.unique, w),
++                Err(e) => reply_error(e, in_header.unique, w),
++            };
++        }
++        match self.fs.ioctl() {
++            Err(e) => reply_error(e, in_header.unique, w),
++            Ok(()) => Ok(0),
+         }
+     }
+ 
+@@ -2047,6 +2073,21 @@
+     }
+ 
+     #[test]
++    fn harddind_notify_fault_ioctl_requires_root_valid_size_and_recovery() {
++        for (uid, size, error) in [(0, 8, libc::EOPNOTSUPP), (1001, 8, libc::EPERM), (0, 4, libc::EINVAL)] {
++            let input = IoctlIn { cmd: 0x400848d5, in_size: size, ..Default::default() };
++            let body = [input.as_slice(), &1u64.to_ne_bytes()].concat();
++            let header = InHeader { opcode: Opcode::Ioctl as u32, len: 80, unique: 42,
++                                    uid: uid.into(), ..Default::default() };
++            for decoded in [false, true] {
++                let result = dispatch(header, &body, decoded);
++                assert!(result.0.starts_with("Ok("));
++                assert_eq!(i32::from_ne_bytes(result.1[4..8].try_into().unwrap()), -error);
++            }
++        }
++    }
++
++    #[test]
+     fn harddind_decoded_dispatch_preserves_errors_and_payload_position() {
+         for (opcode, len, body) in [
+             (65535, 40, vec![]),

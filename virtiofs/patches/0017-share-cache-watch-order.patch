@@ -1,0 +1,220 @@
+Subject: [PATCH] share: subscribe before caching and recover notification loss
+
+Negotiated with the default-off share-coherent kernel. Unwatched inodes return
+uncached attributes/entries and direct I/O handles; overflow expires all caches.
+
+--- a/src/change_notify.rs
++++ b/src/change_notify.rs
+@@ -6,6 +6,7 @@
+ use std::io;
+ use std::os::unix::io::AsRawFd;
+ use std::sync::{Arc, Mutex};
++use std::sync::atomic::{AtomicBool, Ordering};
+ use std::thread::JoinHandle;
+ use vmm_sys_util::eventfd::EventFd;
+ 
+@@ -14,6 +15,8 @@
+ const EVENT: i32 = 0x4844;
+ const FAILED: i32 = 0x4845;
+ const DIRECTORY: i32 = 0x4846;
++const RESET: i32 = 0x4847;
++pub const RECOVERY_FEATURE: u64 = 8;
+ const LIMIT: usize = 65536;
+ const MASK: u32 = libc::IN_MODIFY | libc::IN_ATTRIB | libc::IN_CREATE | libc::IN_DELETE
+     | libc::IN_MOVED_FROM | libc::IN_MOVED_TO | libc::IN_DELETE_SELF | libc::IN_MOVE_SELF;
+@@ -27,6 +30,7 @@
+     failed: bool,
+     batch: bool,
+     directory_cache: bool,
++    recovery: bool,
+     sink: Option<Sink>,
+ }
+ 
+@@ -36,6 +40,7 @@
+     stop: Arc<EventFd>,
+     state: Arc<Mutex<State>>,
+     worker: Mutex<Option<JoinHandle<()>>>,
++    coherent: AtomicBool,
+ }
+ 
+ impl std::fmt::Debug for ChangeNotify {
+@@ -93,6 +98,19 @@
+         self.pending.push_back(packet(FAILED, &[]));
+     }
+ 
++    fn recover(&mut self) {
++        if !self.recovery { self.fail(); return; }
++        self.pending.clear();
++        // Epoch first: expire positive/negative dentries, including unknown names.
++        self.pending.push_back(packet(RESET, &[]));
++        for inode in self.inodes.keys() {
++            let mut payload = inode.to_ne_bytes().to_vec();
++            payload.extend_from_slice(&[0; 16]);
++            self.pending.push_back(packet(2, &payload));
++        }
++        log::warn!("share notification overflow: invalidating {} watched inodes", self.inodes.len());
++    }
++
+     fn events(&mut self, bytes: &[u8]) -> io::Result<()> {
+         let mut offset = 0;
+         while offset < bytes.len() {
+@@ -105,10 +123,16 @@
+             if len > b.len() - 16 { return Err(io::ErrorKind::InvalidData.into()); }
+             let name = b[16..16 + len].split(|c| *c == 0).next().unwrap();
+             if name.len() > 255 || name.contains(&b'/') { return Err(io::ErrorKind::InvalidData.into()); }
+-            if mask & (libc::IN_Q_OVERFLOW | libc::IN_UNMOUNT) != 0 { self.fail(); }
++            if mask & libc::IN_Q_OVERFLOW != 0 { self.recover(); }
++            if mask & libc::IN_UNMOUNT != 0 { self.fail(); }
+             if mask & libc::IN_IGNORED != 0 {
+                 if let Some(ids) = self.watches.remove(&wd) {
+-                    for id in ids { self.inodes.remove(&id); }
++                    for id in ids {
++                        self.inodes.remove(&id);
++                        if self.recovery {
++                            self.pending.extend(messages(id, libc::IN_DELETE_SELF, 0, b"", self.directory_cache));
++                        }
++                    }
+                 }
+             } else if !self.failed && mask & MASK != 0 {
+                 if let Some(ids) = self.watches.get(&wd) {
+@@ -116,7 +140,7 @@
+                         self.pending.extend(messages(*id, mask & (MASK | libc::IN_ISDIR), cookie, name, self.directory_cache));
+                     }
+                 }
+-                if self.pending.len() > LIMIT { self.fail(); }
++                if self.pending.len() > LIMIT { self.recover(); }
+             }
+             offset += 16 + len;
+         }
+@@ -157,6 +181,7 @@
+             stop: Arc::new(EventFd::new(libc::EFD_NONBLOCK)?),
+             state: Arc::new(Mutex::new(State::default())),
+             worker: Mutex::new(None),
++            coherent: AtomicBool::new(false),
+         })
+     }
+ 
+@@ -165,7 +190,17 @@
+     }
+ 
+     pub fn features(&self) -> u64 {
+-        FEATURES | if self.state.lock().unwrap().directory_cache { 4 } else { 0 }
++        RECOVERY_FEATURE | FEATURES | if self.state.lock().unwrap().directory_cache { 4 } else { 0 }
++    }
++
++    pub fn negotiated(&self, features: u64) {
++        let enabled = features & RECOVERY_FEATURE != 0;
++        self.state.lock().unwrap().recovery = enabled;
++        self.coherent.store(enabled, Ordering::Release);
++    }
++
++    pub fn coherent(&self) -> bool {
++        self.coherent.load(Ordering::Acquire)
+     }
+ 
+     pub fn enable_batch(&self) {
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -1018,7 +1018,11 @@
+             let file = inode.get_file()?;
+             let name = CString::new(format!("{}", file.as_raw_fd())).unwrap();
+             let _cwd = set_working_directory(self.proc_self_fd.as_raw_fd(), self.root_fd.as_raw_fd());
+-            changes.watch(inode.inode, &name)?;
++            if let Err(error) = changes.watch(inode.inode, &name) {
++                if !changes.coherent() { return Err(error); }
++                // An unwatched inode must never advertise reusable caches.
++                log::warn!("share watch {}: {error}; using uncached replies", inode.inode);
++            }
+         }
+         Ok(())
+     }
+@@ -1073,7 +1077,12 @@
+             self.inodes.get_or_insert(inode_data)?
+         };
+ 
++        let was_watched = self.cfg.changes.as_ref().map_or(true, |n| !n.coherent() || n.watched(inode.get().inode));
+         self.watch_inode(inode.get())?;
++        // The initial lookup stat preceded installation of a new inode watch.
++        let st = if !was_watched { statx(&inode.get().get_file()?, None)? } else { st };
++        let watched = self.cfg.changes.as_ref().map_or(true, |n| !n.coherent() || n.watched(inode.get().inode));
++        let parent_watched = self.cfg.changes.as_ref().map_or(true, |n| !n.coherent() || n.watched(parent));
+         let attr = fuse::Attr::try_with_flags(
+             st.st,
+             attr_flags,
+@@ -1088,8 +1097,8 @@
+             generation: 0,
+             attr,
+             // A notification may arrive before the guest creates this inode.
+-            attr_timeout: if self.cfg.getattr_cache_only { Duration::ZERO } else { self.cfg.attr_timeout },
+-            entry_timeout: self.cfg.entry_timeout,
++            attr_timeout: if self.cfg.getattr_cache_only || !watched { Duration::ZERO } else { self.cfg.attr_timeout },
++            entry_timeout: if watched && parent_watched { self.cfg.entry_timeout } else { Duration::ZERO },
+         })
+     }
+ 
+@@ -1155,6 +1164,10 @@
+             _ => {}
+         };
+ 
++        if self.cfg.changes.as_ref().is_some_and(|n| n.coherent() && !n.watched(inode)) {
++            opts.remove(OpenOptions::KEEP_CACHE | OpenOptions::CACHE_DIR);
++            opts.set(OpenOptions::DIRECT_IO, flags & libc::O_DIRECTORY as u32 == 0);
++        }
+         Ok((Some(handle), opts))
+     }
+ 
+@@ -1176,7 +1189,9 @@
+     fn do_getattr(&self, inode: Inode) -> io::Result<(fuse::Attr, Duration)> {
+         let data = self.inodes.get(inode).ok_or_else(ebadf)?;
+         // Subscribe before reading attrs, including GETATTR of the root inode.
+-        if self.cfg.getattr_cache_only { self.watch_inode(&data)?; }
++        if self.cfg.getattr_cache_only || self.cfg.changes.as_ref().is_some_and(|n| n.coherent()) {
++            self.watch_inode(&data)?;
++        }
+         let inode_file = data.get_file()?;
+         let st = statx(&inode_file, None)?.st;
+         let attr = fuse::Attr::try_from_stat64(
+@@ -1185,8 +1200,7 @@
+             |gid| self.map_host_gid(gid),
+         )?;
+ 
+-        let timeout = if self.cfg.getattr_cache_only
+-            && !self.cfg.changes.as_ref().unwrap().watched(inode) {
++        let timeout = if self.cfg.changes.as_ref().is_some_and(|n| (self.cfg.getattr_cache_only || n.coherent()) && !n.watched(inode)) {
+             Duration::ZERO
+         } else { self.cfg.attr_timeout };
+         Ok((attr, timeout))
+@@ -1793,7 +1807,7 @@
+     fn lookup(&self, _ctx: Context, parent: Inode, name: &CStr) -> io::Result<Entry> {
+         match self.do_lookup(parent, name) {
+             Err(e) if e.raw_os_error() == Some(libc::ENOENT)
+-                && self.cfg.changes.is_some() && !self.cfg.negative_timeout.is_zero() => {
++                && self.cfg.changes.as_ref().is_some_and(|n| !n.coherent() || n.watched(parent)) && !self.cfg.negative_timeout.is_zero() => {
+                 Ok(Entry {
+                     inode: 0, generation: 0, attr: Default::default(),
+                     attr_timeout: Duration::ZERO, entry_timeout: self.cfg.negative_timeout,
+@@ -2144,6 +2158,10 @@
+             _ => {}
+         };
+ 
++        if self.cfg.changes.as_ref().is_some_and(|n| n.coherent() && !n.watched(entry.inode)) {
++            opts.remove(OpenOptions::KEEP_CACHE | OpenOptions::CACHE_DIR);
++            opts.insert(OpenOptions::DIRECT_IO);
++        }
+         Ok((entry, Some(handle), opts))
+     }
+ 
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -586,7 +586,10 @@
+     }
+ 
+     fn acked_features(&self, features: u64) {
+-        let required = self.changes.as_ref().map_or(0, |changes| changes.features());
++        let required = self.changes.as_ref().map_or(0, |changes| {
++            changes.negotiated(features);
++            changes.features() & !crate::change_notify::RECOVERY_FEATURE
++        });
+         assert_eq!(features & required, required,
+                    "notification policy requires matching experimental guest features");
+         if features & VhostUserVirtioFeatures::LOG_ALL.bits() != 0 {

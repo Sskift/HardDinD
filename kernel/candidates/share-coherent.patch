@@ -1,0 +1,517 @@
+Subject: [PATCH] fuse: guard cached replies and track shared mappings
+
+Apply after share-profile, share-complete, share-wait, and share-dir-cache.
+Default off: virtiofs.coherent_cache=1 enables recovery/race guards;
+virtiofs.mmap_poll=1 selects stat polling, 2 selects content polling.
+Requires virtiofsd patches 0017 and 0018.
+
+--- a/fs/fuse/dir.c
++++ b/fs/fuse/dir.c
+@@ -308,6 +308,24 @@
+ 		fuse_time_to_jiffies(o->entry_valid, o->entry_valid_nsec));
+ }
+ 
++u64 fuse_share_entry_version(struct inode *dir)
++{
++	return get_fuse_conn(dir)->share_cache ?
++		atomic64_read(&get_fuse_inode(dir)->share_entry_version) : 0;
++}
++
++void fuse_share_entry_timeout(struct inode *dir, struct dentry *entry,
++			      struct fuse_entry_out *o, u64 version)
++{
++	fuse_change_entry_timeout(entry, o);
++	if (!get_fuse_conn(dir)->share_cache)
++		return;
++	/* Publish the timeout before checking for an intervening notification. */
++	smp_mb();
++	if (version != fuse_share_entry_version(dir))
++		fuse_invalidate_entry_cache(entry);
++}
++
+ void fuse_invalidate_attr_mask(struct inode *inode, u32 mask)
+ {
+ 	set_mask_bits(&get_fuse_inode(inode)->inval_mask, 0, mask);
+@@ -411,6 +429,7 @@
+ 		FUSE_ARGS(args);
+ 		struct fuse_forget_link *forget;
+ 		u64 attr_version;
++		u64 entry_version = fuse_share_entry_version(dir);
+ 
+ 		/* For negative dentries, always do a fresh lookup */
+ 		if (!inode)
+@@ -457,7 +476,7 @@
+ 		fuse_change_attributes(inode, &outarg.attr, NULL,
+ 				       ATTR_TIMEOUT(&outarg),
+ 				       attr_version);
+-		fuse_change_entry_timeout(entry, &outarg);
++		fuse_share_entry_timeout(dir, entry, &outarg, entry_version);
+ 	} else if (inode) {
+ 		fi = get_fuse_inode(inode);
+ 		if (flags & LOOKUP_RCU) {
+@@ -620,6 +639,7 @@
+ 	struct inode *inode;
+ 	struct dentry *newent;
+ 	int err, epoch;
++	u64 entry_version = fuse_share_entry_version(dir);
+ 	bool outarg_valid = true;
+ 	bool locked;
+ 
+@@ -652,7 +672,7 @@
+ 	entry = newent ? newent : entry;
+ 	fuse_dentry_set_epoch(entry, epoch);
+ 	if (outarg_valid)
+-		fuse_change_entry_timeout(entry, &outarg);
++		fuse_share_entry_timeout(dir, entry, &outarg, entry_version);
+ 	else
+ 		fuse_invalidate_entry_cache(entry);
+ 
+@@ -834,6 +854,8 @@
+ 	struct fuse_inode *fi;
+ 	struct fuse_file *ff;
+ 	int epoch, err;
++	u64 attr_version = 0, evict_ctr = 0;
++	u64 entry_version = fuse_share_entry_version(dir);
+ 	bool trunc = flags & O_TRUNC;
+ 
+ 	/* Userspace expects S_IFREG in create mode */
+@@ -883,6 +905,10 @@
+ 	if (err)
+ 		goto out_free_ff;
+ 
++	if (fm->fc->share_cache) {
++		attr_version = fuse_get_attr_version(fm->fc);
++		evict_ctr = fuse_get_evict_ctr(fm->fc);
++	}
+ 	err = fuse_simple_idmap_request(idmap, fm, &args);
+ 	free_ext_value(&args);
+ 	if (err)
+@@ -897,7 +923,7 @@
+ 	ff->nodeid = outentry.nodeid;
+ 	ff->open_flags = outopenp->open_flags;
+ 	inode = fuse_iget(dir->i_sb, outentry.nodeid, outentry.generation,
+-			  &outentry.attr, ATTR_TIMEOUT(&outentry), 0, 0);
++			  &outentry.attr, ATTR_TIMEOUT(&outentry), attr_version, evict_ctr);
+ 	if (!inode) {
+ 		flags &= ~(O_CREAT | O_EXCL | O_TRUNC);
+ 		fuse_sync_release(NULL, ff, flags);
+@@ -908,7 +934,7 @@
+ 	kfree(forget);
+ 	d_instantiate(entry, inode);
+ 	fuse_dentry_set_epoch(entry, epoch);
+-	fuse_change_entry_timeout(entry, &outentry);
++	fuse_share_entry_timeout(dir, entry, &outentry, entry_version);
+ 	fuse_dir_changed(dir);
+ 	err = generic_file_open(inode, file);
+ 	if (!err) {
+@@ -989,6 +1015,8 @@
+ 	struct dentry *d;
+ 	struct fuse_forget_link *forget;
+ 	int epoch, err;
++	u64 attr_version = 0, evict_ctr = 0;
++	u64 entry_version = fuse_share_entry_version(dir);
+ 
+ 	if (fuse_is_bad(dir))
+ 		return ERR_PTR(-EIO);
+@@ -1011,6 +1039,10 @@
+ 			goto out_put_forget_req;
+ 	}
+ 
++	if (fm->fc->share_cache) {
++		attr_version = fuse_get_attr_version(fm->fc);
++		evict_ctr = fuse_get_evict_ctr(fm->fc);
++	}
+ 	err = fuse_simple_idmap_request(idmap, fm, args);
+ 	free_ext_value(args);
+ 	if (err)
+@@ -1024,7 +1056,7 @@
+ 		goto out_put_forget_req;
+ 
+ 	inode = fuse_iget(dir->i_sb, outarg.nodeid, outarg.generation,
+-			  &outarg.attr, ATTR_TIMEOUT(&outarg), 0, 0);
++			  &outarg.attr, ATTR_TIMEOUT(&outarg), attr_version, evict_ctr);
+ 	if (!inode) {
+ 		fuse_chan_queue_forget(fm->fc->chan, forget, outarg.nodeid, 1);
+ 		return ERR_PTR(-ENOMEM);
+@@ -1038,10 +1070,10 @@
+ 
+ 	if (d) {
+ 		fuse_dentry_set_epoch(d, epoch);
+-		fuse_change_entry_timeout(d, &outarg);
++		fuse_share_entry_timeout(dir, d, &outarg, entry_version);
+ 	} else {
+ 		fuse_dentry_set_epoch(entry, epoch);
+-		fuse_change_entry_timeout(entry, &outarg);
++		fuse_share_entry_timeout(dir, entry, &outarg, entry_version);
+ 	}
+ 	fuse_dir_changed(dir);
+ 	return d;
+@@ -1600,6 +1632,8 @@
+ 	parent = fuse_ilookup(fc, parent_nodeid, NULL);
+ 	if (!parent)
+ 		return -ENOENT;
++	if (fc->share_cache)
++		atomic64_inc(&get_fuse_inode(parent)->share_entry_version);
+ 
+ 	inode_lock_nested(parent, I_MUTEX_PARENT);
+ 	if (!S_ISDIR(parent->i_mode))
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -60,6 +60,7 @@
+ 		return NULL;
+ 
+ 	ff->fm = fm;
++	spin_lock_init(&ff->share_map_lock);
+ 	if (release) {
+ 		ff->args = kzalloc_obj(*ff->args, GFP_KERNEL_ACCOUNT);
+ 		if (!ff->args) {
+@@ -2388,6 +2389,82 @@
+ 	return VM_FAULT_LOCKED;
+ }
+ 
++static bool fuse_share_mapping_known(struct fuse_file *ff, struct vm_area_struct *vma)
++{
++	u64 offset = (u64)vma->vm_pgoff << PAGE_SHIFT;
++	u64 length = vma->vm_end - vma->vm_start;
++	bool known;
++
++	spin_lock(&ff->share_map_lock);
++	known = ff->share_map_length && offset >= ff->share_map_offset &&
++		length <= ff->share_map_length &&
++		offset - ff->share_map_offset <= ff->share_map_length - length;
++	spin_unlock(&ff->share_map_lock);
++	return known;
++}
++
++static int fuse_share_track_mapping(struct file *file, struct vm_area_struct *vma)
++{
++	struct fuse_file *ff = file->private_data;
++	FUSE_ARGS(args);
++	u64 range[4] = { ff->fh, (u64)vma->vm_pgoff << PAGE_SHIFT,
++			vma->vm_end - vma->vm_start, ff->fm->fc->share_mmap_poll };
++	int err;
++
++	if (!range[3] || fuse_share_mapping_known(ff, vma))
++		return 0;
++	args.opcode = 0x4844;
++	args.nodeid = get_node_id(file_inode(file));
++	args.in_numargs = 1;
++	args.in_args[0].size = sizeof(range);
++	args.in_args[0].value = range;
++	err = fuse_simple_request(ff->fm, &args);
++	if (!err) {
++		spin_lock(&ff->share_map_lock);
++		ff->share_map_offset = range[1];
++		ff->share_map_length = range[2];
++		spin_unlock(&ff->share_map_lock);
++	}
++	return err;
++}
++
++static vm_fault_t fuse_share_fault(struct vm_fault *vmf)
++{
++	/* In-place mremap growth does not call ->mremap(). */
++	if (fuse_share_track_mapping(vmf->vma->vm_file, vmf->vma))
++		return VM_FAULT_SIGBUS;
++	return filemap_fault(vmf);
++}
++
++static vm_fault_t fuse_share_map_pages(struct vm_fault *vmf, pgoff_t start, pgoff_t end)
++{
++	struct fuse_file *ff = vmf->vma->vm_file->private_data;
++
++	/* A cached page must not bypass registration of an expanded VMA. */
++	if (!fuse_share_mapping_known(ff, vmf->vma))
++		return 0;
++	return filemap_map_pages(vmf, start, end);
++}
++
++static int fuse_share_remap(struct vm_area_struct *vma)
++{
++	return fuse_share_track_mapping(vma->vm_file, vma);
++}
++
++static const struct vm_operations_struct fuse_share_private_vm_ops = {
++	.mremap		= fuse_share_remap,
++	.fault		= fuse_share_fault,
++	.map_pages	= fuse_share_map_pages,
++};
++
++static const struct vm_operations_struct fuse_share_vm_ops = {
++	.mremap		= fuse_share_remap,
++	.close		= fuse_vma_close,
++	.fault		= fuse_share_fault,
++	.map_pages	= fuse_share_map_pages,
++	.page_mkwrite	= fuse_page_mkwrite,
++};
++
+ static const struct vm_operations_struct fuse_file_vm_ops = {
+ 	.close		= fuse_vma_close,
+ 	.fault		= filemap_fault,
+@@ -2401,6 +2478,10 @@
+ 	struct fuse_conn *fc = ff->fm->fc;
+ 	struct inode *inode = file_inode(file);
+ 	int rc;
++
++	rc = fuse_share_track_mapping(file, vma);
++	if (rc)
++		return rc;
+ 
+ 	/* DAX mmap is superior to direct_io mmap */
+ 	if (FUSE_IS_DAX(inode))
+@@ -2431,8 +2512,11 @@
+ 		invalidate_inode_pages2(file->f_mapping);
+ 
+ 		if (!(vma->vm_flags & VM_MAYSHARE)) {
+-			/* MAP_PRIVATE */
+-			return generic_file_mmap(file, vma);
++			/* MAP_PRIVATE does not enter FUSE cached I/O mode. */
++			rc = generic_file_mmap(file, vma);
++			if (!rc && fc->share_mmap_poll)
++				vma->vm_ops = &fuse_share_private_vm_ops;
++			return rc;
+ 		}
+ 
+ 		/*
+@@ -2451,7 +2535,7 @@
+ 		fuse_link_write_file(file);
+ 
+ 	file_accessed(file);
+-	vma->vm_ops = &fuse_file_vm_ops;
++	vma->vm_ops = fc->share_mmap_poll ? &fuse_share_vm_ops : &fuse_file_vm_ops;
+ 	return 0;
+ }
+ 
+--- a/fs/fuse/fuse_i.h
++++ b/fs/fuse/fuse_i.h
+@@ -112,6 +112,9 @@
+ 	/** @nlookup: Number of lookups on this inode */
+ 	u64 nlookup;
+ 
++	/* Namespace notifications observed while an entry reply is in flight. */
++	atomic64_t share_entry_version;
++
+ 	/** @forget: The request used for sending the FORGET message */
+ 	struct fuse_forget_link *forget;
+ 
+@@ -267,6 +270,9 @@
+  * struct fuse_file - FUSE-specific file data
+  */
+ struct fuse_file {
++	spinlock_t share_map_lock;
++	u64 share_map_offset, share_map_length;
++
+ 	/** @fm: Fuse connection for this file */
+ 	struct fuse_mount *fm;
+ 
+@@ -732,6 +738,10 @@
+ 	/** @evict_ctr: Version counter for evict inode */
+ 	atomic64_t evict_ctr;
+ 
++	/* Experimental virtio-fs notification recovery and mapped content polling. */
++	bool share_cache;
++	u32 share_mmap_poll;
++
+ 	/** @name_max: maximum file name length */
+ 	u32 name_max;
+ 
+@@ -1053,6 +1063,9 @@
+ 	fuse_time_to_jiffies((o)->attr_valid, (o)->attr_valid_nsec)
+ 
+ void fuse_change_entry_timeout(struct dentry *entry, struct fuse_entry_out *o);
++u64 fuse_share_entry_version(struct inode *dir);
++void fuse_share_entry_timeout(struct inode *dir, struct dentry *entry,
++			      struct fuse_entry_out *o, u64 version);
+ 
+ void fuse_dentry_set_epoch(struct dentry *dentry, u64 epoch);
+ 
+--- a/fs/fuse/inode.c
++++ b/fs/fuse/inode.c
+@@ -551,8 +551,12 @@
+ 	pgoff_t pg_end;
+ 
+ 	inode = fuse_ilookup(fc, nodeid, NULL);
+-	if (!inode)
++	if (!inode) {
++		/* Do not cache attrs from a LOOKUP whose notification preceded iget. */
++		if (fc->share_cache)
++			atomic64_inc(&fc->evict_ctr);
+ 		return -ENOENT;
++	}
+ 
+ 	fi = get_fuse_inode(inode);
+ 	spin_lock(&fi->lock);
+--- a/fs/fuse/ioctl.c
++++ b/fs/fuse/ioctl.c
+@@ -7,6 +7,8 @@
+ 
+ #include <linux/uio.h>
+ #include <linux/compat.h>
++#include <linux/cred.h>
++#include <linux/mnt_idmapping.h>
+ #include <linux/fileattr.h>
+ #include <linux/fsverity.h>
+ 
+@@ -21,7 +23,15 @@
+ 	args->out_args[0].size = sizeof(*outarg);
+ 	args->out_args[0].value = outarg;
+ 
+-	ret = fuse_simple_request(fm, args);
++	if (fm->fc->share_cache &&
++	    ((const struct fuse_ioctl_in *)args->in_args[0].value)->cmd == 0x400848d5) {
++		if (!uid_eq(current_fsuid(), GLOBAL_ROOT_UID))
++			return -EPERM;
++		/* Ordinary idmapped FUSE requests deliberately omit uid/gid. */
++		ret = fuse_simple_idmap_request(&nop_mnt_idmap, fm, args);
++	} else {
++		ret = fuse_simple_request(fm, args);
++	}
+ 
+ 	/* Translate ENOSYS, which shouldn't be returned from fs */
+ 	if (ret == -ENOSYS)
+--- a/fs/fuse/readdir.c
++++ b/fs/fuse/readdir.c
+@@ -152,7 +152,7 @@
+ 
+ static int fuse_direntplus_link(struct file *file,
+ 				struct fuse_direntplus *direntplus,
+-				u64 attr_version, u64 evict_ctr)
++				u64 attr_version, u64 evict_ctr, u64 entry_version, int epoch)
+ {
+ 	struct fuse_entry_out *o = &direntplus->entry_out;
+ 	struct fuse_dirent *dirent = &direntplus->dirent;
+@@ -163,7 +163,6 @@
+ 	struct inode *dir = d_inode(parent);
+ 	struct fuse_conn *fc;
+ 	struct inode *inode;
+-	int epoch;
+ 
+ 	if (!o->nodeid) {
+ 		/*
+@@ -193,7 +192,8 @@
+ 		return -EIO;
+ 
+ 	fc = get_fuse_conn(dir);
+-	epoch = atomic_read(&fc->epoch);
++	if (!fc->share_cache)
++		epoch = atomic_read(&fc->epoch);
+ 
+ 	name.hash = full_name_hash(parent, name.name, name.len);
+ 	dentry = d_lookup(parent, &name);
+@@ -261,7 +261,7 @@
+ 	if (fc->readdirplus_auto)
+ 		set_bit(FUSE_I_INIT_RDPLUS, &get_fuse_inode(inode)->state);
+ 	fuse_dentry_set_epoch(dentry, epoch);
+-	fuse_change_entry_timeout(dentry, o);
++	fuse_share_entry_timeout(dir, dentry, o, entry_version);
+ 
+ 	dput(dentry);
+ 	return 0;
+@@ -290,7 +290,7 @@
+ 
+ static int parse_dirplusfile(char *buf, size_t nbytes, struct file *file,
+ 			     struct dir_context *ctx, u64 attr_version,
+-			     u64 evict_ctr)
++			     u64 evict_ctr, u64 entry_version, int epoch)
+ {
+ 	struct fuse_direntplus *direntplus;
+ 	struct fuse_dirent *dirent;
+@@ -325,7 +325,7 @@
+ 		buf += reclen;
+ 		nbytes -= reclen;
+ 
+-		ret = fuse_direntplus_link(file, direntplus, attr_version, evict_ctr);
++		ret = fuse_direntplus_link(file, direntplus, attr_version, evict_ctr, entry_version, epoch);
+ 		if (ret)
+ 			fuse_force_forget(file, direntplus->entry_out.nodeid);
+ 	}
+@@ -382,6 +382,8 @@
+ 	void *buf;
+ 	size_t bufsize = clamp((unsigned int) ctx->count, PAGE_SIZE, fc->max_pages << PAGE_SHIFT);
+ 	u64 attr_version = 0, evict_ctr = 0;
++	u64 entry_version = fuse_share_entry_version(inode);
++	int epoch = atomic_read(&fc->epoch);
+ 	bool locked;
+ 	struct page **pages = fuse_readdir_alloc_buf(ap, &bufsize);
+ 
+@@ -415,7 +417,7 @@
+ 		res = -ENOMEM;
+ 	} else {
+ 		if (plus)
+-			res = parse_dirplusfile(buf, res, file, ctx, attr_version, evict_ctr);
++			res = parse_dirplusfile(buf, res, file, ctx, attr_version, evict_ctr, entry_version, epoch);
+ 		else
+ 			res = parse_dirfile(buf, res, file, ctx);
+ 
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -65,6 +65,8 @@
+ #define SHARE_FAILED 0x4845
+ #define SHARE_DIRECTORY_FEATURE 2
+ #define SHARE_DIRECTORY 0x4846
++#define SHARE_RECOVERY_FEATURE 3
++#define SHARE_RESET 0x4847
+ #define SHARE_NOTIFY_SIZE 512
+ #define SHARE_NOTIFY_COUNT 64
+ #define SHARE_EVENT_MASK (FS_MODIFY | FS_ATTRIB | FS_CREATE | FS_DELETE | \
+@@ -1230,6 +1232,13 @@
+ 	case SHARE_DIRECTORY:
+ 		ret = virtio_fs_invalidate_directory(fc, data, size);
+ 		break;
++	case SHARE_RESET:
++		if (!size && fc->share_cache) {
++			atomic_inc(&fc->epoch);
++			atomic64_inc(&fc->evict_ctr);
++			ret = 0;
++		}
++		break;
+ 	case SHARE_EVENT:
+ 		ret = virtio_fs_share_event(fc, data, size);
+ 		break;
+@@ -1774,13 +1783,20 @@
+ }
+ #endif /* CONFIG_PM_SLEEP */
+ 
++static bool coherent_cache;
++module_param(coherent_cache, bool, 0444);
++MODULE_PARM_DESC(coherent_cache, "Handle notification overflow and lookup/invalidation races");
++static unsigned int mmap_poll;
++module_param(mmap_poll, uint, 0444);
++MODULE_PARM_DESC(mmap_poll, "Track mmap: 0 off, 1 stat polling, 2 content polling (2ms)");
++
+ static const struct virtio_device_id id_table[] = {
+ 	{ VIRTIO_ID_FS, VIRTIO_DEV_ANY_ID },
+ 	{},
+ };
+ 
+ static const unsigned int feature_table[] = {
+-	SHARE_NOTIFY_FEATURE, SHARE_EVENT_FEATURE, SHARE_DIRECTORY_FEATURE
++	SHARE_NOTIFY_FEATURE, SHARE_EVENT_FEATURE, SHARE_DIRECTORY_FEATURE, SHARE_RECOVERY_FEATURE
+ };
+ 
+ static struct virtio_driver virtio_fs_driver = {
+@@ -2382,6 +2398,8 @@
+ 
+ 	fc->release = fuse_free_conn;
+ 	fc->delete_stale = true;
++	fc->share_cache = coherent_cache;
++	fc->share_mmap_poll = mmap_poll <= 2 ? mmap_poll : 0;
+ 	fc->auto_submounts = true;
+ 	fc->sync_fs = true;
+ 	fc->use_pages_for_kvec_io = true;
+@@ -2510,10 +2528,15 @@
+ {
+ 	int ret;
+ 
++	if (mmap_poll > 2 || (mmap_poll && !coherent_cache))
++		return -EINVAL;
++
+ 	ret = virtio_fs_sysfs_init();
+ 	if (ret < 0)
+ 		return ret;
+ 
++	if (!coherent_cache)
++		virtio_fs_driver.feature_table_size--;
+ 	ret = register_virtio_driver(&virtio_fs_driver);
+ 	if (ret < 0)
+ 		goto sysfs_exit;
