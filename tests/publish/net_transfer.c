@@ -6,6 +6,7 @@
 #include <linux/sockios.h>
 #include <net/if.h>
 #include <netinet/tcp.h>
+#include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -81,6 +82,7 @@ int main(int argc, char **argv) {
         write_all(fd, header, sizeof(header));
         puts("READY"); fflush(stdout);
         require(fgets(line, sizeof(line), stdin) && !strcmp(line, "GO\n"), "start marker");
+        int start_cpu = sched_getcpu();
         double start = now();
         while (done < count) {
             if (rr) {
@@ -95,9 +97,10 @@ int main(int argc, char **argv) {
         require(shutdown(fd, SHUT_WR) == 0, "shutdown"); read_all(fd, &remote, sizeof(remote));
         require(remote == count, "server byte count");
         double elapsed = now() - start;
+        int end_cpu = sched_getcpu();
         require(close(fd) == 0, "close");
-        printf("{\"verified\":%llu,\"seconds\":%.9g,\"value\":%.9g}\n",
-               (unsigned long long)done, elapsed, done / elapsed / (rr ? 1 : 1e6));
+        printf("{\"verified\":%llu,\"seconds\":%.9g,\"value\":%.9g,\"start_cpu\":%d,\"end_cpu\":%d}\n",
+               (unsigned long long)done, elapsed, done / elapsed / (rr ? 1 : 1e6), start_cpu, end_cpu);
         fflush(stdout);
     }
     return 0;

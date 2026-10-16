@@ -1,9 +1,11 @@
 import importlib.util
+import contextlib
 import os
 import pathlib
 import tempfile
 import types
 import unittest
+from unittest import mock
 
 
 path = pathlib.Path(__file__).parent / 'publish/net_transfer.py'
@@ -13,6 +15,43 @@ spec.loader.exec_module(transfer)
 
 
 class TransferTests(unittest.TestCase):
+    def test_restore_bypasses_expired_metric_budget(self):
+        work = types.SimpleNamespace(docker=mock.Mock(side_effect=RuntimeError('budget exhausted')),
+                                     cleanup=mock.Mock())
+        transfer.guest_command(work, 'inspector', 'echo 1 > /setting', cleanup=True)
+        work.docker.assert_not_called()
+        work.cleanup.assert_called_once_with('exec', 'inspector', 'nsenter', '-t', '1', '-m', '-n', '--',
+                                             'chroot', '/proc/1/root', '/bin/sh', '-ec', 'echo 1 > /setting')
+
+    def test_diagnostic_settings_restore_after_failed_transfer(self):
+        for metric, failure, original in (
+            ('net.egress_stream', 'rps_cpu1', {
+                '/sys/class/net/vec0/queues/rx-0/rps_cpus': '0',
+                '/sys/class/net/vec0/queues/rx-0/rps_flow_cnt': '128',
+                '/proc/sys/net/core/rps_sock_flow_entries': '4096'}),
+            ('net.bridge_stream', 'bridge_nf_off', {'/proc/sys/net/bridge/bridge-nf-call-iptables': '1'}),
+        ):
+            with self.subTest(metric=metric):
+                settings = dict(original)
+                ctx = types.SimpleNamespace(forward=mock.Mock())
+                work = types.SimpleNamespace(ctx=ctx, container=lambda *_: contextlib.nullcontext('inspector'))
+                def command(_work, _inspector, script, **_kwargs):
+                    args = script.split()
+                    if args[0] == 'cat':
+                        return settings[args[1]]
+                    self.assertEqual(args[0], 'echo')
+                    settings[args[3]] = args[1]
+                def measure(*_args, **kwargs):
+                    if kwargs.get('variant') == failure:
+                        raise RuntimeError('transfer failed')
+                with mock.patch.object(transfer, 'guest_command', command), \
+                        mock.patch.object(transfer, 'measure', measure), \
+                        mock.patch.object(transfer, 'topology'):
+                    with self.assertRaisesRegex(RuntimeError, 'transfer failed'):
+                        transfer.run(work, metric, '10.0.2.2', 1234)
+                self.assertEqual(settings, original)
+                self.assertEqual(ctx.forward.call_args_list, [mock.call('profile on'), mock.call('profile off')])
+
     def test_counters_validate_identity_and_monotonicity(self):
         before = transfer.counters('cpu tid RX_CALLS SIGIO\n0 123 10 5\n1 456 0 1\n')
         after = transfer.counters('cpu tid RX_CALLS SIGIO\n0 123 15 7\n1 456 2 3\n')

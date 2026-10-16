@@ -42,6 +42,10 @@ static uint64_t rx_gso, tx_gso, coalesced;
 static uint64_t slirp_gso, slirp_gso_bytes;
 static uint64_t coalesced_acks;
 static uint64_t rx_csum_packets, rx_csum_bytes;
+static bool profiling;
+static uint64_t input_ns, slirp_poll_ns, rx_ns, tx_ns, wait_ns;
+struct io_profile { uint64_t calls, bytes, ns, small, large, blocked, partial, max; };
+static struct io_profile host_send, host_recv;
 static struct in_addr guest_addr;
 struct timer { bool used; int64_t expires; SlirpTimerCb cb; void *opaque; };
 static struct timer timers[64];
@@ -205,6 +209,45 @@ static int64_t clock_ns(void *opaque) {
     if (clock_gettime(CLOCK_MONOTONIC, &ts)) die("clock_gettime");
     return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
+static uint64_t profile_start(void) { return profiling ? (uint64_t)clock_ns(NULL) : 0; }
+static void profile_end(uint64_t start, uint64_t *total) {
+    if (start) {
+        int saved = errno;
+        *total += (uint64_t)clock_ns(NULL) - start;
+        errno = saved;
+    }
+}
+static void profile_io(struct io_profile *p, uint64_t start, size_t size, ssize_t result) {
+    if (!start) return;
+    int saved = errno;
+    profile_end(start, &p->ns);
+    p->calls++;
+    if (size < 16384) p->small++; else p->large++;
+    if (size > p->max) p->max = size;
+    if (result > 0) p->bytes += (uint64_t)result;
+    if (result >= 0 && (size_t)result < size) p->partial++;
+    if (result < 0 && (saved == EAGAIN || saved == EWOULDBLOCK)) p->blocked++;
+    errno = saved;
+}
+ssize_t __real_send(int fd, const void *buf, size_t len, int flags);
+ssize_t __real_recv(int fd, void *buf, size_t len, int flags);
+ssize_t __wrap_send(int fd, const void *buf, size_t len, int flags) {
+    uint64_t start = profile_start();
+    ssize_t n = __real_send(fd, buf, len, flags);
+    profile_io(&host_send, start, len, n);
+    return n;
+}
+ssize_t __wrap_recv(int fd, void *buf, size_t len, int flags) {
+    uint64_t start = profile_start();
+    ssize_t n = __real_recv(fd, buf, len, flags);
+    profile_io(&host_recv, start, len, n);
+    return n;
+}
+static void slirp_input_profile(Slirp *slirp, unsigned char *data, int size, bool checksum_valid) {
+    uint64_t start = profile_start();
+    slirp_input_checksum(slirp, data, size, checksum_valid);
+    profile_end(start, &input_ns);
+}
 static void tcp_trace_frame(const void *buf, size_t len, const char *direction) {
     const unsigned char *p = buf;
     struct tcp_frame f;
@@ -272,6 +315,7 @@ static ssize_t send_gso(const void *buf, size_t len, unsigned mss, void *opaque)
     return queue_frame(buf, len, mss);
 }
 static void flush_frames(void) {
+    uint64_t start = profile_start();
     while (head) {
         if (vnet && head == tail) {
             unsigned char header[VNET_SIZE];
@@ -331,6 +375,7 @@ static void flush_frames(void) {
         struct packet *p = head; head = p->next; free(p); queued--;
     }
     if (!head) tail = NULL;
+    profile_end(start, &tx_ns);
 }
 static void guest_error(const char *msg, void *opaque) { (void)opaque; fprintf(stderr, "slirp: %s\n", msg); }
 static void *timer_new(SlirpTimerCb cb, void *cb_opaque, void *opaque) {
@@ -406,14 +451,24 @@ static int stats(char *buf, size_t len) {
         ",\"coalesced_acks\":%" PRIu64
         ",\"rx_csum_packets\":%" PRIu64 ",\"rx_csum_bytes\":%" PRIu64
         ",\"link_sndbuf\":%d,\"link_rcvbuf\":%d"
-        ",\"user_us\":%" PRId64 ",\"system_us\":%" PRId64 "}",
+        ",\"user_us\":%" PRId64 ",\"system_us\":%" PRId64
+        ",\"input_ns\":%" PRIu64 ",\"slirp_poll_ns\":%" PRIu64
+        ",\"rx_ns\":%" PRIu64 ",\"tx_ns\":%" PRIu64 ",\"wait_ns\":%" PRIu64
+        ",\"host_send_calls\":%" PRIu64 ",\"host_send_bytes\":%" PRIu64 ",\"host_send_ns\":%" PRIu64
+        ",\"host_send_small\":%" PRIu64 ",\"host_send_large\":%" PRIu64 ",\"host_send_blocked\":%" PRIu64
+        ",\"host_send_partial\":%" PRIu64 ",\"host_send_max\":%" PRIu64
+        ",\"host_recv_calls\":%" PRIu64 ",\"host_recv_bytes\":%" PRIu64 ",\"host_recv_ns\":%" PRIu64 "}",
         rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
         inventory_revision, mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls,
         vnet ? "true" : "false", rx_gso, tx_gso, coalesced, slirp_gso, slirp_gso_bytes, coalesced_acks,
         rx_csum_packets, rx_csum_bytes,
         sndbuf, rcvbuf,
         (int64_t)usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec,
-        (int64_t)usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec);
+        (int64_t)usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec,
+        input_ns, slirp_poll_ns, rx_ns, tx_ns, wait_ns,
+        host_send.calls, host_send.bytes, host_send.ns, host_send.small, host_send.large,
+        host_send.blocked, host_send.partial, host_send.max,
+        host_recv.calls, host_recv.bytes, host_recv.ns);
 }
 
 /*
@@ -529,6 +584,22 @@ static void control(Slirp *slirp) {
         if (count == 1 && !strcmp(fields[0], "stats")) {
             stats(output, sizeof(output)); goto reply;
         }
+        if (count == 2 && !strcmp(fields[0], "profile") &&
+            (!strcmp(fields[1], "on") || !strcmp(fields[1], "off"))) {
+            profiling = !strcmp(fields[1], "on");
+            snprintf(output, sizeof(output), "{\"ok\":true}"); goto reply;
+        }
+        if (count == 2 && !strcmp(fields[0], "tracer")) {
+            int pid = number(fields[1], 0, INT_MAX);
+            if (pid < 0 || (pid && !profiling)) goto invalid;
+            /* Permit only the profiling pipeline and its strace child. This
+             * grants no host capability and never changes Yama globally. */
+            if (prctl(PR_SET_PTRACER, (unsigned long)pid, 0UL, 0UL, 0UL)) {
+                snprintf(output, sizeof(output), "{\"ok\":false,\"error\":\"tracer: %s\"}", strerror(errno));
+                goto reply;
+            }
+            snprintf(output, sizeof(output), "{\"ok\":true}"); goto reply;
+        }
         if (count == 1 && !strcmp(fields[0], "list")) {
             inventory_legacy(output, sizeof(output)); goto reply;
         }
@@ -624,6 +695,7 @@ static void control(Slirp *slirp) {
             }
         }
     }
+invalid:
     if (error) snprintf(output, sizeof(output), "{\"ok\":false,\"error\":\"%s\"}", error);
     else strcpy(output, "{\"ok\":true}");
 reply:
@@ -687,7 +759,9 @@ int main(int argc, char **argv) {
         add_poll(ctl_fd, SLIRP_POLL_IN, NULL);
         slirp_pollfds_fill(slirp, &timeout, add_poll, NULL);
         poll_calls++;
+        uint64_t started = profile_start();
         int n = poll(pfds, nfds, (int)timeout);
+        profile_end(started, &wait_ns);
         if (n < 0) { if (errno == EINTR) continue; die("poll"); }
         if (pfds[0].revents & POLLOUT) flush_frames();
         if (pfds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
@@ -698,7 +772,9 @@ int main(int argc, char **argv) {
                  * loop, without constructing batch descriptor arrays. */
                 for (; received < MAX_BATCH; received++) {
                     rx_syscalls++;
+                    started = profile_start();
                     ssize_t len = recv(link_fd, frames[0], sizeof(frames[0]), MSG_DONTWAIT | MSG_TRUNC);
+                    profile_end(started, &rx_ns);
                     if (!len) { stopping = 1; break; }
                     if (len < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
                     unsigned size = (unsigned)len;
@@ -709,7 +785,7 @@ int main(int argc, char **argv) {
                     }
                     rx_packets++; rx_bytes += size;
                     dns_trace(data, size, checksum_valid ? "from_guest_partial" : "from_guest");
-                    slirp_input_checksum(slirp, data, (int)size, checksum_valid);
+                    slirp_input_profile(slirp, data, (int)size, checksum_valid);
                     if (vnet && queued >= MAX_BATCH) flush_frames();
                 }
             }
@@ -723,7 +799,9 @@ int main(int argc, char **argv) {
                     messages[i].msg_hdr.msg_iovlen = 1;
                 }
                 rx_syscalls++;
+                started = profile_start();
                 int got = recvmmsg(link_fd, messages, count, MSG_DONTWAIT | MSG_TRUNC, NULL);
+                profile_end(started, &rx_ns);
                 if (got < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
                 if (!got) break;
                 if (got > 1) bulk = true;
@@ -737,7 +815,7 @@ int main(int argc, char **argv) {
                     }
                     rx_packets++; rx_bytes += len;
                     dns_trace(data, len, checksum_valid ? "from_guest_partial" : "from_guest");
-                    slirp_input_checksum(slirp, data, (int)len, checksum_valid);
+                    slirp_input_profile(slirp, data, (int)len, checksum_valid);
                     if (len > (unsigned)mtu + 14 || (tail && tail->len > (unsigned)mtu + 14)) bulk = true;
                     /* Bound memory even when one receive batch creates many replies. */
                     if (queued >= MAX_BATCH) flush_frames();
@@ -749,11 +827,13 @@ int main(int argc, char **argv) {
             }
         }
         if (pfds[1].revents & POLLIN) control(slirp);
+        started = profile_start();
         slirp_pollfds_poll(slirp, 0, get_events, NULL);
+        profile_end(started, &slirp_poll_ns);
         if ((batch_size > 1 || vnet) && head) flush_frames();
     }
     slirp_cleanup(slirp);
-    char report[2048]; stats(report, sizeof(report));
+    char report[4096]; stats(report, sizeof(report));
     printf("HARDDIND_NETWORK_STATS %s\n", report);
     close(link_fd); close(ctl_fd); unlink(argv[2]);
     while (head) { struct packet *p = head; head = p->next; free(p); }

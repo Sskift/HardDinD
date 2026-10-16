@@ -187,7 +187,7 @@ def binary():
     return build.artifact('net-transfer', key, compile_client) / 'net-transfer'
 
 
-def run(workloads, metric, address, port, options=()):
+def measure(workloads, metric, address, port, options=(), *, variant="default", repeats=3, traced=False):
     """Call after network_samples' yield, while its server/network still exist."""
     ctx, mode = workloads.ctx, 'rr' if metric.endswith('_rr') else 'stream'
     count = 8192 if mode == 'rr' else 1024 ** 3
@@ -195,6 +195,14 @@ def run(workloads, metric, address, port, options=()):
     guest_pid, backend_pid = state['guest_pid'], state['network_pid']
     client = binary()
     with contextlib.ExitStack() as stack:
+        authorization = None
+        if traced:
+            try:
+                ctx.forward('tracer ' + str(os.getpid()))
+                authorization = {'pid': os.getpid(), 'authorized': True}
+                stack.callback(ctx.forward, 'tracer 0')
+            except RuntimeError as error:
+                authorization = {'authorized': False, 'error': str(error)}
         inspector = stack.enter_context(workloads.container(['--network', 'host']))
         workloads.docker('cp', str(client), inspector + ':/net-transfer')
         inspect = lambda: counters(workloads.docker('exec', inspector, 'cat', '/proc/uml_net_profile'))
@@ -207,12 +215,13 @@ def run(workloads, metric, address, port, options=()):
             workloads.docker('cp', str(client), container + ':/net-transfer')
             argv, env = ctx.docker_cmd()
             argv += ['exec', '-i', container, '/net-transfer', address, str(port), mode]
-        log = stack.enter_context((ctx.run_dir / (metric + '-transfer.stderr')).open('w'))
+        log = stack.enter_context((ctx.run_dir / (metric + '-' + variant + '-transfer.stderr')).open('w'))
         proc = subprocess.Popen(argv, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=log, bufsize=0, preexec_fn=lambda: os.sched_setaffinity(0, workloads.cpus))
         try:
-            for repeat in range(3):
-                entry = {'metric': metric, 'repeat': repeat, 'count': count, 'complete': False,
+            for repeat in range(repeats):
+                entry = {'metric': metric, 'variant': variant, 'repeat': repeat, 'count': count, 'complete': False,
+                         'tracer_authorization': authorization,
                          'unix_time': time.time(), 'clock_ticks': os.sysconf('SC_CLK_TCK'),
                          'features': features, 'scope': 'READY/GO to verified DONE; excludes Docker creation/exec setup',
                          'counter_scope': 'guest exec snapshots bracket CPU window; includes snapshot overhead'}
@@ -229,7 +238,11 @@ def run(workloads, metric, address, port, options=()):
                     backend_cpu = tasks(backend_pid, pids=[backend_pid], cpu_only=True)
                     entry['before_snapshot_seconds'] = time.monotonic() - read_start
                     throttled = runs.throttle()
-                    with state_samples(guest_pid, pids) as (samples, stopped):
+                    with profile.trace(ctx, metric, 'guest', None, backend_pid, enabled=traced) as trace, \
+                            state_samples(guest_pid, pids) as (samples, stopped), \
+                            profile.sockets(backend_pid, variant == 'backend_trace') as sockets:
+                        entry['trace'] = trace
+                        entry['sockets'] = sockets
                         started = time.monotonic()
                         proc.stdin.write(b'GO\n')
                         entry['workload'] = result(read_line(proc), count)
@@ -248,6 +261,7 @@ def run(workloads, metric, address, port, options=()):
                     entry['backend_cpu'] = thread_delta(backend_cpu, backend_after, ticks, {})
                     entry['state_samples'] = samples
                     backend_end = ctx.forward('stats')
+                    entry['backend_state'] = backend_end
                     entry['backend'] = {key: backend_end[key] - value for key, value in backend_before.items()
                                         if isinstance(value, int) and not isinstance(value, bool)}
                     entry['kernel'] = counter_delta(kernel_before, inspect())
@@ -268,3 +282,66 @@ def run(workloads, metric, address, port, options=()):
             proc.stdout.close()
         if proc.returncode:
             raise RuntimeError(f'transfer client exited {proc.returncode}; see {log.name}')
+
+def guest_command(workloads, inspector, script, *, cleanup=False):
+    command = workloads.cleanup if cleanup else workloads.docker
+    return command('exec', inspector, 'nsenter', '-t', '1', '-m', '-n', '--',
+                   'chroot', '/proc/1/root', '/bin/sh', '-ec', script)
+
+
+def topology(workloads, inspector, metric, phase):
+    script = """
+for command in 'iptables --version' 'iptables-save -c' 'ip6tables-save -c' 'nft list ruleset' 'conntrack -S'; do
+    echo "$command"
+    sh -c "$command" 2>&1 || echo "unavailable: $?"
+done
+for file in /proc/sys/net/bridge/bridge-nf-call-* /proc/interrupts /proc/softirqs /proc/net/softnet_stat /sys/class/net/vec0/queues/rx-*/rps_cpus /sys/class/net/vec0/queues/rx-*/rps_flow_cnt /proc/sys/net/core/rps_sock_flow_entries; do
+    echo "$file"; cat "$file" 2>&1 || echo "unavailable: $?"
+done
+"""
+    text = guest_command(workloads, inspector, script)
+    with (workloads.ctx.run_dir / 'network-topology.jsonl').open('a') as output:
+        output.write(json.dumps(dict(metric=metric, phase=phase, output=text)) + '\n')
+
+
+def run(workloads, metric, address, port, options=()):
+    """Scored pairs finish first; variants below are diagnostic transfers only."""
+    ctx = workloads.ctx
+    ctx.forward('profile on')
+    try:
+        with workloads.container(['--network', 'host', '--pid', 'host', '--privileged']) as inspector:
+            topology(workloads, inspector, metric, 'before')
+            measure(workloads, metric, address, port, options)
+            topology(workloads, inspector, metric, 'after')
+            if metric.startswith('net.egress'):
+                measure(workloads, metric, address, port, options, variant='backend_trace', repeats=1, traced=True)
+                paths = ['/sys/class/net/vec0/queues/rx-0/rps_cpus',
+                         '/sys/class/net/vec0/queues/rx-0/rps_flow_cnt',
+                         '/proc/sys/net/core/rps_sock_flow_entries']
+                old = [guest_command(workloads, inspector, 'cat ' + p) for p in paths]
+                try:
+                    for variant, values in [('rps_cpu1', ['2', '0', '0']), ('rfs', ['f', '4096', '32768'])]:
+                        for path, value in zip(paths, values):
+                            guest_command(workloads, inspector, 'echo ' + value + ' > ' + path)
+                        measure(workloads, metric, address, port, options, variant=variant)
+                        topology(workloads, inspector, metric, variant)
+                finally:
+                    for path, value in zip(paths, old):
+                        guest_command(workloads, inspector, 'echo ' + value + ' > ' + path, cleanup=True)
+            if metric.startswith('net.bridge'):
+                path = '/proc/sys/net/bridge/bridge-nf-call-iptables'
+                old = guest_command(workloads, inspector, 'cat ' + path)
+                if old == '1':
+                    try:
+                        guest_command(workloads, inspector, 'echo 0 > ' + path)
+                        measure(workloads, metric, address, port, options, variant='bridge_nf_off')
+                        topology(workloads, inspector, metric, 'bridge_nf_off')
+                    finally:
+                        guest_command(workloads, inspector, 'echo ' + old + ' > ' + path, cleanup=True)
+                with workloads.container(['--network', 'host'], ('/bench/network', 'server', '127.0.0.1', '0')) as server:
+                    workloads.guest_server_ready(server)
+                    port = json.loads(workloads.docker('logs', server).splitlines()[0])['port']
+                    measure(workloads, metric, '127.0.0.1', port, ['--network', 'host'], variant='host_loopback')
+                topology(workloads, inspector, metric, 'host_loopback')
+    finally:
+        ctx.forward('profile off')

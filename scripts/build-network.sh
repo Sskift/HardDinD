@@ -31,7 +31,8 @@ if [ "$variant" = "asan" ]; then link=(-pthread -lm); fi
 [ -f "$glib_lib" ] || { echo "pinned glib archive not found" >&2; exit 1; }
 
 gcc "${san[@]}" -Wall -Wextra -Werror \
-    -I"$stage_src" "$repo/src/network_backend.c" "$archive" "$glib_lib" "${link[@]}" -o "$out.new"
+    -I"$stage_src" "$repo/src/network_backend.c" "$archive" "$glib_lib" "${link[@]}" \
+    -Wl,--wrap=send,--wrap=recv -o "$out.new"
 [ "$("$out.new" --version)" = "4.6.1" ]
 mv "$out.new" "$out"
 sha256sum "$out"

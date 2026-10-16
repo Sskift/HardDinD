@@ -34,6 +34,27 @@ class VnetFlows(flows.ForwardedFlows):
         self.assertGreater(stats['slirp_gso_bytes'], 0)
         self.assertEqual(stats['dropped_packets'], 0)
 
+    def test_optional_host_socket_profile(self):
+        port = reserve_port('127.0.0.1')
+        self.command_ok(f'add tcp 127.0.0.1 {port} 7777')
+        flows.tcp_echo('127.0.0.1', port, 256 * 1024, timeout=20)
+        self.assertEqual(self.b.command('stats')['host_send_calls'], 0)
+        self.assertFalse(self.b.command('tracer ' + str(os.getpid()))['ok'])
+        self.command_ok('profile on')
+        self.command_ok('tracer ' + str(os.getpid()))
+        self.command_ok('tracer 0')
+        flows.tcp_echo('127.0.0.1', port, 512 * 1024, timeout=20)
+        stats = self.b.command('stats')
+        for key in ('host_send_calls', 'host_send_bytes', 'host_send_ns',
+                    'host_recv_calls', 'host_recv_bytes', 'host_recv_ns', 'input_ns', 'slirp_poll_ns'):
+            self.assertGreater(stats[key], 0, key)
+        self.assertGreater(stats['host_send_max'], 1460)
+        self.assertEqual(stats['host_send_calls'], stats['host_send_small'] + stats['host_send_large'])
+        self.command_ok('profile off')
+        stats = self.b.command('stats')
+        flows.tcp_echo('127.0.0.1', port, 256 * 1024, timeout=20)
+        self.assertEqual(self.b.command('stats')['host_send_calls'], stats['host_send_calls'])
+
     def test_large_segments_respect_guest_mss(self):
         for mss in (536, 1200, 1460):
             for addr, guest in (('127.0.0.1', '10.0.2.15'), ('::1', 'fd00::15')):
