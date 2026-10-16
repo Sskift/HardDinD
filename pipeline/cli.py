@@ -113,7 +113,7 @@ def cmd_fetch(_a):
     dest = REPO / 'results/runs'
     dest.mkdir(parents=True, exist_ok=True)
     require_master()
-    subprocess.run(['rsync', '-a', '--prune-empty-dirs', '--include=/*/', '--include=/*/instance-*/',
+    subprocess.run(['rsync', '-a', '--bwlimit=2000', '--prune-empty-dirs', '--include=/*/', '--include=/*/instance-*/',
                     '--include=/*/functional/', '--include=summary.json', '--include=scorecard.md',
                     '--include=*.log', '--include=state.json', '--include=shutdown-diagnostic-*.json',
                     '--include=ports-*.jsonl', '--exclude=*',
