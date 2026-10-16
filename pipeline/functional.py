@@ -25,6 +25,9 @@ BASE = 'hd-base:latest'
 HELPERS = 'hd-functional:local'
 FLAGS = ['-O2', '-Wall', '-Wextra', '-Werror', '-static', '-pthread']
 CHECKS = []
+# Leave room for the expanded full suite and fixture builds on the shared host;
+# individual check deadlines and pass criteria remain unchanged.
+SUITE_SECONDS = 2400
 
 
 class NotTested(Exception):
@@ -137,7 +140,7 @@ class Suite:
         self.prefix = 'hf-' + hashlib.sha256(str(ctx.run_dir).encode()).hexdigest()[:8]
         self.ready, self.errors, self.images = set(), {}, []
         self.bins = None
-        self.end = time.monotonic() + 1170
+        self.end = time.monotonic() + SUITE_SECONDS
 
     def prepare(self, case, helpers=False):
         kind = 'helpers' if helpers else 'base'
