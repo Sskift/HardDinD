@@ -3,9 +3,13 @@ Subject: [DIAGNOSTIC] um: sample syscall phases and count both waiters per CPU
 
 Apply after fault-rendezvous-counters. Default off: uml_syscall_profile=1.
 One TSC sample per 256 calls; counts are machine-wide, split by receiving CPU.
+Syscall_nr counts attempted entries before ptrace/seccomp; clone_ok/exec_ok count
+successful returns. Idle is every arch_cpu_idle interval (TSC, not scheduled CPU
+time). Mapping_batch samples include the whole broker wait, not only host mmap.
+Guest permission changes use mmap replacements, not a separate host mprotect.
 Return-gap includes sigreturn, guest instructions and the next SIGSYS entry,
-not just host signal delivery. Totals include scheduling delays. Getpid entry,
-seccomp, body and exit phases are sampled together; prepare and state-copy
+not just host signal delivery. Totals include scheduling delays. Entry, seccomp, body and exit phases sample all syscall numbers together;
+body is elapsed time including blocking/scheduling, not CPU time; prepare and state-copy
 samples are independent. Receive includes get_state and suppresses its nested
 sample instrumentation; clock_pair measures
 back-to-back timer overhead. Log2 cycle histograms expose scheduling tails.
@@ -14,7 +18,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 
 --- /dev/null
 +++ b/arch/um/include/shared/core-profile.h
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,59 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef __UM_CORE_PROFILE_H
 +#define __UM_CORE_PROFILE_H
@@ -23,7 +27,8 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	X(prepare) X(get_state) X(receive) X(exit_work) X(clock_pair) X(trace_enter) X(seccomp) X(body) X(trace_leave) \
 +	X(forward) X(reply) X(return_gap) \
 +	X(kernel_ready) X(kernel_spin) X(kernel_futex) X(kernel_eagain) \
-+	X(runner_ready) X(runner_spin) X(runner_futex) X(runner_eagain)
++	X(runner_ready) X(runner_spin) X(runner_futex) X(runner_eagain) \
++	X(idle) X(mapping_batch) X(syscall) X(clone_ok) X(exec_ok)
 +#define UML_SP_ENUM(n) UML_SP_##n,
 +enum { UML_SP_STAGES(UML_SP_ENUM) UML_SP_COUNT };
 +#undef UML_SP_ENUM
@@ -31,6 +36,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +unsigned long long uml_sp_begin(unsigned int stage);
 +void uml_sp_add(unsigned int stage, unsigned long long cycles);
 +void uml_sp_count(unsigned int stage, unsigned int count);
++void uml_sp_syscall(unsigned long nr);
 +void uml_sp_mark(unsigned int stage, unsigned long long *stamp);
 +
 +/* The stub cannot call functions outside its relocated code mapping. */
@@ -99,7 +105,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  	unsigned short mctx_offset;
 --- a/arch/um/kernel/Makefile
 +++ b/arch/um/kernel/Makefile
-@@ -22,6 +22,7 @@
+@@ -23,6 +23,7 @@
  
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
  obj-$(CONFIG_GPROF)	+= gprof_syms.o
@@ -109,7 +115,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  obj-$(CONFIG_STACKTRACE) += stacktrace.o
 --- /dev/null
 +++ b/arch/um/kernel/core-profile.c
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,123 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/kernel.h>
@@ -123,6 +129,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +
 +int uml_sp_enabled;
 +static unsigned long tsc_khz;
++static unsigned long long syscall_counts[512];
 +static unsigned long long histogram[UML_SP_COUNT][32];
 +static struct {
 +	unsigned long long sequence[UML_SP_COUNT];
@@ -173,12 +180,21 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	*stamp = uml_sp_clock();
 +}
 +
++void uml_sp_syscall(unsigned long nr)
++{
++	if (!uml_sp_enabled)
++		return;
++	uml_sp_count(UML_SP_syscall, 1);
++	if (nr < ARRAY_SIZE(syscall_counts))
++		__atomic_fetch_add(&syscall_counts[nr], 1, __ATOMIC_RELAXED);
++}
++
 +static int profile_show(struct seq_file *m, void *unused)
 +{
 +	unsigned int cpu, bin;
 +	seq_printf(m, "enabled %d\ntsc_khz %lu\nsample_period 256\n", uml_sp_enabled, tsc_khz);
 +	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
-+		seq_printf(m, "cpu%u_getpid_calls %llu\n", cpu,
++		seq_printf(m, "cpu%u_profiled_syscalls %llu\n", cpu,
 +			__atomic_load_n(&stats[cpu].sequence[UML_SP_trace_enter], __ATOMIC_RELAXED));
 +#define SHOW(n) seq_printf(m, "cpu%u_" #n "_count %llu\ncpu%u_" #n "_cycles %llu\n", \
 +	cpu, __atomic_load_n(&stats[cpu].count[UML_SP_##n], __ATOMIC_RELAXED), \
@@ -186,6 +202,9 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +		UML_SP_STAGES(SHOW)
 +#undef SHOW
 +	}
++	for (bin = 0; bin < ARRAY_SIZE(syscall_counts); bin++)
++		seq_printf(m, "syscall_nr%u %llu\n", bin,
++			__atomic_load_n(&syscall_counts[bin], __ATOMIC_RELAXED));
 +	for (bin = 0; bin < 32; bin++) {
 +#define HIST(n) seq_printf(m, #n "_bin%u %llu\n", bin, \
 +	__atomic_load_n(&histogram[UML_SP_##n][bin], __ATOMIC_RELAXED));
@@ -220,6 +239,28 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +"uml_syscall_profile=<0|1>\n"
 +"    Default off. Sample syscall phases every 256 calls; per-CPU TSC totals\n"
 +"    and spin/futex counts in /proc/uml_syscall_profile. Diagnostic only.\n");
+--- a/arch/um/kernel/process.c
++++ b/arch/um/kernel/process.c
+@@ -37,6 +37,7 @@
+ #include <registers.h>
+ #include <linux/time-internal.h>
+ #include <linux/elfcore.h>
++#include <core-profile.h>
+ 
+ /*
+  * This is a per-cpu array.  A processor only modifies its entry and it only
+@@ -215,7 +216,11 @@
+ 
+ void arch_cpu_idle(void)
+ {
++	unsigned long long stamp = uml_sp_enabled ? uml_sp_clock() : 0;
++
+ 	um_idle_sleep();
++	if (stamp)
++		uml_sp_add(UML_SP_idle, uml_sp_clock() - stamp);
+ }
+ 
+ void arch_cpu_idle_prepare(void)
 --- a/arch/um/kernel/skas/stub.c
 +++ b/arch/um/kernel/skas/stub.c
 @@ -431,14 +431,17 @@
@@ -230,7 +271,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	int notify = 0, profile_ready;
  	long res;
  
-+	uml_sp_enter(&d->profile, sig == SIGSYS && info->si_syscall == __NR_getpid);
++	uml_sp_enter(&d->profile, sig == SIGSYS);
  	d->signal = sig;
  	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
  	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
@@ -290,7 +331,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  
 --- a/arch/um/kernel/skas/syscall.c
 +++ b/arch/um/kernel/skas/syscall.c
-@@ -14,21 +14,28 @@
+@@ -14,21 +14,29 @@
  #include <asm/syscall.h>
  #include <asm/unistd.h>
  #include <asm/delay.h>
@@ -301,8 +342,9 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  	struct pt_regs *regs = container_of(r, struct pt_regs, regs);
 -	int syscall;
 +	int syscall, traced;
-+	unsigned long long stamp = PT_SYSCALL_NR(r->gp) == __NR_getpid ?
-+		uml_sp_begin(UML_SP_trace_enter) : 0;
++	unsigned long long stamp = uml_sp_begin(UML_SP_trace_enter);
++
++	uml_sp_syscall(PT_SYSCALL_NR(r->gp));
  
  	/* Initialize the syscall number and default return value. */
  	UPT_SYSCALL_NR(r) = PT_SYSCALL_NR(r->gp);
@@ -322,7 +364,21 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  		goto out;
  
  	syscall = UPT_SYSCALL_NR(r);
-@@ -70,8 +77,10 @@
+@@ -53,6 +61,13 @@
+ 						 UPT_SYSCALL_ARG5(&regs->regs),
+ 						 UPT_SYSCALL_ARG6(&regs->regs));
+ 
++		if (uml_sp_enabled && !IS_ERR_VALUE(ret)) {
++			if (syscall == __NR_clone || syscall == __NR_clone3 ||
++			    syscall == __NR_fork || syscall == __NR_vfork)
++				uml_sp_count(UML_SP_clone_ok, 1);
++			if (syscall == __NR_execve || syscall == __NR_execveat)
++				uml_sp_count(UML_SP_exec_ok, 1);
++		}
+ 		PT_REGS_SET_SYSCALL_RETURN(regs, ret);
+ 
+ 		/*
+@@ -70,8 +85,10 @@
  		}
  	}
  
@@ -335,7 +391,23 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  }
 --- a/arch/um/os-Linux/skas/mem.c
 +++ b/arch/um/os-Linux/skas/mem.c
-@@ -357,6 +357,7 @@
+@@ -97,6 +97,7 @@
+ 	struct stub_data *proc_data = (void *)mm_idp->stack;
+ 	int n, i;
+ 	int err, pid = mm_idp->pid;
++	unsigned long long stamp = uml_sp_begin(UML_SP_mapping_batch);
+ 
+ 	/* Observe the final coalesced queue, including capacity-triggered flushes.
+ 	 * Submitted commands are not successes: a failed batch may stop early. */
+@@ -168,6 +169,7 @@
+ 	if (using_seccomp)
+ 		mm_idp->syscall_fd_num = 0;
+ 
++	uml_sp_mark(UML_SP_mapping_batch, &stamp);
+ 	return mm_idp->syscall_data_len;
+ }
+ 
+@@ -357,6 +359,7 @@
  	uml_fs_inc(UML_FS_runner_start);
  	child->sock = sockets[0];
  	data->spin_limit = uml_seccomp_spin_limit;

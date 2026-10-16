@@ -97,12 +97,13 @@ background tasks and the snapshot reader. No hot-path clock reads.
 +"    and kernel-side waits. Read /proc/uml_faultstat; no clock probes.\n\n");
 --- a/arch/um/kernel/Makefile
 +++ b/arch/um/kernel/Makefile
-@@ -18,7 +18,7 @@
+@@ -18,8 +18,8 @@
  	physmem.o process.o ptrace.o reboot.o sigio.o \
  	signal.o sysrq.o time.o tlb.o trap.o \
  	um_arch.o umid.o kmsg_dump.o capflags.o skas/
 -obj-y += load_file.o gpu.o
 +obj-y += load_file.o gpu.o faultstat.o
+ obj-$(CONFIG_X86_64) += clock_sync.o
  
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
  obj-$(CONFIG_GPROF)	+= gprof_syms.o

@@ -24,7 +24,7 @@
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "core syscall failure line=%d %s errno=%d\n", \
     __LINE__, #x, errno); exit(1); } } while (0)
-#define MAX_VALUES 4096
+#define MAX_VALUES 8192
 struct snapshot { unsigned int n; int enabled, patch_enabled; uint64_t khz; char names[MAX_VALUES][64]; uint64_t values[MAX_VALUES]; };
 struct sample { uint64_t ns, operations; struct snapshot first, last; };
 struct worker { pthread_barrier_t *barrier; size_t count; int cpu; long pid; int registers; };
@@ -88,7 +88,7 @@ static void barrier(pthread_barrier_t *b) {
     int result = pthread_barrier_wait(b);
     CHECK(!result || result == PTHREAD_BARRIER_SERIAL_THREAD);
 }
-static long raw_getpid(void) {
+static __attribute__((noinline, noclone)) long raw_getpid(void) {
 #ifdef __x86_64__
     long result;
     __asm__ volatile(".rept 14; nop; .endr; mov $39, %%eax; syscall"
@@ -262,6 +262,16 @@ int main(int argc, char **argv) {
     int registers = !strcmp(argv[1], "registers");
     CHECK(all || registers || !strcmp(argv[1], "threads") || !strcmp(argv[1], "signals") ||
           !strcmp(argv[1], "filters") || !strcmp(argv[1], "ptrace"));
+    struct snapshot initial = {0};
+    snapshot(&initial);
+    unsigned int hot = 0;
+    for (unsigned int i = 0; i < initial.n; i++)
+        if (!strcmp(initial.names[i], "patch_hot_threshold")) hot = (unsigned int)initial.values[i];
+    if (initial.patch_enabled && hot) {
+        long pid = syscall(SYS_getpid);
+        for (unsigned int i = 0; i < hot; i++) CHECK(raw_getpid() == pid);
+        for (unsigned int i = 0; i < hot; i++) CHECK(register_getpid(SYS_getpid) == pid);
+    }
     printf("{\"schema\":\"hd.core-syscalls/1\",\"samples\":[");
     if (all || registers || !strcmp(argv[1], "threads"))
         for (unsigned int n = 1; n <= 4; n++) { if (n > 1) putchar(','); parallel(n, count, registers); }
