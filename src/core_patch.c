@@ -32,6 +32,7 @@ static unsigned char *mapping;
 static size_t page_size;
 static long pid;
 static int enabled;
+static unsigned int hot;
 
 static void signal_handler(int sig) {
     if (sig == SIGUSR1) atomic_fetch_add_explicit(&delivered, 1, memory_order_relaxed);
@@ -74,7 +75,12 @@ static void read_enabled(void) {
     char key[64]; unsigned long long value;
     CHECK(fscanf(f, "%63s %llu", key, &value) == 2 && !strcmp(key, "enabled") && value <= 1);
     enabled = (int)value;
-    CHECK(!fclose(f));
+    while (fscanf(f, "%63s %llu", key, &value) == 2)
+        if (!strcmp(key, "hot_threshold")) { CHECK(value <= CALLS); hot = (unsigned int)value; }
+    CHECK(feof(f) && !ferror(f) && !fclose(f));
+}
+static void warm(long (*call)(void), long expected) {
+    for (unsigned int n = 0; n < (hot ? hot : 1); n++) CHECK(call() == expected);
 }
 static void ptrace_after_patch(void) {
     pid_t child = fork(); CHECK(child >= 0);
@@ -188,7 +194,7 @@ static void restart_and_long_form(void) {
     for (int restart = 0; restart < 2; restart++) {
         int pipefd[2]; char value = 0;
         CHECK(!pipe(pipefd));
-        CHECK(read_call(pipefd[0], &value, 0) == 0);
+        for (unsigned int n = 0; n < (hot ? hot : 1); n++) CHECK(read_call(pipefd[0], &value, 0) == 0);
         struct sigaction sa = {.sa_handler = signal_handler,
                                .sa_flags = restart ? SA_RESTART : 0};
         CHECK(!sigemptyset(&sa.sa_mask) && !sigaction(SIGUSR1, &sa, NULL));
@@ -207,7 +213,7 @@ static void restart_and_long_form(void) {
     unsigned char long_code[] = {0x48, 0xc7, 0xc0, 39, 0, 0, 0, 0x0f, 0x05, 0xc3};
     memcpy(p + OFFSET, long_code, sizeof(long_code));
     CHECK(!mprotect(p, page_size, PROT_READ | PROT_EXEC));
-    CHECK(((long (*)(void))(p + OFFSET))() == pid);
+    warm((void *)(p + OFFSET), pid);
     if (enabled) CHECK(p[OFFSET] == 0xff && p[OFFSET + 7] == 0x06 && p[OFFSET + 8] == 0x06);
     else CHECK(!memcmp(p + OFFSET, long_code, sizeof(long_code)));
     CHECK(!munmap(p, page_size));
@@ -228,7 +234,7 @@ static void ambiguous_instructions(void) {
         CHECK(!mprotect(p, page_size, PROT_READ | PROT_EXEC));
         unsigned int value = 0;
         long (*call)(uintptr_t) = (void *)(p + OFFSET);
-        for (int n = 0; n < 8; n++) {
+        for (unsigned int n = 0; n < (hot ? hot + 8 : 8); n++) {
             CHECK(call((uintptr_t)&value + 0x48000000UL) == (i == 0 ? 39 : pid));
             if (i == 2) CHECK(value == 39);
             CHECK(!memcmp(p + OFFSET, codes[i], sizes[i]));
@@ -266,7 +272,7 @@ int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "fresh")) {
         CHECK(is_original((void *)core_patch_site));
         long expected = getpid();
-        CHECK(core_patch_site() == expected);
+        warm(core_patch_site, expected);
         verify_site((void *)core_patch_site);
         return 0;
     }
@@ -274,7 +280,7 @@ int main(int argc, char **argv) {
     page_size = (size_t)sysconf(_SC_PAGESIZE); CHECK(page_size == 4096);
     pid = getpid();
     CHECK(is_original((void *)core_patch_site));
-    CHECK(core_patch_site() == pid);
+    warm(core_patch_site, pid);
     verify_site((void *)core_patch_site);
     char path[] = "/tmp/core-patch-XXXXXX";
     int fd = mkstemp(path); CHECK(fd >= 0 && !unlink(path));
@@ -289,7 +295,7 @@ int main(int argc, char **argv) {
             PROT_READ | PROT_EXEC | (writable ? PROT_WRITE : 0),
             writable ? MAP_PRIVATE : MAP_SHARED, fd, 0);
         CHECK(shared != MAP_FAILED && is_original(shared + OFFSET));
-        CHECK(((long (*)(void))(shared + OFFSET))() == pid);
+        warm((void *)(shared + OFFSET), pid);
         CHECK(is_original(shared + OFFSET));
         CHECK(!munmap(shared, page_size));
     }
@@ -346,16 +352,16 @@ int main(int argc, char **argv) {
     for (unsigned int i = 0; i < SITES; i++) {
         unsigned char *site = mapping + i * page_size + OFFSET;
         CHECK(is_original(site));
-        CHECK(((long (*)(void))site)() == pid);
+        warm((void *)site, pid);
         verify_site(site);
     }
     CHECK(!madvise(mapping, page_size, MADV_DONTNEED));
     CHECK(is_original(mapping + OFFSET));
-    CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
+    warm((void *)(mapping + OFFSET), pid);
     verify_site(mapping + OFFSET);
     CHECK(mmap(mapping, page_size, PROT_READ | PROT_EXEC, MAP_PRIVATE | MAP_FIXED, fd, 0) == mapping);
     CHECK(is_original(mapping + OFFSET));
-    CHECK(((long (*)(void))(mapping + OFFSET))() == pid);
+    warm((void *)(mapping + OFFSET), pid);
     verify_site(mapping + OFFSET);
     CHECK(!mprotect(mapping, 1, PROT_READ | PROT_WRITE));
     CHECK(is_original(mapping + OFFSET));

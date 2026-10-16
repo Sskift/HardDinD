@@ -60,13 +60,15 @@ int main(void) {
     for (int i = 0; i < 1024; i++) uml_sp_enter(&p, 1);
     assert(!p.sequence && !p.active && !tick);
     p.enabled = 1;
-    for (int i = 1; i <= 1024; i++) {
+    int previous = 0, phases[2] = {0};
+    for (int i = 1; i <= 65536; i++) {
         uml_sp_enter(&p, 1);
-        assert(p.active == !(i & 255));
-        if (i == 257 || i == 513 || i == 769) {
+        if (p.active) phases[i & 1]++;
+        if (previous) {
             assert(p.valid == 2 && p.gap == 1);
             p.valid = 0;
         }
+        previous = p.active;
         if (p.active) {
             p.release = uml_sp_clock();
             uml_sp_replied(&p);
@@ -76,6 +78,7 @@ int main(void) {
             p.active = 0;
         }
     }
+    assert(phases[0] > 100 && phases[0] < 160 && phases[1] > 100 && phases[1] < 160);
     /* A different intervening signal must not become a syscall return sample. */
     uml_sp_enter(&p, 0);
     assert(!p.active && !p.resume && !p.valid);

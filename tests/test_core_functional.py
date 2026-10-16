@@ -62,6 +62,18 @@ class CoreFunctionalTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(AssertionError):
                 f.core_summary(json.dumps(incomplete), 'core_fpstate', 'state', 4096)
 
+    def test_hot_gate_requires_cold_lazy_and_lifetime_evidence(self):
+        row = {'schema': 'hd.core-hot/1', 'enabled': True, 'threshold': 64, 'cold_calls': 63,
+               'lazy': True, 'fork': True, 'exec_clean': True, 'verified': True}
+        f.core_summary(json.dumps(row), 'core_hot', 'hot', 64, patch_enabled=True)
+        for key in row:
+            incomplete = {k: v for k, v in row.items() if k != key}
+            with self.subTest(key=key), self.assertRaises((AssertionError, KeyError)):
+                f.core_summary(json.dumps(incomplete), 'core_hot', 'hot', 64, patch_enabled=True)
+        for key, value in [('threshold', 32), ('cold_calls', 62), ('lazy', False), ('fork', False)]:
+            with self.subTest(key=key), self.assertRaises(AssertionError):
+                f.core_summary(json.dumps({**row, key: value}), 'core_hot', 'hot', 64, patch_enabled=True)
+
     def test_rewrite_requires_enabled_path_and_every_semantic_result(self):
         row = {'schema': 'hd.core-patch/1', 'enabled': True, 'sites': 32, 'calls': 131072,
                'signals': 5, 'trampoline_lifetime': True, **{key: True for key in ('fork', 'exec_clean', 'file_clean',

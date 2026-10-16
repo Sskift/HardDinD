@@ -2,9 +2,10 @@ From: HardDinD developers
 Subject: [DIAGNOSTIC] um: sample syscall phases and count both waiters per CPU
 
 Apply after fault-rendezvous-counters. Default off: uml_syscall_profile=1.
-One TSC sample per 256 calls; counts are machine-wide, split by receiving CPU.
+Approximately one TSC sample per 256 calls (multiplicative sampling avoids
+aliasing alternating read/write sequences); counts are machine-wide, split by receiving CPU.
 Syscall_nr counts attempted entries before ptrace/seccomp; clone_ok/exec_ok count
-successful returns. Idle is every arch_cpu_idle interval (TSC, not scheduled CPU
+successful returns; task_exit counts final TASK_DEAD switches, including signals. Idle is every arch_cpu_idle interval (TSC, not scheduled CPU
 time). Mapping_batch samples include the whole broker wait, not only host mmap.
 Guest permission changes use mmap replacements, not a separate host mprotect.
 Return-gap includes sigreturn, guest instructions and the next SIGSYS entry,
@@ -18,7 +19,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 
 --- /dev/null
 +++ b/arch/um/include/shared/core-profile.h
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,65 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef __UM_CORE_PROFILE_H
 +#define __UM_CORE_PROFILE_H
@@ -28,7 +29,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	X(forward) X(reply) X(return_gap) \
 +	X(kernel_ready) X(kernel_spin) X(kernel_futex) X(kernel_eagain) \
 +	X(runner_ready) X(runner_spin) X(runner_futex) X(runner_eagain) \
-+	X(idle) X(mapping_batch) X(syscall) X(clone_ok) X(exec_ok)
++	X(idle) X(mapping_batch) X(syscall) X(clone_ok) X(exec_ok) X(task_exit)
 +#define UML_SP_ENUM(n) UML_SP_##n,
 +enum { UML_SP_STAGES(UML_SP_ENUM) UML_SP_COUNT };
 +#undef UML_SP_ENUM
@@ -51,6 +52,12 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +#endif
 +}
 +
++/* Spread samples across periodic syscall patterns (e.g. read/write pairs). */
++static inline int uml_sp_sample(unsigned long long sequence)
++{
++    return (sequence * 0x9e3779b97f4a7c15ULL) >> 56 == 0;
++}
++
 +struct uml_sp_stub {
 +	unsigned int enabled, sequence, active, valid;
 +	unsigned long long ready, release, resume, reply, gap;
@@ -67,7 +74,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +		p->valid |= 2;
 +	}
 +	p->resume = 0;
-+	p->active = eligible && !(++p->sequence & 255);
++	p->active = eligible && uml_sp_sample(++p->sequence);
 +}
 +
 +static inline __attribute__((always_inline)) void uml_sp_replied(struct uml_sp_stub *p)
@@ -143,7 +150,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +	if (!uml_sp_enabled)
 +		return 0;
 +	cpu = raw_smp_processor_id();
-+	if (__atomic_add_fetch(&stats[cpu].sequence[stage], 1, __ATOMIC_RELAXED) & 255)
++	if (!uml_sp_sample(__atomic_add_fetch(&stats[cpu].sequence[stage], 1, __ATOMIC_RELAXED)))
 +		return 0;
 +	first = uml_sp_clock();
 +	second = uml_sp_clock();
@@ -249,7 +256,16 @@ compare enabled and disabled on this same kernel to quantify perturbation.
  
  /*
   * This is a per-cpu array.  A processor only modifies its entry and it only
-@@ -215,7 +216,11 @@
+@@ -73,6 +74,8 @@
+ struct task_struct *__switch_to(struct task_struct *from, struct task_struct *to)
+ {
+ 	to->thread.prev_sched = from;
++	if (READ_ONCE(from->__state) == TASK_DEAD)
++		uml_sp_count(UML_SP_task_exit, 1);
+ 	set_current(to);
+ 
+ 	switch_threads(&from->thread.switch_buf, &to->thread.switch_buf);
+@@ -215,7 +218,11 @@
  
  void arch_cpu_idle(void)
  {

@@ -39,6 +39,7 @@ static pthread_barrier_t gate;
 static _Atomic unsigned int signals;
 static _Atomic long tids[4];
 static int enabled;
+static unsigned int hot;
 static long pid;
 
 static void caught(int sig) { if (sig == SIGUSR1) atomic_fetch_add(&signals, 1); }
@@ -126,7 +127,8 @@ static void stack_load_faults(void) {
         memcpy(fault_site, code, sizeof(code));
         *(long *)fault_address = SYS_getpid;
         CHECK(!mprotect(text, page_size, PROT_READ | PROT_EXEC));
-        CHECK(core_prefix_call(fault_site, fault_address) == pid);
+        for (unsigned int n = 0; n < (hot ? hot : 1); n++)
+            CHECK(core_prefix_call(fault_site, fault_address) == pid);
         CHECK((fault_site[0] == 0xff) == enabled);
         CHECK(!mprotect(fault_address, page_size, PROT_NONE));
         CHECK(core_prefix_call(fault_site, fault_address) == pid);
@@ -141,7 +143,10 @@ int main(int argc, char **argv) {
     if (f) {
         char key[64];
         CHECK(fscanf(f, "%63s %d", key, &enabled) == 2 && !strcmp(key, "enabled"));
-        CHECK(!fclose(f));
+        unsigned long long value;
+        while (fscanf(f, "%63s %llu", key, &value) == 2)
+            if (!strcmp(key, "hot_threshold")) { CHECK(value <= N); hot = (unsigned int)value; }
+        CHECK(feof(f) && !ferror(f) && !fclose(f));
     } else CHECK(errno == ENOENT);
     CHECK(core_go_site[0] == 0x49 && core_generic_site[0] == 0x4c && core_abi0_site[0] == 0x48);
     if (argc == 2) { CHECK(!strcmp(argv[1], "fresh")); return 0; }

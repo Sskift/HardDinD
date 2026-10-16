@@ -25,7 +25,7 @@
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "core syscall failure line=%d %s errno=%d\n", \
     __LINE__, #x, errno); exit(1); } } while (0)
 #define MAX_VALUES 8192
-struct snapshot { unsigned int n; int enabled, patch_enabled; uint64_t khz; char names[MAX_VALUES][64]; uint64_t values[MAX_VALUES]; };
+struct snapshot { unsigned int n; int enabled, patch_enabled, fp_enabled; uint64_t khz; char names[MAX_VALUES][64]; uint64_t values[MAX_VALUES]; };
 struct sample { uint64_t ns, operations; struct snapshot first, last; };
 struct worker { pthread_barrier_t *barrier; size_t count; int cpu; long pid; int registers; };
 static volatile sig_atomic_t trapped;
@@ -57,11 +57,12 @@ static void snapshot_file(struct snapshot *s, const char *path, const char *pref
 static void snapshot(struct snapshot *s) {
     snapshot_file(s, "/proc/uml_syscall_profile", "", &s->enabled);
     snapshot_file(s, "/proc/uml_syscall_patch", "patch_", &s->patch_enabled);
+    snapshot_file(s, "/proc/uml_fp_lazy", "fp_", &s->fp_enabled);
 }
 static void report(const char *mode, unsigned int threads, const struct sample *s) {
     CHECK(s->ns && s->operations && s->first.n == s->last.n);
     CHECK(s->first.enabled == s->last.enabled && s->first.khz == s->last.khz);
-    CHECK(s->first.patch_enabled == s->last.patch_enabled);
+    CHECK(s->first.patch_enabled == s->last.patch_enabled && s->first.fp_enabled == s->last.fp_enabled);
     if (s->last.patch_enabled) {
         int registers = !strcmp(mode, "register_getpid");
         unsigned int i;

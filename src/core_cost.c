@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/mman.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -20,7 +21,7 @@ struct snapshot {
     int faults, profile;
     uint64_t khz;
 };
-static struct snapshot first, last;
+static struct snapshot *first, *last;
 
 static uint64_t now(void) {
     struct timespec ts;
@@ -108,8 +109,17 @@ int main(int argc, char **argv) {
         CHECK(count == 1 && !chdir("/work"));
         shell("rm -rf lua; mkdir lua; tar -xzf /bench/lua.tar.gz -C lua --strip-components=1");
     }
+    /* Shared, prefaulted snapshots avoid adding observer COW faults after fork. */
+    size_t bytes = 2 * sizeof(*first);
+    first = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    CHECK(first != MAP_FAILED); last = first + 1;
+#ifdef __linux__
+    CHECK(!madvise(first, bytes, MADV_DONTFORK));
+#endif
+    for (size_t i = 0; i < bytes; i += 4096) ((volatile unsigned char *)first)[i] = 0;
+    ((volatile unsigned char *)first)[bytes - 1] = 0;
     struct rusage self_a, self_b, child_a, child_b;
-    snapshot(&first);
+    snapshot(first);
     CHECK(!getrusage(RUSAGE_SELF, &self_a) && !getrusage(RUSAGE_CHILDREN, &child_a));
     uint64_t started = now();
     if (!strcmp(mode, "compile")) {
@@ -120,25 +130,25 @@ int main(int argc, char **argv) {
     } else pipe_work(count);
     uint64_t elapsed = now() - started;
     CHECK(!getrusage(RUSAGE_SELF, &self_b) && !getrusage(RUSAGE_CHILDREN, &child_b));
-    snapshot(&last);
+    snapshot(last);
     if (!strcmp(mode, "compile")) {
         shell("lua/src/lua -e 'local n=0; for i=1,10000 do n=n+i end; assert(n==50005000); assert(_VERSION==\"Lua 5.4\")'; lua/src/luac -p /bench/verify.lua");
         shell("rm -rf lua");
     }
-    CHECK(elapsed && first.count == last.count && first.faults == last.faults &&
-          first.profile == last.profile && first.khz == last.khz);
+    CHECK(elapsed && first->count == last->count && first->faults == last->faults &&
+          first->profile == last->profile && first->khz == last->khz);
     printf("{\"schema\":\"hd.core-cost/1\",\"mode\":\"%s\",\"verified\":true,\"operations\":%" PRIu64
            ",\"seconds\":%.9f,\"cpu_seconds\":%.6f,\"minor_faults\":%ld,\"major_faults\":%ld,"
            "\"faults_enabled\":%d,\"profile_enabled\":%d,\"tsc_khz\":%" PRIu64 ",\"counters\":{",
            mode, count, elapsed / 1e9, cpu_seconds(&self_b) + cpu_seconds(&child_b) -
            cpu_seconds(&self_a) - cpu_seconds(&child_a), self_b.ru_minflt + child_b.ru_minflt -
            self_a.ru_minflt - child_a.ru_minflt, self_b.ru_majflt + child_b.ru_majflt -
-           self_a.ru_majflt - child_a.ru_majflt, last.faults, last.profile, last.khz);
+           self_a.ru_majflt - child_a.ru_majflt, last->faults, last->profile, last->khz);
     int printed = 0;
-    for (unsigned int i = 0; i < first.count; i++) {
-        CHECK(!strcmp(first.names[i], last.names[i]) && last.values[i] >= first.values[i]);
-        uint64_t delta = last.values[i] - first.values[i];
-        if (delta) printf("%s\"%s\":%" PRIu64, printed++ ? "," : "", first.names[i], delta);
+    for (unsigned int i = 0; i < first->count; i++) {
+        CHECK(!strcmp(first->names[i], last->names[i]) && last->values[i] >= first->values[i]);
+        uint64_t delta = last->values[i] - first->values[i];
+        if (delta) printf("%s\"%s\":%" PRIu64, printed++ ? "," : "", first->names[i], delta);
     }
     puts("}}");
     return 0;

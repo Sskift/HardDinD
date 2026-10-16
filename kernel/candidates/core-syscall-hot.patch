@@ -1,0 +1,198 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: defer private syscall rewriting until a site is hot
+
+Apply after core-syscall-patch. Default off: uml_syscall_patch_hot=0 preserves
+that candidate. Values 1..65535 require this many traps at a site in the same
+mm before decoding/COW; 64 is the initial experiment. Hash collisions and lost
+CAS races conservatively delay patching. Invalidation resets affected counts.
+Only an mm that has completed exec setup may add sites: fork inherits old
+private patches but cannot add new ones until exec. The 64 KiB trampoline is
+created at the first eligible hot site, with the patch mutex held before mmap
+lock. Internal header writes use the same private GUP path as text rewriting,
+not __access_remote_vm, which would recurse into the forced-write hook.
+
+--- a/arch/um/include/asm/mmu.h
++++ b/arch/um/include/asm/mmu.h
+@@ -28,6 +28,8 @@
+ 	int patch_stopping;
+ 	bool patch_debug;
+ 	unsigned long patch_miss[64];
++	unsigned long patch_hot[64];
++	bool patch_exec_ready, patch_area_attempted;
+ 	struct mm_id gpu_id;
+ 	struct mutex gpu_lock;
+ 	struct pid *gpu_owner;
+--- /dev/null
++++ b/arch/um/include/shared/core-hot.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_CORE_HOT_H
++#define __UM_CORE_HOT_H
++
++/* User IPs have at most 47 bits. Lost races and hash collisions only delay
++ * patching; counts are hints, never correctness or lifetime state. */
++static inline int uml_patch_hot(unsigned long *slot, unsigned long ip,
++                                 unsigned int threshold)
++{
++    unsigned long old = __atomic_load_n(slot, __ATOMIC_RELAXED), next;
++    unsigned int count = (old >> 16) == ip ? old & 65535 : 0;
++
++    if (count < threshold)
++        count++;
++    next = (ip << 16) | count;
++    if (!__atomic_compare_exchange_n(slot, &old, next, 0,
++                                     __ATOMIC_RELAXED, __ATOMIC_RELAXED))
++        return 0;
++    return count >= threshold;
++}
++#endif
+--- a/arch/um/kernel/core-patch.c
++++ b/arch/um/kernel/core-patch.c
+@@ -13,6 +13,7 @@
+ #include <asm/unistd.h>
+ #include <as-layout.h>
+ #include <core-patch.h>
++#include <core-hot.h>
+ #include <os.h>
+ #include <skas.h>
+ #include <stub-data.h>
+@@ -20,8 +21,9 @@
+ 
+ int uml_syscall_patch;
+ static atomic64_t patched, dynamic_sites;
++static unsigned int patch_hot_threshold;
+ static DEFINE_PER_CPU(unsigned long, patch_calls);
+-struct patch_stats { unsigned long sigsys, excluded, cached, pattern, boundary, debug, dynamic; };
++struct patch_stats { unsigned long sigsys, excluded, cached, pattern, boundary, debug, dynamic, cold, preexec, areas; };
+ static DEFINE_PER_CPU(struct patch_stats, patch_stats);
+ extern char __syscall_stub_start[], stub_fast_entry[];
+ 
+@@ -34,6 +36,16 @@
+ 	return 1;
+ }
+ __setup("uml_syscall_patch=", patch_setup);
++
++static int __init patch_hot_setup(char *s)
++{
++    unsigned int value;
++    if (kstrtouint(s, 0, &value) || value > 65535)
++        return 0;
++    patch_hot_threshold = value;
++    return 1;
++}
++__setup("uml_syscall_patch_hot=", patch_hot_setup);
+ 
+ void uml_patch_enter(struct mm_struct *mm)
+ {
+@@ -62,6 +74,9 @@
+         unsigned long ip = READ_ONCE(mm->context.patch_miss[i]);
+         if (ip && ip - 1 >= start && ip - 1 < end)
+             WRITE_ONCE(mm->context.patch_miss[i], 0);
++        ip = READ_ONCE(mm->context.patch_hot[i]) >> 16;
++        if (ip && ip - 1 >= start && ip - 1 < end)
++            WRITE_ONCE(mm->context.patch_hot[i], 0);
+     }
+ }
+ 
+@@ -94,6 +109,11 @@
+ 
+ 	if (!uml_syscall_patch || !parallel_userspace)
+ 		return 0;
++	if (patch_hot_threshold) {
++		/* No guest instructions can run until this exec returns successfully. */
++		current->mm->context.patch_exec_ready = true;
++		return 0;
++	}
+ 	addr = vm_mmap(NULL, UML_PATCH_BASE, UML_PATCH_END - UML_PATCH_BASE,
+ 		       PROT_READ | PROT_EXEC,
+ 		       MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, 0);
+@@ -138,6 +158,33 @@
+ 	copy_to_user_page(find_vma(mm, addr), page, addr, dst + offset_in_page(addr), src, len);
+ 	kunmap_local(dst);
+ 	set_page_dirty_lock(page);
++}
++
++/* patch_lock precedes mmap_lock, including the first lazy allocation. */
++static void patch_area(struct mm_struct *mm)
++{
++    struct patch_header h = { PATCH_MAGIC, 1 };
++    struct page *page;
++    unsigned long addr;
++
++    if (!patch_hot_threshold || mm->context.patch_area_attempted)
++        return;
++    mm->context.patch_area_attempted = true;
++    addr = vm_mmap(NULL, UML_PATCH_BASE, UML_PATCH_END - UML_PATCH_BASE,
++                   PROT_READ | PROT_EXEC,
++                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, 0);
++    if (addr != UML_PATCH_BASE)
++        return;
++    mmap_read_lock(mm);
++    page = write_page(mm, addr);
++    if (page) {
++        write_bytes(mm, page, addr, &h, sizeof(h));
++        put_page(page);
++        this_cpu_inc(patch_stats.areas);
++    }
++    mmap_read_unlock(mm);
++    if (!page)
++        vm_munmap(addr, UML_PATCH_END - UML_PATCH_BASE);
+ }
+ 
+ void uml_patch_syscall(struct uml_pt_regs *r)
+@@ -174,8 +221,17 @@
+         this_cpu_inc(patch_stats.excluded);
+         return;
+     }
++    if (patch_hot_threshold && !mm->context.patch_exec_ready) {
++        this_cpu_inc(patch_stats.preexec);
++        return;
++    }
+     if (READ_ONCE(mm->context.patch_miss[(end >> 3) & 63]) == end) {
+         this_cpu_inc(patch_stats.cached);
++        return;
++    }
++    if (patch_hot_threshold && !uml_patch_hot(
++            &mm->context.patch_hot[((end >> 3) ^ (end >> 12)) & 63], end, patch_hot_threshold)) {
++        this_cpu_inc(patch_stats.cold);
+         return;
+     }
+     WRITE_ONCE(mm->context.patch_miss[(end >> 3) & 63], end);
+@@ -206,6 +262,7 @@
+ 		this_cpu_inc(patch_stats.debug);
+ 		goto unlock;
+ 	}
++	patch_area(mm);
+ 	if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
+ 	    h.magic != PATCH_MAGIC || h.next < 1 || h.next >= (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
+ 		goto unlock;
+@@ -327,6 +384,8 @@
+     int error = 0;
+ 
+     mutex_lock(&mm->context.patch_lock);
++    if (patch_hot_threshold && !mm->context.patch_area_attempted)
++        return 1;
+     if (access_remote_vm(mm, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
+         h.magic != PATCH_MAGIC || h.next < 1 || h.next > (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
+         return 1;
+@@ -570,6 +629,8 @@
+     for_each_possible_cpu(cpu) total += READ_ONCE(per_cpu(patch_stats, cpu).field); \
+     seq_printf(m, #field " %llu\n", total); \
+ } while (0)
++    seq_printf(m, "hot_threshold %u\n", patch_hot_threshold);
++    SHOW(cold); SHOW(preexec); SHOW(areas);
+     SHOW(sigsys); SHOW(excluded); SHOW(cached); SHOW(pattern); SHOW(boundary); SHOW(debug); SHOW(dynamic);
+     seq_printf(m, "dynamic_sites %lld\n", atomic64_read(&dynamic_sites));
+ #undef SHOW
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -162,6 +162,9 @@
+ 	memset(mm->context.cpu_ids, 0, sizeof(mm->context.cpu_ids));
+ 	mutex_init(&mm->context.turnstile);
+ 	mm->context.patch_debug = false;
++	mm->context.patch_exec_ready = false;
++	/* mm_alloc zeros this; dup_mm retains the inherited trampoline state. */
++	memset(mm->context.patch_hot, 0, sizeof(mm->context.patch_hot));
+ 	mutex_init(&mm->context.patch_lock);
+ 	init_rwsem(&mm->context.patch_run);
+ 	init_waitqueue_head(&mm->context.patch_wait);

@@ -12,6 +12,51 @@ from pipeline import config
 
 
 class FpStateTests(unittest.TestCase):
+    def test_borrowed_image_materializes_before_reuse(self):
+        compiler = shutil.which('cc')
+        if compiler is None:
+            self.skipTest('C compiler unavailable')
+        patch = (config.REPO / 'kernel/candidates/core-fp-lazy.patch').read_text()
+        part = patch.split('+++ b/arch/x86/um/core-fp.c\n')[1].split('\n--- ')[0]
+        code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
+        body = code.split('void uml_fp_materialize(', 1)[1]
+        source = '''#include <assert.h>
+#include <string.h>
+static int blocked;
+static void uml_fp_event(unsigned int n) { assert(n == 2 && blocked); }
+#define preempt_disable() (++blocked)
+#define preempt_enable() (--blocked)
+struct uml_pt_regs { const void *fp_pending; unsigned int fp_pending_size; unsigned char fp[4096]; };
+static void checked_copy(void *dst, const void *src, size_t len) {
+    assert(blocked); memcpy(dst, src, len);
+}
+#undef memcpy
+#define memcpy checked_copy
+void uml_fp_materialize(''' + body + '''
+#undef memcpy
+int main(void) {
+    unsigned char runner[4096], previous[4096];
+    memset(runner, 0x7b, sizeof(runner)); memcpy(previous, runner, sizeof(runner));
+    struct uml_pt_regs task = {.fp_pending = runner, .fp_pending_size = sizeof(runner)};
+    uml_fp_materialize(&task);
+    assert(!blocked && !task.fp_pending && !memcmp(task.fp, previous, sizeof(runner)));
+    /* Another task may now replace every byte of the parked runner image. */
+    memset(runner, 0xa5, sizeof(runner));
+    uml_fp_materialize(&task);
+    assert(!memcmp(task.fp, previous, sizeof(runner)));
+    /* Ptrace/signal edits after materialization remain authoritative. */
+    task.fp[1023] ^= 1;
+    uml_fp_materialize(&task);
+    assert(task.fp[1023] == (0x7b ^ 1));
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as directory:
+            path = pathlib.Path(directory)
+            (path / 'test.c').write_text(source)
+            subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', path / 'test.c',
+                            '-o', path / 'test'], check=True)
+            subprocess.run([path / 'test'], check=True, timeout=10)
+
     def test_complete_image_comparison(self):
         compiler = shutil.which('cc')
         if compiler is None:

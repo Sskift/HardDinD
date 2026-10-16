@@ -1129,6 +1129,13 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
                 row['enabled'] is patch_enabled and type(row['signals']) is int and row['signals'] > 0 and
                 row['prefix_faults'] == 2, row)
         require(all(row[k] is True for k in ('restart', 'arguments', 'fork', 'exec', 'verified')), row)
+    elif program == 'core_hot':
+        require(row['schema'] == 'hd.core-hot/1' and row['enabled'] is patch_enabled, row)
+        require(type(row['threshold']) is int and row['threshold'] == count, row)
+        threshold = max(1, count) if patch_enabled else 64
+        require(type(row['cold_calls']) is int and row['cold_calls'] == threshold - 1 and
+                row['lazy'] is (patch_enabled and count > 1), row)
+        require(all(row[k] is True for k in ('fork', 'exec_clean', 'verified')), row)
     else:
         expected = {'filters': [('seccomp_allow', 1), ('seccomp_errno', 1)],
                     'ptrace': [('ptraced_getpid', 1)], 'signals': [('local_sigsys', 1)],
@@ -1178,6 +1185,15 @@ def core_dynamic_semantic(c):
     output = c.output('/core_dynamic', image=HELPERS, opts=('--privileged',))
     enabled = 'uml_syscall_patch=1' in c.ctx.instance_options.get('kernel_args', [])
     core_summary(output, 'core_dynamic', 'registers', patch_enabled=enabled)
+
+
+@check('process.core_hot', 'run', helpers=True, timeout=180)
+def core_hot_semantic(c):
+    output = c.output('/core_hot', image=HELPERS, opts=('--privileged',))
+    args = c.ctx.instance_options.get('kernel_args', [])
+    hot = [int(arg.split('=', 1)[1]) for arg in args if arg.startswith('uml_syscall_patch_hot=')]
+    core_summary(output, 'core_hot', 'hot', hot[-1] if hot else 0,
+                 patch_enabled='uml_syscall_patch=1' in args)
 
 
 @check('process.core_startup_pressure', 'run|container exec', helpers=True, timeout=240)

@@ -1,0 +1,319 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: borrow a parked runner's FP image until a consumer
+
+Standalone, default off: uml_fp_lazy=1. Parallel x86-64 SIGSYS only; lifecycle and
+sigreturn and boot-time register discovery retain eager copies. The complete validated standard xstate image
+stays authoritative in the parked runner. Reuse it only for the same image on
+return. Materialize before switching away, duplicating a task, exporting or
+editing FP regsets, or constructing/restoring a signal frame. Exec discards the
+old image. Recheck lifecycle numbers after ptrace; discard pending state on
+a final switch after exit_mm (including fatal seccomp). Materialization cannot schedule while copying, since a switch may
+reuse the runner. This does not alter XSAVE masks, layout, host signal delivery,
+or architectural FP state. No XINUSE or syscall-purity approximation is used.
+/proc/uml_fp_lazy counts borrowed, reused and materialized images per machine.
+When profiling, apply after fault-rendezvous-counters and core-syscall-profile.
+Do not combine with core-fp-compare (both replace the same restoration copy).
+
+--- a/arch/um/kernel/exec.c
++++ b/arch/um/kernel/exec.c
+@@ -22,6 +22,7 @@
+ 
+ void flush_thread(void)
+ {
++	current_pt_regs()->regs.fp_pending = NULL;
+ 	arch_flush_thread(&current->thread.arch);
+ 
+ 	get_safe_registers(current_pt_regs()->regs.gp,
+--- a/arch/um/kernel/process.c
++++ b/arch/um/kernel/process.c
+@@ -74,2 +74,7 @@
+ {
++	/* Fatal seccomp/signals may have already dropped the exiting task's mm. */
++	if (from->mm)
++		uml_fp_materialize(&from->thread.regs.regs);
++	else
++		from->thread.regs.regs.fp_pending = NULL;
+ 	to->thread.prev_sched = from;
+@@ -195,2 +200,3 @@
+ {
++	uml_fp_materialize(&src->thread.regs.regs);
+ 	/* init_task is not dynamically sized (missing FPU state) */
+--- a/arch/um/kernel/skas/syscall.c
++++ b/arch/um/kernel/skas/syscall.c
+@@ -32,6 +32,14 @@
+ 		goto out;
+ 
+ 	syscall = UPT_SYSCALL_NR(r);
++	/* Ptrace may have changed an otherwise borrowable syscall into exec. */
++	switch (syscall) {
++	case __NR_clone: case __NR_clone3: case __NR_fork: case __NR_vfork:
++	case __NR_execve: case __NR_execveat: case __NR_exit: case __NR_exit_group:
++	case __NR_rt_sigreturn:
++		uml_fp_materialize(r);
++		break;
++	}
+ 
+ 	/*
+ 	 * If no time passes, then sched_yield may not actually yield, causing
+--- a/arch/um/os-Linux/skas/process.c
++++ b/arch/um/os-Linux/skas/process.c
+@@ -33,6 +33,31 @@
+ #include <timetravel.h>
+ #include <asm-generic/rwonce.h>
+ #include "../internal.h"
++
++extern int uml_fp_lazy;
++
++int uml_fp_can_borrow(struct stub_data *data)
++{
++#ifdef __x86_64__
++    siginfo_t *info;
++
++    if (!uml_fp_lazy || !parallel_userspace || data->signal != SIGSYS ||
++        data->si_offset > sizeof(data->sigstack) - sizeof(*info))
++        return 0;
++    info = (void *)&data->sigstack[data->si_offset];
++    /* These paths copy or destroy the mm before returning to userspace. */
++    switch (info->si_syscall) {
++    case __NR_clone: case __NR_clone3: case __NR_fork: case __NR_vfork:
++    case __NR_execve: case __NR_execveat: case __NR_exit: case __NR_exit_group:
++    case __NR_rt_sigreturn:
++        return 0;
++    default:
++        return 1;
++    }
++#else
++    return 0;
++#endif
++}
+ 
+ int is_skas_winch(int pid, int fd, void *data)
+ {
+--- a/arch/um/os-Linux/start_up.c
++++ b/arch/um/os-Linux/start_up.c
+@@ -337,7 +337,7 @@
+ 
+ 		/* Repeat with the correct size */
+ 		regs = calloc(1, sizeof(struct uml_pt_regs) + host_fp_size);
+-		r = get_stub_state(regs, seccomp_test_stub_data, NULL);
++		r = get_stub_state(regs, seccomp_test_stub_data, &fp_size);
+ 
+ 		/* Store as the default startup registers */
+ 		exec_fp_regs = malloc(host_fp_size);
+@@ -477,6 +477,23 @@
+ "    Experimental latency/CPU tradeoff; does not change guest syscalls.\n"
+ );
+ 
++int uml_fp_lazy;
++static int __init uml_fp_lazy_setup(char *line, int *add)
++{
++    *add = 0;
++    if (!strcmp(line, "1"))
++        uml_fp_lazy = 1;
++    else if (!strcmp(line, "0"))
++        uml_fp_lazy = 0;
++    else
++        fatal("uml_fp_lazy requires 0 or 1\n");
++    return 0;
++}
++__uml_setup("uml_fp_lazy=", uml_fp_lazy_setup,
++"uml_fp_lazy=<0|1>\n"
++"    Default off. Borrow parked runner FP state until a consumer or switch.\n"
++);
++
+ static int seccomp_config __initdata;
+ 
+ static int __init uml_seccomp_config(char *line, int *add)
+--- a/arch/x86/um/Makefile
++++ b/arch/x86/um/Makefile
+@@ -9,7 +9,7 @@
+ 	BITS := 64
+ endif
+ 
+-obj-y = bugs_$(BITS).o delay.o fault.o \
++obj-y = core-fp.o  bugs_$(BITS).o delay.o fault.o \
+ 	ptrace.o ptrace_$(BITS).o ptrace_user.o setjmp_$(BITS).o signal.o \
+ 	stub_segv.o \
+ 	sys_call_table_$(BITS).o sysrq_$(BITS).o tls_$(BITS).o \
+--- /dev/null
++++ b/arch/x86/um/core-fp.c
+@@ -0,0 +1,54 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <linux/init.h>
++#include <linux/percpu.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/smp.h>
++#include <linux/preempt.h>
++#include <linux/string.h>
++#include <sysdep/ptrace.h>
++
++extern int uml_fp_lazy;
++struct fp_stats { unsigned long long event[3]; };
++static DEFINE_PER_CPU(struct fp_stats, fp_stats);
++
++/* borrowed, reused, materialized; caller is pinned or the task is stopped. */
++void uml_fp_event(unsigned int event)
++{
++    __atomic_fetch_add(&per_cpu(fp_stats, raw_smp_processor_id()).event[event], 1,
++                       __ATOMIC_RELAXED);
++}
++
++static int fp_show(struct seq_file *m, void *unused)
++{
++    static const char * const names[] = { "borrowed", "reused", "materialized" };
++    int cpu;
++    seq_printf(m, "enabled %d\n", uml_fp_lazy);
++    for (unsigned int i = 0; i < 3; i++) {
++        unsigned long long total = 0;
++        for_each_possible_cpu(cpu)
++            total += __atomic_load_n(&per_cpu(fp_stats, cpu).event[i], __ATOMIC_RELAXED);
++        seq_printf(m, "%s %llu\n", names[i], total);
++    }
++    return 0;
++}
++static int __init fp_init(void)
++{
++    return proc_create_single("uml_fp_lazy", 0400, NULL, fp_show) ? 0 : -ENOMEM;
++}
++late_initcall(fp_init);
++
++/* A runner remains parked until its next set_stub_state. A switch may reuse
++ * it for another task, so never schedule in the middle of this copy. */
++void uml_fp_materialize(struct uml_pt_regs *regs)
++{
++    if (!regs->fp_pending)
++        return;
++    preempt_disable();
++    if (regs->fp_pending) {
++        memcpy(regs->fp, regs->fp_pending, regs->fp_pending_size);
++        regs->fp_pending = NULL;
++        uml_fp_event(2);
++    }
++    preempt_enable();
++}
+--- a/arch/x86/um/os-Linux/mcontext.c
++++ b/arch/x86/um/os-Linux/mcontext.c
+@@ -15,6 +15,8 @@
+ #include <sysdep/mcontext.h>
+ #include <arch.h>
+ 
++extern int uml_fp_can_borrow(struct stub_data *data);
++
+ void get_regs_from_mc(struct uml_pt_regs *regs, mcontext_t *mc)
+ {
+ #ifdef __i386__
+@@ -148,6 +150,7 @@
+ 	return res;
+ }
+ 
++
+ int get_stub_state(struct uml_pt_regs *regs, struct stub_data *data,
+ 		   unsigned long *fp_size_out)
+ {
+@@ -179,7 +182,14 @@
+ 	if (xstate_size > host_fp_size)
+ 		return -ENOSPC;
+ 
+-	memcpy(&regs->fp, xstate_stub, xstate_size);
++	regs->fp_pending = NULL;
++	if (!fp_size_out && uml_fp_can_borrow(data)) {
++		regs->fp_pending = xstate_stub;
++		regs->fp_pending_size = xstate_size;
++		uml_fp_event(0);
++	} else {
++		memcpy(&regs->fp, xstate_stub, xstate_size);
++	}
+ 
+ 	/* We do not need to read the x86_64 FS_BASE/GS_BASE registers as
+ 	 * we do not permit userspace to set them directly.
+@@ -237,7 +247,15 @@
+ 	xstate_size = fp_size;
+ #endif
+ 
+-	memcpy(xstate_stub, &regs->fp, xstate_size);
++	if (regs->fp_pending == xstate_stub && regs->fp_pending_size == xstate_size) {
++		/* Same task and unchanged image: let host sigreturn restore it. */
++		regs->fp_pending = NULL;
++		uml_fp_event(1);
++	} else {
++		if (regs->fp_pending)
++			uml_fp_materialize(regs);
++		memcpy(xstate_stub, &regs->fp, xstate_size);
++	}
+ 
+ #ifdef __i386__
+ 	/*
+--- a/arch/x86/um/ptrace.c
++++ b/arch/x86/um/ptrace.c
+@@ -116,6 +116,7 @@
+ {
+ 	struct user_fxsr_struct *fxsave = (void *)target->thread.regs.regs.fp;
+ 
++	uml_fp_materialize(&target->thread.regs.regs);
+ 	return _um_i387_from_fxsr(to, fxsave);
+ }
+ 
+@@ -161,6 +162,7 @@
+ 		from = kbuf;
+ 	}
+ 
++	uml_fp_materialize(&target->thread.regs.regs);
+ 	return um_fxsr_from_i387(fxsave, from);
+ }
+ #endif
+@@ -219,6 +221,8 @@
+ {
+ 	void *fpregs = task_pt_regs(target)->regs.fp;
+ 
++	uml_fp_materialize(&task_pt_regs(target)->regs);
++
+ 	membuf_write(&to, fpregs, regset->size * regset->n);
+ 	return 0;
+ }
+@@ -229,6 +233,8 @@
+ 			      const void *kbuf, const void __user *ubuf)
+ {
+ 	void *fpregs = task_pt_regs(target)->regs.fp;
++
++	uml_fp_materialize(&task_pt_regs(target)->regs);
+ 
+ 	return user_regset_copyin(&pos, &count, &kbuf, &ubuf,
+ 				  fpregs, 0, regset->size * regset->n);
+--- a/arch/x86/um/shared/sysdep/ptrace.h
++++ b/arch/x86/um/shared/sysdep/ptrace.h
+@@ -48,6 +48,8 @@
+ 
+ struct uml_pt_regs {
+ 	unsigned long gp[MAX_REG_NR];
++	const void *fp_pending;
++	unsigned int fp_pending_size;
+ 	struct faultinfo faultinfo;
+ 	long syscall;
+ 	int is_user;
+@@ -63,5 +65,7 @@
+ #define UPT_IS_USER(r) ((r)->is_user)
+ 
+ extern int arch_init_registers(int pid);
++extern void uml_fp_materialize(struct uml_pt_regs *regs);
++extern void uml_fp_event(unsigned int event);
+ 
+ #endif /* __SYSDEP_X86_PTRACE_H */
+--- a/arch/x86/um/signal.c
++++ b/arch/x86/um/signal.c
+@@ -37,6 +37,7 @@
+ 	struct sigcontext sc;
+ 	int err;
+ 
++	uml_fp_materialize(&regs->regs);
+ 	/* Always make any pending restarted system calls return -EINTR */
+ 	current->restart_block.fn = do_no_restart_syscall;
+ 
+@@ -114,6 +115,7 @@
+ 	struct sigcontext sc;
+ 	struct faultinfo * fi = &current->thread.arch.faultinfo;
+ 	int err;
++	uml_fp_materialize(&regs->regs);
+ 	memset(&sc, 0, sizeof(struct sigcontext));
+ 
+ #define PUTREG(regno, regname) sc.regname = regs->regs.gp[HOST_##regno]

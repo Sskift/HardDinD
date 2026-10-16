@@ -2,18 +2,25 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <inttypes.h>
+#include <linux/filter.h>
+#include <linux/seccomp.h>
 #include <pthread.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
+#include <sys/prctl.h>
+#include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
+#include <sys/user.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <ucontext.h>
 #include <unistd.h>
 
@@ -27,6 +34,30 @@ static pthread_barrier_t barrier;
 static volatile sig_atomic_t delivered;
 static struct vector replacement;
 static int patch_enabled;
+static unsigned int hot;
+
+static double now(void) {
+    struct timespec ts;
+    CHECK(!clock_gettime(CLOCK_MONOTONIC, &ts));
+    return ts.tv_sec + ts.tv_nsec * 1e-9;
+}
+
+struct lazy_counts { uint64_t enabled, borrowed, reused, materialized; };
+static struct lazy_counts lazy_counts(void) {
+    struct lazy_counts counts = {0};
+    FILE *f = fopen("/proc/uml_fp_lazy", "r");
+    if (!f) { CHECK(errno == ENOENT); return counts; }
+    char key[64]; uint64_t value;
+    while (fscanf(f, "%63s %" SCNu64, key, &value) == 2) {
+        if (!strcmp(key, "enabled")) { CHECK(value <= 1); counts.enabled = value; }
+        else if (!strcmp(key, "borrowed")) counts.borrowed = value;
+        else if (!strcmp(key, "reused")) counts.reused = value;
+        else if (!strcmp(key, "materialized")) counts.materialized = value;
+        else CHECK(0);
+    }
+    CHECK(feof(f) && !ferror(f) && !fclose(f));
+    return counts;
+}
 
 static uint64_t fast_calls(void) {
     FILE *f = fopen("/proc/uml_syscall_patch", "r");
@@ -35,6 +66,7 @@ static uint64_t fast_calls(void) {
     while (fscanf(f, "%63s %" SCNu64, key, &value) == 2) {
         if (!strcmp(key, "enabled")) { CHECK(value <= 1); patch_enabled = (int)value; }
         if (!strcmp(key, "fast_calls")) calls = value;
+        if (!strcmp(key, "hot_threshold")) { CHECK(value <= 65535); hot = (unsigned int)value; }
     }
     CHECK(feof(f) && !ferror(f) && !fclose(f));
     return calls;
@@ -152,8 +184,44 @@ static void traced(void) {
     CHECK(!memcmp(out, &expected, sizeof(*out)));
     free(fp); CHECK(!munmap(out, sizeof(*out)));
 }
+static void fatal_and_redirected(void) {
+    pid_t child = fork(); CHECK(child >= 0);
+    if (!child) {
+        struct rlimit no_core = {0, 0};
+        CHECK(!setrlimit(RLIMIT_CORE, &no_core));
+        struct sock_filter code[] = {
+            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_getpid, 0, 1),
+            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
+            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+        };
+        struct sock_fprog filter = {.len = sizeof(code) / sizeof(code[0]), .filter = code};
+        CHECK(!prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0));
+        CHECK(!prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &filter));
+        syscall(SYS_getpid); _exit(99);
+    }
+    int status;
+    CHECK(waitpid(child, &status, 0) == child && WIFSIGNALED(status) && WTERMSIG(status) == SIGSYS);
+    child = fork(); CHECK(child >= 0);
+    if (!child) {
+        CHECK(!ptrace(PTRACE_TRACEME, 0, NULL, NULL));
+        CHECK(!syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), SIGSTOP));
+        syscall(SYS_getpid); _exit(99);
+    }
+    CHECK(waitpid(child, &status, 0) == child && WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP);
+    CHECK(!ptrace(PTRACE_SETOPTIONS, child, NULL,
+                 (void *)(uintptr_t)(PTRACE_O_EXITKILL | PTRACE_O_TRACESYSGOOD)));
+    CHECK(!ptrace(PTRACE_SYSCALL, child, NULL, NULL));
+    CHECK(waitpid(child, &status, 0) == child && WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
+    struct user_regs_struct regs;
+    CHECK(!ptrace(PTRACE_GETREGS, child, NULL, &regs) && regs.orig_rax == SYS_getpid);
+    regs.orig_rax = SYS_exit_group; regs.rdi = 37;
+    CHECK(!ptrace(PTRACE_SETREGS, child, NULL, &regs));
+    CHECK(!ptrace(PTRACE_CONT, child, NULL, NULL));
+    CHECK(waitpid(child, &status, 0) == child && WIFEXITED(status) && WEXITSTATUS(status) == 37);
+}
 int main(int argc, char **argv) {
-    CHECK(argc == 2);
+    CHECK(argc == 2 || (argc == 3 && !strcmp(argv[2], "--timing")));
     char *end; errno = 0;
     unsigned long count = strtoul(argv[1], &end, 10);
     CHECK(!errno && *argv[1] && !*end && count >= 256 && count <= 1048576);
@@ -162,10 +230,40 @@ int main(int argc, char **argv) {
         return 77;
     }
     uint64_t before = fast_calls();
-    threads(count, 0); threads(count, 1); signals(); traced();
+    if (patch_enabled && hot) {
+        threads(hot + 1, 0); threads(hot + 1, 1);
+        struct vector in = pattern(53), out;
+        for (unsigned int i = 0; i < hot; i++) {
+            stop_with_vector(0, &in, &out);
+            CHECK(!memcmp(&in, &out, sizeof(in)));
+        }
+        before = fast_calls();
+    }
+    struct lazy_counts lazy_before = lazy_counts();
+    double start = now();
+    threads(count, 0);
+    double sse_seconds = now() - start;
+    start = now();
+    threads(count, 1);
+    double avx_seconds = now() - start;
+    signals(); traced(); fatal_and_redirected();
+    struct lazy_counts lazy_after = lazy_counts();
+    CHECK(lazy_before.enabled == lazy_after.enabled);
+    if (lazy_after.enabled) {
+        CHECK(lazy_after.borrowed >= lazy_before.borrowed + count);
+        CHECK(lazy_after.reused >= lazy_before.reused + count);
+        CHECK(lazy_after.materialized > lazy_before.materialized);
+    }
     uint64_t after = fast_calls();
     if (patch_enabled) CHECK(after >= before && after - before >= count * 4 - 4);
     printf("{\"schema\":\"hd.core-fpstate/1\",\"sse_calls\":%lu,\"avx_calls\":%lu,"
-           "\"signal_upper_edit\":true,\"ptrace_upper_edit\":true,\"verified\":true}\n", count * 2, count * 2);
+           "\"signal_upper_edit\":true,\"ptrace_upper_edit\":true,\"verified\":true", count * 2, count * 2);
+    if (argc == 3) {
+        CHECK(sse_seconds > 0 && avx_seconds > 0);
+        printf(",\"timing\":{\"threads\":2,\"shared_cpu\":true,\"yield_every\":128,"
+               "\"sse_ns_per_call\":%.3f,\"avx_ns_per_call\":%.3f}",
+               sse_seconds * 1e9 / (count * 2), avx_seconds * 1e9 / (count * 2));
+    }
+    puts("}");
     return 0;
 }
