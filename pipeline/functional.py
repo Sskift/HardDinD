@@ -987,6 +987,15 @@ def publish_dynamic(c):
         echo(c, port)
 
 
+@check('network.publish_outer_collision', 'run|container port|container start', helpers=True, timeout=180)
+def publish_outer_collision(c):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('port_collisions', config.REPO / 'tests/publish/port_collisions.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.run(c)
+
+
 @check('network.egress_https_dns', 'run', timeout=90)
 def egress(c):
     item = build.LOCK['functional_https']

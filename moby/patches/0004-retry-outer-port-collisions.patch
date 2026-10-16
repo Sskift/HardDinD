@@ -1,0 +1,314 @@
+--- a/daemon/libnetwork/internal/rlkclient/harddind_port_error_linux_test.go
++++ b/daemon/libnetwork/internal/rlkclient/harddind_port_error_linux_test.go
+@@ -0,0 +1,22 @@
++package rlkclient
++
++import (
++	"errors"
++	"syscall"
++	"testing"
++
++	"gotest.tools/v3/assert"
++)
++
++func TestHardDinDPortError(t *testing.T) {
++	for _, driver := range []string{"harddind-slirp", "builtin"} {
++		c := &PortDriverClient{portDriverName: driver}
++		for _, message := range []string{"host port unavailable: Address already in use", "host port already allocated", "host port unavailable: Permission denied", "unexpected address already in use"} {
++			input := errors.New(message)
++			err := c.portError(input)
++			want := driver == "harddind-slirp" && (message == "host port unavailable: Address already in use" || message == "host port already allocated")
++			assert.Equal(t, errors.Is(err, syscall.EADDRINUSE), want)
++			assert.Equal(t, err.Error(), message)
++		}
++	}
++}
+--- a/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux.go
++++ b/daemon/libnetwork/internal/rlkclient/rootlesskit_client_linux.go
+@@ -15,6 +15,7 @@
+ 	"os"
+ 	"path/filepath"
+ 	"strings"
++	"syscall"
+ 
+ 	"github.com/rootless-containers/rootlesskit/v3/pkg/api/client"
+ 	"github.com/rootless-containers/rootlesskit/v3/pkg/port"
+@@ -210,7 +211,7 @@
+ 	}
+ 	st, err := pm.AddPort(ctx, p)
+ 	if err != nil {
+-		return nil, fmt.Errorf("error while calling RootlessKit PortManager.AddPort(): %w", err)
++		return nil, fmt.Errorf("error while calling RootlessKit PortManager.AddPort(): %w", c.portError(err))
+ 	}
+ 	deferFunc := func() error {
+ 		if dErr := pm.RemovePort(context.WithoutCancel(ctx), st.ID); dErr != nil {
+@@ -220,3 +221,19 @@
+ 	}
+ 	return deferFunc, nil
+ }
++
++// RootlessKit's API carries a message, not an errno. Classify only our two
++// explicit collision replies; permission, transport and cleanup errors stay fatal.
++func (c *PortDriverClient) portError(err error) error {
++	if c.portDriverName == "harddind-slirp" {
++		switch strings.ToLower(err.Error()) {
++		case "host port unavailable: address already in use", "host port already allocated":
++			return &portInUseError{err}
++		}
++	}
++	return err
++}
++
++type portInUseError struct{ error }
++
++func (e *portInUseError) Is(target error) bool { return target == syscall.EADDRINUSE }
+--- a/daemon/libnetwork/portmappers/nat/harddind_retry_linux_test.go
++++ b/daemon/libnetwork/portmappers/nat/harddind_retry_linux_test.go
+@@ -0,0 +1,90 @@
++package nat
++
++import (
++	"context"
++	"errors"
++	"fmt"
++	"net/netip"
++	"syscall"
++	"testing"
++
++	"github.com/moby/moby/v2/daemon/libnetwork/portmapperapi"
++	"gotest.tools/v3/assert"
++)
++
++type retryPDC struct {
++	*fakeAliasPDC
++	calls, removed int
++	fail           error
++	failUntil      int
++	cleanupError   error
++	ports          []int
++}
++
++func (p *retryPDC) AddPort(_ context.Context, _ string, hostIP, _ netip.Addr, port int) (func() error, error) {
++	p.calls++
++	p.ports = append(p.ports, port)
++	// First address succeeds, second fails: every retry must remove the first.
++	if hostIP == netip.MustParseAddr("127.0.0.2") && p.calls <= p.failUntil {
++		return nil, p.fail
++	}
++	return func() error { p.removed++; return p.cleanupError }, nil
++}
++
++func TestHardDinDPortRetry(t *testing.T) {
++	for _, tc := range []struct {
++		name                   string
++		start, end             uint16
++		failUntil              int
++		failure, cleanup       error
++		wantCalls, wantRemoved int
++		success                bool
++	}{
++		{"automatic", 0, 0, 2, syscall.EADDRINUSE, nil, 4, 2, true},
++		{"range", 49100, 49102, 2, syscall.EADDRINUSE, nil, 4, 2, true},
++		{"fixed", 49110, 49110, 2, syscall.EADDRINUSE, nil, 2, 1, false},
++		{"exhausted", 49120, 49121, 1000, syscall.EADDRINUSE, nil, 4, 2, false},
++		{"bounded", 0, 0, 1000, syscall.EADDRINUSE, nil, 128, 64, false},
++		{"other error", 0, 0, 2, syscall.EACCES, nil, 2, 1, false},
++		{"cleanup error", 0, 0, 2, syscall.EADDRINUSE, fmt.Errorf("remove failed"), 2, 1, false},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			pdc := &retryPDC{fakeAliasPDC: newFakeAliasPDC(), fail: tc.failure,
++				failUntil: tc.failUntil, cleanupError: tc.cleanup}
++			pm := NewPortMapper(Config{RlkClient: pdc})
++			cfg := []portmapperapi.PortBindingReq{reqFor("127.0.0.1"), reqFor("127.0.0.2")}
++			for i := range cfg {
++				cfg[i].HostPort = tc.start
++				cfg[i].HostPortEnd = tc.end
++			}
++			bindings, err := pm.MapPorts(context.Background(), cfg)
++			if tc.success {
++				assert.NilError(t, err)
++				assert.Check(t, pdc.ports[0] != pdc.ports[2], "retry must choose another port")
++				assert.Equal(t, pdc.outstanding(), 2, "aliases retained once across retries")
++				assert.NilError(t, pm.UnmapPorts(context.Background(), bindings))
++			} else {
++				assert.Check(t, errors.Is(err, tc.failure))
++			}
++			assert.Equal(t, pdc.calls, tc.wantCalls)
++			// Successful bindings add two removals; failed attempts add one.
++			removed := tc.wantRemoved
++			if tc.success {
++				removed++
++			}
++			assert.Equal(t, pdc.removed, removed)
++			assert.Equal(t, pdc.outstanding(), 0)
++			// A fixed reallocation proves guest reservation/socket rollback.
++			pdc.failUntil = 0
++			pdc.cleanupError = nil
++			for i := range cfg {
++				cfg[i].HostPort = uint16(pdc.ports[0])
++				cfg[i].HostPortEnd = cfg[i].HostPort
++			}
++			bindings, err = pm.MapPorts(context.Background(), cfg)
++			assert.NilError(t, err)
++			assert.NilError(t, pm.UnmapPorts(context.Background(), bindings))
++			assert.Equal(t, pdc.outstanding(), 0)
++		})
++	}
++}
+--- a/daemon/libnetwork/portmappers/nat/mapper_linux.go
++++ b/daemon/libnetwork/portmappers/nat/mapper_linux.go
+@@ -7,6 +7,7 @@
+ 	"net"
+ 	"net/netip"
+ 	"strconv"
++	"syscall"
+ 
+ 	"github.com/containerd/log"
+ 	"github.com/moby/moby/v2/daemon/libnetwork/internal/rlkclient"
+@@ -64,27 +65,17 @@
+ 	}
+ 
+ 	bindings := make([]portmapperapi.PortBinding, 0, len(cfg))
+-	// Host IPs whose guest alias was reserved in this call but never made it
+-	// into a returned binding (port allocation/proxy/driver failure), so the
+-	// deferred rollback can drop their references. Bindings that do get built
+-	// are balanced through UnmapPorts instead.
++	// Keep aliases across retries; only the sockets/forwards/port reservations
++	// belong to an individual allocation attempt.
+ 	reserved := make(map[netip.Addr]struct{})
+ 	defer func() {
+ 		if retErr == nil {
+ 			return
+ 		}
+-		if err := pm.UnmapPorts(ctx, bindings); err != nil {
+-			log.G(ctx).WithFields(log.Fields{
+-				"pbs":   bindings,
+-				"error": err,
+-			}).Warn("Failed to release port bindings")
+-		}
++		retErr = errors.Join(retErr, releasePortBindings(bindings))
+ 		if pm.pdc != nil {
+ 			for hip := range reserved {
+-				if err := pm.pdc.ReleaseChildIP(hip); err != nil {
+-					log.G(ctx).WithError(err).WithField("hostIP", hip).
+-						Warn("Failed to release guest alias after port mapping failure")
+-				}
++				retErr = errors.Join(retErr, pm.pdc.ReleaseChildIP(hip))
+ 			}
+ 		}
+ 	}()
+@@ -112,36 +103,52 @@
+ 	})
+ 
+ 	pa := portallocator.NewOSAllocator()
+-	allocatedPort, socks, err := pa.RequestPortsInRange(addrs, proto, int(hostPort), int(hostPortEnd))
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	for i := range cfg {
+-		hip, _ := netip.AddrFromSlice(cfg[i].HostIP)
+-		pb := portmapperapi.PortBinding{
+-			PortBinding: cfg[i].PortBinding.Copy(),
+-			BoundSocket: socks[i],
+-			ChildHostIP: cfg[i].ChildHostIP,
+-		}
+-		pb.PortBinding.HostPort = uint16(allocatedPort)
+-		pb.PortBinding.HostPortEnd = pb.HostPort
+-
+-		childHIP, _ := netip.AddrFromSlice(cfg[i].ChildHostIP)
+-		pb.NAT = netip.AddrPortFrom(childHIP.Unmap(), pb.PortBinding.HostPort)
+-
+-		bindings = append(bindings, pb)
+-		delete(reserved, hip.Unmap())
+-	}
+-
+-	if err := configPortDriver(ctx, bindings, pm.pdc); err != nil {
+-		return nil, err
+-	}
+-
+-	return bindings, nil
+-}
+-
+-func (pm PortMapper) UnmapPorts(ctx context.Context, pbs []portmapperapi.PortBinding) error {
++	seen := make(map[int]struct{})
++	var conflict error
++	const maxPortDriverAttempts = 64
++	for attempt := 0; attempt < maxPortDriverAttempts; attempt++ {
++		if err := ctx.Err(); err != nil {
++			return nil, err
++		}
++		allocatedPort, socks, err := pa.RequestPortsInRange(addrs, proto, int(hostPort), int(hostPortEnd))
++		if err != nil {
++			return nil, err
++		}
++		for i := range cfg {
++			pb := portmapperapi.PortBinding{
++				PortBinding: cfg[i].PortBinding.Copy(),
++				BoundSocket: socks[i],
++				ChildHostIP: cfg[i].ChildHostIP,
++			}
++			pb.HostPort = uint16(allocatedPort)
++			pb.HostPortEnd = pb.HostPort
++			childHIP, _ := netip.AddrFromSlice(pb.ChildHostIP)
++			pb.NAT = netip.AddrPortFrom(childHIP.Unmap(), pb.HostPort)
++			bindings = append(bindings, pb)
++		}
++		if _, tried := seen[allocatedPort]; tried {
++			return nil, conflict // A short range wrapped; do not retry the same port.
++		}
++		seen[allocatedPort] = struct{}{}
++		if err := configPortDriver(ctx, bindings, pm.pdc); err != nil {
++			if !errors.Is(err, syscall.EADDRINUSE) || (hostPort != 0 && hostPort == hostPortEnd) {
++				return nil, err
++			}
++			conflict = err
++			cleanupErr := releasePortBindings(bindings)
++			bindings = nil
++			if cleanupErr != nil {
++				return nil, errors.Join(err, cleanupErr)
++			}
++			continue
++		}
++		return bindings, nil
++	}
++	return nil, conflict
++}
++
++// releasePortBindings rolls back one attempt without releasing its guest aliases.
++func releasePortBindings(pbs []portmapperapi.PortBinding) error {
+ 	var errs []error
+ 	for _, pb := range pbs {
+ 		if pb.BoundSocket != nil {
+@@ -157,18 +164,23 @@
+ 	}
+ 	for _, pb := range pbs {
+ 		portallocator.Get().ReleasePort(pb.ChildHostIP, pb.Proto.String(), int(pb.HostPort))
+-		if pm.pdc != nil {
++	}
++	return errors.Join(errs...)
++}
++
++func (pm PortMapper) UnmapPorts(ctx context.Context, pbs []portmapperapi.PortBinding) error {
++	err := releasePortBindings(pbs)
++	if pm.pdc != nil {
++		for _, pb := range pbs {
+ 			hip, ok := netip.AddrFromSlice(pb.HostIP)
+ 			if !ok {
+-				errs = append(errs, fmt.Errorf("invalid host IP in port mapping %s", pb))
++				err = errors.Join(err, fmt.Errorf("invalid host IP in port mapping %s", pb))
+ 				continue
+ 			}
+-			if err := pm.pdc.ReleaseChildIP(hip.Unmap()); err != nil {
+-				errs = append(errs, err)
+-			}
+-		}
+-	}
+-	return errors.Join(errs...)
++			err = errors.Join(err, pm.pdc.ReleaseChildIP(hip.Unmap()))
++		}
++	}
++	return err
+ }
+ 
+ // setChildHostIP returns a modified PortBindingReq that contains the IP

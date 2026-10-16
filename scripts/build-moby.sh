@@ -21,6 +21,7 @@ commit=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["moby_po
 export DOCKER_GITCOMMIT="$commit-harddind-port-${patch_sha:0:12}"
 export SOURCE_DATE_EPOCH=$(python3 -c 'import json,sys;print(int(json.load(open(sys.argv[1]))["moby"]["epoch"]))' "$work/moby-inputs.json")
 [ "$(go version)" = 'go version go1.26.8 linux/amd64' ]
+(cd "$src" && go test ./daemon/libnetwork/internal/rlkclient ./daemon/libnetwork/portmappers/nat -run 'TestHardDinD|TestMapPorts')
 (cd "$src" && bash hack/make.sh binary-daemon binary-proxy)
 mkdir -p "$work/moby-port-bin"
 cp "$src/bundles/binary-daemon/dockerd" "$work/moby-port-bin/dockerd"
