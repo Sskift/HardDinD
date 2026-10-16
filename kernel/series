@@ -32,3 +32,5 @@
 0033-um-set-ptes-pfn-stride.patch
 0034-um-vector-fd-vnet.patch
 0035-fuse-virtiofs-notifications.patch
+0036-um-anon-faultaround.patch
+0037-um-faultaround-edges.patch

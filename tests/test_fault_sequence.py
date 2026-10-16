@@ -13,7 +13,7 @@ class SequenceTests(unittest.TestCase):
         compiler = shutil.which('cc')
         if compiler is None:
             self.skipTest('C compiler unavailable')
-        patch = (config.REPO / 'kernel/candidates/anon-faultaround.patch').read_text()
+        patch = (config.REPO / 'kernel/patches/0036-um-anon-faultaround.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         helper = added[added.index('static bool um_faultaround_sequential'):]

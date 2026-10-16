@@ -31,8 +31,10 @@ from pipeline.port_driver import PortDriver
 # guest memory back to disk and stall exit in inode writeback.
 # harddind_vdso_clock: clock_gettime and friends read a TSC vvar without trapping (patch 0031).
 # queue_size/request_pages: a 1 MiB unaligned read fits one virtio-fs request (patch 0032).
+# uml_faultaround*: map 32-page windows on sequential anonymous write faults (patches 0036, 0037).
 CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
-             'memfd_ram=1', 'harddind_vdso_clock=1', 'virtio_uml.queue_size=512', 'virtiofs.request_pages=512')
+             'memfd_ram=1', 'harddind_vdso_clock=1', 'virtio_uml.queue_size=512', 'virtiofs.request_pages=512',
+             'uml_faultaround=5', 'uml_faultaround_edges=1')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
 
