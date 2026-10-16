@@ -1,0 +1,103 @@
+Subject: [PATCH] virtio-fs: opt-in contiguous data descriptor coalescing
+
+virtiofs.coalesce_sg=1 combines physically contiguous folio slices. Allocate
+for the original worst case but publish only populated descriptors. This
+reduces descriptor decoding and preadv/pwritev iovec counts without caching
+data or changing reply lengths. Disabled by default.
+
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -1600,20 +1600,25 @@
+ 		return;
+ 	fuse_request_get(req);
+ 	INIT_WORK(&req->intr_work, virtio_fs_interrupt_work);
+ 	spin_lock(&fsvq->lock);
+ 	inc_in_flight_req(fsvq);
+ 	spin_unlock(&fsvq->lock);
+ 	schedule_work(&req->intr_work);
+ }
+ 
+ /* Count number of scatter-gather elements required */
++
++static bool coalesce_sg;
++module_param(coalesce_sg, bool, 0444);
++MODULE_PARM_DESC(coalesce_sg, "Coalesce physically contiguous FUSE data descriptors");
++
+ static unsigned int sg_count_fuse_folios(struct fuse_folio_desc *folio_descs,
+ 					 unsigned int num_folios,
+ 					 unsigned int total_len)
+ {
+ 	unsigned int i;
+ 	unsigned int this_len;
+ 
+ 	for (i = 0; i < num_folios && total_len; i++) {
+ 		this_len =  min(folio_descs[i].length, total_len);
+ 		total_len -= this_len;
+@@ -1655,31 +1660,37 @@
+ 	return total_sgs;
+ }
+ 
+ /* Add folios to scatter-gather list and return number of elements used */
+ static unsigned int sg_init_fuse_folios(struct scatterlist *sg,
+ 					struct folio **folios,
+ 					struct fuse_folio_desc *folio_descs,
+ 					unsigned int num_folios,
+ 				        unsigned int total_len)
+ {
+-	unsigned int i;
++	unsigned int i, used = 0;
+ 	unsigned int this_len;
+ 
+ 	for (i = 0; i < num_folios && total_len; i++) {
+-		sg_init_table(&sg[i], 1);
+-		this_len =  min(folio_descs[i].length, total_len);
+-		sg_set_folio(&sg[i], folios[i], this_len, folio_descs[i].offset);
++		this_len = min(folio_descs[i].length, total_len);
++		if (coalesce_sg && used && this_len &&
++		    sg_phys(&sg[used - 1]) + sg[used - 1].length ==
++		    page_to_phys(folio_page(folios[i], 0)) + folio_descs[i].offset) {
++			sg[used - 1].length += this_len;
++		} else {
++			sg_init_table(&sg[used], 1);
++			sg_set_folio(&sg[used++], folios[i], this_len, folio_descs[i].offset);
++		}
+ 		total_len -= this_len;
+ 	}
+ 
+-	return i;
++	return used;
+ }
+ 
+ /* Add args to scatter-gather list and return number of elements used */
+ static unsigned int sg_init_fuse_args(struct scatterlist *sg,
+ 				      struct fuse_req *req,
+ 				      struct fuse_arg *args,
+ 				      unsigned int numargs,
+ 				      bool argpages,
+ 				      void *argbuf,
+ 				      unsigned int *len_used)
+@@ -1751,21 +1762,23 @@
+ 	/* Reply elements */
+ 	if (test_bit(FR_ISREPLY, &req->flags)) {
+ 		sg_init_one(&sg[out_sgs + in_sgs++],
+ 			    &req->out.h, sizeof(req->out.h));
+ 		in_sgs += sg_init_fuse_args(&sg[out_sgs + in_sgs], req,
+ 					    args->out_args, args->out_numargs,
+ 					    args->out_pages,
+ 					    req->argbuf + argbuf_used, NULL);
+ 	}
+ 
+-	WARN_ON(out_sgs + in_sgs != total_sgs);
++	WARN_ON(out_sgs + in_sgs > total_sgs ||
++		(!coalesce_sg && out_sgs + in_sgs != total_sgs));
++	total_sgs = out_sgs + in_sgs;
+ 
+ 	for (i = 0; i < total_sgs; i++)
+ 		sgs[i] = &sg[i];
+ 
+ 	spin_lock(&fsvq->lock);
+ 
+ 	if (!fsvq->connected) {
+ 		spin_unlock(&fsvq->lock);
+ 		ret = -ENOTCONN;
+ 		goto out;

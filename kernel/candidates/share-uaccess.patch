@@ -1,0 +1,109 @@
+Subject: [PATCH] um: opt-in PTE-run user copies for resident buffers
+
+Disabled unless uml_uaccess_runs=1. Walk upper page tables once per run and
+combine physically contiguous present pages into at most 64 KiB copies.
+Hold mmap/PTE locks across copying; missing or write-protected pages retain
+the existing fault path. Only raw_copy_to_user of at least one page changes;
+strings, copy-from-user and futexes do not.
+
+--- a/arch/um/kernel/skas/uaccess.c
++++ b/arch/um/kernel/skas/uaccess.c
+@@ -135,6 +135,87 @@
+ 	return remain;
+ }
+ 
++#ifdef CONFIG_64BIT
++static bool uaccess_runs;
++core_param(uml_uaccess_runs, uaccess_runs, bool, 0444);
++
++/* Keep the PTE lock while copying so unmap/COW cannot replace the run. */
++static unsigned long copy_present_run(unsigned long addr, unsigned long len,
++		int is_write, int (*op)(unsigned long, int, void *), void *arg)
++{
++	struct mm_struct *mm = current->mm;
++	pgd_t *pgd;
++	p4d_t *p4d;
++	pud_t *pud;
++	pmd_t *pmd;
++	pte_t *base, *pte, entry;
++	spinlock_t *ptl;
++	unsigned long copied = 0, pfn, size, limit, kernel;
++
++	if (!mm || !mmap_read_trylock(mm))
++		return 0;
++	pgd = pgd_offset(mm, addr);
++	if (!pgd_present(*pgd))
++		goto out;
++	p4d = p4d_offset(pgd, addr);
++	if (!p4d_present(*p4d))
++		goto out;
++	pud = pud_offset(p4d, addr);
++	if (!pud_present(*pud))
++		goto out;
++	pmd = pmd_offset(pud, addr);
++	if (!pmd_present(*pmd) || pmd_leaf(*pmd))
++		goto out;
++	base = pte_offset_map_lock(mm, pmd, addr, &ptl);
++	if (!base)
++		goto out;
++	pte = base;
++	entry = ptep_get(pte);
++	if (!pte_present(entry) || pte_special(entry) ||
++	    (is_write && !pte_write(entry)))
++		goto unlock;
++	pfn = pte_pfn(entry);
++	if (!pfn_valid(pfn))
++		goto unlock;
++	kernel = (unsigned long)page_address(pte_page(entry)) + offset_in_page(addr);
++	limit = min3(len, PMD_SIZE - (addr & ~PMD_MASK), 64UL * 1024);
++	size = min(limit, PAGE_SIZE - offset_in_page(addr));
++	while (size < limit) {
++		entry = ptep_get(++pte);
++		if (!pte_present(entry) || pte_special(entry) ||
++		    (is_write && !pte_write(entry)) || pte_pfn(entry) != ++pfn || !pfn_valid(pfn))
++			break;
++		size += min(limit - size, PAGE_SIZE);
++	}
++	pagefault_disable();
++	op(kernel, size, arg);
++	pagefault_enable();
++	copied = size;
++unlock:
++	pte_unmap_unlock(base, ptl);
++out:
++	mmap_read_unlock(mm);
++	return copied;
++}
++
++static unsigned long copy_user_runs(unsigned long addr, unsigned long len,
++		int is_write, int (*op)(unsigned long, int, void *), void *arg)
++{
++	while (len) {
++		unsigned long size = copy_present_run(addr, len, is_write, op, arg);
++
++		if (!size) {
++			size = min(len, PAGE_SIZE - offset_in_page(addr));
++			if (do_op_one_page(addr, size, is_write, op, arg))
++				break;
++		}
++		addr += size;
++		len -= size;
++	}
++	return len;
++}
++#endif
++
+ static int copy_chunk_from_user(unsigned long from, int len, void *arg)
+ {
+ 	unsigned long *to_ptr = arg, to = *to_ptr;
+@@ -161,6 +242,10 @@
+ 
+ unsigned long raw_copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++#ifdef CONFIG_64BIT
++	if (uaccess_runs && n >= PAGE_SIZE)
++		return copy_user_runs((unsigned long)to, n, 1, copy_chunk_to_user, &from);
++#endif
+ 	return buffer_op((unsigned long) to, n, 1, copy_chunk_to_user, &from);
+ }
+ EXPORT_SYMBOL(raw_copy_to_user);

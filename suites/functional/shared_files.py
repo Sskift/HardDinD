@@ -14,7 +14,7 @@ from suites.functional.peer import Peer as ProbePeer
 NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks', 'outer_metadata_churn', 'outer_replace_churn', 'outer_negative_lookup', 'outer_mtime', 'outer_permission_revoked', 'outer_mmap_window', 'outer_attr_window', 'outer_read_window', 'outer_mapped_write', 'notification_mmap_latency', 'outer_directory_inotify', 'outer_readdir_preserved_mtime']
 
 
-NAMES += ['metadata_batch', 'outer_directory_permission', 'outer_lookup_race', 'exclusive_create']
+NAMES += ['read_buffer', 'hostfs_ceiling', 'metadata_batch', 'outer_directory_permission', 'outer_lookup_race', 'exclusive_create']
 
 
 METADATA_BATCH = r'''
@@ -25,6 +25,7 @@ METADATA_BATCH = r'''
 #include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -47,6 +48,15 @@ static void snapshot(const char *phase, double elapsed) {
             while (fgets(line, sizeof(line), f)) fputs(line, stdout);
             if (ferror(f) && errno != EOPNOTSUPP) exit(4);
             fclose(f);
+            char latency[512];
+            snprintf(latency, sizeof(latency), "%.*s/latency",
+                     (int)(strrchr(paths.gl_pathv[i], '/') - paths.gl_pathv[i]), paths.gl_pathv[i]);
+            f = fopen(latency, "r");
+            if (f) {
+                while (fgets(line, sizeof(line), f)) fputs(line, stdout);
+                if (ferror(f) && errno != EOPNOTSUPP) exit(4);
+                fclose(f);
+            }
         }
     }
     globfree(&paths);
@@ -96,7 +106,7 @@ def metadata_profile(text):
             name, elapsed = fields[1:]
             if name in phases:
                 raise ValueError('duplicate phase: ' + name)
-            current = phases[name] = {'seconds': float(elapsed), 'queues': {}, 'transport': {}}
+            current = phases[name] = {'seconds': float(elapsed), 'queues': {}, 'transport': {}, 'traces': []}
             queue, path = None, None
         elif fields[0] == 'queue':
             path = fields[1]
@@ -107,6 +117,13 @@ def metadata_profile(text):
                 raise ValueError('malformed transport row: ' + line)
             notifications = fields[7:9] if len(fields) == 9 else ['0', '0']
             current['transport'][path] = tuple(map(int, fields[1:3] + fields[4:6] + notifications))
+        elif fields[0] == 'trace':
+            if path is None or len(fields) != 8:
+                raise ValueError('malformed latency trace: ' + line)
+            trace = list(map(int, fields[1:]))
+            if trace[0] not in (1, 3) or min(trace[1:]) <= 0 or trace[2:] != sorted(trace[2:]):
+                raise ValueError('invalid latency timestamps: ' + line)
+            current['traces'].append(trace)
         elif fields[0].isdigit():
             if queue is None or len(fields) not in (8, 9, 11):
                 raise ValueError('malformed opcode row: ' + line)
@@ -145,7 +162,8 @@ def metadata_profile(text):
                 raise ValueError('transport counter regressed')
             timing[path] = dict(zip(('work_count', 'work_delay_ns', 'kick_count', 'kick_ns',
                                      'notify_count', 'notify_ns'), delta))
-        result[name] = {'operations': 256, 'seconds': phase['seconds'], 'opcodes': rows, 'transport': timing}
+        result[name] = {'operations': 256, 'seconds': phase['seconds'], 'opcodes': rows,
+                        'transport': timing, 'traces': phase['traces']}
         previous = phase['queues']
         transport = phase['transport']
     return result
@@ -153,8 +171,16 @@ def metadata_profile(text):
 
 def metadata_batch(c, share):
     import shutil
+    import subprocess
     binary = build_probe(c, 'metadata-batch', METADATA_BATCH)
     shutil.copy2(binary, share / 'batch')
+    native = share / 'native-files'
+    native.mkdir()
+    result = subprocess.run([str(binary), str(native)], capture_output=True, text=True,
+                            timeout=c.remaining(30))
+    assert result.returncode == 0, result.stderr
+    c.write('native_metadata_phases: ' + json.dumps(metadata_profile(result.stdout), sort_keys=True))
+    assert not list(native.iterdir()), 'native metadata workload left files behind'
     directory = share / 'files'
     directory.mkdir()
     output = c.d('run', '--rm', '--mount', f'type=bind,src={share},dst=/share',
@@ -163,7 +189,157 @@ def metadata_batch(c, share):
     c.write('metadata_phases: ' + json.dumps(profile, sort_keys=True))
     if 'virtiofs.profile_requests=1' in c.ctx.instance_options.get('kernel_args', []):
         assert any(row['opcodes'] for row in profile.values()), 'kernel profile was not readable'
+        assert all(row['traces'] for row in profile.values()), 'kernel latency samples were not readable'
     assert not list(directory.iterdir()), 'metadata workload left files behind'
+
+
+def hostfs_ceiling(c, share):
+    """Diagnostic only: the official workload on native, virtiofs, and hostfs."""
+    import shutil
+    import subprocess
+    from pipeline import bench, runs
+    binary = bench.bench_root() / 'root/bench/workload'
+    shutil.copy2(binary, share / 'workload')
+    for metric in ('fs.bind_metadata', 'disk.bind_read'):
+        for rep in range(2):
+            for mode in ('native', 'virtiofs', 'hostfs'):
+                directory = share / (metric + '-' + str(rep) + '-' + mode)
+                directory.mkdir()
+                before = runs.throttle()
+                if mode == 'native':
+                    result = subprocess.run([str(binary), metric, '1', '--workdir', str(directory)],
+                                            capture_output=True, text=True, timeout=c.remaining(90))
+                    assert result.returncode == 0, result.stderr
+                    output = result.stdout
+                else:
+                    script = 'exec /share/workload "$2" 1 --workdir "$1"'
+                    target = '/share/' + directory.name
+                    if mode == 'hostfs':
+                        target = str(directory)
+                        script = ('mkdir /host; mount -t hostfs -o "$1" none /host; '
+                                  'test "$(stat -f -c %t /host)" = c0ffee; '
+                                  'exec /share/workload "$2" 1 --workdir /host')
+                    output = c.d('run', '--rm', *(['--privileged'] if mode == 'hostfs' else []),
+                                 '--mount', f'type=bind,src={share},dst=/share',
+                                 'hd-functional:local', 'sh', '-ec', script, 'sh', target, metric,
+                                 timeout=90)
+                row = {'metric': metric, 'rep': rep, 'mode': mode, **bench.parse_output(output)}
+                after = runs.throttle()
+                if before and after and after[0] > before[0]:
+                    row['throttled'] = (after[1] - before[1]) / (after[0] - before[0])
+                c.write('hostfs_ceiling: ' + json.dumps(row, sort_keys=True))
+                assert not list(directory.iterdir()), 'workload left data behind'
+
+
+READ_BUFFER = r'''
+#define _GNU_SOURCE
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+#define MIB (1024UL * 1024)
+static void require(int ok, const char *what) {
+    if (!ok) { perror(what); exit(2); }
+}
+static uint64_t ns(void) {
+    struct timespec ts;
+    require(!clock_gettime(CLOCK_MONOTONIC, &ts), "clock");
+    return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
+}
+int main(int argc, char **argv) {
+    require(argc == 2, "usage");
+    size_t page = (size_t)sysconf(_SC_PAGESIZE);
+    unsigned char *expected = malloc(MIB);
+    unsigned char *buffer = mmap(NULL, MIB + page * 2, PROT_READ | PROT_WRITE,
+                                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    require(expected && buffer != MAP_FAILED, "allocate");
+    for (size_t i = 0; i < MIB; i++) expected[i] = (unsigned char)(i * 131 + i / 251);
+    memset(buffer, 0x53, MIB + page * 2);
+    int fd = open(argv[1], O_CREAT | O_EXCL | O_RDWR, 0600);
+    require(fd >= 0 && write(fd, expected, MIB) == MIB && !fsync(fd), "prepare");
+    for (size_t size = 64 * 1024; size <= MIB; size *= 16) {
+        for (int rep = -1; rep < 3; rep++) {
+            size_t iterations = 256 * MIB / size;
+            uint64_t started = ns();
+            for (size_t i = 0; i < iterations; i++)
+                require(pread(fd, buffer + 17, size, 0) == (ssize_t)size, "pread");
+            uint64_t elapsed = ns() - started;
+            require(!memcmp(expected, buffer + 17, size), "read content");
+            require(buffer[16] == 0x53 && buffer[size + 17] == 0x53, "buffer canaries");
+            if (rep >= 0) printf("{\"size\":%zu,\"rep\":%d,\"bytes\":%zu,\"ns\":%llu}\n",
+                size, rep, iterations * size, (unsigned long long)elapsed);
+        }
+    }
+    unsigned char *edge = mmap(NULL, 3 * page, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    require(edge != MAP_FAILED && !mprotect(edge + page, page, PROT_NONE), "guard");
+    require(pread(fd, edge, 2 * page, 0) == (ssize_t)page, "partial read");
+    require(!memcmp(expected, edge, page), "partial content");
+    errno = 0;
+    require(pread(fd, edge + page, page, 0) == -1 && errno == EFAULT, "guard EFAULT");
+    require(!mprotect(edge, 2 * page, PROT_READ), "readonly");
+    errno = 0;
+    require(pread(fd, edge, 2 * page, 0) == -1 && errno == EFAULT, "readonly EFAULT");
+    require(!mprotect(edge, 2 * page, PROT_READ | PROT_WRITE), "writable");
+    memset(edge, 0x59, 2 * page);
+    pid_t child = fork();
+    require(child >= 0, "fork");
+    if (!child) {
+        require(pread(fd, edge, 2 * page, 0) == (ssize_t)(2 * page) &&
+                !memcmp(expected, edge, 2 * page), "COW child");
+        _exit(0);
+    }
+    int status;
+    require(waitpid(child, &status, 0) == child && WIFEXITED(status) && !WEXITSTATUS(status), "wait");
+    for (size_t i = 0; i < 2 * page; i++) require(edge[i] == 0x59, "COW parent");
+    require(!close(fd) && !unlink(argv[1]), "cleanup");
+    require(!munmap(edge, 3 * page) && !munmap(buffer, MIB + 2 * page), "unmap");
+    free(expected);
+    puts("{\"edges\":true}");
+    return 0;
+}
+'''
+
+
+def read_buffer_results(output):
+    rows = [json.loads(line) for line in output.splitlines() if line.startswith('{')]
+    if len(rows) != 7 or rows[-1] != {'edges': True}:
+        raise ValueError('incomplete read-buffer checks')
+    expected = [(size, rep) for size in (65536, 1048576) for rep in range(3)]
+    if [(row.get('size'), row.get('rep')) for row in rows[:-1]] != expected:
+        raise ValueError('missing read-buffer size or repetition')
+    for row in rows[:-1]:
+        if any(type(row[key]) is not int for key in ('size', 'rep', 'bytes', 'ns')):
+            raise ValueError('invalid read-buffer field type')
+        if row['bytes'] != 256 * 1048576 or type(row['ns']) is not int or row['ns'] <= 0:
+            raise ValueError('invalid read-buffer measurement')
+        row['us_per_mib'] = row['ns'] / 1000 / 256
+    return rows[:-1]
+
+
+def read_buffer(c, share):
+    import shutil
+    import subprocess
+    binary = build_probe(c, 'read-buffer', READ_BUFFER)
+    shutil.copy2(binary, share / 'reader')
+    for mode in ('native', 'overlay', 'virtiofs'):
+        if mode == 'native':
+            result = subprocess.run([str(binary), str(share / 'native-data')], capture_output=True,
+                                    text=True, timeout=c.remaining(60))
+            assert result.returncode == 0, result.stderr
+            output = result.stdout
+        else:
+            path = '/tmp/data' if mode == 'overlay' else '/share/data'
+            output = c.d('run', '--rm', '--mount', f'type=bind,src={share},dst=/share',
+                         'hd-functional:local', '/share/reader', path, timeout=90)
+        c.write('read_buffer: ' + json.dumps({'mode': mode, 'rows': read_buffer_results(output)}, sort_keys=True))
 
 
 LOOKUP_RACER = r'''
@@ -545,6 +721,10 @@ def run(c, name):
     share = c.ctx.share / c.id
     share.mkdir(parents=True, exist_ok=True)
     os.chmod(share, 0o755)
+    if name == 'read_buffer':
+        return read_buffer(c, share)
+    if name == 'hostfs_ceiling':
+        return hostfs_ceiling(c, share)
     if name == 'metadata_batch':
         return metadata_batch(c, share)
     if name == 'outer_lookup_race':

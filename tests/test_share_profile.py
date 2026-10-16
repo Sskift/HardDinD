@@ -48,6 +48,17 @@ class MetadataProfile(unittest.TestCase):
         with self.assertRaises(ValueError):
             metadata_profile(text.replace('notify 512', 'notify 1'))
 
+    def test_host_clock_samples_and_malformed_trace(self):
+        sample = self.sample().replace('phase unlink',
+            'trace 1 42 100 110 120 130 140\nphase unlink')
+        row = metadata_profile(sample)['rename']['traces']
+        self.assertEqual(row, [[1, 42, 100, 110, 120, 130, 140]])
+        for bad in ('trace 1 42 100 90 120 130 140',
+                    'trace 1 42 0 110 120 130 140', 'trace 1 42',
+                    'trace 15 42 100 110 120 130 140'):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                metadata_profile(sample.replace('trace 1 42 100 110 120 130 140', bad))
+
     def test_reject_incomplete_and_regressing(self):
         for text in (self.sample().replace('phase unlink', 'phase stat'),
                      self.sample().split('phase unlink')[0],

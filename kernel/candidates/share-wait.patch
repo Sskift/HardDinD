@@ -1,0 +1,122 @@
+Subject: [PATCH] virtio-fs: bounded synchronous metadata waiter polling
+
+Requires share-profile followed by share-complete; apply this candidate last.
+virtiofs.poll_metadata=N with virtiofs.inline_completion=1 polls only
+synchronous LOOKUP/GETATTR before the waiter sleeps. Stop on completion or
+signal; keep all normal interrupt/cancellation paths. No read/write polling.
+The UML call pipe counts a consumed notification as handled even when a
+waiter has already drained the ring. Do not combine with share-poll.
+
+--- a/fs/fuse/fuse_dev_i.h
++++ b/fs/fuse/fuse_dev_i.h
+@@ -138,6 +138,9 @@
+ 	/** @create_time: When (in jiffies) the request was created */
+ 	unsigned long create_time;
+ 
++	void (*share_poll)(struct fuse_req *req);
++	void *share_poll_data;
++
+ 	/* Optional virtio-fs transport profiling. */
+ 	struct fuse_share_trace share_trace;
+ 	u64 share_sent_ns;
+--- a/fs/fuse/dev.c
++++ b/fs/fuse/dev.c
+@@ -785,6 +785,8 @@
+ 	   fuse_request_end() */
+ 	__fuse_get_request(req);
+ 	fuse_send_one(fiq, req);
++	if (req->share_poll)
++		req->share_poll(req);
+ 
+ 	request_wait_answer(req);
+ 	/* Pairs with smp_wmb() in fuse_request_end() */
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -13,6 +13,7 @@
+ #include <linux/memremap.h>
+ #include <linux/module.h>
+ #include <linux/virtio.h>
++#include <linux/virtio_ring.h>
+ #include <linux/virtio_fs.h>
+ #include <linux/delay.h>
+ #include <linux/fs_context.h>
+@@ -2066,6 +2067,52 @@
+ 	return ret;
+ }
+ 
++static unsigned int poll_metadata;
++module_param(poll_metadata, uint, 0444);
++MODULE_PARM_DESC(poll_metadata, "Poll synchronous LOOKUP/GETATTR before sleeping (0=off, max 4096)");
++
++static void virtio_fs_poll_metadata(struct fuse_req *req)
++{
++	struct virtio_fs_vq *fsvq = req->share_poll_data;
++	unsigned int i, budget = min(poll_metadata, 4096U);
++	unsigned long flags;
++
++	if (!test_bit(FR_SENT, &req->flags) || test_bit(FR_FINISHED, &req->flags))
++		return;
++	local_irq_save(flags);
++	spin_lock(&fsvq->lock);
++	if (!fsvq->connected) {
++		spin_unlock(&fsvq->lock);
++		local_irq_restore(flags);
++		return;
++	}
++	/* Teardown must not free the ring after another CPU completes our request. */
++	inc_in_flight_req(fsvq);
++	spin_unlock(&fsvq->lock);
++	local_irq_restore(flags);
++
++	for (i = 0; i < budget; i++) {
++		if (test_bit(FR_FINISHED, &req->flags) || signal_pending(current))
++			break;
++		local_irq_save(flags);
++		vring_interrupt(0, fsvq->vq);
++		local_irq_restore(flags);
++		cpu_relax();
++	}
++	local_irq_save(flags);
++	spin_lock(&fsvq->lock);
++	dec_in_flight_req(fsvq);
++	spin_unlock(&fsvq->lock);
++	local_irq_restore(flags);
++}
++
++static bool virtio_fs_wants_poll(struct fuse_req *req)
++{
++	return poll_metadata && inline_completion &&
++	       !test_bit(FR_BACKGROUND, &req->flags) && !test_bit(FR_ASYNC, &req->flags) &&
++	       (req->in.h.opcode == FUSE_LOOKUP || req->in.h.opcode == FUSE_GETATTR);
++}
++
+ static void virtio_fs_send_req(struct fuse_iqueue *fiq, struct fuse_req *req)
+ {
+ 	unsigned int queue_id;
+@@ -2091,6 +2138,10 @@
+ 		 queue_id);
+ 
+ 	fsvq = &fs->vqs[queue_id];
++	if (virtio_fs_wants_poll(req)) {
++		req->share_poll = virtio_fs_poll_metadata;
++		req->share_poll_data = fsvq;
++	}
+ 	if (profile_requests && req->in.h.opcode < ARRAY_SIZE(fsvq->profile)) {
+ 		/* The connection retains fs->vqs until every waiting caller drains. */
+ 		req->share_wait = &fsvq->profile[req->in.h.opcode].wait;
+--- a/arch/um/drivers/virtio_uml.c
++++ b/arch/um/drivers/virtio_uml.c
+@@ -824,8 +824,11 @@
+ 
+ 	do {
+ 		rc = os_read_file(info->call_fd, &n, sizeof(n));
+-		if (rc == sizeof(n))
+-			ret |= vring_interrupt(irq, vq);
++		if (rc == sizeof(n)) {
++			vring_interrupt(irq, vq);
++			/* A synchronous waiter may already have consumed the used ring. */
++			ret = IRQ_HANDLED;
++		}
+ 	} while (rc == sizeof(n) || rc == -EINTR);
+ 	WARN(rc != -EAGAIN, "read returned %d\n", rc);
+ 	return ret;

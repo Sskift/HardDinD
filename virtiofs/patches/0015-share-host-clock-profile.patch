@@ -1,0 +1,137 @@
+Subject: [PATCH] Record bounded host-clock request latency samples when profiling
+
+Only --profile-requests enables collection. Match unique IDs with the UML
+share-profile candidate to distinguish queueing, service, reply publication
+and guest completion. Keep the last 4096 LOOKUP and GETATTR samples.
+
+--- a/src/request_profile.rs
++++ b/src/request_profile.rs
+@@ -1,11 +1,18 @@
+ // SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
+ //! Optional aggregate diagnostics. No timing or mutex updates when disabled.
+-use std::collections::BTreeMap;
++use std::collections::{BTreeMap, VecDeque};
+ use std::sync::{Arc, Mutex};
+ use std::time::{Duration, Instant};
+ 
++fn host_ns() -> u64 {
++    let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
++    assert_eq!(unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) }, 0);
++    ts.tv_sec as u64 * 1_000_000_000 + ts.tv_nsec as u64
++}
++
+ #[derive(Default)]
+ struct Stats {
++    traces: VecDeque<[u64; 6]>,
+     count: u64,
+     attempts: u64,
+     queue_ns: u128,
+@@ -20,14 +27,15 @@
+     profile: Arc<RequestProfile>,
+     key: (u32, u32),
+     received: Instant,
++    trace: [u64; 6],
+     first_start: Option<Instant>,
+     service: Duration,
+     attempts: u64,
+ }
+ impl RequestProfile {
+-    pub fn begin(self: &Arc<Self>, opcode: u32, lock_type: u32) -> Sample {
++    pub fn begin(self: &Arc<Self>, opcode: u32, lock_type: u32, unique: u64) -> Sample {
+         Sample { profile: self.clone(), key: (opcode, lock_type), received: Instant::now(),
+-                 first_start: None, service: Duration::ZERO, attempts: 0 }
++                 trace: [unique, host_ns(), 0, 0, 0, 0], first_start: None, service: Duration::ZERO, attempts: 0 }
+     }
+ }
+ impl Sample {
+@@ -35,10 +43,16 @@
+         let now = Instant::now();
+         self.first_start.get_or_insert(now);
+         self.attempts += 1;
++        if self.trace[2] == 0 { self.trace[2] = host_ns(); }
+         now
+     }
+-    pub fn end_service(&mut self, start: Instant) { self.service += start.elapsed(); }
+-    pub fn finish(self, reply_start: Instant) {
++    pub fn end_service(&mut self, start: Instant) {
++        self.service += start.elapsed();
++        self.trace[3] = host_ns();
++    }
++    pub fn returning(&mut self) { self.trace[4] = host_ns(); }
++    pub fn finish(mut self, reply_start: Instant) {
++        self.trace[5] = host_ns();
+         let now = Instant::now();
+         let total = now.duration_since(self.received).as_nanos();
+         let mut rows = self.profile.0.lock().unwrap();
+@@ -50,12 +64,19 @@
+         row.reply_ns += now.duration_since(reply_start).as_nanos();
+         row.total_ns += total;
+         row.max_total_ns = row.max_total_ns.max(total);
++        if self.key.0 == 1 || self.key.0 == 3 {
++            if row.traces.len() == 4096 { row.traces.pop_front(); }
++            row.traces.push_back(self.trace);
++        }
+     }
+ }
+ impl Drop for RequestProfile {
+     fn drop(&mut self) {
+         let rows = self.0.lock().unwrap();
+         for ((opcode, lock_type), s) in rows.iter() {
++            for t in &s.traces {
++                info!("HARDDIND_REQUEST_LATENCY {} {} {} {} {} {} {}", opcode, t[0], t[1], t[2], t[3], t[4], t[5]);
++            }
+             info!("HARDDIND_REQUEST_PROFILE {{\"opcode\":{},\"lock_type\":{},\"count\":{},\"attempts\":{},\"queue_ns\":{},\"service_ns\":{},\"reply_ns\":{},\"total_ns\":{},\"max_total_ns\":{}}}",
+                   opcode, lock_type, s.count, s.attempts, s.queue_ns, s.service_ns,
+                   s.reply_ns, s.total_ns, s.max_total_ns);
+@@ -68,13 +89,31 @@
+ mod harddind_tests {
+     use super::*;
+     #[test]
++    fn harddind_profile_clock_samples_are_bounded_and_ordered() {
++        let profile = Arc::new(RequestProfile::default());
++        for unique in 1..=4100 {
++            let mut sample = profile.begin(1, u32::MAX, unique);
++            let start = sample.start();
++            sample.end_service(start);
++            sample.returning();
++            sample.finish(Instant::now());
++        }
++        let rows = profile.0.lock().unwrap();
++        let traces = &rows[&(1, u32::MAX)].traces;
++        assert_eq!(traces.len(), 4096);
++        assert_eq!(traces.front().unwrap()[0], 5);
++        assert_eq!(traces.back().unwrap()[0], 4100);
++        for trace in traces { assert!(trace[1..].windows(2).all(|t| t[0] <= t[1])); }
++    }
++
++    #[test]
+     fn harddind_profile_concurrent_attempts_and_completion() {
+         let profile = Arc::new(RequestProfile::default());
+         let workers: Vec<_> = (0..8).map(|_| {
+             let profile = profile.clone();
+             std::thread::spawn(move || {
+                 for _ in 0..128 {
+-                    let mut sample = profile.begin(33, 2);
++                    let mut sample = profile.begin(33, 2, 0);
+                     for _ in 0..3 { let start = sample.start(); sample.end_service(start); }
+                     sample.finish(Instant::now());
+                 }
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -241,7 +241,7 @@
+                 Some(peek.read_obj::<LkIn>().map_err(Error::ReadRequest)?)
+             } else { None };
+             let lock_type = lock_request.map(|request| request.lk.type_).unwrap_or(u32::MAX);
+-            let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, lock_type));
++            let mut sample = self.profile.as_ref().map(|p| p.begin(header.opcode, lock_type, header.unique));
+             if let (Some(stats), Some(request)) = (&self.inline, lock_request) {
+                 // The inline fast path is flock-only; POSIX locks go through the
+                 // pool (nonblocking) or the retry queue (F_SETLKW).
+@@ -331,6 +331,7 @@
+ 
+                 if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
+                 let reply_start = sample.as_ref().map(|_| Instant::now());
++                if let Some(s) = sample.as_mut() { s.returning(); }
+                 Self::return_descriptor(&mut worker_vring.get_mut(), head_index, event_idx, len);
+                 if let (Some(s), Some(start)) = (sample, reply_start) { s.finish(start); }
+             };

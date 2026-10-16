@@ -1,0 +1,109 @@
+Subject: [PATCH] Reuse decoded request readers on the queue thread
+
+Only --thread-pool-size=0 changes. Reuse the validated descriptor reader
+instead of walking the chain and decoding its header twice. Keep dispatch
+validation common; parsed lock payloads retain their existing path.
+
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -164,6 +164,13 @@
+         vu_req: Option<&mut T>,
+     ) -> Result<usize> {
+         let in_header: InHeader = r.read_obj().map_err(Error::DecodeMessage)?;
++        self.handle_decoded_message(in_header, r, w, vu_req)
++    }
++
++    /// The queue thread already decoded this header from `r`.
++    pub(crate) fn handle_decoded_message<T>(
++        &self, in_header: InHeader, r: Reader, w: Writer, vu_req: Option<&mut T>,
++    ) -> Result<usize> {
+ 
+         if in_header.len > (MAX_BUFFER_SIZE + FUSE_BUFFER_HEADER_SIZE) {
+             return reply_error(
+@@ -2000,4 +2007,63 @@
+         // The sender pid is carried through unchanged for later GETLK attribution.
+         assert_eq!(decode(5, 5).unwrap().0, 42);
+     }
+-}
+\ No newline at end of file
++}
++
++#[cfg(test)]
++mod harddind_decoded_tests {
++    use super::*;
++    use crate::passthrough::{Config, PassthroughFs};
++    use vhost_user_backend::bitmap::BitmapMmapRegion;
++    use virtio_queue::{Queue, QueueOwnedT, QueueT};
++    use vm_memory::{Bytes, GuestAddress, GuestMemoryMmap};
++
++    #[repr(C)]
++    #[derive(Clone, Copy, Default)]
++    struct Desc { addr: u64, len: u32, flags: u16, next: u16 }
++    unsafe impl ByteValued for Desc {}
++
++    fn dispatch(header: InHeader, body: &[u8], decoded: bool) -> (String, Vec<u8>) {
++        let mem = GuestMemoryMmap::<BitmapMmapRegion>::from_ranges(&[(GuestAddress(0), 0x10000)]).unwrap();
++        let input = [header.as_slice(), body].concat();
++        mem.write_slice(&input, GuestAddress(0x2000)).unwrap();
++        mem.write_obj(Desc { addr: 0x2000, len: input.len() as u32, flags: 1, next: 1 }, GuestAddress(0x1000)).unwrap();
++        mem.write_obj(Desc { addr: 0x3000, len: 512, flags: 2, next: 0 }, GuestAddress(0x1010)).unwrap();
++        mem.write_obj(1u16, GuestAddress(0x1102)).unwrap();
++        let mut queue = Queue::new(4).unwrap();
++        queue.try_set_desc_table_address(GuestAddress(0x1000)).unwrap();
++        queue.try_set_avail_ring_address(GuestAddress(0x1100)).unwrap();
++        queue.set_ready(true);
++        let desc = queue.iter(&mem).unwrap().next().unwrap();
++        let mut r = Reader::new(&mem, desc.clone()).unwrap();
++        let w = Writer::new(&mem, desc).unwrap();
++        let server = Server::new(PassthroughFs::new(Config::default()).unwrap());
++        let result = if decoded {
++            let h = r.read_obj().unwrap();
++            server.handle_decoded_message::<()>(h, r, w, None)
++        } else { server.handle_message::<()>(r, w, None) };
++        let mut output = vec![0; 512];
++        mem.read_slice(&mut output, GuestAddress(0x3000)).unwrap();
++        (format!("{:?}", result), output)
++    }
++
++    #[test]
++    fn harddind_decoded_dispatch_preserves_errors_and_payload_position() {
++        for (opcode, len, body) in [
++            (65535, 40, vec![]),
++            (Opcode::Getattr as u32, MAX_BUFFER_SIZE + FUSE_BUFFER_HEADER_SIZE + 1, vec![]),
++            (Opcode::Getattr as u32, 56, vec![0; 16]),
++            (Opcode::Getattr as u32, 40, vec![]),
++            (Opcode::Lookup as u32, 42, b"x\0".to_vec()),
++            (Opcode::Lookup as u32, 20, vec![]),
++        ] {
++            let header = InHeader { opcode, len, unique: 42, nodeid: 99999, ..Default::default() };
++            let a = dispatch(header, &body, false);
++            let b = dispatch(header, &body, true);
++            assert_eq!(a, b, "opcode={opcode} len={len}");
++            if a.0.starts_with("Ok(") {
++                assert_ne!(i32::from_ne_bytes(a.1[4..8].try_into().unwrap()), 0);
++                assert_eq!(u64::from_ne_bytes(a.1[8..16].try_into().unwrap()), 42);
++            }
++        }
++    }
++}
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -309,6 +309,18 @@
+                 })).map_err(Error::CreateRetryQueue)?;
+                 continue;
+             }
++            if self.pool.is_none() && lock_request.is_none() {
++                let started = sample.as_mut().map(|s| s.start());
++                let writer = Writer::new(&mem, worker_desc.clone()).map_err(Error::QueueWriter)?;
++                let len = server.handle_decoded_message(header, peek, writer, vu_req.as_mut())
++                    .map_err(Error::ProcessQueue)?;
++                if let (Some(s), Some(start)) = (sample.as_mut(), started) { s.end_service(start); }
++                let reply_start = sample.as_ref().map(|_| Instant::now());
++                if let Some(s) = sample.as_mut() { s.returning(); }
++                Self::return_descriptor(&mut worker_vring.get_mut(), worker_desc.head_index(), event_idx, len);
++                if let (Some(s), Some(start)) = (sample, reply_start) { s.finish(start); }
++                continue;
++            }
+             drop(peek);
+             drop(mem);
+ 

@@ -1,31 +1,45 @@
-Subject: [PATCH] virtio-fs: opt-in request, notification and completion timing
+Subject: [PATCH] virtio-fs: optional aggregate and host-clock request timing
 
-Disabled unless virtiofs.profile_requests=1. Read each queue profile sysfs
-file between workload phases. Counts include hiprio submissions and reverse
-notifications. Timings include measurement overhead and are diagnostic only;
-notification processing time can include waiting for inode locks. Refill
-kicks on the notification queue are not included in the kick counters.
+Default off. UML uses the host CLOCK_MONOTONIC for bounded LOOKUP/GETATTR
+latency samples; match unique IDs with virtiofsd profile records. This avoids
+subtracting guest clocks from host clocks. Includes instrumentation overhead.
+Notification processing can include inode lock waits; refill kicks are excluded.
 
 --- a/fs/fuse/fuse_dev_i.h
 +++ b/fs/fuse/fuse_dev_i.h
-@@ -16,6 +16,11 @@
+@@ -16,6 +16,25 @@
  /* Ordinary requests have even IDs, while interrupts IDs are odd */
  #define FUSE_INT_REQ_BIT (1ULL << 0)
  #define FUSE_REQ_ID_STEP (1ULL << 1)
 +
++#ifdef CONFIG_UML
++extern long long os_nsecs(void);
++static inline u64 fuse_share_clock(void) { return os_nsecs(); }
++#else
++static inline u64 fuse_share_clock(void) { return 0; }
++#endif
++
++struct fuse_share_trace {
++	u64 unique, sent, queued, dequeued, finished, resumed;
++};
++
 +struct fuse_share_wait {
++	spinlock_t lock;
++	unsigned int next;
++	struct fuse_share_trace traces[8];
 +	atomic64_t count;
 +	atomic64_t total_ns;
 +};
  
  struct fuse_arg;
  struct fuse_args;
-@@ -118,6 +123,13 @@
+@@ -118,6 +137,14 @@
  #endif
  	/** @create_time: When (in jiffies) the request was created */
  	unsigned long create_time;
 +
 +	/* Optional virtio-fs transport profiling. */
++	struct fuse_share_trace share_trace;
 +	u64 share_sent_ns;
 +	u64 share_queued_ns;
 +	u64 share_done_ns;
@@ -44,16 +58,18 @@ kicks on the notification queue are not included in the kick counters.
  
  #include "fuse_trace.h"
  
-@@ -641,6 +642,8 @@
+@@ -641,6 +642,10 @@
  	struct fuse_chan *fch = req->chan;
  	struct fuse_iqueue *fiq = &fch->iq;
  
-+	if (req->share_wait)
++	if (req->share_wait) {
 +		cmpxchg64(&req->share_finished_ns, 0, ktime_get_ns());
++		cmpxchg64(&req->share_trace.finished, 0, fuse_share_clock());
++	}
  	if (test_and_set_bit(FR_FINISHED, &req->flags))
  		goto put_request;
  
-@@ -769,6 +772,11 @@
+@@ -769,6 +774,21 @@
  	request_wait_answer(req);
  	/* Pairs with smp_wmb() in fuse_request_end() */
  	smp_rmb();
@@ -61,6 +77,16 @@ kicks on the notification queue are not included in the kick counters.
 +		atomic64_inc(&req->share_wait->count);
 +		atomic64_add(ktime_get_ns() - req->share_finished_ns,
 +			     &req->share_wait->total_ns);
++		if (req->in.h.opcode == FUSE_LOOKUP || req->in.h.opcode == FUSE_GETATTR) {
++			struct fuse_share_wait *s = req->share_wait;
++			unsigned long flags;
++
++			req->share_trace.unique = req->in.h.unique;
++			req->share_trace.resumed = fuse_share_clock();
++			spin_lock_irqsave(&s->lock, flags);
++			s->traces[s->next++ % ARRAY_SIZE(s->traces)] = req->share_trace;
++			spin_unlock_irqrestore(&s->lock, flags);
++		}
 +	}
  }
  
@@ -113,7 +139,7 @@ kicks on the notification queue are not included in the kick counters.
  } ____cacheline_aligned_in_smp;
  
  /* A virtio-fs device instance */
-@@ -295,9 +320,44 @@
+@@ -295,9 +320,77 @@
  
  static struct kobj_attribute virtio_fs_vq_cpu_list_attr = __ATTR_RO(cpu_list);
  
@@ -151,14 +177,47 @@ kicks on the notification queue are not included in the kick counters.
 +
 +static struct kobj_attribute virtio_fs_vq_profile_attr = __ATTR_RO(profile);
 +
++static ssize_t latency_show(struct kobject *kobj, struct kobj_attribute *attr,
++			    char *buf)
++{
++	struct virtio_fs *fs = container_of(kobj->parent->parent, struct virtio_fs, kobj);
++	struct virtio_fs_vq *vq = virtio_fs_kobj_to_vq(fs, kobj);
++	const unsigned int ops[] = { FUSE_LOOKUP, FUSE_GETATTR };
++	ssize_t pos = 0;
++	int op, i;
++
++	if (!profile_requests || !vq)
++		return -EOPNOTSUPP;
++	for (op = 0; op < ARRAY_SIZE(ops); op++) {
++		struct fuse_share_wait *s = &vq->profile[ops[op]].wait;
++		unsigned long flags;
++
++		spin_lock_irqsave(&s->lock, flags);
++		for (i = 0; i < ARRAY_SIZE(s->traces); i++) {
++			struct fuse_share_trace *t = &s->traces[i];
++
++			if (!t->unique)
++				continue;
++			pos += sysfs_emit_at(buf, pos, "trace %u %llu %llu %llu %llu %llu %llu\n",
++				ops[op], t->unique, t->sent, t->queued, t->dequeued,
++				t->finished, t->resumed);
++		}
++		spin_unlock_irqrestore(&s->lock, flags);
++	}
++	return pos;
++}
++static struct kobj_attribute virtio_fs_vq_latency_attr = __ATTR_RO(latency);
++
++
  static struct attribute *virtio_fs_vq_attrs[] = {
  	&virtio_fs_vq_name_attr.attr,
  	&virtio_fs_vq_cpu_list_attr.attr,
 +	&virtio_fs_vq_profile_attr.attr,
++	&virtio_fs_vq_latency_attr.attr,
  	NULL
  };
  
-@@ -722,11 +782,22 @@
+@@ -722,11 +815,22 @@
  
  	if (!in_flight)
  		inc_in_flight_req(fsvq);
@@ -182,17 +241,19 @@ kicks on the notification queue are not included in the kick counters.
  	return ret;
  out:
  	spin_unlock(&fsvq->lock);
-@@ -831,6 +902,9 @@
+@@ -831,6 +935,11 @@
  {
  	struct fuse_out_header *oh = &req->out.h;
  
-+	if (profile_requests)
++	if (profile_requests) {
 +		req->share_done_ns = ktime_get_ns();
++		req->share_trace.dequeued = fuse_share_clock();
++	}
 +
  	if (len < sizeof(*oh)) {
  		pr_warn("virtio-fs: response too short (%u)\n", len);
  		return false;
-@@ -856,6 +930,19 @@
+@@ -856,6 +965,19 @@
  	unsigned int len, i, thislen;
  	struct folio *folio;
  
@@ -212,7 +273,7 @@ kicks on the notification queue are not included in the kick counters.
  	args = req->args;
  	copy_args_from_argbuf(args, req);
  
-@@ -903,6 +990,14 @@
+@@ -903,6 +1025,14 @@
  	unsigned int len;
  	LIST_HEAD(reqs);
  
@@ -227,7 +288,7 @@ kicks on the notification queue are not included in the kick counters.
  	/* Collect completed requests off the virtqueue */
  	spin_lock(&fsvq->lock);
  	do {
-@@ -1062,6 +1157,19 @@
+@@ -1062,6 +1192,19 @@
  	return ret == -ENOENT ? 0 : ret;
  }
  
@@ -247,7 +308,7 @@ kicks on the notification queue are not included in the kick counters.
  static void virtio_fs_notify_done(struct work_struct *work)
  {
  	struct virtio_fs_vq *fsvq = container_of(work, struct virtio_fs_vq, done_work);
-@@ -1071,6 +1179,14 @@
+@@ -1071,6 +1214,14 @@
  	void *buf;
  	int ret;
  
@@ -262,7 +323,7 @@ kicks on the notification queue are not included in the kick counters.
  	for (;;) {
  		spin_lock(&fsvq->lock);
  		if (!fsvq->connected || !fsvq->fud) {
-@@ -1084,8 +1200,7 @@
+@@ -1084,8 +1235,7 @@
  		fch = fsvq->fud->chan;
  		ret = 0;
  		if (smp_load_acquire(&fch->initialized) && fch->connected)
@@ -272,7 +333,7 @@ kicks on the notification queue are not included in the kick counters.
  		if (ret) {
  			pr_err("virtio-fs: notification failed (%d), aborting connection\n", ret);
  			fuse_chan_abort(fch, false);
-@@ -1173,6 +1288,8 @@
+@@ -1173,6 +1323,8 @@
  
  	dev_dbg(&vq->vdev->dev, "%s %s\n", __func__, fsvq->name);
  
@@ -281,17 +342,33 @@ kicks on the notification queue are not included in the kick counters.
  	schedule_work(&fsvq->done_work);
  }
  
-@@ -1778,6 +1895,9 @@
- 		goto out;
+@@ -1181,6 +1333,8 @@
+ {
+ 	strscpy(fsvq->name, name, VQ_NAME_LEN);
+ 	spin_lock_init(&fsvq->lock);
++	for (unsigned int op = 0; op < ARRAY_SIZE(fsvq->profile); op++)
++		spin_lock_init(&fsvq->profile[op].wait.lock);
+ 	INIT_LIST_HEAD(&fsvq->queued_reqs);
+ 	INIT_LIST_HEAD(&fsvq->end_reqs);
+ 	init_completion(&fsvq->in_flight_zero);
+@@ -1772,10 +1926,16 @@
  	}
  
+ 	vq = fsvq->vq;
 +	if (profile_requests)
-+		req->share_queued_ns = ktime_get_ns();
++		req->share_trace.queued = fuse_share_clock();
+ 	ret = virtqueue_add_sgs(vq, sgs, out_sgs, in_sgs, req, GFP_ATOMIC);
+ 	if (ret < 0) {
+ 		spin_unlock(&fsvq->lock);
+ 		goto out;
++	}
 +
++	if (profile_requests) {
++		req->share_queued_ns = ktime_get_ns();
+ 	}
+ 
  	/* Request successfully sent. */
- 	fpq = &fsvq->fud->pq;
- 	hash = fuse_req_hash(req->in.h.unique);
-@@ -1799,8 +1919,15 @@
+@@ -1799,8 +1959,15 @@
  
  	spin_unlock(&fsvq->lock);
  
@@ -308,16 +385,18 @@ kicks on the notification queue are not included in the kick counters.
  
  out:
  	if (ret < 0 && req->argbuf) {
-@@ -1823,6 +1950,8 @@
+@@ -1823,6 +1990,10 @@
  	int ret;
  
  	fuse_request_assign_unique(fiq, req);
-+	if (profile_requests)
++	if (profile_requests) {
 +		req->share_sent_ns = ktime_get_ns();
++		req->share_trace.sent = fuse_share_clock();
++	}
  
  	clear_bit(FR_PENDING, &req->flags);
  
-@@ -1836,6 +1965,13 @@
+@@ -1836,6 +2007,13 @@
  		 queue_id);
  
  	fsvq = &fs->vqs[queue_id];
@@ -331,7 +410,7 @@ kicks on the notification queue are not included in the kick counters.
  	ret = virtio_fs_enqueue_req(fsvq, req, false, GFP_ATOMIC);
  	if (ret < 0) {
  		if (ret == -ENOSPC) {
-@@ -2136,6 +2272,38 @@
+@@ -2136,6 +2314,38 @@
  	virtio_fs_kset = NULL;
  }
  
@@ -370,7 +449,7 @@ kicks on the notification queue are not included in the kick counters.
  static int __init virtio_fs_init(void)
  {
  	int ret;
-@@ -2152,6 +2320,8 @@
+@@ -2152,6 +2362,8 @@
  	if (ret < 0)
  		goto unregister_virtio_driver;
  
@@ -379,7 +458,7 @@ kicks on the notification queue are not included in the kick counters.
  	return 0;
  
  unregister_virtio_driver:
-@@ -2164,6 +2334,8 @@
+@@ -2164,6 +2376,8 @@
  
  static void __exit virtio_fs_exit(void)
  {
