@@ -36,3 +36,12 @@
 0037-um-faultaround-edges.patch
 0038-um-vector-tx-poll.patch
 0039-um-net-idle-wait.patch
+0040-um-fault-adaptive.patch
+0041-um-fault-populate.patch
+0042-um-fault-sorted-alloc.patch
+0043-um-fault-hostmap.patch
+0044-um-fault-unmap.patch
+0045-um-fault-exit.patch
+0046-fuse-virtiofs-profile.patch
+0047-fuse-virtiofs-complete.patch
+0048-fuse-virtiofs-wait.patch

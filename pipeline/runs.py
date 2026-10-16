@@ -197,7 +197,9 @@ def instance_options(artifacts, cpuset=None, kernel_args=(), shares=(), cpus=Non
         'memory': memory or config.GUEST_MEMORY, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
         'shares': list(shares),
         # notify_changes: virtiofsd watches the outer tree and invalidates guest caches (patch 0035).
-        'share_options': {'posix_locks': True, 'notify_changes': True, **share_options(share_opts)} if shares else None,
+        # thread_pool_size=0: serve requests directly, avoiding the worker handoff.
+        'share_options': {'posix_locks': True, 'notify_changes': True, 'thread_pool_size': 0,
+                          **share_options(share_opts)} if shares else None,
         # vnet link: GSO/checksum offload and batched backend I/O (kernel patch 0034).
         'net_vnet': True, 'network_batch': 16,
     }

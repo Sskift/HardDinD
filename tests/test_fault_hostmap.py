@@ -13,7 +13,7 @@ class FaultHostmapTests(unittest.TestCase):
         cc = shutil.which('cc')
         if not cc:
             self.skipTest('C compiler unavailable')
-        patch = (config.REPO / 'kernel/candidates/fault-hostmap.patch').read_text()
+        patch = (config.REPO / 'kernel/patches/0043-um-fault-hostmap.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         helpers = []

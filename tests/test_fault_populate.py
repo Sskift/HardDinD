@@ -13,7 +13,7 @@ class PopulateTests(unittest.TestCase):
         compiler = shutil.which('cc')
         if compiler is None:
             self.skipTest('C compiler unavailable')
-        patch = (config.REPO / 'kernel/candidates/fault-populate.patch').read_text()
+        patch = (config.REPO / 'kernel/patches/0041-um-fault-populate.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         helper = added[added.index('static unsigned int uml_fault_populate_flags'):]

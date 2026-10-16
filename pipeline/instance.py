@@ -35,9 +35,20 @@ from pipeline.port_driver import PortDriver
 # uml_faultaround*: map 32-page windows on sequential anonymous write faults (patches 0036, 0037).
 # uml_vector_tx_poll: blocked vector TX waits for its writable IRQ instead of rescheduling NAPI (patch 0038).
 # uml_net_idle_wait: idle vCPUs wait on their own signals, not the shared signalfd (patch 0039; needs defer_ipi).
+# uml_faultaround_max: grow sequential prefault windows to 512 pages within memory headroom (patch 0040).
+# uml_fault_populate: populate coalesced writable RAM mappings in the broker (patch 0041).
+# uml_fault_sorted: sort the window-local page pool for contiguous host mappings (patch 0042).
+# uml_fault_hostmap/uml_fault_lazy: retain host mapping identity and defer fresh-mm mappings (patch 0043).
+# uml_fault_unmap: suppress contained repeated unmaps until the next broker command (patch 0044).
+# uml_fault_exit: clear the final unused address space once before freeing pages (patch 0045).
+# virtiofs.inline_completion/poll_metadata: complete small replies inline and bound metadata polling (0047/0048).
+# Request profiling (0046) stays disabled unless virtiofs.profile_requests=1 is explicitly supplied.
 CORE_ARGS = ('seccomp=on', 'seccomp_threads=1', 'seccomp_broker_cache=1', 'seccomp_spin=256', 'defer_ipi=1',
              'memfd_ram=1', 'harddind_vdso_clock=1', 'virtio_uml.queue_size=512', 'virtiofs.request_pages=512',
-             'uml_faultaround=5', 'uml_faultaround_edges=1', 'uml_vector_tx_poll=1', 'uml_net_idle_wait=1')
+             'uml_faultaround=5', 'uml_faultaround_edges=1', 'uml_vector_tx_poll=1', 'uml_net_idle_wait=1',
+             'uml_faultaround_max=9', 'uml_fault_populate=1', 'uml_fault_sorted=1', 'uml_fault_hostmap=1',
+             'uml_fault_lazy=1', 'uml_fault_unmap=1', 'uml_fault_exit=1',
+             'virtiofs.inline_completion=1', 'virtiofs.poll_metadata=1024')
 PROTECTED = ('/', '/proc', '/sys', '/dev', '/run', '/bin', '/sbin', '/lib', '/usr', '/var/lib/docker', '/var/lib/containerd')
 
 

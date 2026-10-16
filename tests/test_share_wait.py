@@ -9,7 +9,7 @@ class MetadataWait(unittest.TestCase):
     @unittest.skipUnless(shutil.which('cc'), 'C compiler unavailable')
     def test_actual_waiter_bounds_signals_lifetime_and_opcode_gate(self):
         patch = (pathlib.Path(__file__).resolve().parents[1] /
-                 'kernel/candidates/share-wait.patch').read_text()
+                 'kernel/patches/0048-fuse-virtiofs-wait.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         start = added.index('static void virtio_fs_poll_metadata(')

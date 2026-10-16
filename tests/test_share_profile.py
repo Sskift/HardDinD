@@ -140,7 +140,7 @@ class InlineCompletion(unittest.TestCase):
     @unittest.skipUnless(shutil.which('cc'), 'C compiler unavailable')
     def test_async_pages_and_large_replies_stay_in_worker(self):
         root = pathlib.Path(__file__).resolve().parents[1]
-        patch = (root / 'kernel/candidates/share-complete.patch').read_text()
+        patch = (root / 'kernel/patches/0047-fuse-virtiofs-complete.patch').read_text()
         added = '\n'.join(line[1:] for line in patch.splitlines()
                           if line.startswith('+') and not line.startswith('+++'))
         function = re.search(r'static bool virtio_fs_can_complete_inline\(.*?\n}', added, re.S).group()
