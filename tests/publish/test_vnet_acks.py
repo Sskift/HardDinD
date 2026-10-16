@@ -39,6 +39,13 @@ class VnetAcks(unittest.TestCase):
                 os.kill(b.proc.pid, signal.SIGCONT)
             self.assertEqual(recv_exact(host, len(body) * 16), body * 16)
             self.assertGreater(b.command('stats')['coalesced_acks'], before['coalesced_acks'])
+            # Host delivery precedes the peer thread consuming its cumulative
+            # ACK. Drain that phase before checking duplicate-ACK feedback.
+            next_seq = session.snd_nxt
+            deadline = time.monotonic() + 3
+            while not any(p['ack'] == next_seq for p in peer.tcp_headers) and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(any(p['ack'] == next_seq for p in peer.tcp_headers), peer.tcp_headers)
             peer.tcp_headers.clear()
             before = b.command('stats')
             with session.send_lock:
