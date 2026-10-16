@@ -171,6 +171,14 @@ def bench_root(alpine_tar=None):
     return build.artifact('bench-root', key, builder)
 
 
+def net_transfer():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('net_transfer', config.REPO / 'tests/publish/net_transfer.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 class Workloads:
     def __init__(self, ctx):
         self.ctx = ctx
@@ -467,6 +475,15 @@ class Workloads:
                     port = published_port(self.docker('port', server, '9000/tcp'))
                     guest = lambda: self.native('/bench/network', 'client', '127.0.0.1', str(port), mode, seconds)
             yield native, guest
+            if 'uml_net_profile=1' in getattr(self.ctx, 'instance_options', {}).get('kernel_args', []):
+                # Diagnostics only (kernel candidate net-profile): per-thread CPU and IRQ
+                # cost of marked transfers, recorded after the scored samples.
+                if name.startswith('net.egress'):
+                    net_transfer().run(self, name, '10.0.2.2', native_port)
+                elif name.startswith('net.bridge'):
+                    net_transfer().run(self, name, address, 9000, options)
+                else:
+                    net_transfer().run(self, name, '127.0.0.1', port)
 
     def guest(self, *command, options=(), timeout=120):
         name = self.unique('sample')
