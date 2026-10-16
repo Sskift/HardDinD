@@ -1,0 +1,133 @@
+Subject: [PATCH] fuse: opt-in close optimizations for the HardDinD daemon
+
+Both knobs default off. fuse.share_skip_unlocked_flush=1 skips the pinned
+daemon duplicate-fd flush only for direct-I/O virtio-fs inodes that have
+never submitted a record-lock operation. Keep writeback/error checks and
+all subsequent record-lock FLUSH requests synchronous.
+
+fuse.share_async_release=1 backgrounds regular-file RELEASE without flock.
+Retain flock close ordering and count releases per mount, so even submount
+teardown waits for release completion before killing the superblock.
+
+--- a/fs/fuse/fuse_i.h
++++ b/fs/fuse/fuse_i.h
+@@ -257,6 +257,8 @@
+ 	 * or the fuse server has an exclusive "lease" on distributed fs
+ 	 */
+ 	FUSE_I_EXCLUSIVE,
++	/* Sticky: a record-lock operation has been sent for this inode. */
++	FUSE_I_SHARE_POSIX_LOCK,
+ };
+ 
+ struct fuse_conn;
+@@ -328,6 +330,7 @@
+ 	struct fuse_args args;
+ 	struct fuse_release_in inarg;
+ 	struct inode *inode;
++	struct fuse_mount *share_mount;
+ };
+ 
+ union fuse_file_args {
+@@ -772,6 +775,8 @@
+  * IDs.
+  */
+ struct fuse_mount {
++	/* Experimental async RELEASEs pin this superblock through completion. */
++	atomic_t share_releases;
+ 	/* Underlying (potentially shared) connection to the FUSE server */
+ 	struct fuse_conn *fc;
+ 
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -21,6 +21,15 @@
+ #include <linux/splice.h>
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/iomap.h>
++#include <linux/wait_bit.h>
++
++static bool share_skip_unlocked_flush;
++module_param(share_skip_unlocked_flush, bool, 0444);
++MODULE_PARM_DESC(share_skip_unlocked_flush, "HardDinD: omit unlocked direct-I/O FLUSH (default off)");
++
++static bool share_async_release;
++module_param(share_async_release, bool, 0444);
++MODULE_PARM_DESC(share_async_release, "HardDinD: background unlocked regular-file RELEASE (default off)");
+ 
+ static int fuse_send_open(struct fuse_mount *fm, u64 nodeid,
+ 			  unsigned int open_flags, int opcode,
+@@ -95,6 +104,8 @@
+ 	struct fuse_release_args *ra = container_of(args, typeof(*ra), args);
+ 
+ 	iput(ra->inode);
++	if (ra->share_mount && atomic_dec_and_test(&ra->share_mount->share_releases))
++		wake_up_var(&ra->share_mount->share_releases);
+ 	kfree(ra);
+ }
+ 
+@@ -356,6 +367,8 @@
+ 	struct fuse_inode *fi = get_fuse_inode(inode);
+ 	struct fuse_release_args *ra = &ff->args->release_args;
+ 	int opcode = isdir ? FUSE_RELEASEDIR : FUSE_RELEASE;
++	bool background = share_async_release && ff->fm->fc->auto_submounts &&
++			  !isdir && !ff->flock;
+ 
+ 	fuse_prepare_release(fi, ff, open_flags, opcode, false);
+ 
+@@ -385,7 +398,11 @@
+ 	 * before commencing with fs shutdown doesn't work if submounts are
+ 	 * used.
+ 	 */
+-	fuse_file_put(ff, ff->fm->fc->auto_submounts);
++	if (background) {
++		ra->share_mount = ff->fm;
++		atomic_inc(&ff->fm->share_releases);
++	}
++	fuse_file_put(ff, ff->fm->fc->auto_submounts && !background);
+ }
+ 
+ void fuse_release_common(struct file *file, bool isdir)
+@@ -488,6 +505,15 @@
+ 		return err;
+ 
+ 	err = 0;
++	/* The pinned HardDinD daemon flushes record locks and dup/closes the host
++	 * fd. Keep synchronous FLUSH forever once this inode has used record locks,
++	 * including closes through a different open description. Never bypass
++	 * writeback or generic FUSE server flush semantics without the opt-in.
++	 */
++	if (share_skip_unlocked_flush && fm->fc->auto_submounts &&
++	    !fm->fc->writeback_cache && (ff->open_flags & FOPEN_DIRECT_IO) &&
++	    !test_bit(FUSE_I_SHARE_POSIX_LOCK, &get_fuse_inode(inode)->state))
++		goto inval_attr_out;
+ 	if (fm->fc->no_flush)
+ 		goto inval_attr_out;
+ 
+@@ -2564,6 +2590,9 @@
+ 	struct fuse_conn *fc = get_fuse_conn(inode);
+ 	int err;
+ 
++	/* Publish before even GETLK: the host may allocate a per-owner fd. */
++	if (share_skip_unlocked_flush)
++		set_bit(FUSE_I_SHARE_POSIX_LOCK, &get_fuse_inode(inode)->state);
+ 	if (cmd == F_CANCELLK) {
+ 		err = 0;
+ 	} else if (cmd == F_GETLK) {
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -13,6 +13,7 @@
+ #include <linux/memremap.h>
+ #include <linux/module.h>
+ #include <linux/virtio.h>
++#include <linux/wait_bit.h>
+ #include <linux/virtio_fs.h>
+ #include <linux/delay.h>
+ #include <linux/fs_context.h>
+@@ -1983,6 +1984,8 @@
+ 
+ 	/* If mount failed, we can still be called without any fc */
+ 	if (sb->s_root) {
++		/* Drain this mount, including submounts, before destroying its inodes. */
++		wait_var_event(&fm->share_releases, !atomic_read(&fm->share_releases));
+ 		last = fuse_mount_remove(fm);
+ 		if (last)
+ 			virtio_fs_conn_destroy(fm);

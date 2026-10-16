@@ -1,0 +1,145 @@
+Subject: [PATCH] Add opt-in attribute caching for existing watched guest inodes
+
+--notify-attr-timeout requires cache=never, zero negative timeout and
+notifications. LOOKUP/CREATE/READDIRPLUS keep zero entry and attr timeouts;
+a notification may precede installation of a new guest inode. GETATTR
+subscribes before reading attrs and uses the guest attr_version guard.
+Disabled by default.
+
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -184,6 +184,10 @@
+     /// Experiment: retain directory permission attrs across namespace changes.
+     #[arg(long, requires = "notify_changes")]
+     notify_dir_cache: bool,
++
++    /// Cache GETATTR replies for this many seconds; keep entry replies uncached.
++    #[arg(long, default_value_t = 0, requires = "notify_changes")]
++    notify_attr_timeout: u64,
+ 
+     /// UID accounting for notification watches when started as root.
+     #[arg(long, default_value_t = 1001)]
+@@ -869,11 +873,17 @@
+     if opt.notify_batch {
+         changes.as_ref().expect("notify-batch requires notify-changes").enable_batch();
+     }
++    let getattr_cache_only = opt.notify_attr_timeout != 0;
++    if getattr_cache_only && (!matches!(&opt.cache, CachePolicy::Never) || opt.negative_timeout != 0) {
++        error!("--notify-attr-timeout requires --cache never and --negative-timeout 0");
++        process::exit(1);
++    }
+     let fs_cfg = passthrough::Config {
+         changes: changes.clone(),
+         entry_timeout: timeout,
+         negative_timeout: Duration::from_secs(opt.negative_timeout),
+-        attr_timeout: timeout,
++        attr_timeout: if getattr_cache_only { Duration::from_secs(opt.notify_attr_timeout) } else { timeout },
++        getattr_cache_only,
+         cache_policy: opt.cache,
+         root_dir: sandbox.get_root_dir(),
+         mountinfo_prefix: sandbox.get_mountinfo_prefix(),
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -237,6 +237,9 @@
+     /// The default value for this option is 5 seconds.
+     pub attr_timeout: Duration,
+ 
++    /// Only cache replies for already-existing guest inodes, guarded by attr_version.
++    pub getattr_cache_only: bool,
++
+     /// The caching policy the file system should use. See the documentation of `CachePolicy` for
+     /// more details.
+     pub cache_policy: CachePolicy,
+@@ -420,6 +423,7 @@
+             entry_timeout: Duration::from_secs(5),
+             negative_timeout: Duration::ZERO,
+             attr_timeout: Duration::from_secs(5),
++            getattr_cache_only: false,
+             cache_policy: Default::default(),
+             changes: None,
+             writeback: false,
+@@ -524,6 +528,11 @@
+ 
+ impl PassthroughFs {
+     pub fn new(mut cfg: Config) -> io::Result<PassthroughFs> {
++        if cfg.getattr_cache_only && (cfg.changes.is_none() || !cfg.entry_timeout.is_zero()
++            || !cfg.negative_timeout.is_zero() || !matches!(&cfg.cache_policy, CachePolicy::Never)) {
++            return Err(io::Error::new(io::ErrorKind::InvalidInput,
++                "GETATTR caching requires notifications, cache=never and zero entry timeouts"));
++        }
+         let proc_self_fd = if let Some(fd) = cfg.proc_sfd_rawfd.take() {
+             fd
+         } else {
+@@ -1078,7 +1087,8 @@
+             inode: unsafe { inode.leak() },
+             generation: 0,
+             attr,
+-            attr_timeout: self.cfg.attr_timeout,
++            // A notification may arrive before the guest creates this inode.
++            attr_timeout: if self.cfg.getattr_cache_only { Duration::ZERO } else { self.cfg.attr_timeout },
+             entry_timeout: self.cfg.entry_timeout,
+         })
+     }
+@@ -1165,6 +1175,8 @@
+ 
+     fn do_getattr(&self, inode: Inode) -> io::Result<(fuse::Attr, Duration)> {
+         let data = self.inodes.get(inode).ok_or_else(ebadf)?;
++        // Subscribe before reading attrs, including GETATTR of the root inode.
++        if self.cfg.getattr_cache_only { self.watch_inode(&data)?; }
+         let inode_file = data.get_file()?;
+         let st = statx(&inode_file, None)?.st;
+         let attr = fuse::Attr::try_from_stat64(
+@@ -1173,7 +1185,11 @@
+             |gid| self.map_host_gid(gid),
+         )?;
+ 
+-        Ok((attr, self.cfg.attr_timeout))
++        let timeout = if self.cfg.getattr_cache_only
++            && !self.cfg.changes.as_ref().unwrap().watched(inode) {
++            Duration::ZERO
++        } else { self.cfg.attr_timeout };
++        Ok((attr, timeout))
+     }
+ 
+     fn do_unlink(&self, parent: Inode, name: &CStr, flags: libc::c_int) -> io::Result<()> {
+@@ -3738,3 +3754,40 @@
+         std::fs::remove_dir(base).unwrap();
+     }
+ }
++
++#[cfg(test)]
++mod getattr_cache_tests {
++    use super::*;
++
++    #[test]
++    fn harddind_getattr_cache_leaves_initial_entries_uncached() {
++        let base = std::env::temp_dir().join(format!("virtiofs-attrs-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        std::fs::write(base.join("file"), b"one").unwrap();
++        let changes = Arc::new(crate::change_notify::ChangeNotify::new(1001).unwrap());
++        let fs = PassthroughFs::new(Config {
++            root_dir: base.to_str().unwrap().into(), changes: Some(changes.clone()),
++            entry_timeout: Duration::ZERO, attr_timeout: Duration::from_secs(60),
++            cache_policy: CachePolicy::Never, getattr_cache_only: true,
++            inode_file_handles: InodeFileHandlesMode::Never, ..Default::default()
++        }).unwrap();
++        fs.init(FsOptions::empty()).unwrap();
++        let ctx = Context { uid: 0.into(), gid: 0.into(), pid: std::process::id() as i32 };
++        assert_eq!(fs.getattr(ctx, 1, None).unwrap().1, Duration::from_secs(60));
++        assert!(changes.watched(1));
++        let name = CString::new("file").unwrap();
++        let entry = fs.lookup(ctx, 1, &name).unwrap();
++        assert_eq!(entry.entry_timeout, Duration::ZERO);
++        assert_eq!(entry.attr_timeout, Duration::ZERO);
++        assert!(changes.watched(entry.inode));
++        std::fs::write(base.join("file"), b"changed").unwrap();
++        let (attr, timeout) = fs.getattr(ctx, entry.inode, None).unwrap();
++        assert_eq!(attr.size, 7);
++        assert_eq!(timeout, Duration::from_secs(60));
++        std::os::unix::fs::symlink("file", base.join("link")).unwrap();
++        let link = fs.lookup(ctx, 1, &CString::new("link").unwrap()).unwrap();
++        assert_eq!(fs.getattr(ctx, link.inode, None).unwrap().1, Duration::ZERO);
++        assert!(PassthroughFs::new(Config { getattr_cache_only: true, ..Default::default() }).is_err());
++        std::fs::remove_dir_all(base).unwrap();
++    }
++}

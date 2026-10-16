@@ -1,0 +1,185 @@
+Subject: [PATCH] Add negotiated opt-in directory attribute invalidation
+
+Namespace events cannot change directory owner/mode/ACL. With
+--notify-dir-cache, invalidate directory contents, size, links and times
+without expiring permission attrs. ATTRIB and file data events retain full
+invalidation. Require private feature bit 2 so older guests fail closed.
+
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -180,6 +180,10 @@
+     /// Experiment: publish up to 32 change notifications with one queue signal.
+     #[arg(long, requires = "notify_changes")]
+     notify_batch: bool,
++
++    /// Experiment: retain directory permission attrs across namespace changes.
++    #[arg(long, requires = "notify_changes")]
++    notify_dir_cache: bool,
+ 
+     /// UID accounting for notification watches when started as root.
+     #[arg(long, default_value_t = 1001)]
+@@ -859,6 +863,9 @@
+     let notify_uid = opt.notify_uid;
+     let changes = opt.notify_changes.then(|| Arc::new(virtiofsd::change_notify::ChangeNotify::new(notify_uid)
+         .expect("cannot watch shared tree")));
++    if opt.notify_dir_cache {
++        changes.as_ref().expect("notify-dir-cache requires notify-changes").enable_directory_cache();
++    }
+     if opt.notify_batch {
+         changes.as_ref().expect("notify-batch requires notify-changes").enable_batch();
+     }
+--- a/src/change_notify.rs
++++ b/src/change_notify.rs
+@@ -13,6 +13,7 @@
+ pub const BUFFER_SIZE: u32 = 512;
+ const EVENT: i32 = 0x4844;
+ const FAILED: i32 = 0x4845;
++const DIRECTORY: i32 = 0x4846;
+ const LIMIT: usize = 65536;
+ const MASK: u32 = libc::IN_MODIFY | libc::IN_ATTRIB | libc::IN_CREATE | libc::IN_DELETE
+     | libc::IN_MOVED_FROM | libc::IN_MOVED_TO | libc::IN_DELETE_SELF | libc::IN_MOVE_SELF;
+@@ -25,6 +26,7 @@
+     pending: VecDeque<Vec<u8>>,
+     failed: bool,
+     batch: bool,
++    directory_cache: bool,
+     sink: Option<Sink>,
+ }
+ 
+@@ -51,7 +53,7 @@
+     out
+ }
+ 
+-fn messages(inode: u64, mask: u32, cookie: u32, name: &[u8]) -> Vec<Vec<u8>> {
++fn messages(inode: u64, mask: u32, cookie: u32, name: &[u8], directory_cache: bool) -> Vec<Vec<u8>> {
+     let mut out = Vec::new();
+     let mut payload = inode.to_ne_bytes().to_vec();
+     let namespace = mask & (libc::IN_CREATE | libc::IN_DELETE | libc::IN_MOVED_FROM | libc::IN_MOVED_TO) != 0;
+@@ -60,7 +62,9 @@
+     let offset: i64 = if data_changed { 0 } else { -1 };
+     payload.extend_from_slice(&offset.to_ne_bytes());
+     payload.extend_from_slice(&0i64.to_ne_bytes());
+-    if name.is_empty() || namespace {
++    if namespace && directory_cache {
++        out.push(packet(DIRECTORY, &inode.to_ne_bytes()));
++    } else if name.is_empty() || namespace {
+         out.push(packet(2, &payload)); // FUSE_NOTIFY_INVAL_INODE
+     }
+     if !name.is_empty() && namespace {
+@@ -109,7 +113,7 @@
+             } else if !self.failed && mask & MASK != 0 {
+                 if let Some(ids) = self.watches.get(&wd) {
+                     for id in ids {
+-                        self.pending.extend(messages(*id, mask & (MASK | libc::IN_ISDIR), cookie, name));
++                        self.pending.extend(messages(*id, mask & (MASK | libc::IN_ISDIR), cookie, name, self.directory_cache));
+                     }
+                 }
+                 if self.pending.len() > LIMIT { self.fail(); }
+@@ -154,6 +158,14 @@
+             state: Arc::new(Mutex::new(State::default())),
+             worker: Mutex::new(None),
+         })
++    }
++
++    pub fn enable_directory_cache(&self) {
++        self.state.lock().unwrap().directory_cache = true;
++    }
++
++    pub fn features(&self) -> u64 {
++        FEATURES | if self.state.lock().unwrap().directory_cache { 4 } else { 0 }
+     }
+ 
+     pub fn enable_batch(&self) {
+@@ -273,7 +285,7 @@
+     #[test]
+     fn harddind_notify_backpressure_and_event_types() {
+         let mut state = State::default();
+-        state.pending.extend(messages(8, libc::IN_ATTRIB, 0, b""));
++        state.pending.extend(messages(8, libc::IN_ATTRIB, 0, b"", false));
+         state.sink = Some(Box::new(|_| Ok(0)));
+         state.flush().unwrap();
+         assert_eq!(state.pending.len(), 2);
+@@ -284,11 +296,11 @@
+         assert_eq!(*count.lock().unwrap(), 2);
+         assert!(state.pending.is_empty());
+         // Child data updates affect its inode, not the parent/name identity.
+-        assert_eq!(messages(8, libc::IN_MODIFY, 0, b"child").len(), 1);
+-        let renamed = messages(8, libc::IN_MOVED_FROM, 123, b"child");
++        assert_eq!(messages(8, libc::IN_MODIFY, 0, b"child", false).len(), 1);
++        let renamed = messages(8, libc::IN_MOVED_FROM, 123, b"child", false);
+         assert_eq!(renamed.len(), 3);
+         assert_eq!(&renamed[0][24..32], &0i64.to_ne_bytes());
+-        assert_eq!(&messages(8, libc::IN_ATTRIB, 0, b"")[0][24..32], &(-1i64).to_ne_bytes());
++        assert_eq!(&messages(8, libc::IN_ATTRIB, 0, b"", false)[0][24..32], &(-1i64).to_ne_bytes());
+         let mut bad = [0u8; 16];
+         bad[12..16].copy_from_slice(&u32::MAX.to_ne_bytes());
+         assert!(state.events(&bad).is_err());
+@@ -296,10 +308,10 @@
+ 
+     #[test]
+     fn harddind_notify_wire_and_overflow() {
+-        let packets = messages(19, libc::IN_MODIFY, 0, b"");
++        let packets = messages(19, libc::IN_MODIFY, 0, b"", false);
+         assert_eq!(packets.len(), 2);
+         assert_eq!(i64::from_ne_bytes(packets[0][24..32].try_into().unwrap()), 0);
+-        for p in messages(19, libc::IN_CREATE, 23, b"child") {
++        for p in messages(19, libc::IN_CREATE, 23, b"child", false) {
+             assert_eq!(u32::from_ne_bytes(p[..4].try_into().unwrap()) as usize, p.len());
+             assert!(p.len() <= BUFFER_SIZE as usize);
+         }
+@@ -341,3 +353,23 @@
+         assert_eq!(state.pending.len(), 1);
+     }
+ }
++
++#[cfg(test)]
++mod directory_tests {
++    use super::*;
++
++    #[test]
++    fn harddind_directory_cache_preserves_permission_and_file_invalidations() {
++        for mask in [libc::IN_CREATE, libc::IN_DELETE, libc::IN_MOVED_FROM, libc::IN_MOVED_TO] {
++            let packets = messages(7, mask, 19, b"child", true);
++            assert_eq!(packets.len(), 3);
++            assert_eq!(i32::from_ne_bytes(packets[0][4..8].try_into().unwrap()), DIRECTORY);
++            assert_eq!(packets[0].len(), 24);
++            assert_eq!(u64::from_ne_bytes(packets[0][16..24].try_into().unwrap()), 7);
++            assert_eq!(i32::from_ne_bytes(packets[1][4..8].try_into().unwrap()), 3);
++        }
++        for mask in [libc::IN_ATTRIB, libc::IN_MODIFY, libc::IN_MOVE_SELF] {
++            assert_eq!(messages(7, mask, 0, b"", true), messages(7, mask, 0, b"", false));
++        }
++    }
++}
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -5,7 +5,7 @@
+ use std::convert::TryInto;
+ use std::fs::File;
+ use std::io::Write;
+-use crate::change_notify::{ChangeNotify, FEATURES, BUFFER_SIZE};
++use crate::change_notify::{ChangeNotify, BUFFER_SIZE};
+ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+ use std::sync::{Arc, Mutex, RwLock};
+ use std::thread::{self, JoinHandle};
+@@ -595,7 +595,7 @@
+     }
+ 
+     fn features(&self) -> u64 {
+-        (if self.changes.is_some() { FEATURES } else { 0 })
++        self.changes.as_ref().map_or(0, |changes| changes.features())
+             | (1 << VIRTIO_F_VERSION_1)
+             | (1 << VIRTIO_RING_F_INDIRECT_DESC)
+             | (1 << VIRTIO_RING_F_EVENT_IDX)
+@@ -655,8 +655,9 @@
+     }
+ 
+     fn acked_features(&self, features: u64) {
+-        assert!(self.changes.is_none() || features & FEATURES == FEATURES,
+-                "--notify-changes requires matching experimental guest features");
++        let required = self.changes.as_ref().map_or(0, |changes| changes.features());
++        assert_eq!(features & required, required,
++                   "notification policy requires matching experimental guest features");
+         if features & VhostUserVirtioFeatures::LOG_ALL.bits() != 0 {
+             // F_LOG_ALL set: Prepare for migration (unless we're already doing that)
+             let mut premigration_thread = self.premigration_thread.lock().unwrap();

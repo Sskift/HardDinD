@@ -1,0 +1,173 @@
+Subject: [PATCH] Add opt-in batching of notification queue publication
+
+--notify-batch publishes at most 32 queued messages before signalling the
+guest. Preserve event order, backpressure and the arm-before-inspect rule.
+Disabled by default.
+
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -176,6 +176,10 @@
+     /// Cache missing names for this many seconds; requires change notifications.
+     #[arg(long, default_value_t = 0, requires = "notify_changes")]
+     negative_timeout: u64,
++
++    /// Experiment: publish up to 32 change notifications with one queue signal.
++    #[arg(long, requires = "notify_changes")]
++    notify_batch: bool,
+ 
+     /// UID accounting for notification watches when started as root.
+     #[arg(long, default_value_t = 1001)]
+@@ -855,6 +859,9 @@
+     let notify_uid = opt.notify_uid;
+     let changes = opt.notify_changes.then(|| Arc::new(virtiofsd::change_notify::ChangeNotify::new(notify_uid)
+         .expect("cannot watch shared tree")));
++    if opt.notify_batch {
++        changes.as_ref().expect("notify-batch requires notify-changes").enable_batch();
++    }
+     let fs_cfg = passthrough::Config {
+         changes: changes.clone(),
+         entry_timeout: timeout,
+--- a/src/change_notify.rs
++++ b/src/change_notify.rs
+@@ -16,7 +16,7 @@
+ const LIMIT: usize = 65536;
+ const MASK: u32 = libc::IN_MODIFY | libc::IN_ATTRIB | libc::IN_CREATE | libc::IN_DELETE
+     | libc::IN_MOVED_FROM | libc::IN_MOVED_TO | libc::IN_DELETE_SELF | libc::IN_MOVE_SELF;
+-type Sink = Box<dyn Fn(&[u8]) -> io::Result<bool> + Send + Sync>;
++type Sink = Box<dyn Fn(&[Vec<u8>]) -> io::Result<usize> + Send + Sync>;
+ 
+ #[derive(Default)]
+ struct State {
+@@ -24,6 +24,7 @@
+     inodes: BTreeMap<u64, i32>,
+     pending: VecDeque<Vec<u8>>,
+     failed: bool,
++    batch: bool,
+     sink: Option<Sink>,
+ }
+ 
+@@ -120,9 +121,13 @@
+ 
+     fn flush(&mut self) -> io::Result<()> {
+         if let Some(sink) = &self.sink {
+-            while let Some(message) = self.pending.front() {
+-                if !sink(message)? { break; }
+-                self.pending.pop_front();
++            while !self.pending.is_empty() {
++                let messages = self.pending.as_slices().0;
++                let limit = messages.len().min(if self.batch { 32 } else { 1 });
++                let sent = sink(&messages[..limit])?;
++                if sent > limit { return Err(io::ErrorKind::InvalidData.into()); }
++                if sent == 0 { break; }
++                self.pending.drain(..sent);
+             }
+         }
+         Ok(())
+@@ -149,6 +154,10 @@
+             state: Arc::new(Mutex::new(State::default())),
+             worker: Mutex::new(None),
+         })
++    }
++
++    pub fn enable_batch(&self) {
++        self.state.lock().unwrap().batch = true;
+     }
+ 
+     pub fn watched(&self, inode: u64) -> bool {
+@@ -245,9 +254,9 @@
+         changes.watch(12, &name).unwrap();
+         let received = Arc::new(Mutex::new(Vec::new()));
+         let sink = received.clone();
+-        changes.attach(Box::new(move |message| {
+-            sink.lock().unwrap().push(message.to_vec());
+-            Ok(true)
++        changes.attach(Box::new(move |messages| {
++            sink.lock().unwrap().extend_from_slice(messages);
++            Ok(messages.len())
+         })).unwrap();
+         file.write_all(b"changed").unwrap();
+         let end = Instant::now() + Duration::from_secs(2);
+@@ -265,12 +274,12 @@
+     fn harddind_notify_backpressure_and_event_types() {
+         let mut state = State::default();
+         state.pending.extend(messages(8, libc::IN_ATTRIB, 0, b""));
+-        state.sink = Some(Box::new(|_| Ok(false)));
++        state.sink = Some(Box::new(|_| Ok(0)));
+         state.flush().unwrap();
+         assert_eq!(state.pending.len(), 2);
+         let count = Arc::new(Mutex::new(0));
+         let calls = count.clone();
+-        state.sink = Some(Box::new(move |_| { *calls.lock().unwrap() += 1; Ok(true) }));
++        state.sink = Some(Box::new(move |messages| { *calls.lock().unwrap() += messages.len(); Ok(messages.len()) }));
+         state.flush().unwrap();
+         assert_eq!(*count.lock().unwrap(), 2);
+         assert!(state.pending.is_empty());
+@@ -305,3 +314,30 @@
+         assert_eq!(i32::from_ne_bytes(state.pending[0][4..8].try_into().unwrap()), FAILED);
+     }
+ }
++
++#[cfg(test)]
++mod batch_tests {
++    use super::*;
++
++    #[test]
++    fn harddind_notify_batch_preserves_order_under_partial_delivery() {
++        let mut state = State { batch: true, ..Default::default() };
++        let received = Arc::new(Mutex::new(Vec::new()));
++        let out = received.clone();
++        state.sink = Some(Box::new(move |messages| {
++            assert!(messages.len() <= 32);
++            let sent = messages.len().min(7);
++            out.lock().unwrap().extend_from_slice(&messages[..sent]);
++            Ok(sent)
++        }));
++        let expected: Vec<_> = (0u64..1000).map(|i| i.to_ne_bytes().to_vec()).collect();
++        state.pending.extend(expected.clone());
++        state.flush().unwrap();
++        assert_eq!(*received.lock().unwrap(), expected);
++        assert!(state.pending.is_empty());
++        state.pending.push_back(vec![1]);
++        state.sink = Some(Box::new(|_| Ok(2)));
++        assert!(state.flush().is_err());
++        assert_eq!(state.pending.len(), 1);
++    }
++}
+--- a/src/vhost_user.rs
++++ b/src/vhost_user.rs
+@@ -718,18 +718,26 @@
+                 let memory = thread.mem.clone().ok_or(Error::NoMemoryConfigured)?;
+                 let vring = vrings[1].clone();
+                 let event_idx = thread.event_idx;
+-                return changes.attach(Box::new(move |message| {
++                return changes.attach(Box::new(move |messages| {
+                     let mem = memory.memory();
+                     let mut state = vring.get_mut();
+-                    // Arm first, then inspect: a refill racing an empty ring must kick us.
++                    // Arm before inspecting so a refill racing an empty ring kicks us.
+                     state.enable_notification().map_err(|_| other_io_error("notify arm"))?;
+-                    let desc = state.get_queue_mut().iter(mem.clone())
+-                        .map_err(|_| other_io_error("notify queue"))?.next();
+-                    let Some(desc) = desc else { return Ok(false); };
+-                    let mut writer = Writer::new(&mem, desc.clone()).map_err(Error::QueueWriter)?;
+-                    writer.write_all(message)?;
+-                    VhostUserFsThread::<F>::return_descriptor(&mut state, desc.head_index(), event_idx, message.len());
+-                    Ok(true)
++                    let mut sent = 0;
++                    for message in messages {
++                        let desc = state.get_queue_mut().iter(mem.clone())
++                            .map_err(|_| other_io_error("notify queue"))?.next();
++                        let Some(desc) = desc else { break; };
++                        let mut writer = Writer::new(&mem, desc.clone()).map_err(Error::QueueWriter)?;
++                        writer.write_all(message)?;
++                        state.add_used(desc.head_index(), message.len() as u32)
++                            .map_err(|_| other_io_error("notify used"))?;
++                        sent += 1;
++                    }
++                    if sent != 0 && (!event_idx || state.needs_notification().unwrap_or(true)) {
++                        state.signal_used_queue()?;
++                    }
++                    Ok(sent)
+                 }));
+             }
+             if device_event == 2 {

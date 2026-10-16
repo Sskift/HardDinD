@@ -1,0 +1,61 @@
+Subject: [PATCH] virtio-fs: opt-in batched notification refill kicks
+
+virtiofs.notify_batch=1 kicks after draining a batch instead of once per
+notification. Refill at least every 64 buffers to preserve forward progress.
+Disabled by default; no invalidations or filesystem events are discarded.
+
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -34,6 +34,10 @@
+ module_param(request_pages, uint, 0444);
+ MODULE_PARM_DESC(request_pages, "Override virtio-fs request page limit (0=default, max 1024)");
+ 
++static bool notify_batch;
++module_param(notify_batch, bool, 0444);
++MODULE_PARM_DESC(notify_batch, "Batch notification buffer refill kicks (default off)");
++
+ /* List of virtio-fs device instances and a lock for the list. Also provides
+  * mutual exclusion in device removal and mounting path
+  */
+@@ -1067,7 +1071,8 @@
+ 	struct virtio_fs_vq *fsvq = container_of(work, struct virtio_fs_vq, done_work);
+ 	struct fuse_chan *fch;
+ 	struct scatterlist sg;
+-	unsigned int len;
++	unsigned int len, refilled = 0;
++	bool kick;
+ 	void *buf;
+ 	int ret;
+ 
+@@ -1078,9 +1083,13 @@
+ 			return;
+ 		}
+ 		buf = virtqueue_get_buf(fsvq->vq, &len);
++		kick = !buf && refilled && virtqueue_kick_prepare(fsvq->vq);
+ 		spin_unlock(&fsvq->lock);
+-		if (!buf)
++		if (!buf) {
++			if (kick)
++				virtqueue_notify(fsvq->vq);
+ 			return;
++		}
+ 		fch = fsvq->fud->chan;
+ 		ret = 0;
+ 		if (smp_load_acquire(&fch->initialized) && fch->connected)
+@@ -1094,9 +1103,14 @@
+ 		sg_init_one(&sg, buf, SHARE_NOTIFY_SIZE);
+ 		spin_lock(&fsvq->lock);
+ 		ret = virtqueue_add_inbuf(fsvq->vq, &sg, 1, buf, GFP_ATOMIC);
+-		if (!ret)
+-			virtqueue_kick(fsvq->vq);
++		kick = false;
++		if (!ret && (!notify_batch || ++refilled >= SHARE_NOTIFY_COUNT)) {
++			kick = virtqueue_kick_prepare(fsvq->vq);
++			refilled = 0;
++		}
+ 		spin_unlock(&fsvq->lock);
++		if (kick)
++			virtqueue_notify(fsvq->vq);
+ 		if (ret) {
+ 			fuse_chan_abort(fch, false);
+ 			return;

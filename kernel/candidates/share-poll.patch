@@ -1,8 +1,10 @@
 Subject: [PATCH] Add bounded opt-in virtiofs completion polling
 
 virtio_uml.poll_iters=0 preserves interrupt-only completion. An enabled
-poller only invokes the existing virtiofs callback (which queues work),
-never consumes descriptors, and retains the normal call pipe and IRQ path.
+poller only invokes the virtiofs callback, never consumes descriptors itself,
+and retains the normal call pipe and IRQ path. The callback can complete
+small replies when the separate inline-completion candidate is enabled.
+Poll request queues only; hiprio and notification refills need no reply wait.
 Stop when the IRQ path has already observed progress. Count a consumed
 call-pipe notification as handled even if a poller completed it first.
 
@@ -33,7 +35,7 @@ caused a kick. wall_ns includes preemption, so it is not a CPU-time measure.
  	char name[32];
  	bool suspended;
  };
-@@ -786,12 +789,56 @@
+@@ -786,12 +789,57 @@
  }
  
  
@@ -49,7 +51,8 @@ caused a kick. wall_ns includes preemption, so it is not a CPU-time measure.
 +	unsigned int i, budget = min(poll_iters, 65536U);
 +	u64 start;
 +
-+	if (!budget || vq->vdev->id.device != VIRTIO_ID_FS)
++	if (!budget || vq->vdev->id.device != VIRTIO_ID_FS ||
++	    vq->index < (virtio_has_feature(vq->vdev, 0) ? 2U : 1U))
 +		return;
 +	start = os_nsecs();
 +	for (i = 0; i < budget; i++) {

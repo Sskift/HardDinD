@@ -1,0 +1,158 @@
+Subject: [PATCH] virtio-fs: opt-in inline completion of small synchronous replies
+
+virtiofs.inline_completion=1 tries at most 16 small synchronous replies
+in the IRQ callback. Every queue and FUSE interrupt lock is trylocked:
+contention, asynchronous callbacks and page replies fall back to the worker.
+Preserve the standard finish function and interrupt cancellation ordering.
+Disabled by default.
+
+--- a/fs/fuse/dev.c
++++ b/fs/fuse/dev.c
+@@ -638,3 +638,3 @@
+  */
+-void fuse_request_end(struct fuse_req *req)
++static void fuse_request_finish(struct fuse_req *req, bool fiq_locked)
+ {
+@@ -653,5 +653,7 @@
+ 	if (test_bit(FR_INTERRUPTED, &req->flags)) {
+-		spin_lock(&fiq->lock);
++		if (!fiq_locked)
++			spin_lock(&fiq->lock);
+ 		list_del_init(&req->intr_entry);
+-		spin_unlock(&fiq->lock);
++		if (!fiq_locked)
++			spin_unlock(&fiq->lock);
+ 	}
+@@ -674,3 +676,16 @@
+ }
++void fuse_request_end(struct fuse_req *req)
++{
++	fuse_request_finish(req, false);
++}
+ EXPORT_SYMBOL_GPL(fuse_request_end);
++
++/* The caller has excluded asynchronous callbacks and holds the interrupt lock. */
++void fuse_request_end_locked(struct fuse_req *req)
++{
++	lockdep_assert_held(&req->chan->iq.lock);
++	WARN_ON_ONCE(test_bit(FR_ASYNC, &req->flags) || test_bit(FR_BACKGROUND, &req->flags));
++	fuse_request_finish(req, true);
++}
++EXPORT_SYMBOL_GPL(fuse_request_end_locked);
+ 
+--- a/fs/fuse/fuse_dev_i.h
++++ b/fs/fuse/fuse_dev_i.h
+@@ -424,2 +424,3 @@
+ void fuse_request_end(struct fuse_req *req);
++void fuse_request_end_locked(struct fuse_req *req);
+ 
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -53,2 +53,6 @@
+  */
++static bool inline_completion;
++module_param(inline_completion, bool, 0444);
++MODULE_PARM_DESC(inline_completion, "Try small synchronous replies in IRQ context (default off)");
++
+ #define SHARE_NOTIFY_FEATURE 0
+@@ -79,2 +83,3 @@
+ 	struct list_head end_reqs;	/* End these requests */
++	struct list_head completed_reqs; /* IRQ replies needing worker context */
+ 	struct work_struct dispatch_work;
+@@ -851,3 +856,3 @@
+ static void virtio_fs_request_complete(struct fuse_req *req,
+-				       struct virtio_fs_vq *fsvq)
++				       struct virtio_fs_vq *fsvq, bool locked)
+ {
+@@ -879,2 +884,7 @@
+ 
++	if (locked) {
++		fuse_request_end_locked(req);
++		/* The IRQ caller drops the in-flight reference after its FUSE locks. */
++		return;
++	}
+ 	fuse_request_end(req);
+@@ -890,3 +900,3 @@
+ 
+-	virtio_fs_request_complete(w->req, w->fsvq);
++	virtio_fs_request_complete(w->req, w->fsvq, false);
+ 	kfree(w);
+@@ -907,2 +917,3 @@
+ 	spin_lock(&fsvq->lock);
++	list_splice_tail_init(&fsvq->completed_reqs, &reqs);
+ 	do {
+@@ -936,3 +947,3 @@
+ 		} else {
+-			virtio_fs_request_complete(req, fsvq);
++			virtio_fs_request_complete(req, fsvq, false);
+ 		}
+@@ -1168,2 +1179,60 @@
+ 
++static bool virtio_fs_can_complete_inline(struct fuse_req *req)
++{
++	return !req->args->may_block && !req->args->out_pages &&
++	       req->out.h.len <= 512 &&
++	       fuse_len_args(req->args->out_numargs, req->args->out_args) <= 512 &&
++	       !test_bit(FR_ASYNC, &req->flags) &&
++	       !test_bit(FR_BACKGROUND, &req->flags);
++}
++
++/* Never spin on a lock held by the context interrupted on this vCPU. */
++static bool virtio_fs_try_complete(struct virtio_fs_vq *fsvq)
++{
++	struct fuse_pqueue *fpq;
++	struct virtqueue *vq = fsvq->vq;
++	struct fuse_req *req;
++	unsigned int len, budget = 16, completed = 0;
++	bool work = false, more;
++
++	if (fsvq->done_work.func != virtio_fs_requests_done_work ||
++	    !spin_trylock(&fsvq->lock))
++		return false;
++	if (!fsvq->connected || !fsvq->fud) {
++		spin_unlock(&fsvq->lock);
++		return false;
++	}
++	fpq = &fsvq->fud->pq;
++	if (!spin_trylock(&fpq->lock)) {
++		spin_unlock(&fsvq->lock);
++		return false;
++	}
++	virtqueue_disable_cb(vq);
++	while (budget-- && (req = virtqueue_get_buf(vq, &len))) {
++		struct fuse_iqueue *fiq = &req->chan->iq;
++
++		list_del_init(&req->list);
++		if (!virtio_fs_verify_response(req, len)) {
++			req->out.h.error = -EIO;
++			req->out.h.len = sizeof(struct fuse_out_header);
++		}
++		if (virtio_fs_can_complete_inline(req) && spin_trylock(&fiq->lock)) {
++			virtio_fs_request_complete(req, fsvq, true);
++			spin_unlock(&fiq->lock);
++			completed++;
++		} else {
++			list_add_tail(&req->list, &fsvq->completed_reqs);
++			work = true;
++		}
++	}
++	more = !virtqueue_enable_cb(vq);
++	work |= more || !list_empty(&fsvq->queued_reqs);
++	spin_unlock(&fpq->lock);
++	/* A zero count permits connection teardown: release its locks first. */
++	while (completed--)
++		dec_in_flight_req(fsvq);
++	spin_unlock(&fsvq->lock);
++	return !work;
++}
++
+ /* Virtqueue interrupt handler */
+@@ -1173,2 +1242,4 @@
+ 
++	if (inline_completion && virtio_fs_try_complete(fsvq))
++		return;
+ 	dev_dbg(&vq->vdev->dev, "%s %s\n", __func__, fsvq->name);
+@@ -1185,2 +1256,3 @@
+ 	INIT_LIST_HEAD(&fsvq->end_reqs);
++	INIT_LIST_HEAD(&fsvq->completed_reqs);
+ 	init_completion(&fsvq->in_flight_zero);

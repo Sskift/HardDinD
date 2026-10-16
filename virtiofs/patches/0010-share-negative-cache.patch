@@ -1,0 +1,108 @@
+Subject: [PATCH] Allow opt-in negative entry caching with watched parents
+
+--negative-timeout is zero by default and requires --notify-changes.
+Only LOOKUP ENOENT is cached; permission and transport errors propagate.
+
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -172,6 +172,10 @@
+     /// Experimental outer change notifications (requires matching guest driver).
+     #[arg(long)]
+     notify_changes: bool,
++
++    /// Cache missing names for this many seconds; requires change notifications.
++    #[arg(long, default_value_t = 0, requires = "notify_changes")]
++    negative_timeout: u64,
+ 
+     /// UID accounting for notification watches when started as root.
+     #[arg(long, default_value_t = 1001)]
+@@ -854,6 +858,7 @@
+     let fs_cfg = passthrough::Config {
+         changes: changes.clone(),
+         entry_timeout: timeout,
++        negative_timeout: Duration::from_secs(opt.negative_timeout),
+         attr_timeout: timeout,
+         cache_policy: opt.cache,
+         root_dir: sandbox.get_root_dir(),
+--- a/src/passthrough/mod.rs
++++ b/src/passthrough/mod.rs
+@@ -227,6 +227,9 @@
+     /// The default value for this option is 5 seconds.
+     pub entry_timeout: Duration,
+ 
++    /// Negative entries need a watched parent; disabled by default.
++    pub negative_timeout: Duration,
++
+     /// How long the FUSE client should consider file and directory attributes to be valid. If the
+     /// attributes of a file or directory can only be modified by the FUSE client (i.e., the file
+     /// system has exclusive access), then this should be set to a large value.
+@@ -415,6 +418,7 @@
+     fn default() -> Self {
+         Config {
+             entry_timeout: Duration::from_secs(5),
++            negative_timeout: Duration::ZERO,
+             attr_timeout: Duration::from_secs(5),
+             cache_policy: Default::default(),
+             changes: None,
+@@ -1771,7 +1775,16 @@
+     }
+ 
+     fn lookup(&self, _ctx: Context, parent: Inode, name: &CStr) -> io::Result<Entry> {
+-        self.do_lookup(parent, name)
++        match self.do_lookup(parent, name) {
++            Err(e) if e.raw_os_error() == Some(libc::ENOENT)
++                && self.cfg.changes.is_some() && !self.cfg.negative_timeout.is_zero() => {
++                Ok(Entry {
++                    inode: 0, generation: 0, attr: Default::default(),
++                    attr_timeout: Duration::ZERO, entry_timeout: self.cfg.negative_timeout,
++                })
++            }
++            result => result,
++        }
+     }
+ 
+     fn forget(&self, _ctx: Context, inode: Inode, count: u64) {
+@@ -3685,3 +3698,43 @@
+         );
+         std::fs::remove_dir_all(base).unwrap();
+     }
++
++#[cfg(test)]
++mod harddind_negative_tests {
++    use super::*;
++
++    #[test]
++    fn harddind_negative_cache_requires_watch_and_preserves_other_errors() {
++        let base = std::env::temp_dir().join(format!("virtiofs-negative-{}", std::process::id()));
++        std::fs::create_dir(&base).unwrap();
++        let name = CString::new("missing").unwrap();
++        let ctx = Context { uid: 0.into(), gid: 0.into(), pid: std::process::id() as i32 };
++        for enabled in [false, true] {
++            let changes = if enabled {
++                Some(Arc::new(crate::change_notify::ChangeNotify::new(1001).unwrap()))
++            } else { None };
++            let fs = PassthroughFs::new(Config {
++                root_dir: base.to_str().unwrap().into(), changes: changes.clone(),
++                negative_timeout: Duration::from_secs(60),
++                inode_file_handles: InodeFileHandlesMode::Never, ..Default::default()
++            }).unwrap();
++            fs.init(FsOptions::empty()).unwrap();
++            let result = fs.lookup(ctx, 1, &name);
++            if let Some(changes) = changes {
++                let entry = result.unwrap();
++                assert_eq!(entry.inode, 0);
++                assert_eq!(entry.entry_timeout, Duration::from_secs(60));
++                assert!(changes.watched(1));
++            } else {
++                assert_eq!(result.err().unwrap().raw_os_error(), Some(libc::ENOENT));
++            }
++            assert_eq!(fs.lookup(ctx, u64::MAX, &name).err().unwrap().raw_os_error(), Some(libc::EBADF));
++            // Creation helpers must never turn a failed post-create lookup into a negative entry.
++            assert_eq!(fs.do_lookup(1, &name).err().unwrap().raw_os_error(), Some(libc::ENOENT));
++            std::fs::write(base.join("missing"), b"value").unwrap();
++            assert_ne!(fs.lookup(ctx, 1, &name).unwrap().inode, 0);
++            std::fs::remove_file(base.join("missing")).unwrap();
++        }
++        std::fs::remove_dir(base).unwrap();
++    }
++}

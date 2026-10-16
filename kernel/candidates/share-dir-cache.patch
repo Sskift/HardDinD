@@ -1,0 +1,82 @@
+Subject: [PATCH] virtio-fs: negotiated partial invalidation for directory changes
+
+Private feature bit 2 is used only by the daemon opt-in --notify-dir-cache.
+Namespace notifications invalidate FUSE_STATX_MODDIR and directory pages.
+They preserve cached owner/mode/ACL; outer ATTRIB still uses full invalidation.
+
+--- a/fs/fuse/virtio_fs.c
++++ b/fs/fuse/virtio_fs.c
+@@ -6,6 +6,8 @@
+ 
+ #include <linux/fs.h>
+ #include <linux/fsnotify.h>
++#include <linux/iversion.h>
++#include <linux/pagemap.h>
+ #include <linux/dax.h>
+ #include <linux/pci.h>
+ #include <linux/interrupt.h>
+@@ -55,6 +57,8 @@
+ #define SHARE_EVENT_FEATURE 1
+ #define SHARE_EVENT 0x4844
+ #define SHARE_FAILED 0x4845
++#define SHARE_DIRECTORY_FEATURE 2
++#define SHARE_DIRECTORY 0x4846
+ #define SHARE_NOTIFY_SIZE 512
+ #define SHARE_NOTIFY_COUNT 64
+ #define SHARE_EVENT_MASK (FS_MODIFY | FS_ATTRIB | FS_CREATE | FS_DELETE | \
+@@ -1018,6 +1022,34 @@
+ 	return ret;
+ }
+ 
++/* A namespace change cannot revoke directory permissions or change its ACL. */
++static int virtio_fs_invalidate_directory(struct fuse_conn *fc, void *data, unsigned int len)
++{
++	struct fuse_inode *fi;
++	struct inode *inode;
++	u64 nodeid;
++
++	if (len != sizeof(nodeid))
++		return -EINVAL;
++	memcpy(&nodeid, data, sizeof(nodeid));
++	inode = fuse_ilookup(fc, nodeid, NULL);
++	if (!inode)
++		return -ENOENT;
++	if (!S_ISDIR(inode->i_mode)) {
++		iput(inode);
++		return -EINVAL;
++	}
++	fi = get_fuse_inode(inode);
++	spin_lock(&fi->lock);
++	fi->attr_version = atomic64_inc_return(&fc->attr_version);
++	spin_unlock(&fi->lock);
++	fuse_invalidate_attr_mask(inode, FUSE_STATX_MODDIR);
++	inode_maybe_inc_iversion(inode, false);
++	invalidate_inode_pages2_range(inode->i_mapping, 0, -1);
++	iput(inode);
++	return 0;
++}
++
+ static int virtio_fs_notification(struct fuse_conn *fc, void *buf, unsigned int len)
+ {
+ 	struct fuse_out_header *out = buf;
+@@ -1053,6 +1085,9 @@
+ 		ret = fuse_reverse_inval_entry(fc, arg->parent, 0, &name, arg->flags);
+ 		break;
+ 	}
++	case SHARE_DIRECTORY:
++		ret = virtio_fs_invalidate_directory(fc, data, size);
++		break;
+ 	case SHARE_EVENT:
+ 		ret = virtio_fs_share_event(fc, data, size);
+ 		break;
+@@ -1517,7 +1552,9 @@
+ 	{},
+ };
+ 
+-static const unsigned int feature_table[] = { SHARE_NOTIFY_FEATURE, SHARE_EVENT_FEATURE };
++static const unsigned int feature_table[] = {
++	SHARE_NOTIFY_FEATURE, SHARE_EVENT_FEATURE, SHARE_DIRECTORY_FEATURE
++};
+ 
+ static struct virtio_driver virtio_fs_driver = {
+ 	.driver.name		= KBUILD_MODNAME,

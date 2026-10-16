@@ -1,0 +1,56 @@
+Subject: [PATCH] fuse: opt-in direct exclusive CREATE without a preliminary LOOKUP
+
+fuse.share_exclusive_create=1 omits LOOKUP only for O_CREAT|O_EXCL on
+virtio-fs. CREATE atomically rejects existing names, including symlinks.
+Keep normal lookup for nonexclusive opens, directories and ENOSYS fallback.
+Publish new in-lookup dentries with d_add, which unhashes and wakes parallel
+lookup waiters; d_instantiate requires lookup to be finished. Default off.
+
+--- a/fs/fuse/dir.c
++++ b/fs/fuse/dir.c
+@@ -906,7 +906,11 @@
+ 		goto out_err;
+ 	}
+ 	kfree(forget);
+-	d_instantiate(entry, inode);
++	/* The exclusive fast path still owns a parallel-lookup dentry. */
++	if (d_in_lookup(entry))
++		d_add(entry, inode);
++	else
++		d_instantiate(entry, inode);
+ 	fuse_dentry_set_epoch(entry, epoch);
+ 	fuse_change_entry_timeout(entry, &outentry);
+ 	fuse_dir_changed(dir);
+@@ -936,6 +940,10 @@
+ 
+ static int fuse_mknod(struct mnt_idmap *, struct inode *, struct dentry *,
+ 		      umode_t, dev_t);
++static bool share_exclusive_create;
++module_param(share_exclusive_create, bool, 0444);
++MODULE_PARM_DESC(share_exclusive_create, "HardDinD: skip LOOKUP for exclusive CREATE (default off)");
++
+ static int fuse_atomic_open(struct inode *dir, struct dentry *entry,
+ 			    struct file *file, unsigned flags,
+ 			    umode_t mode)
+@@ -946,6 +954,21 @@
+ 
+ 	if (fuse_is_bad(dir))
+ 		return -EIO;
++
++	/* O_EXCL delegates the existence check to the atomic server CREATE. */
++	if (share_exclusive_create && fc->auto_submounts && !fc->no_create &&
++	    (flags & (O_CREAT | O_EXCL | O_DIRECTORY)) == (O_CREAT | O_EXCL) &&
++	    d_in_lookup(entry)) {
++		file->f_mode |= FMODE_CREATED;
++		err = fuse_create_open(idmap, dir, entry, file, flags, mode, FUSE_CREATE);
++		if (err != -ENOSYS) {
++			if (err == -EEXIST)
++				fuse_invalidate_entry(entry);
++			return err;
++		}
++		fc->no_create = 1;
++		file->f_mode &= ~FMODE_CREATED;
++	}
+ 
+ 	if (d_in_lookup(entry)) {
+ 		struct dentry *res = fuse_lookup(dir, entry, 0);

@@ -14,6 +14,311 @@ from suites.functional.peer import Peer as ProbePeer
 NAMES = ['read_initial', 'outer_write_open_fd', 'outer_write_reopen', 'outer_truncate_fstat', 'outer_chmod_fstat', 'guest_write_outer_read', 'mmap_outer_to_guest', 'mmap_guest_to_outer', 'replace_open_inode', 'unlink_open_inode', 'xattr_both_directions', 'outer_lock_blocks_guest', 'guest_lock_blocks_outer', 'outer_inotify_to_guest', 'user_permission_denied', 'user_create_owner', 'read_only_bind', 'outer_inotify_to_guest_uid1001', 'guest_inotify_to_outer_uid1001', 'parallel_creation_masks', 'outer_metadata_churn', 'outer_replace_churn', 'outer_negative_lookup', 'outer_mtime', 'outer_permission_revoked', 'outer_mmap_window', 'outer_attr_window', 'outer_read_window', 'outer_mapped_write', 'notification_mmap_latency', 'outer_directory_inotify', 'outer_readdir_preserved_mtime']
 
 
+NAMES += ['metadata_batch', 'outer_directory_permission', 'outer_lookup_race', 'exclusive_create']
+
+
+METADATA_BATCH = r'''
+#define _DEFAULT_SOURCE
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <glob.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
+static double now(void) {
+    struct timespec t;
+    if (clock_gettime(CLOCK_MONOTONIC, &t)) exit(2);
+    return t.tv_sec + t.tv_nsec * 1e-9;
+}
+static void snapshot(const char *phase, double elapsed) {
+    glob_t paths = {0};
+    printf("phase %s %.9f\n", phase, elapsed);
+    usleep(20000); /* Drain asynchronous release/forget, outside the timed phase. */
+    if (!glob("/sys/fs/virtiofs/*/mqs/*/profile", 0, NULL, &paths)) {
+        for (size_t i = 0; i < paths.gl_pathc; i++) {
+            FILE *f = fopen(paths.gl_pathv[i], "r");
+            char line[512];
+            if (!f) exit(3);
+            printf("queue %s\n", paths.gl_pathv[i]);
+            while (fgets(line, sizeof(line), f)) fputs(line, stdout);
+            if (ferror(f) && errno != EOPNOTSUPP) exit(4);
+            fclose(f);
+        }
+    }
+    globfree(&paths);
+    fflush(stdout);
+}
+int main(int argc, char **argv) {
+    enum { N = 256 };
+    if (argc != 2 || chdir(argv[1])) return 5;
+    char a[32], b[32];
+    snapshot("before", 0);
+    const char *phases[] = {"create", "stat", "rename", "unlink"};
+    for (int phase = 0; phase < 4; phase++) {
+        double start = now();
+        for (int i = 0; i < N; i++) {
+            snprintf(a, sizeof(a), "f%06d", i);
+            snprintf(b, sizeof(b), "g%06d", i);
+            if (phase == 0) {
+                int fd = open(a, O_CREAT | O_EXCL | O_WRONLY, 0600);
+                if (fd < 0 || write(fd, &i, sizeof(i)) != sizeof(i) || close(fd)) return 6;
+            } else if (phase == 1) {
+                struct stat st;
+                if (stat(a, &st) || st.st_size != sizeof(i) || (st.st_mode & 0777) != 0600) return 7;
+            } else if (phase == 2) {
+                if (rename(a, b)) return 8;
+            } else if (unlink(b)) return 9;
+        }
+        snapshot(phases[phase], now() - start);
+    }
+    DIR *dir = opendir(".");
+    if (!dir) return 10;
+    struct dirent *entry;
+    while ((entry = readdir(dir)))
+        if (entry->d_name[0] != '.') return 11;
+    return closedir(dir) ? 12 : 0;
+}
+'''
+
+
+def metadata_profile(text):
+    """Subtract cumulative queue counters; reject truncated or regressing data."""
+    phases, current, queue, path = {}, None, None, None
+    for line in text.splitlines():
+        fields = line.split()
+        if not fields:
+            continue
+        if fields[0] == 'phase':
+            name, elapsed = fields[1:]
+            if name in phases:
+                raise ValueError('duplicate phase: ' + name)
+            current = phases[name] = {'seconds': float(elapsed), 'queues': {}, 'transport': {}}
+            queue, path = None, None
+        elif fields[0] == 'queue':
+            path = fields[1]
+            queue = current['queues'].setdefault(path, {})
+        elif fields[0] == 'work':
+            if (path is None or len(fields) not in (6, 9) or fields[3] != 'kick'
+                    or (len(fields) == 9 and fields[6] != 'notify')):
+                raise ValueError('malformed transport row: ' + line)
+            notifications = fields[7:9] if len(fields) == 9 else ['0', '0']
+            current['transport'][path] = tuple(map(int, fields[1:3] + fields[4:6] + notifications))
+        elif fields[0].isdigit():
+            if queue is None or len(fields) not in (8, 9, 11):
+                raise ValueError('malformed opcode row: ' + line)
+            opcode = int(fields[0])
+            if opcode in queue:
+                raise ValueError('duplicate opcode row: ' + line)
+            queue[opcode] = tuple(map(int, fields[1:])) + (0,) * (11 - len(fields))
+        else:
+            raise ValueError('unknown profile row: ' + line)
+    if list(phases) != ['before', 'create', 'stat', 'rename', 'unlink']:
+        raise ValueError('incomplete metadata phases')
+    result, previous, transport = {}, phases['before']['queues'], phases['before']['transport']
+    for name in ('create', 'stat', 'rename', 'unlink'):
+        phase = phases[name]
+        if not previous.keys() <= phase['queues'].keys() or any(
+                not counters.keys() <= phase['queues'][path].keys() for path, counters in previous.items()):
+            raise ValueError('profile counters disappeared')
+        if not transport.keys() <= phase['transport'].keys():
+            raise ValueError('transport counters disappeared')
+        rows = {}
+        for path, counters in phase['queues'].items():
+            for opcode, values in counters.items():
+                old = previous.get(path, {}).get(opcode, (0,) * 10)
+                delta = tuple(a - b for a, b in zip(values, old))
+                if min(delta) < 0:
+                    raise ValueError('profile counter regressed')
+                if any(delta):
+                    rows[f'{path}:{opcode}'] = dict(zip(
+                        ('submitted', 'completed', 'total_ns', 'enqueue_ns',
+                         'device_ns', 'complete_ns', 'reply_bytes', 'background',
+                         'wake_count', 'wake_ns'), delta))
+        timing = {}
+        for path, values in phase['transport'].items():
+            delta = tuple(a - b for a, b in zip(values, transport.get(path, (0,) * 6)))
+            if min(delta) < 0:
+                raise ValueError('transport counter regressed')
+            timing[path] = dict(zip(('work_count', 'work_delay_ns', 'kick_count', 'kick_ns',
+                                     'notify_count', 'notify_ns'), delta))
+        result[name] = {'operations': 256, 'seconds': phase['seconds'], 'opcodes': rows, 'transport': timing}
+        previous = phase['queues']
+        transport = phase['transport']
+    return result
+
+
+def metadata_batch(c, share):
+    import shutil
+    binary = build_probe(c, 'metadata-batch', METADATA_BATCH)
+    shutil.copy2(binary, share / 'batch')
+    directory = share / 'files'
+    directory.mkdir()
+    output = c.d('run', '--rm', '--mount', f'type=bind,src={share},dst=/share',
+                 'hd-functional:local', '/share/batch', '/share/files')
+    profile = metadata_profile(output)
+    c.write('metadata_phases: ' + json.dumps(profile, sort_keys=True))
+    if 'virtiofs.profile_requests=1' in c.ctx.instance_options.get('kernel_args', []):
+        assert any(row['opcodes'] for row in profile.values()), 'kernel profile was not readable'
+    assert not list(directory.iterdir()), 'metadata workload left files behind'
+
+
+LOOKUP_RACER = r'''
+#define _DEFAULT_SOURCE
+#include <errno.h>
+#include <poll.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+static double seconds(void) {
+    struct timespec t;
+    if (clock_gettime(CLOCK_MONOTONIC, &t)) exit(2);
+    return t.tv_sec + t.tv_nsec * 1e-9;
+}
+int main(int argc, char **argv) {
+    if (argc != 3) return 3;
+    long timeout_ms = strtol(argv[2], NULL, 10);
+    if (timeout_ms <= 0 || timeout_ms > 3000) return 4;
+    struct stat st;
+    struct pollfd control = {0, POLLIN, 0};
+    if (write(1, "R", 1) != 1) return 5;
+    for (;;) {
+        int ready = poll(&control, 1, 0);
+        if (ready < 0) return 6;
+        if (ready) {
+            char command;
+            if (read(0, &command, 1) != 1 || command != 'S') return 7;
+            break;
+        }
+        if (stat(argv[1], &st) && errno != ENOENT) return 8;
+    }
+    double start = seconds();
+    unsigned stale = 0;
+    bool visible = false;
+    do {
+        int rc = stat(argv[1], &st);
+        if (rc && errno != ENOENT) return 9;
+        if (!rc && st.st_size == 8192) { visible = true; break; }
+        stale++;
+    } while ((seconds() - start) * 1000 < timeout_ms);
+    printf("{\"first_access\":%s,\"visible\":%s,\"stale_reads\":%u,\"probe_ms\":%.6f}\n",
+           !stale && visible ? "true" : "false", visible ? "true" : "false",
+           stale, (seconds() - start) * 1000);
+    return visible ? 0 : 10;
+}
+'''
+
+
+def lookup_race(c, share):
+    import select
+    import shutil
+    binary = build_probe(c, 'lookup-racer', LOOKUP_RACER)
+    shutil.copy2(binary, share / 'lookup-racer')
+    for mode in ('native', 'docker'):
+        path = share / ('race-' + mode)
+        for repeat in range(8):
+            if mode == 'native':
+                process = c.spawn(command=[str(binary), str(path), '3000'])
+            else:
+                name = c.object('container', 'lookup-race-' + str(repeat))
+                process = c.spawn('run', '--rm', '-i', '--name', name, '--label', c.label,
+                                  '--mount', f'type=bind,src={share},dst=/share',
+                                  'hd-functional:local', '/share/lookup-racer',
+                                  '/share/' + path.name, '3000')
+            assert select.select([process.stdout], [], [], c.remaining(20))[0], 'racer startup timeout'
+            assert os.read(process.stdout.fileno(), 1) == b'R', 'racer exited before ready'
+            for _ in range(512):
+                path.write_bytes(b'old')
+                path.unlink()
+            started = time.monotonic_ns()
+            path.write_bytes(b'new-data' * 1024)
+            process.stdin.write(b'S')
+            process.stdin.flush()
+            assert select.select([process.stdout], [], [], c.remaining(20))[0], 'racer reply timeout'
+            row = json.loads(process.stdout.readline())
+            row.update(mode=mode, repeat=repeat, visible_by_ms=(time.monotonic_ns() - started) / 1e6)
+            c.write('lookup_race: ' + json.dumps(row, sort_keys=True))
+            assert process.wait(timeout=c.remaining(5)) == 0 and row['visible'], row
+            assert row['first_access'], row
+            process.stdin.close()
+            process.stdout.close()
+            path.unlink()
+
+
+EXCLUSIVE_CREATE = r'''
+#define _DEFAULT_SOURCE
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    if (argc != 2 || chdir(argv[1])) return 2;
+    umask(0027);
+    int fd = open("fresh", O_CREAT | O_EXCL | O_RDWR, 0666);
+    struct stat st;
+    if (fd < 0 || fstat(fd, &st) || (st.st_mode & 0777) != 0640 ||
+        st.st_uid != geteuid() || st.st_gid != getegid()) return 3;
+    if (write(fd, "keep", 4) != 4 || close(fd)) return 4;
+    if (mkdir("directory", 0755) || symlink("absent", "dangling") ||
+        symlink("fresh", "link")) return 5;
+    const char *names[] = {"fresh", "directory", "dangling", "link"};
+    for (unsigned i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        fd = open(names[i], O_CREAT | O_EXCL | O_TRUNC | O_RDWR, 0666);
+        if (fd >= 0 || errno != EEXIST) return 6;
+    }
+    if (!lstat("absent", &st) || errno != ENOENT) return 7;
+    char data[4];
+    fd = open("fresh", O_RDONLY);
+    if (fd < 0 || read(fd, data, sizeof(data)) != 4 || memcmp(data, "keep", 4) || close(fd)) return 8;
+    fd = open("link", O_CREAT | O_RDWR, 0666);
+    if (fd < 0 || read(fd, data, sizeof(data)) != 4 || memcmp(data, "keep", 4) || close(fd)) return 9;
+    if (mkdir("readonly", 0755)) return 10;
+    fd = open("readonly/exists", O_CREAT | O_EXCL | O_RDWR, 0600);
+    if (fd < 0 || close(fd) || chmod("readonly", 0555)) return 11;
+    fd = open("readonly/exists", O_CREAT | O_EXCL | O_RDWR, 0600);
+    if (fd >= 0 || errno != EEXIST) return 12;
+    if (geteuid() != 0) {
+        fd = open("readonly/absent", O_CREAT | O_EXCL | O_RDWR, 0600);
+        if (fd >= 0 || errno != EACCES) return 13;
+    }
+    if (chmod("readonly", 0755) || unlink("readonly/exists") || rmdir("readonly")) return 14;
+    if (unlink("fresh") || unlink("link") || unlink("dangling") || rmdir("directory")) return 15;
+    puts("exclusive create: ok");
+    return 0;
+}
+'''
+
+
+def exclusive_create(c, share):
+    import shutil
+    import subprocess
+    binary = build_probe(c, 'exclusive-create', EXCLUSIVE_CREATE)
+    shutil.copy2(binary, share / 'exclusive-create')
+    for mode in ('native', 'root', 'user'):
+        directory = share / mode
+        directory.mkdir(mode=0o777)
+        os.chmod(directory, 0o777)
+        if mode == 'native':
+            result = subprocess.run([str(binary), str(directory)], capture_output=True, text=True,
+                                    timeout=c.remaining(10))
+            c.write(result.stdout + result.stderr)
+            assert result.returncode == 0, result
+        else:
+            output = c.d('run', '--rm', '--user', '1001:1001' if mode == 'user' else '0:0',
+                         '--mount', f'type=bind,src={share},dst=/share', 'hd-functional:local',
+                         '/share/exclusive-create', '/share/' + mode)
+            assert output.strip() == 'exclusive create: ok', output
+        assert not list(directory.iterdir()), mode
+
+
 def expect_metadata(row, size, mode):
     assert row.get('rc') == 0 and (row.get('size'), row.get('mode')) == (size, mode), row
 
@@ -240,6 +545,12 @@ def run(c, name):
     share = c.ctx.share / c.id
     share.mkdir(parents=True, exist_ok=True)
     os.chmod(share, 0o755)
+    if name == 'metadata_batch':
+        return metadata_batch(c, share)
+    if name == 'outer_lookup_race':
+        return lookup_race(c, share)
+    if name == 'exclusive_create':
+        return exclusive_create(c, share)
     if name == 'outer_directory_inotify':
         return directory_events(c, share)
     if name == 'notification_mmap_latency':
@@ -285,7 +596,7 @@ def run(c, name):
         row=peer.ask(op);assert row.get('byte')==byte,row
     def one(mode,name):
         path=share/(mode+'-'+name);path.write_bytes(b'A'*8192);os.chmod(path,0o666)
-        uid=1001 if name in ['user_permission_denied','user_create_owner','outer_inotify_to_guest_uid1001','outer_permission_revoked'] else None
+        uid=1001 if name in ['user_permission_denied','user_create_owner','outer_inotify_to_guest_uid1001','outer_permission_revoked','outer_directory_permission'] else None
         if name=='user_permission_denied':os.chmod(path,0o600)
         if name=='user_create_owner':
             path.unlink();os.chmod(share,0o777)
@@ -375,6 +686,15 @@ def run(c, name):
                         expect_byte(peer, 'read', 65)
                         os.chmod(path, 0o666)
                         peer.ask('reopen')
+                elif name=='outer_directory_permission':
+                    for _ in range(16):
+                        peer.ask('reopen')
+                        os.chmod(share, 0o700)
+                        row = peer.ask('reopen', ok=False)
+                        assert row['rc'] == -1 and row['errno'] == errno.EACCES, row
+                        expect_byte(peer, 'read', 65)
+                        os.chmod(share, 0o755)
+                        peer.ask('reopen')
                 elif name=='outer_metadata_churn':
                     metadata_churn(peer, path)
                 elif name=='outer_replace_churn':
@@ -427,6 +747,6 @@ def run(c, name):
                     peer.ask('watch');host_write(path,66)
                     c.eventually(lambda: peer.ask('events')['bytes'] > 0, timeout=3)
         finally:os.chmod(share,0o755)
-    if name in ("outer_mmap_window", "outer_attr_window", "outer_read_window", "outer_mapped_write"):
+    if name in ("outer_mmap_window", "outer_attr_window", "outer_read_window", "outer_mapped_write", "outer_directory_permission"):
         one("native", name)
     one("docker", name)
