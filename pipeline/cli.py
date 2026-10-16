@@ -338,7 +338,7 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
         result['guest_state'] = state
         keep = run_dir / f'instance-{suite}'
         keep.mkdir(exist_ok=True)
-        for log in [*path.glob('*.log'), *path.glob('shutdown-diagnostic-*.json')]:
+        for log in [*path.glob('*.log'), *path.glob('shutdown-diagnostic-*.json'), *path.glob('ports-*.jsonl')]:
             shutil.copy2(log, keep / log.name)
         (keep / 'state.json').write_text(json.dumps(state, indent=2) + '\n')
         if not getattr(a, 'keep', False):
