@@ -14,7 +14,8 @@ The host gettid exemption matches only lookup instruction offsets, never the
 slow syscall. The extra host scratch page is reset before cached-broker reuse.
 
 Alignment-check faults at an exact patched jump restore the mm and retry with
-unchanged registers and flags; further rewriting waits until exec.
+unchanged registers and flags; further rewriting waits until exec. The stub
+registers SIGBUS and clears live AC before C; saved guest flags stay intact.
 
 Runner entry rechecks return-to-user work after the patch lease and allocation,
 releasing the lease before signal/rseq fixups if either wait scheduled.
@@ -954,7 +955,18 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  			d->clone_pid = stub_clone(sc->mem.addr);
  			if (d->clone_pid < 0) {
  				d->err = d->clone_pid;
-@@ -434,6 +450,29 @@
+@@ -409,6 +425,10 @@
+ void __section(".__syscall_stub")
+ stub_signal_interrupt(int sig, siginfo_t *info, void *p)
+ {
++#ifdef __x86_64__
++    /* Linux preserves AC on signal entry. Keep it in ucontext, not live C. */
++    asm volatile("pushfq; andq $-262145,(%%rsp); popfq" ::: "cc", "memory");
++#endif
+ 	struct stub_data *d = ((ucontext_t *)p)->uc_stack.ss_sp;
+ 	char rcv_data;
+ 	union {
+@@ -434,6 +454,29 @@
  	int notify = 0;
  	long res;
  
@@ -984,7 +996,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  	d->signal = sig;
  	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
  	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
-@@ -549,3 +588,145 @@
+@@ -549,3 +592,145 @@
  	/* We must not have anything on the stack when doing rt_sigreturn */
  	stub_syscall0(__NR_rt_sigreturn);
  }
@@ -1184,7 +1196,19 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  	stub_syscall2(__NR_sigaltstack, (unsigned long)&stack, 0);
  
  	/* register signal handlers */
-@@ -131,6 +141,21 @@
+@@ -123,6 +133,11 @@
+ 				    (unsigned long)&sa, 0, sizeof(sa.sa_mask));
+ 		if (res != 0)
+ 			stub_syscall1(__NR_exit, 20);
++
++		res = stub_syscall4(__NR_rt_sigaction, SIGBUS,
++				    (unsigned long)&sa, 0, sizeof(sa.sa_mask));
++		if (res != 0)
++			stub_syscall1(__NR_exit, 21);
+ 	}
+ 
+ 	/*
+@@ -131,6 +146,21 @@
  	 */
  	if (init_data.seccomp) {
  		struct sock_filter filter[] = {
@@ -1206,7 +1230,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  #if __BITS_PER_LONG > 32
  			/* [0] Load upper 32bit of instruction pointer from seccomp_data */
  			BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-@@ -144,10 +169,10 @@
+@@ -144,10 +174,10 @@
  				 (offsetof(struct seccomp_data, instruction_pointer))),
  
  			/* [3] Mask out lower bits */
@@ -1219,7 +1243,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  
  			/* [5] Trap call, allow */
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
-@@ -175,6 +200,9 @@
+@@ -175,6 +205,9 @@
  			/* Each match is followed by its action: no fragile jump counts. */
  			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
