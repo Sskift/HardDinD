@@ -59,6 +59,33 @@ class ScoreTests(unittest.TestCase):
         self.assertIn('| key | cpu.single |', text)
         self.assertIn('+50%', text)
 
+    def test_ab_throughput_duration_reference_and_missing_pairs(self):
+        metrics = {'cpu.single': metric([100, 200, 300], [50, 100, 150], guest_b=[100, 150, 300]),
+                   'app.compile': metric([1, 2], [4, 8], higher=False, guest_b=[2, 4]),
+                   'docker.run': metric([], [0.8, 1.6], higher=False, guest_b=[0.4, 0.8])}
+        rows = self.rows(metrics)
+        self.assertEqual(rows['cpu.single']['ratio'], .5)
+        self.assertEqual(rows['cpu.single']['ratio_b'], 1)
+        self.assertEqual(rows['cpu.single']['ratio_ba'], 2)
+        self.assertEqual(rows['cpu.single']['spread_ba'], [1.5, 2])
+        self.assertEqual(rows['app.compile']['ratio_ba'], 2)
+        self.assertEqual(rows['docker.run']['ratio_ba'], 2)
+        summary = {'run_id': 'ab', 'revision': {}, 'bench': {'ab': True, 'metrics': metrics}}
+        self.assertIn('B/A (range)', score.markdown(score.scorecard(summary)))
+        self.assertEqual(score.scorecard(summary)['tiers_b']['key']['pass'], 1)
+        for bad in ([], [10], [10, 0], [10, float('nan')]):
+            row = self.rows({'cpu.single': metric([100, 100], [50, 50], guest_b=bad)})['cpu.single']
+            self.assertEqual((row['status'], row['status_b']), ('fail', 'fail'))
+            self.assertNotIn('ratio_ba', row)
+
+    def test_ab_noise_is_assigned_to_the_sampled_side(self):
+        samples = [{'side': 'guest_b', 'phase': 'sample', 'throttled': .8}]
+        row = self.rows({'cpu.single': metric([100, 100], [90, 90], guest_b=[95, 95],
+                                               detail={'samples': samples})})['cpu.single']
+        self.assertFalse(row['noisy'])
+        self.assertTrue(row['noisy_b'])
+        self.assertTrue(row['noisy_ba'])
+
 
 if __name__ == '__main__':
     unittest.main()

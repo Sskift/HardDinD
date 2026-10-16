@@ -12,6 +12,13 @@ git add -A && git commit && git push        # 提交改动和它的评分
 
 只想快速看一项：`./hd job b -- bench --only 'micro\.|cpu\.' --quick`，或 `./hd job t -- test --only volume`。`--only` 以外的项目记为未测，这种运行只用于定位，不能作为结论。
 
+同一次 bench 内比较两个 guest：`./hd job ab1 -- bench --ab uml_net_idle_wait=0 --only '^micro\.'`。
+A 使用普通配置；B 叠加可重复的 `--ab K=V`、`--ab-with CANDIDATE`、`--ab-share-opt K=V`。
+两者绑定同一组 CPU；切换时暂停非活动 guest 和网络进程组，并确认已停止。virtiofsd 保持等待请求（其 seccomp 过滤器下 SIGCONT 会导致 SIGSYS），停止的 guest 不再提交工作。
+每组按原生/A/B、A/B/原生、B/原生/A 轮换，预热不计入样本；Docker 控制面只轮换 A/B，原生仍是参考值。
+`summary.json` 的 `guest`、`guest_b` 分别保存 A、B 的对应样本；评分表列出 A/native、B/native 和逐组 B/A 的中位数及范围。
+所有比值都以越大越好表示（耗时类取倒数），B/A > 1 表示 B 更快。不带 `--ab` 时保留原有单 guest 路径。
+
 内核改动的定向对照用 `./hd probe`：同一个静态程序（仓库里的 `.c` 文件会静态编译并缓存）在外层原生、guest A、guest B 中交替运行，guest B 是同一内核加上 `--ab` 参数，用于默认关闭的候选自比较：
 
 ```sh
@@ -41,7 +48,9 @@ run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 
 按本次 boot id 保存为 `dockerd-<id>.log` 和 `containerd-<id>.log`，与 `guest-<id>.log` 放在一起。
 当前 init 让 dockerd 启动 containerd，后者继承其 stdout/stderr，因此两个文件是同一份合流日志，
 不是按内容猜测拆分；来源、截断信息或采集错误记录在 `state.json`。
+采集使用 mconsole `stop → proc → go`：停止期间 socket 为阻塞模式，避免非阻塞发送队列满时丢失 511 字节分片；只移除协议的首条换行和每条末尾 NUL。
 test/bench 位于 `instance-test`/`instance-bench`，probe 位于 `instance-A`/`instance-B`；
+bench A/B 位于 `instance-bench-A`/`instance-bench-B`，各自的基准日志位于 `bench-A`/`bench-B`；
 `up` 会打印独立运行目录，`down --rm` 删除实例前仍保留该目录。
 `./hd fetch` 同时拉回这些日志、功能检查日志与实例状态，不拉取 guest 磁盘和基准 rootfs。
 若 guest 已崩溃或 mconsole 不响应，采集不能恢复已丢失的 tmpfs 日志，关机仍继续。
@@ -85,7 +94,7 @@ Starpub 与其他租户共用 72 核，负载常在 40–60，高峰超过 100�
 
 ## 并行开发
 
-- 多个代理可以同时改代码、跑 `./hd check` 和 `./hd test`（共享锁）。`bench` 和 `ci` 持有排它锁，同一时间只有一个在跑。
+- 多个代理可以同时改代码、跑 `./hd check` 和 `./hd test`（共享锁）。构建（包括 `./hd build`、缓存产物和下载）也持有共享测量锁；等待中的测量优先于新构建。`bench` 和 `ci` 的测量阶段持有排它锁，同一时间只有一个在跑。同一调用链可重入，避免测量内检查缓存时自锁。
 - 代理各自用独立的 git worktree 和分支，`./hd job` 用不同的 job 名；主代理合并到 `main` 后推送。
 - 远端只经 fail-closed 别名 `starpub-root-mux`（只复用常驻 ControlMaster，master 不在时立即失败），多步操作合并成一次 ssh；长任务用 `./hd job`，不要在前台占着 ssh。
 - 不影响 `/root/udock`。不在 `…/hd` 之外写文件。

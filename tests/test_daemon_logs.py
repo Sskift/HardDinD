@@ -30,13 +30,12 @@ class DaemonLogTests(unittest.TestCase):
             path = Path(td)
             boot = '123456abcdef'
             state = {'run': boot, 'mconsole': str(path / 'mconsole')}
-            def reply(root, socket, command, receive, timeout):
-                self.assertEqual((root, socket, command), (path, path / 'mconsole', 'proc 1/root/run/dockerd.log'))
-                receive(b'\n')  # Protocol prefix, not a byte of the guest file.
+            def reply(root, state, filename, receive):
+                self.assertEqual((root, filename), (path, '/run/dockerd.log'))
                 for offset in range(0, len(source), 511):
                     receive(source[offset:offset + 511])
                 receive(b'')
-            with patch.object(instance, 'mconsole', side_effect=reply):
+            with patch.object(instance, 'read_guest_file', side_effect=reply):
                 result = instance.capture_daemon_logs(path, state)
             self.assertEqual(result, {
                 'source': '/run/dockerd.log', 'combined': ['dockerd', 'containerd'],
@@ -46,7 +45,7 @@ class DaemonLogTests(unittest.TestCase):
                 self.assertEqual((path / name).read_bytes(), source[-limit:])
             # A reboot must preserve the first boot's logs and a real leading newline.
             source = b'\nsecond boot\n'
-            with patch.object(instance, 'mconsole', side_effect=reply):
+            with patch.object(instance, 'read_guest_file', side_effect=reply):
                 second = instance.capture_daemon_logs(path, {**state, 'run': 'abcdef123456'})
             self.assertFalse(second['truncated'])
             self.assertEqual(len(list(path.glob('*.log'))), 4)
@@ -86,6 +85,30 @@ class DaemonLogTests(unittest.TestCase):
                     peer.recv.side_effect = [reply]
                     with self.assertRaisesRegex(RuntimeError, 'mconsole response'):
                         instance.mconsole(path, path / 'mconsole', 'cad')
+
+    def test_proc_fixture_page_fragments_and_resume_on_error(self):
+        # UML reads 4095 bytes, then emits <=511-byte NUL-terminated datagrams.
+        source = b'\n' + (b'0123456789abcdef\n' * 800)
+        packet = lambda data, more: struct.pack('=III', 0, more, len(data) + 1) + data + b'\0'
+        frames = [packet(b'stopped', 0), packet(b'\n', 1)]
+        for start in range(0, len(source), 4095):
+            page = source[start:start + 4095]
+            frames += [packet(page[i:i + 511], 1) for i in range(0, len(page), 511)]
+        frames += [packet(b'', 0), packet(b'', 0)]
+        with tempfile.TemporaryDirectory() as td, patch.object(instance.socket, 'socket') as socket:
+            path = Path(td); state = {'mconsole': str(path / 'mconsole')}
+            peer = socket.return_value.__enter__.return_value
+            peer.recv.side_effect = frames
+            chunks = []
+            instance.read_guest_file(path, state, '/run/dockerd.log', chunks.append)
+            self.assertEqual(b''.join(chunks), source)
+            commands = [struct.unpack('=III512s', call.args[0])[3].rstrip(b'\0')
+                        for call in peer.sendto.call_args_list]
+            self.assertEqual(commands, [b'stop', b'proc 1/root/run/dockerd.log', b'go'])
+            with patch.object(instance, 'mconsole', side_effect=[None, RuntimeError('read failed'), None]) as call:
+                with self.assertRaisesRegex(RuntimeError, 'read failed'):
+                    instance.read_guest_file(path, state, '/run/dockerd.log', chunks.append)
+                self.assertEqual(call.call_args.args[2], 'go')
 
 
 if __name__ == '__main__':
