@@ -1,0 +1,359 @@
+From: HardDinD developers
+Subject: [DIAGNOSTIC] um: time faults, clearing and coalesced mapping batches
+
+Default off: uml_fault_profile=1. No syscall entry or runner handoff changes.
+Wall times include preemption; zero and batch times nest inside other totals.
+Counters are machine-wide and include background work. The MMAP stub records
+TSC cycles around the host syscall; convert with the probe's measured tsc_hz.
+Its two fields fit the existing padding before the aligned GPU payload.
+
+--- /dev/null
++++ b/arch/um/include/shared/fault-profile.h
+@@ -0,0 +1,22 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef UML_FAULT_PROFILE_H
++#define UML_FAULT_PROFILE_H
++#define UML_FP_FIELDS(X) \
++	X(user_faults) X(user_fault_ns) X(zero_pages) X(zero_ns) \
++	X(syncs) X(sync_ns) X(batches) X(batch_ns) X(failed_batches) \
++	X(map_requests) X(map_pages) X(map_coalesced) \
++	X(host_mmap) X(host_mmap_pages) X(host_mmap_cycles) X(host_munmap)
++#define UML_FP_ENUM(name) UML_FP_##name,
++enum { UML_FP_FIELDS(UML_FP_ENUM) UML_FP_COUNT };
++#undef UML_FP_ENUM
++extern int uml_fault_profile;
++extern unsigned long long uml_fp_values[UML_FP_COUNT];
++extern unsigned long long uml_fp_clock(void);
++extern void uml_fp_zero_done(unsigned long long started);
++extern int uml_fp_host_cpu(unsigned long long *, unsigned long long *);
++static inline void uml_fp_add(unsigned int id, unsigned long long value)
++{
++	if (__builtin_expect(uml_fault_profile, 0))
++		__atomic_fetch_add(&uml_fp_values[id], value, __ATOMIC_RELAXED);
++}
++#endif
+--- /dev/null
++++ b/arch/um/kernel/fault-profile.c
+@@ -0,0 +1,68 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <linux/export.h>
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/ktime.h>
++#include <linux/kstrtox.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/string.h>
++#include <asm/page.h>
++#include <init.h>
++#include <fault-profile.h>
++
++int uml_fault_profile;
++EXPORT_SYMBOL(uml_fault_profile);
++unsigned long long uml_fp_values[UML_FP_COUNT];
++unsigned long long uml_fp_clock(void)
++{
++	return unlikely(uml_fault_profile) ? ktime_get_ns() : 0;
++}
++void uml_fp_zero_done(unsigned long long started)
++{
++	uml_fp_add(UML_FP_zero_ns, uml_fp_clock() - started);
++	uml_fp_add(UML_FP_zero_pages, 1);
++}
++void uml_fault_profile_clear(void *page)
++{
++	unsigned long long start = uml_fp_clock();
++	memset(page, 0, PAGE_SIZE);
++	uml_fp_zero_done(start);
++}
++EXPORT_SYMBOL(uml_fault_profile_clear);
++static int fault_profile_show(struct seq_file *m, void *v)
++{
++	unsigned long long periods = 0, throttled = 0;
++	seq_puts(m, "# machine-wide; nested wall times are not additive; includes background tasks\n"
++		 "# batch_ns includes broker handoff; host_* counts submitted commands\n");
++	seq_printf(m, "enabled %d\n", uml_fault_profile);
++#define UML_FP_SHOW(name) seq_printf(m, #name " %llu\n", \
++	__atomic_load_n(&uml_fp_values[UML_FP_##name], __ATOMIC_RELAXED));
++	UML_FP_FIELDS(UML_FP_SHOW)
++#undef UML_FP_SHOW
++	if (!uml_fp_host_cpu(&periods, &throttled)) {
++		seq_printf(m, "host_periods %llu\nhost_throttled %llu\n", periods, throttled);
++	}
++	return 0;
++}
++DEFINE_PROC_SHOW_ATTRIBUTE(fault_profile);
++static int __init fault_profile_init(void)
++{
++	return proc_create("uml_fault_profile", 0444, NULL, &fault_profile_proc_ops) ? 0 : -ENOMEM;
++}
++__initcall(fault_profile_init);
++static int __init fault_profile_setup(char *line, int *add)
++{
++	unsigned int enable;
++	*add = 0;
++	if (kstrtouint(line, 10, &enable) || enable > 1) {
++		pr_warn("uml_fault_profile requires 0 or 1\n");
++		return 0;
++	}
++	uml_fault_profile = enable;
++	return 0;
++}
++__uml_setup("uml_fault_profile=", fault_profile_setup,
++"uml_fault_profile=<0|1>\n"
++"    Default 0. Time fault handling, page clearing and mapping batches.\n"
++"    Read /proc/uml_fault_profile. Timers include scheduling delays.\n\n");
+--- a/arch/um/kernel/Makefile
++++ b/arch/um/kernel/Makefile
+@@ -18,7 +18,7 @@
+ 	physmem.o process.o ptrace.o reboot.o sigio.o \
+ 	signal.o sysrq.o time.o tlb.o trap.o \
+ 	um_arch.o umid.o kmsg_dump.o capflags.o skas/
+-obj-y += load_file.o gpu.o
++obj-y += load_file.o gpu.o fault-profile.o
+ obj-$(CONFIG_X86_64) += clock_sync.o
+ 
+ obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
+--- a/arch/um/include/asm/page.h
++++ b/arch/um/include/asm/page.h
+@@ -23,7 +23,14 @@
+  * These are used to make use of C type-checking..
+  */
+ 
+-#define clear_page(page)	memset((void *)(page), 0, PAGE_SIZE)
++extern int uml_fault_profile;
++extern void uml_fault_profile_clear(void *page);
++#define clear_page(page) do { \
++	if (__builtin_expect(uml_fault_profile, 0)) \
++		uml_fault_profile_clear((void *)(page)); \
++	else \
++		memset((void *)(page), 0, PAGE_SIZE); \
++} while (0)
+ #define copy_page(to,from)	memcpy((void *)(to), (void *)(from), PAGE_SIZE)
+ 
+ #define copy_user_page(to, from, vaddr, pg)	copy_page(to, from)
+--- a/arch/um/kernel/trap.c
++++ b/arch/um/kernel/trap.c
+@@ -17,6 +17,7 @@
+ #include <os.h>
+ #include <init.h>
+ #include <skas.h>
++#include <fault-profile.h>
+ 
+ /*
+  * NOTE: UML does not have exception tables. As such, this is almost a copy
+@@ -360,6 +361,7 @@
+ 	pte_t *pte;
+ 	int err = -EFAULT;
+ 	unsigned int flags = FAULT_FLAG_DEFAULT;
++	unsigned long long fp_start = is_user ? uml_fp_clock() : 0;
+ 
+ 	*code_out = SEGV_MAPERR;
+ 
+@@ -440,6 +442,10 @@
+ out:
+ 	mmap_read_unlock(mm);
+ out_nosemaphore:
++	if (is_user) {
++		uml_fp_add(UML_FP_user_faults, 1);
++		uml_fp_add(UML_FP_user_fault_ns, uml_fp_clock() - fp_start);
++	}
+ 	return err;
+ 
+ out_of_memory:
+--- a/arch/um/kernel/tlb.c
++++ b/arch/um/kernel/tlb.c
+@@ -14,6 +14,7 @@
+ #include <os.h>
+ #include <skas.h>
+ #include <kern_util.h>
++#include <fault-profile.h>
+ 
+ struct vm_ops {
+ 	struct mm_id *mm_idp;
+@@ -167,7 +168,7 @@
+ 	return ret;
+ }
+ 
+-static int __um_tlb_sync(struct mm_struct *mm)
++static int __um_tlb_sync_work(struct mm_struct *mm)
+ {
+ 	pgd_t *pgd;
+ 	struct vm_ops ops;
+@@ -215,6 +216,17 @@
+ 	mm->context.sync_tlb_range_from = 0;
+ 	mm->context.sync_tlb_range_to = 0;
+ 
++	return ret;
++}
++
++static int __um_tlb_sync(struct mm_struct *mm)
++{
++	unsigned long long start = uml_fp_clock();
++	int ret = __um_tlb_sync_work(mm);
++	if (mm != &init_mm) {
++		uml_fp_add(UML_FP_syncs, 1);
++		uml_fp_add(UML_FP_sync_ns, uml_fp_clock() - start);
++	}
+ 	return ret;
+ }
+ 
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -14,6 +14,7 @@
+ #include <sys/socket.h>
+ #include <mem_user.h>
+ #include <mem.h>
++#include <fault-profile.h>
+ #include <init.h>
+ #include <as-layout.h>
+ #include <mm_id.h>
+@@ -96,10 +97,26 @@
+ 	struct stub_data *proc_data = (void *)mm_idp->stack;
+ 	int n, i;
+ 	int err, pid = mm_idp->pid;
++	unsigned long long fp_start = uml_fp_clock();
++	if (uml_fault_profile) {
++		uml_fp_add(UML_FP_batches, 1);
++		for (i = 0; i < mm_idp->syscall_data_len; i++) {
++			struct stub_syscall *sc = &proc_data->syscall_data[i];
++			if (sc->syscall == STUB_SYSCALL_MMAP) {
++				uml_fp_add(UML_FP_host_mmap, 1);
++				uml_fp_add(UML_FP_host_mmap_pages, sc->mem.length / UM_KERN_PAGE_SIZE);
++			} else if (sc->syscall == STUB_SYSCALL_MUNMAP) {
++				uml_fp_add(UML_FP_host_munmap, 1);
++			}
++		}
++	}
++
+ 
+ 	/* Inform process how much we have filled in. */
+ 	proc_data->syscall_data_len = mm_idp->syscall_data_len;
+ 	proc_data->syscall_fd_num = mm_idp->syscall_fd_num;
++	proc_data->fault_profile_cycles = 0;
++	proc_data->fault_profile_enabled = uml_fault_profile;
+ 
+ 	if (using_seccomp) {
+ 		proc_data->restart_wait = 1;
+@@ -127,7 +144,10 @@
+ 	 * In that case, syscall_data_len points to the last executed syscall,
+ 	 * otherwise it will be zero (but we do not need to rely on that).
+ 	 */
++	uml_fp_add(UML_FP_batch_ns, uml_fp_clock() - fp_start);
++	uml_fp_add(UML_FP_host_mmap_cycles, proc_data->fault_profile_cycles);
+ 	if (proc_data->err < 0) {
++		uml_fp_add(UML_FP_failed_batches, 1);
+ 		syscall_stub_dump_error(mm_idp);
+ 
+ 		/* Store error code in case someone tries to add more syscalls */
+@@ -244,6 +264,8 @@
+ {
+ 	struct stub_syscall *sc;
+ 
++	uml_fp_add(UML_FP_map_requests, 1);
++	uml_fp_add(UML_FP_map_pages, len / UM_KERN_PAGE_SIZE);
+ 	/* Compress with previous syscall if that is possible */
+ 	sc = syscall_stub_get_previous(mm_idp, STUB_SYSCALL_MMAP, virt);
+ 	if (sc && sc->mem.prot == prot &&
+@@ -255,6 +277,7 @@
+ 				mm_idp->cached_phys_fd : mm_idp->syscall_fd_map[sc->mem.fd];
+ 
+ 		if (phys_fd == prev_fd) {
++			uml_fp_add(UML_FP_map_coalesced, 1);
+ 			sc->mem.length += len;
+ 			return 0;
+ 		}
+@@ -771,3 +794,21 @@
+ 		 * re-evaluates the whole table after waking. */
+ 	}
+ }
++
++/* Host quota counters, read only when userspace requests a profile snapshot. */
++int uml_fp_host_cpu(unsigned long long *periods, unsigned long long *throttled)
++{
++	char line[128];
++	int found = 0;
++	FILE *f = fopen("/sys/fs/cgroup/cpu.stat", "r");
++	if (!f)
++		return -errno;
++	while (fgets(line, sizeof(line), f)) {
++		if (sscanf(line, "nr_periods %llu", periods) == 1)
++			found |= 1;
++		if (sscanf(line, "nr_throttled %llu", throttled) == 1)
++			found |= 2;
++	}
++	fclose(f);
++	return found == 3 ? 0 : -EINVAL;
++}
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -170,6 +170,9 @@
+ 	int syscall_fd_num;
+ 
+ 	int syscall_data_len;
++	/* Fits the existing padding before the aligned GPU payload. */
++	unsigned long long fault_profile_cycles;
++	unsigned int fault_profile_enabled;
+ 
+ 	/* Bounded RM blocks, including a snapshotted 40-byte child. */
+ 	unsigned char gpu_payload[STUB_GPU_PAYLOAD_SIZE] __aligned(64);
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -10,6 +10,23 @@
+ #include <errno.h>
+ #include <linux/sched.h>
+ #include <linux/prctl.h>
++
++_Static_assert(__builtin_offsetof(struct stub_data, gpu_payload) == 64,
++	       "fault profile must fit the existing header padding");
++_Static_assert(__builtin_offsetof(struct stub_data, syscall_data) == 192,
++	       "fault profile must not move the syscall queue");
++
++static __always_inline unsigned long long stub_fault_clock(void)
++{
++#ifdef __x86_64__
++	unsigned int lo, hi;
++
++	asm volatile("lfence; rdtsc" : "=a"(lo), "=d"(hi) : : "memory");
++	return ((unsigned long long)hi << 32) | lo;
++#else
++	return 0;
++#endif
++}
+ 
+ /*
+  * Known security issues
+@@ -344,7 +361,9 @@
+ 			}
+ 			d->memfd_cached = 1;
+ 			break;
+-		case STUB_SYSCALL_MMAP:
++		case STUB_SYSCALL_MMAP: {
++			unsigned long long started = 0;
++
+ 			if (d->memfd_cached && sc->mem.fd == STUB_MEMFD_SLOT)
+ 				fd = STUB_MEMFD_HOST_FD;
+ 			else if (fd_map)
+@@ -352,17 +371,22 @@
+ 			else
+ 				fd = sc->mem.fd;
+ 
++			if (d->fault_profile_enabled)
++				started = stub_fault_clock();
+ 			res = stub_syscall6(STUB_MMAP_NR,
+ 					    sc->mem.addr, sc->mem.length,
+ 					    sc->mem.prot,
+ 					    MAP_SHARED | MAP_FIXED,
+ 					    fd, sc->mem.offset);
++			if (d->fault_profile_enabled)
++				d->fault_profile_cycles += stub_fault_clock() - started;
+ 			if (res != sc->mem.addr) {
+ 				d->err = res;
+ 				d->syscall_data_len = i;
+ 				return -1;
+ 			}
+ 			break;
++		}
+ #ifdef __x86_64__
+ 		case STUB_SYSCALL_CLONE: {
+ 			struct stub_data *child = (void *)sc->mem.addr;
