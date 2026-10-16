@@ -13,3 +13,4 @@
 | `gpu-usercopy-lock-order` | GPU ioctl 与 mmap 锁顺序修复 | 可应用；多上下文仍有失败 |
 | `share-poll` | virtio-uml 完成轮询（`virtio_uml.poll_iters=N`），保留中断后备 | 未证明元数据收益，不建议开启 |
 | `share-profile` | FUSE 每种请求的往返计时与 tracepoint（诊断用） | 可应用 |
+| `net-profile` | `uml_net_profile=1`：vector 驱动收发/SIGIO/IRQ 计数和按线程的 CPU 拆分；bench 在网络指标后自动跑带标记的传输诊断（诊断用） | 可应用 |

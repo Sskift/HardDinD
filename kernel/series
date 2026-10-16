@@ -34,3 +34,5 @@
 0035-fuse-virtiofs-notifications.patch
 0036-um-anon-faultaround.patch
 0037-um-faultaround-edges.patch
+0038-um-vector-tx-poll.patch
+0039-um-net-idle-wait.patch
