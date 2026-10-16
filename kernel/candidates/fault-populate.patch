@@ -1,0 +1,61 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: populate writable coalesced RAM mappings in the broker
+
+Default off: uml_fault_populate=1. Set MAP_POPULATE after map coalescing for
+writable ranges larger than one page. Guest PTE permissions, normal page
+allocation and memcg charges precede the host map and remain unchanged.
+The only stub change is the STUB_SYSCALL_MMAP flags expression; no trap,
+syscall entry, GPU, or runner handoff path changes.
+
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -8,2 +8,3 @@
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <sys/stat.h>
+@@ -31,2 +32,30 @@
+ 
++static unsigned int uml_fault_populate;
++static int __init uml_fault_populate_setup(char *line, int *add)
++{
++	char *end;
++	unsigned long enable;
++
++	*add = 0;
++	errno = 0;
++	enable = strtoul(line, &end, 10);
++	if (errno || !*line || *end || enable > 1) {
++		printk(UM_KERN_WARNING "uml_fault_populate requires 0 or 1\n");
++		return 0;
++	}
++	uml_fault_populate = enable;
++	return 0;
++}
++__uml_setup("uml_fault_populate=", uml_fault_populate_setup,
++"uml_fault_populate=<0|1>\n"
++"    Default 0. Populate writable multi-page host RAM mappings in the\n"
++"    broker mmap call, after guest PTE allocation and memory charging.\n\n");
++
++static unsigned int uml_fault_populate_flags(unsigned long length, int prot)
++{
++	return uml_fault_populate && length > UM_KERN_PAGE_SIZE &&
++	       (prot & PROT_WRITE) ? MAP_POPULATE : 0;
++}
++
++
+ void syscall_stub_dump_error(struct mm_id *mm_idp)
+@@ -258,2 +287,3 @@
+ 			sc->mem.length += len;
++			sc->mem.map_flags = uml_fault_populate_flags(sc->mem.length, prot);
+ 			return 0;
+@@ -287,2 +317,3 @@
+ 	sc->mem.offset = MMAP_OFFSET(offset);
++	sc->mem.map_flags = uml_fault_populate_flags(len, prot);
+ 
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -357,3 +357,3 @@
+ 					    sc->mem.prot,
+-					    MAP_SHARED | MAP_FIXED,
++					    MAP_SHARED | MAP_FIXED | sc->mem.map_flags,
+ 					    fd, sc->mem.offset);

@@ -1,0 +1,70 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: optionally populate memfd RAM at boot
+
+Default off: uml_ram_populate=1. Require memfd RAM and MADV_POPULATE_WRITE;
+a failed or unsupported advice aborts boot rather than silently falling back.
+This commits the configured guest RAM on the host, up to the full mem= size.
+Report its time and bytes in the boot log. It does not skip guest clearing or
+memory-cgroup charges, and does not pin pages against host reclaim.
+
+--- a/arch/um/os-Linux/mem.c
++++ b/arch/um/os-Linux/mem.c
+@@ -56,4 +56,5 @@
+ int uml_memfd_ram;
+ int uml_memfd_stub;
++static int uml_ram_populate;
+ 
+ static int __init memfd_option(char *line, int *add, int *value)
+@@ -243,4 +244,31 @@
+ }
+ 
++static int __init uml_ram_populate_setup(char *line, int *add)
++{
++	return memfd_option(line, add, &uml_ram_populate);
++}
++__uml_setup("uml_ram_populate=", uml_ram_populate_setup,
++"uml_ram_populate=<0|1>\n"
++"    Default 0. Populate the configured memfd RAM at boot. Requires Linux\n"
++"    MADV_POPULATE_WRITE and memfd_ram=1; errors abort boot. This commits\n"
++"    the entire guest RAM on the host and moves its first-use cost to boot.\n"
++"    Guest page clearing, memory cgroup charges and reclaim are unchanged.\n\n");
++
++int __init os_populate_ram(void *address, unsigned long length)
++{
++	long long started;
++
++	if (!uml_ram_populate)
++		return 0;
++	if (!uml_memfd_ram)
++		return -EINVAL;
++	started = os_nsecs();
++	if (madvise(address, length, MADV_POPULATE_WRITE))
++		return -errno;
++	os_info("HARDDIND_RAM_POPULATE bytes=%lu elapsed_ns=%llu\n", length,
++		(unsigned long long)(os_nsecs() - started));
++	return 0;
++}
++
+ int __init create_mem_file(unsigned long long len)
+ {
+--- a/arch/um/include/shared/os.h
++++ b/arch/um/include/shared/os.h
+@@ -243,4 +243,5 @@
+ extern int os_unmap_memory(void *addr, int len);
+ extern int os_drop_memory(void *addr, int length);
++extern int os_populate_ram(void *address, unsigned long length);
+ extern int can_drop_memory(void);
+ 
+--- a/arch/um/kernel/physmem.c
++++ b/arch/um/kernel/physmem.c
+@@ -84,4 +84,10 @@
+ 	}
+ 
++	err = os_populate_ram((void *)reserve_end, map_size);
++	if (err) {
++		os_warn("setup_physmem - populating RAM failed: %d\n", err);
++		exit(1);
++	}
++
+ 	/*
+ 	 * Special kludge - This page will be mapped in to userspace processes

@@ -1,0 +1,161 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: grow sequential anonymous prefault windows with headroom
+
+Default off: uml_faultaround_max=9 permits growth from the existing order 5
+up to order 9. Four sequential windows are required per growth step. Keep
+ordinary page faults/charges, VMA and PMD clipping, and all existing exclusions.
+Guest free pages and every memory-cgroup ancestor limit cap speculation to
+half observed headroom; concurrent allocations still use normal charging.
+
+--- a/arch/um/kernel/trap.c
++++ b/arch/um/kernel/trap.c
+@@ -4,6 +4,8 @@
+  */
+ 
+ #include <linux/mm.h>
++#include <linux/memcontrol.h>
++#include <linux/vmstat.h>
+ #include <linux/sched/signal.h>
+ #include <linux/hardirq.h>
+ #include <linux/module.h>
+@@ -276,11 +277,85 @@
+ 	return address > previous && address - previous == PAGE_SIZE;
+ }
+ 
++static unsigned int uml_faultaround_max;
++
++static int __init uml_faultaround_max_setup(char *line, int *add)
++{
++	unsigned int order;
++
++	*add = 0;
++	if (kstrtouint(line, 10, &order) || order > 9) {
++		pr_warn("uml_faultaround_max requires a value of 0..9\n");
++		return 0;
++	}
++	uml_faultaround_max = order;
++	return 0;
++}
++__uml_setup("uml_faultaround_max=", uml_faultaround_max_setup,
++"uml_faultaround_max=<order>\n"
++"    Default 0. Grow anonymous prefault windows after four sequential\n"
++"    windows, up to 2^order pages (max 512). Starts at uml_faultaround.\n"
++"    VMA and PMD boundaries still apply. Limit speculative allocation to\n"
++"    half the observed guest/memcg headroom; normal charging remains.\n"
++"    This changes residency timing and can still cause earlier OOM.\n\n");
++
++static unsigned int um_faultaround_next_order(unsigned long address,
++		unsigned long end, unsigned int previous, unsigned int base,
++		unsigned int maximum, unsigned int *hits)
++{
++	unsigned int order = base;
++
++	if (maximum < base)
++		maximum = base;
++	if (address >= PAGE_SIZE && address - PAGE_SIZE == end &&
++	    previous >= base && previous <= maximum) {
++		order = previous;
++		*hits = (*hits < 4 ? *hits : 0) + 1;
++		if (*hits == 4 && order < maximum) {
++			order++;
++			*hits = 0;
++		}
++	} else {
++		*hits = 1;
++	}
++	return order;
++}
++
++static unsigned int um_faultaround_budget_order(unsigned long margin,
++				 unsigned int order, unsigned int base)
++{
++	/* Leave room for demand faults and racing allocators. This is advisory;
++	 * the normal fault path makes the authoritative memcg charge. */
++	margin /= 2;
++	while (order && (1UL << order) > margin)
++		order--;
++	return order >= base ? order : 0;
++}
++
++static unsigned long um_faultaround_headroom(struct mm_struct *mm)
++{
++	unsigned long margin = global_zone_page_state(NR_FREE_PAGES);
++#ifdef CONFIG_MEMCG
++	struct mem_cgroup *memcg = get_mem_cgroup_from_mm(mm), *parent;
++
++	for (parent = memcg; parent; parent = parent_mem_cgroup(parent)) {
++		unsigned long limit = READ_ONCE(parent->memory.max);
++		unsigned long used = page_counter_read(&parent->memory);
++
++		margin = min(margin, limit > used ? limit - used : 0);
++	}
++	if (memcg)
++		mem_cgroup_put(memcg);
++#endif
++	return margin;
++}
++
+ static void um_anon_faultaround(struct mm_struct *mm,
+ 				struct vm_area_struct *vma,
+ 				unsigned long address)
+ {
+ 	unsigned int order = READ_ONCE(uml_faultaround_order);
++	unsigned int maximum = READ_ONCE(uml_faultaround_max), hits;
+ 	unsigned long start, end, addr;
+ 	vm_fault_t fault;
+ 
+@@ -291,6 +366,18 @@
+ 	if (!um_faultaround_sequential(&mm->context.faultaround_last, address))
+ 		return;
+ 
++	if (maximum) {
++		unsigned int base = order;
++
++		hits = READ_ONCE(mm->context.faultaround_hits);
++		order = um_faultaround_next_order(address & PAGE_MASK,
++			READ_ONCE(mm->context.faultaround_end),
++			READ_ONCE(mm->context.faultaround_order), base, maximum, &hits);
++		order = um_faultaround_budget_order(um_faultaround_headroom(mm), order, base);
++		if (!order)
++			return;
++	}
++
+ 	/* The mmap read lock pins the VMA; clipping cannot enter a guard or
+ 	 * a different VMA. Stay in the fault's PMD, whose PTE table exists.
+ 	 * No COW, permissions or invalidation paths are changed. */
+@@ -298,6 +385,12 @@
+ 				  READ_ONCE(uml_faultaround_edges), &start, &end))
+ 		return;
+ 
++	if (maximum) {
++		/* Advisory history only; mixed concurrent streams can lose growth. */
++		WRITE_ONCE(mm->context.faultaround_end, end);
++		WRITE_ONCE(mm->context.faultaround_order, order);
++		WRITE_ONCE(mm->context.faultaround_hits, hits);
++	}
+ 	for (addr = start; addr < end; addr += PAGE_SIZE) {
+ 		pmd_t *pmd;
+ 		pte_t *ptep;
+--- a/arch/um/include/asm/mmu.h
++++ b/arch/um/include/asm/mmu.h
+@@ -49,6 +49,8 @@
+ 	unsigned long sync_tlb_range_from;
+ 	unsigned long sync_tlb_range_to;
+ 	unsigned long faultaround_last;
++	unsigned long faultaround_end;
++	unsigned int faultaround_order, faultaround_hits;
+ } mm_context_t;
+ 
+ #define INIT_MM_CONTEXT(mm)						\
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -180,6 +180,9 @@
+ 	mm->context.sync_tlb_range_from = 0;
+ 	mm->context.sync_tlb_range_to = 0;
+ 	mm->context.faultaround_last = ~0UL;
++	mm->context.faultaround_end = 0;
++	mm->context.faultaround_order = 0;
++	mm->context.faultaround_hits = 0;
+ 	if (take_cached_broker(&mm->context))
+ 		return 0;
+ 
