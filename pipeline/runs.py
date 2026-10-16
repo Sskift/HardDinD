@@ -183,7 +183,7 @@ class Context:
         return instance.control(self.instance, command)
 
 
-def instance_options(artifacts, cpuset=None, kernel_args=(), shares=(), cpus=None, memory=None):
+def instance_options(artifacts, cpuset=None, kernel_args=(), shares=(), cpus=None, memory=None, share_opts=()):
     return {
         'kernel': artifacts['kernel'], 'disk': artifacts['rootfs'],
         'network_backend': artifacts['network_backend'], 'client': artifacts['client'],
@@ -191,10 +191,20 @@ def instance_options(artifacts, cpuset=None, kernel_args=(), shares=(), cpus=Non
         'memory': memory or config.GUEST_MEMORY, 'cpuset': cpuset, 'kernel_args': list(kernel_args),
         'shares': list(shares),
         # notify_changes: virtiofsd watches the outer tree and invalidates guest caches (patch 0035).
-        'share_options': {'posix_locks': True, 'notify_changes': True} if shares else None,
+        'share_options': {'posix_locks': True, 'notify_changes': True, **share_options(share_opts)} if shares else None,
         # vnet link: GSO/checksum offload and batched backend I/O (kernel patch 0034).
         'net_vnet': True, 'network_batch': 16,
     }
+
+
+
+def share_options(pairs):
+    """--share-opt K=V: true/false, integers, or strings (virtiofsd options, default off)."""
+    result = {}
+    for pair in pairs:
+        key, _, value = pair.partition('=')
+        result[key] = {'true': True, 'false': False}.get(value, int(value) if value.isdigit() else value)
+    return result
 
 
 def write_json(path, data):

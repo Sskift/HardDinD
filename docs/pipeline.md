@@ -42,6 +42,7 @@ run id 形如 `20261015-093000-9b3c6733-dirty-bench-label`，包含时间、git 
 - `kernel/series`：默认补丁顺序，全部应用。还不可信的功能放在启动参数后面，默认关闭。
 - `kernel/candidates/NAME.patch`：未合入的候选。`--with NAME` 在 series 之后应用，可叠加。候选证明有效后，移入 `kernel/patches` 并加进 series。
 - `--kernel-arg K=V`：给本次 guest 加启动参数，例如 `rseq=1`、`gpu_bridge=1`。
+- `--share-opt K=V`：给共享目录的 virtiofsd 加选项（默认关闭的实验开关），例如 `notify_batch=true`、`thread_pool_size=0`、`negative_timeout=60`；可用键见 `pipeline/instance.py`。
 - 内核产物的 key 包含 series、候选和配置，切换候选只做增量编译。
 
 ## 结果与判定

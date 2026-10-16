@@ -317,7 +317,8 @@ def with_guest(run_id, run_dir, artifacts, a, suite, cpuset):
     share = run_dir / f'share-{suite}'
     share.mkdir()
     shares = [share]
-    opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares)
+    opts = runs.instance_options(artifacts, cpuset=cpuset, kernel_args=a.kernel_arg, shares=shares,
+                                 share_opts=getattr(a, 'share_opt', ()))
     ctx = runs.Context(run_id=run_id, run_dir=run_dir, instance=path, artifacts=artifacts,
                        instance_options=opts, bench_cpus=cpuset, quick=getattr(a, 'quick', False),
                        only=a.only, share=share)
@@ -389,6 +390,8 @@ def main(argv=None):
         s.add_argument('--with', dest='with_', action='append', default=[], metavar='CANDIDATE',
                        help='apply kernel/candidates/CANDIDATE.patch after the series (repeatable)')
         s.add_argument('--kernel-arg', action='append', default=[], metavar='K=V', help='extra UML boot parameter')
+        s.add_argument('--share-opt', action='append', default=[], metavar='K=V',
+                       help='virtiofsd option for the shared directory (see pipeline/instance.py)')
         s.add_argument('--only', metavar='REGEX', help='run only matching checks/metrics; the rest count as not tested')
         s.add_argument('--label', help='short tag appended to the run id')
         s.add_argument('--keep', action='store_true', help='keep the guest disk after the run')

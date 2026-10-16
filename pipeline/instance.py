@@ -232,11 +232,17 @@ def serve(instance):
                    # MAP_SHARED with cache=never (FUSE_DIRECT_IO_ALLOW_MMAP); mapped pages are
                    # not invalidated by outer writes, unlike a native bind mount.
                    '--allow-mmap',
-                   '--thread-pool-size', '4']
+                   '--thread-pool-size', str(share_opts.get('thread_pool_size', 4))]
             if share_opts.get('profile'): cmd.append('--profile-requests')
             if share_opts.get('inline_flock'): cmd.append('--inline-flock')
             if share_opts.get('inline_metadata'): cmd.append('--inline-metadata')
             if share_opts.get('notify_changes'): cmd.append('--notify-changes')
+            if share_opts.get('notify_batch'): cmd.append('--notify-batch')
+            if share_opts.get('notify_dir_cache'): cmd.append('--notify-dir-cache')
+            if share_opts.get('negative_timeout'):
+                cmd += ['--negative-timeout', str(share_opts['negative_timeout'])]
+            if share_opts.get('notify_attr_timeout'):
+                cmd += ['--notify-attr-timeout', str(share_opts['notify_attr_timeout'])]
             if share_opts.get('posix_locks'): cmd.append('--shared-posix-locks')
             with (instance / f"{share['tag']}-{run}.log").open('x') as log:
                 fs = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
