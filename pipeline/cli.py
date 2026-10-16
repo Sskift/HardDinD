@@ -255,7 +255,7 @@ def run_suite(kind, a):
         if kind in ('test', 'ci'):
             with locks.measure(shared=True):
                 summary['test'] = with_guest(run_id, run_dir, artifacts, a, 'test', cpuset=None)
-            summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
+                summary['test']['checks'].insert(0, backend_selftest(run_dir, artifacts, a.only))
             summary['test']['checks'].append(shutdown_check(summary['test'].pop('guest_state')))
         if kind in ('bench', 'ci'):
             with locks.measure():
