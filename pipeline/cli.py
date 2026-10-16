@@ -91,7 +91,7 @@ echo "started job {name}: ./hd {args}"
 def cmd_jobs(_a):
     root = config.REMOTE_ROOT
     ssh(f'''cd {root}/logs 2>/dev/null || exit 0
-running=$(tmux ls -F '#{{session_name}}' 2>/dev/null | sed -n 's/^hd-//p')
+running=$(tmux ls -F '#{{session_name}}' 2>/dev/null | sed -n 's/^hd-//p' | tr '\n' ' ')
 for f in $(ls -t *.log 2>/dev/null | head -12); do
   n=${{f%.log}}; s=done; echo " $running " | grep -q " $n " && s=running
   printf '%-24s %-8s %s\\n' "$n" "$s" "$(tail -n 1 "$f" | cut -c1-110)"
