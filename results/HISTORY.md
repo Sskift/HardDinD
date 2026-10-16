@@ -2,6 +2,7 @@
 
 | run | revision | functional | key | important | other |
 |---|---|---|---|---|---|
+| 20261016-030029-a173e9b9-ci-default-net-promoted | a173e9b9 | 151/154 | 6/10 | 5/13 | 2/7 |
 | 20261016-013258-db04c6fd-ci-net-idle-txpoll | db04c6fd | 152/154 | 6/10 | 5/13 | 3/7 |
 | 20261015-234159-ef2f21b1-ci-norseq-faultaround | ef2f21b1 | 152/154 | 7/10 | 4/13 | 3/7 |
 | 20261015-214804-61ab7d1e-ci-faultaround2 | 61ab7d1e | 144/146 | 6/10 | 5/13 | 3/7 |
