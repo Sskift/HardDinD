@@ -1182,6 +1182,9 @@ def core_dynamic_semantic(c):
 
 @check('process.core_startup_pressure', 'run|container exec', helpers=True, timeout=240)
 def core_startup_pressure(c, workers=4, count=32):
+    # Concurrent container starts exercise runner creation and broker reuse. The outer
+    # container's CPU quota is shared with /root/udock and other jobs, so this check does
+    # not burn host CPU to force quota throttling; it records the throttle counters.
     from pipeline.runs import throttle
     observer = c.container('sleep', '240', image=HELPERS, opts=('--privileged',), detached=True)
     def counters():
@@ -1190,33 +1193,20 @@ def core_startup_pressure(c, workers=4, count=32):
         return {k: int(v) for k, v in (line.split() for line in output.splitlines())}
     before, cpu_before = counters(), throttle()
     names = [c.object('container', 'pressure-' + str(n)) for n in range(count)]
-    burn = subprocess.Popen([c.suite.bins / 'core_pressure', '30'], stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True, start_new_session=True)
-    c.processes.append(burn)
-    require(re.fullmatch(r'ready [1-9][0-9]*\n', burn.stdout.readline()), 'host pressure did not start')
     def run(name):
         result = c.ctx.docker('run', '--rm', '--name', name, '--label', c.label,
                               BASE, 'sh', '-ec', 'for n in 1 2 3 4; do /bin/true; done; echo startup-ok',
                               timeout=c.remaining(120))
         return name, result
-    try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-            for name, result in pool.map(run, names):
-                c.write(name + '\n' + result.stdout + result.stderr)
-                require(result.returncode == 0 and result.stdout.strip() == 'startup-ok', 'runner startup failed')
-                c.forget_removed(('rm', name))
-        output, error = burn.communicate(timeout=c.remaining(40))
-        require(burn.returncode == 0 and not error, 'host pressure failed: ' + error)
-        row = json.loads(output)
-        require(row['schema'] == 'hd.core-pressure/1' and row['verified'] is True and row['threads'] > 0, row)
-        after, cpu_after = counters(), throttle()
-        c.write(json.dumps({'pressure': row, 'workers': workers, 'containers': count,
-                           'throttle_before': cpu_before, 'throttle_after': cpu_after,
-                           'syscalls': {k: after[k] - v for k, v in before.items() if k in after and k != 'enabled'}}))
-    finally:
-        c.write(json.dumps({'throttle_before': cpu_before, 'throttle_after': throttle()}))
-    require(cpu_before and cpu_after and cpu_after[1] > cpu_before[1],
-            'host quota pressure was not established')
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for name, result in pool.map(run, names):
+            c.write(name + '\n' + result.stdout + result.stderr)
+            require(result.returncode == 0 and result.stdout.strip() == 'startup-ok', 'runner startup failed')
+            c.forget_removed(('rm', name))
+    after, cpu_after = counters(), throttle()
+    c.write(json.dumps({'workers': workers, 'containers': count,
+                        'throttle_before': cpu_before, 'throttle_after': cpu_after,
+                        'syscalls': {k: after[k] - v for k, v in before.items() if k in after and k != 'enabled'}}))
 
 
 check('process.core_startup_burst', 'run|container exec', helpers=True, timeout=240)(
