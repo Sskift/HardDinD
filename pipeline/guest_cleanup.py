@@ -43,8 +43,9 @@ def cleanup_group(pgid):
             result.append(row)
         return result
     initial_processes = describe(live + zombies)
-    # Parent-death signals and the host init's reaping can lag wait() briefly.
-    grace = time.monotonic() + 0.25
+    # Parent-death signals and the host init's reaping can lag wait(); a runner
+    # that is unmapping several GiB of guest RAM can take seconds on a loaded host.
+    grace = time.monotonic() + 10
     while live and time.monotonic() < grace:
         time.sleep(0.05)
         live, zombies = group_members(pgid)
