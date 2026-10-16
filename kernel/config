@@ -1,5 +1,6 @@
 # Docker primitives remain real Linux primitives inside the guest.
 CONFIG_SMP=y
+CONFIG_UML_X86_RSEQ=y
 CONFIG_NR_CPUS=64
 CONFIG_BLK_DEV_UBD=y
 CONFIG_HOSTFS=y

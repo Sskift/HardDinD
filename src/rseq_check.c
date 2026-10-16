@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -204,6 +205,80 @@ static int wait_child(pid_t child, int *exit_status)
     return got != child || !WIFEXITED(status) || WEXITSTATUS(status) ? 1 : 0;
 }
 
+static uint64_t timestamp(void)
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts)) return 0;
+    return (uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
+}
+
+/* The shared page survives exec so exit/reaping is measured separately. */
+static int exec_timing(int inherited)
+{
+    int fd = inherited >= 0 ? inherited : memfd_create("exec-timing", 0);
+    if (fd < 0 || (inherited < 0 && ftruncate(fd, 4096))) return 1;
+    _Atomic uint64_t *times = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (times == MAP_FAILED) return 1;
+    if (inherited >= 0) {
+        atomic_store(&times[1], timestamp());
+        _exit(0);
+    }
+    int errors = 0, traced = 0, samples = 0;
+    double fork_ns = 0, exec_ns = 0, exit_ns = 0;
+    for (int i = 0; i < 20; i++) {
+        atomic_store(&times[0], 0); atomic_store(&times[1], 0);
+        uint64_t before = timestamp();
+        pid_t pid = fork();
+        if (pid < 0) { errors++; break; }
+        if (!pid) {
+            char number[24];
+            snprintf(number, sizeof(number), "%d", fd);
+            atomic_store(&times[0], timestamp());
+            execl("/proc/self/exe", "rseq_check", "--exec-timing-child", number, NULL);
+            _exit(1);
+        }
+        uint64_t after_fork = timestamp();
+        int status = 0;
+        pid_t got;
+        do {
+            got = waitpid(pid, &status, WNOHANG);
+            if (got < 0 && errno == EINTR) continue;
+            if (got) break;
+            if (!traced && timestamp() - before > 10000000) {
+                char path[64], line[256];
+                snprintf(path, sizeof(path), "/proc/%d/stack", pid);
+                FILE *stack = fopen(path, "r");
+                if (stack) {
+                    while (fgets(line, sizeof(line), stack)) fputs(line, stderr);
+                    fprintf(stderr, "exec stack read errno=%d\n", ferror(stack) ? errno : 0);
+                    fclose(stack);
+                } else fprintf(stderr, "exec stack open errno=%d\n", errno);
+                traced = 1;
+            }
+            struct timespec pause = {.tv_nsec = 500000};
+            nanosleep(&pause, NULL);
+        } while (!got || (got < 0 && errno == EINTR));
+        uint64_t end = timestamp(), child = atomic_load(&times[0]), exec = atomic_load(&times[1]);
+        int bad = got != pid || !WIFEXITED(status) || WEXITSTATUS(status) ||
+                  !before || after_fork < before || child < before || exec < child || end < exec;
+        errors += bad;
+        if (bad) break;
+        samples++;
+        fork_ns += after_fork - before; exec_ns += exec - child; exit_ns += end - exec;
+        printf("{\"check\":\"exec.timing\",\"status\":\"pass\",\"fork_ns\":%llu,"
+               "\"exec_ns\":%llu,\"exit_wait_ns\":%llu}\n",
+               (unsigned long long)(after_fork - before), (unsigned long long)(exec - child),
+               (unsigned long long)(end - exec));
+    }
+    printf("{\"check\":\"summary\",\"status\":\"%s\",\"pass\":%d,\"fail\":%d,"
+           "\"poll_ns\":500000,"
+           "\"fork_ns\":%.0f,\"exec_ns\":%.0f,\"exit_wait_ns\":%.0f}\n",
+           errors ? "fail" : "pass", samples, errors, fork_ns / (samples ? samples : 1),
+           exec_ns / (samples ? samples : 1), exit_ns / (samples ? samples : 1));
+    munmap((void *)times, 4096); close(fd);
+    return errors ? 1 : 0;
+}
+
 static int trap_free(void)
 {
     fflush(stdout);
@@ -318,6 +393,13 @@ static void upstream(void)
 
 int main(int argc, char **argv)
 {
+    if (argc == 2 && !strcmp(argv[1], "--exec-timing")) return exec_timing(-1);
+    if (argc == 3 && !strcmp(argv[1], "--exec-timing-child")) {
+        char *end;
+        long fd = strtol(argv[2], &end, 10);
+        if (!*argv[2] || *end || fd < 0 || fd > INT32_MAX) return 2;
+        return exec_timing((int)fd);
+    }
     if (sched_getaffinity(0, sizeof(allowed), &allowed)) return 1;
     int available = register_area();
     if (argc == 2 && !strcmp(argv[1], "--exec-check"))

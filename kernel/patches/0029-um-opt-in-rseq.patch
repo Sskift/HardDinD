@@ -1,3 +1,23 @@
+From: HardDinD developers
+Subject: um: support x86-64 rseq and interrupt-driven IRQ work
+
+Wire x86-64 UML into the generic rseq signal and syscall hooks. The normal
+notify-resume path supplies CPU IDs and handles migration fixups. Retain a
+Kconfig opt-in for other UML configurations.
+
+RSEQ enables SCHED_MM_CID, whose last-user and exec cleanup invokes
+irq_work_sync(). Without an architecture interrupt, that routine always
+waits for an RCU grace period, even for an unused work item. Two such waits
+turn fork+exec into roughly 85 ms on UML, regardless of rseq registration.
+
+Use a coalescible IPI to drain the generic raised/lazy lists in hardirq
+context. The existing host signal and deferred-IPI machinery preserves IRQ
+masking and wakes idle CPUs. Keep the tick fallback until the boot CPU's
+IPI transport is initialized, then explicitly drain early queued work.
+harddind_irq_work=0 retains the old path for A/B comparisons.
+UP builds retain the generic fallback. No RCU wait is bypassed: the generic
+IRQ-work implementation selects its interrupt-safe synchronization path.
+
 --- a/arch/um/Kconfig
 +++ b/arch/um/Kconfig
 @@ -46,6 +46,17 @@
@@ -70,3 +90,117 @@
 +	/* Generic debug validation; the normal resume hook handles ID updates. */
 +	rseq_syscall(regs);
  }
+--- a/arch/um/include/asm/Kbuild
++++ b/arch/um/include/asm/Kbuild
+@@ -8,7 +8,6 @@
+ generic-y += ftrace.h
+ generic-y += hw_irq.h
+ generic-y += irq_regs.h
+-generic-y += irq_work.h
+ generic-y += kdebug.h
+ generic-y += mcs_spinlock.h
+ generic-y += mmiowb.h
+--- a/arch/um/kernel/smp.c
++++ b/arch/um/kernel/smp.c
+@@ -15,6 +15,7 @@
+ #include <linux/threads.h>
+ #include <linux/cpu.h>
+ #include <linux/hardirq.h>
++#include <linux/irq_work.h>
+ #include <linux/smp.h>
+ #include <linux/smp-internal.h>
+ #include <init.h>
+@@ -27,7 +28,23 @@
+ 	UML_IPI_CALL_SINGLE,
+ 	UML_IPI_CALL,
+ 	UML_IPI_STOP,
++	UML_IPI_IRQ_WORK,
+ };
++
++bool uml_irq_work_ready __ro_after_init;
++static bool harddind_irq_work __initdata = true;
++
++static int __init irq_work_setup(char *str)
++{
++	return !kstrtobool(str, &harddind_irq_work);
++}
++__setup("harddind_irq_work=", irq_work_setup);
++
++void arch_irq_work_raise(void)
++{
++	if (READ_ONCE(uml_irq_work_ready))
++		os_send_ipi(smp_processor_id(), UML_IPI_IRQ_WORK);
++}
+ 
+ void arch_smp_send_reschedule(int cpu)
+ {
+@@ -82,6 +99,11 @@
+ 	case UML_IPI_CALL:
+ 		inc_irq_stat(irq_call_count);
+ 		generic_smp_call_function_interrupt();
++		break;
++
++	case UML_IPI_IRQ_WORK:
++		inc_irq_stat(irq_work_count);
++		irq_work_run();
+ 		break;
+ 
+ 	case UML_IPI_STOP:
+@@ -168,6 +190,11 @@
+ 	unsigned long deadline;
+ 
+ 	os_init_smp();
++	if (harddind_irq_work) {
++		WRITE_ONCE(uml_irq_work_ready, true);
++		/* Drain work queued before the boot CPU could receive IPIs. */
++		arch_irq_work_raise();
++	}
+ 
+ 	for_each_possible_cpu(cpu) {
+ 		if (cpu == me)
+--- a/arch/um/include/asm/irq_work.h
++++ b/arch/um/include/asm/irq_work.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __UM_IRQ_WORK_H
++#define __UM_IRQ_WORK_H
++
++#include <linux/compiler.h>
++#include <linux/types.h>
++
++static inline bool arch_irq_work_has_interrupt(void)
++{
++#ifdef CONFIG_SMP
++	extern bool uml_irq_work_ready;
++
++	return READ_ONCE(uml_irq_work_ready);
++#else
++	return false;
++#endif
++}
++
++#endif
+--- a/arch/um/include/asm/hardirq.h
++++ b/arch/um/include/asm/hardirq.h
+@@ -12,6 +12,7 @@
+ #if IS_ENABLED(CONFIG_SMP)
+ 	unsigned int irq_resched_count;
+ 	unsigned int irq_call_count;
++	unsigned int irq_work_count;
+ #endif
+ } ____cacheline_aligned irq_cpustat_t;
+ 
+--- a/arch/um/kernel/irq.c
++++ b/arch/um/kernel/irq.c
+@@ -722,6 +722,11 @@
+ 	for_each_online_cpu(cpu)
+ 		seq_printf(p, "%10u ", irq_stats(cpu)->irq_call_count);
+ 	seq_puts(p, " Function call interrupts\n");
++
++	seq_printf(p, "%*s: ", prec, "IWI");
++	for_each_online_cpu(cpu)
++		seq_printf(p, "%10u ", irq_stats(cpu)->irq_work_count);
++	seq_puts(p, " IRQ work interrupts\n");
+ #endif
+ 
+ 	return 0;
