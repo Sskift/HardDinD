@@ -1294,7 +1294,22 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  		/*
 --- a/arch/um/kernel/tlb.c
 +++ b/arch/um/kernel/tlb.c
-@@ -263,6 +263,8 @@
+@@ -242,8 +242,12 @@
+ 
+ void um_tlb_sync_if_parallel(struct mm_struct *mm)
+ {
+-	if (parallel_userspace && mm != &init_mm && um_tlb_sync(mm))
+-		panic("Unable to synchronize shared host mappings");
++	if (parallel_userspace && mm != &init_mm) {
++		int err = um_tlb_sync(mm);
++		if (err)
++			panic("Unable to synchronize shared host mappings: error=%d broker=%d queued=%d",
++			      err, mm->context.id.pid, mm->context.id.syscall_data_len);
++	}
+ }
+ 
+ void flush_tlb_all(void)
+@@ -263,6 +267,8 @@
  	struct vm_area_struct *vma;
  	VMA_ITERATOR(vmi, mm, 0);
  
@@ -1349,7 +1364,31 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  #include <mm_id.h>
  #include <os.h>
  #include <ptrace_user.h>
-@@ -322,6 +323,8 @@
+@@ -150,13 +151,17 @@
+ 		return 0;
+ 
+ 	/* If an error happened already, report it and reset the state. */
+-	if (mm_idp->syscall_data_len < 0) {
++	if (mm_idp->syscall_data_len < 0)
+ 		res = mm_idp->syscall_data_len;
+-		mm_idp->syscall_data_len = 0;
+-		return res;
+-	}
+-
+-	res = do_syscall_stub(mm_idp);
++	else
++		res = do_syscall_stub(mm_idp);
++	if (res) {
++		struct stub_data *data = (void *)mm_idp->stack;
++		printk(UM_KERN_ERR "UML broker flush failed: pid=%d result=%d queued=%d done=%d err=%ld signal=%d phase=%u fds=%d\n",
++		       mm_idp->pid, res, mm_idp->syscall_data_len,
++		       data->syscall_data_len, data->err, data->signal,
++		       stub_futex_phase(&data->futex), mm_idp->syscall_fd_num);
++	}
+ 	mm_idp->syscall_data_len = 0;
+ 
+ 	return res;
+@@ -322,6 +327,8 @@
  		return -errno;
  	child->sock = sockets[0];
  	data->spin_limit = uml_seccomp_spin_limit;
@@ -1358,7 +1397,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
  	map(broker, addr, STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE,
  	    UM_PROT_READ | UM_PROT_WRITE, fd, offset);
-@@ -339,12 +342,20 @@
+@@ -339,12 +346,20 @@
  		goto fail;
  	child->pid = parent->clone_pid;
  	if (child->pid < 2) {
