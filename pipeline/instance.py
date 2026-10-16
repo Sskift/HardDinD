@@ -481,7 +481,10 @@ def serve(instance):
             state['network_cleanup'] = cleanup_group(helper.pid)
         state['filesystem_cleanup'] = []
         for fs, path, share, _ in filesystems:
-            if fs.poll() is None:
+            # virtiofsd exits by itself once the guest disconnects; SIGTERM mid-teardown exits 1.
+            try:
+                fs.wait(timeout=2)
+            except subprocess.TimeoutExpired:
                 fs.terminate()
                 try: fs.wait(timeout=5)
                 except subprocess.TimeoutExpired:
