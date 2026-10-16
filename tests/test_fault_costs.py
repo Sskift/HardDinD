@@ -36,9 +36,11 @@ class FaultCostsTests(unittest.TestCase):
         self.assertTrue(row['verified'])
         self.assertFalse(row['profile'])
         samples = {s['name']: s for s in row['samples']}
-        for name in ('anon_first', 'anon_repeat', 'resident_zero'):
+        for name in ('anon_first', 'anon_verify', 'anon_repeat', 'resident_zero', 'anon_release'):
             self.assertEqual(samples[name]['operations'], 512)
             self.assertGreater(samples[name]['ns_per_op'], 0)
+        self.assertEqual(samples['anon_cycles']['operations'], 512 * 8)
+        self.assertGreater(samples['anon_cycles']['ns_per_op'], 0)
         if 'host_sigsegv_return' in samples:
             self.assertEqual(samples['host_sigsegv_return']['operations'], 20000)
             self.assertEqual(samples['host_mmap_32']['operations'], 16)

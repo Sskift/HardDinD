@@ -19,7 +19,7 @@
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "fault_costs:%d: %s errno=%d\n", \
     __LINE__, #x, errno); exit(1); } } while (0)
 #define MAX_FIELDS 32
-#define MAX_SAMPLES 16
+#define MAX_SAMPLES 18
 struct fields { char name[MAX_FIELDS][40]; uint64_t value[MAX_FIELDS]; unsigned count; };
 struct sample { const char *name; size_t count; uint64_t ns; long faults; struct fields before, after; };
 static struct sample samples[MAX_SAMPLES];
@@ -146,12 +146,19 @@ int main(int argc, char **argv) {
     size_t bytes = pages * page;
     unsigned char *p = map(bytes, -1, PROT_READ | PROT_WRITE);
     memset(samples, 0, sizeof(samples)); /* Keep snapshot storage faults out of timing. */
-    struct sample *s = begin("anon_first", pages); touch(p, pages); end(s); verify(p, pages);
+    struct sample *s = begin("anon_first", pages); touch(p, pages); end(s);
+    s = begin("anon_verify", pages); verify(p, pages); end(s);
     s = begin("anon_repeat", pages); touch(p, pages); end(s); verify(p, pages);
     memset(p, 0x7a, bytes);
     s = begin("resident_zero", pages); memset(p, 0, bytes); end(s);
     for (size_t i = 0; i < bytes; i++) CHECK(p[i] == 0);
     s = begin("anon_release", pages); CHECK(!munmap(p, bytes)); end(s);
+    s = begin("anon_cycles", pages * 8);
+    for (unsigned i = 0; i < 8; i++) {
+        p = map(bytes, -1, PROT_READ | PROT_WRITE);
+        touch(p, pages); verify(p, pages); CHECK(!munmap(p, bytes));
+    }
+    end(s);
 #if defined(__linux__) && defined(__x86_64__)
     if (!guest) host_calibration(pages);
 #endif
