@@ -1,6 +1,6 @@
 --- a/daemon/libnetwork/internal/rlkclient/harddind_port_error_linux_test.go
 +++ b/daemon/libnetwork/internal/rlkclient/harddind_port_error_linux_test.go
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +package rlkclient
 +
 +import (
@@ -20,6 +20,7 @@
 +			want := driver == "harddind-slirp" && (message == "host port unavailable: Address already in use" || message == "host port already allocated")
 +			assert.Equal(t, errors.Is(err, syscall.EADDRINUSE), want)
 +			assert.Equal(t, err.Error(), message)
++			assert.Check(t, errors.Is(err, input))
 +		}
 +	}
 +}
@@ -42,7 +43,7 @@
  	}
  	deferFunc := func() error {
  		if dErr := pm.RemovePort(context.WithoutCancel(ctx), st.ID); dErr != nil {
-@@ -220,3 +221,19 @@
+@@ -220,3 +221,20 @@
  	}
  	return deferFunc, nil
  }
@@ -62,6 +63,7 @@
 +type portInUseError struct{ error }
 +
 +func (e *portInUseError) Is(target error) bool { return target == syscall.EADDRINUSE }
++func (e *portInUseError) Unwrap() error        { return e.error }
 --- a/daemon/libnetwork/portmappers/nat/harddind_retry_linux_test.go
 +++ b/daemon/libnetwork/portmappers/nat/harddind_retry_linux_test.go
 @@ -0,0 +1,122 @@
