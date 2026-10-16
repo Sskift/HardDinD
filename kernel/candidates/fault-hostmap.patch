@@ -1,0 +1,205 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: retain host mapping identity for protection and lazy fork
+
+Default off: uml_fault_hostmap=1 coalesces permission-only changes with mprotect.
+uml_fault_lazy=1 additionally defers never-mapped, non-young PTEs until access.
+Normal guest fork/COW, memory accounting, and synchronous invalidation remain.
+Copied PTEs never inherit host ownership: set_pte derives it from its old slot.
+No user runners or guest address spaces are shared across fork or exec.
+
+--- a/arch/um/include/asm/pgtable.h
++++ b/arch/um/include/asm/pgtable.h
+@@ -12,2 +12,3 @@
+ #include <linux/mm_types.h>
++#include <fault-hostmap.h>
+ 
+@@ -15,2 +16,3 @@
+ #define _PAGE_NEEDSYNC	0x002
++#define _PAGE_HOST	0x004 /* this PTE owns a queued/installed host mapping */
+ #define _PAGE_RW	0x020
+@@ -203,2 +205,19 @@
+ 
++static inline unsigned long uml_host_pte_value(unsigned long old, unsigned long value,
++					      int enabled)
++{
++	if (!enabled)
++		return value | _PAGE_NEEDSYNC;
++	value &= ~_PAGE_HOST;
++	if ((old & (_PAGE_PRESENT | _PAGE_PROTNONE)) &&
++	    (value & (_PAGE_PRESENT | _PAGE_PROTNONE)) &&
++	    !((old ^ value) & PAGE_MASK) && (old & _PAGE_HOST)) {
++		value |= _PAGE_HOST;
++		if (!(old & _PAGE_NEEDSYNC) &&
++		    !((old ^ value) & ~(_PAGE_HOST | _PAGE_NEEDSYNC)))
++			return value & ~_PAGE_NEEDSYNC;
++	}
++	return value | _PAGE_NEEDSYNC;
++}
++
+ static inline void set_pte(pte_t *pteptr, pte_t pteval)
+@@ -210,3 +229,7 @@
+ 
+-	WRITE_ONCE(*pteptr, pte_mkneedsync(pteval));
++	if (unlikely(uml_fault_hostmap))
++		pteval = __pte(uml_host_pte_value(pte_val(READ_ONCE(*pteptr)), pte_val(pteval), 1));
++	else
++		pteval = pte_mkneedsync(pteval);
++	WRITE_ONCE(*pteptr, pteval);
+ }
+@@ -252,3 +275,3 @@
+ {
+-	return !((pte_val(pte_a) ^ pte_val(pte_b)) & ~_PAGE_NEEDSYNC);
++	return !((pte_val(pte_a) ^ pte_val(pte_b)) & ~(_PAGE_NEEDSYNC | _PAGE_HOST));
+ }
+--- /dev/null
++++ b/arch/um/include/shared/fault-hostmap.h
+@@ -0,0 +1,8 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef UML_FAULT_HOSTMAP_H
++#define UML_FAULT_HOSTMAP_H
++struct mm_id;
++extern int uml_fault_hostmap;
++extern int uml_fault_lazy;
++int uml_host_protect(struct mm_id *, unsigned long, unsigned long, int);
++#endif
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -45,4 +45,6 @@
+ 	STUB_SYSCALL_GPU,
++	STUB_SYSCALL_MPROTECT,
+ };
+ 
++#define STUB_HAS_MPROTECT 1
+ #define STUB_MEMFD_SLOT (-1)
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -337,2 +337,18 @@
+ 		switch (sc->syscall) {
++		case STUB_SYSCALL_MPROTECT: {
++#ifdef STUB_FAULT_PROFILE
++			unsigned long long started = d->fault_profile_enabled ? stub_fault_clock() : 0;
++#endif
++			res = stub_syscall3(__NR_mprotect, sc->mem.addr, sc->mem.length, sc->mem.prot);
++#ifdef STUB_FAULT_PROFILE
++			if (d->fault_profile_enabled)
++				sc->mem.offset = stub_fault_clock() - started;
++#endif
++			if (res) {
++				d->err = res;
++				d->syscall_data_len = i;
++				return -1;
++			}
++			break;
++		}
+ 		case STUB_SYSCALL_MEMFD:
+--- a/arch/um/kernel/skas/stub_exe.c
++++ b/arch/um/kernel/skas/stub_exe.c
+@@ -195,5 +195,6 @@
+ 			 SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS),
++		/* Mapping brokers also change ordinary RAM permissions. The
++		 * syscall remains restricted to the stub instruction page. */
+ 		BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_mprotect, 0, 1),
+-		BPF_STMT(BPF_RET | BPF_K, init_data.gpu_bridge ?
+-			 SECCOMP_RET_ALLOW : SECCOMP_RET_KILL_PROCESS),
++		BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+ 		/* write(): with the bridge on, the relay notify datagram goes to
+--- a/arch/um/kernel/tlb.c
++++ b/arch/um/kernel/tlb.c
+@@ -7,2 +7,6 @@
+ #include <linux/module.h>
++#include <linux/init.h>
++#include <linux/kstrtox.h>
++#include <init.h>
++#include <fault-hostmap.h>
+ #include <linux/sched/signal.h>
+@@ -17,4 +21,38 @@
+ 
++int uml_fault_hostmap;
++int uml_fault_lazy;
++EXPORT_SYMBOL(uml_fault_hostmap);
++
++static int __init uml_fault_hostmap_setup(char *line, int *add)
++{
++	unsigned int value;
++	*add = 0;
++	if (!kstrtouint(line, 10, &value) && value <= 1)
++		uml_fault_hostmap = value;
++	else
++		pr_warn("uml_fault_hostmap requires 0 or 1\n");
++	return 0;
++}
++__uml_setup("uml_fault_hostmap=", uml_fault_hostmap_setup,
++"uml_fault_hostmap=<0|1>\n"
++"    Default 0. Track installed host PTEs and coalesce permission-only\n"
++"    changes with mprotect, preserving normal guest COW and TLB ordering.\n\n");
++static int __init uml_fault_lazy_setup(char *line, int *add)
++{
++	unsigned int value;
++	*add = 0;
++	if (!kstrtouint(line, 10, &value) && value <= 1)
++		uml_fault_lazy = value;
++	else
++		pr_warn("uml_fault_lazy requires 0 or 1\n");
++	return 0;
++}
++__uml_setup("uml_fault_lazy=", uml_fault_lazy_setup,
++"uml_fault_lazy=<0|1>\n"
++"    Default 0. With uml_fault_hostmap=1, leave never-mapped old PTEs\n"
++"    absent in the host until accessed. Guest page tables and COW remain.\n\n");
++
+ struct vm_ops {
+ 	struct mm_id *mm_idp;
++	bool hostmap;
+ 
+@@ -83,4 +121,6 @@
+ 
+-			ret = ops->mmap(ops->mm_idp, addr, PAGE_SIZE,
+-					prot, fd, offset);
++			if (ops->hostmap && (pte_val(entry) & _PAGE_HOST))
++				ret = uml_host_protect(ops->mm_idp, addr, PAGE_SIZE, prot);
++			else if (!(ops->hostmap && uml_fault_lazy && !pte_young(entry)))
++				ret = ops->mmap(ops->mm_idp, addr, PAGE_SIZE, prot, fd, offset);
+ 		} else
+@@ -88,4 +128,9 @@
+ 
+-		cmpxchg(&pte_val(*pte), pte_val(entry),
+-			pte_val(pte_mkuptodate(entry)));
++		{
++			pte_t updated = pte_mkuptodate(entry);
++			if (!ret && ops->hostmap && pte_present(entry) &&
++			    ((pte_val(entry) & _PAGE_HOST) || !uml_fault_lazy || pte_young(entry)))
++				pte_val(updated) |= _PAGE_HOST;
++			cmpxchg(&pte_val(*pte), pte_val(entry), pte_val(updated));
++		}
+ 	} while (pte++, addr += PAGE_SIZE, ((addr < end) && !ret));
+@@ -183,2 +228,3 @@
+ 	ops.mm_idp = &mm->context.id;
++	ops.hostmap = uml_fault_hostmap && mm != &init_mm;
+ 	if (mm == &init_mm) {
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -15,2 +15,3 @@
+ #include <mem_user.h>
++#include <fault-hostmap.h>
+ #include <mem.h>
+@@ -773 +774,20 @@
+ }
++
++int uml_host_protect(struct mm_id *mm_idp, unsigned long addr,
++		     unsigned long len, int prot)
++{
++	struct stub_syscall *sc;
++
++	sc = syscall_stub_get_previous(mm_idp, STUB_SYSCALL_MPROTECT, addr);
++	if (sc && sc->mem.prot == prot) {
++		sc->mem.length += len;
++		return 0;
++	}
++	sc = syscall_stub_alloc(mm_idp);
++	sc->syscall = STUB_SYSCALL_MPROTECT;
++	sc->mem.addr = addr;
++	sc->mem.length = len;
++	sc->mem.prot = prot;
++	return 0;
++}
++
