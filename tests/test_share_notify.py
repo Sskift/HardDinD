@@ -8,8 +8,8 @@ class ChangeWindow(unittest.TestCase):
     def read(start, value, duration=1_000_000):
         return {'start_ns': start, 'end_ns': start + duration, 'value': [value]}
 
-    def score(self, reads, offset=0):
-        return change_window(reads, [7], 1, 0, 5_000_000, offset)
+    def score(self, reads, offset=0, uncertainty=0):
+        return change_window(reads, [7], 1, 0, 5_000_000, offset, uncertainty)
 
     def test_fresh_first_read_ignores_late_start_and_reply(self):
         row = self.score([self.read(57_000_000, 7)])
@@ -38,15 +38,48 @@ class ChangeWindow(unittest.TestCase):
             with self.subTest(reads=reads), self.assertRaises(AssertionError):
                 self.score(reads)
 
-    def test_clock_uses_minimum_network_rtt_and_checks_bound(self):
+    def test_uncertainty_shifts_stale_reads_later(self):
+        reads = [self.read(6_100_000, 6), self.read(8_100_000, 7)]
+        self.assertEqual(self.score(reads, 100_000, 200_000)['staleness_ms'], 1.2)
+        self.assertEqual(self.score([self.read(57_000_000, 7)], uncertainty=5_000_000)['staleness_ms'], 0)
+        reads = [self.read(54_900_000, 6), self.read(57_000_000, 7)]
+        self.assertEqual(self.score(reads, uncertainty=100_000)['staleness_ms'], 50)
+        with self.assertRaises(AssertionError):
+            self.score(reads, uncertainty=100_001)
+
+    def test_clock_reports_minimum_network_rtt_and_uncertainty(self):
         from suites.functional.shared_files import clock_offset
         result = clock_offset([(0, 20_000_000, 15_000_000, 15_000_000),
                                (0, 200_000, 110_000, 110_000)])
-        self.assertEqual(result['offset_ns'], 10_000)
-        for samples in ([], [(0, 100_000, 600_001, 600_001)],
-                        [(0, 100_000, -500_001, -500_001)], [(2, 1, 0, 0)]):
+        self.assertEqual((result['offset_ns'], result['rtt_ns'], result['uncertainty_ns']),
+                         (10_000, 200_000, 100_000))
+        for offset in (-1_680_000, 1_680_000):
+            result = clock_offset([(0, 100_000, 50_000 + offset, 50_000 + offset)])
+            self.assertEqual((result['offset_ns'], result['uncertainty_ns']), (offset, 50_000))
+        self.assertEqual(clock_offset([(0, 3, 1, 1)])['uncertainty_ns'], 2)
+        for samples in ([], [(2, 1, 0, 0)], [(0, 1, 0, 2)]):
             with self.subTest(samples=samples), self.assertRaises(AssertionError):
                 clock_offset(samples)
+
+    def test_calibration_retries_only_excess_uncertainty(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from suites.functional.shared_files import WindowPeer
+        slow = {'offset_ns': -1_680_000, 'rtt_ns': 10_000_002, 'uncertainty_ns': 5_000_001}
+        fast = {**slow, 'rtt_ns': 10_000_000, 'uncertainty_ns': 5_000_000}
+        peer = WindowPeer.__new__(WindowPeer)
+        peer.mode, peer.c = 'docker', SimpleNamespace(write=Mock())
+        peer.ask, peer.send = Mock(return_value={'rc': -1, 'errno': 2}), Mock()
+        peer.receive = Mock(return_value={'start_ns': 0, 'end_ns': 0})
+        with patch('suites.functional.shared_files.clock_offset', side_effect=[slow, fast]):
+            peer.calibrate()
+        self.assertEqual((peer.offset, peer.uncertainty, peer.rtt), (-1_680_000, 5_000_000, 10_000_000))
+        self.assertEqual(peer.send.call_count, 18)
+        peer.send.reset_mock()
+        with patch('suites.functional.shared_files.clock_offset', return_value=slow):
+            with self.assertRaisesRegex(AssertionError, 'test-channel clock uncertainty'):
+                peer.calibrate()
+        self.assertEqual(peer.send.call_count, 54)
 
     def test_window_bounds_and_percentile(self):
         class Case:

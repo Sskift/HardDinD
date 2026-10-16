@@ -450,6 +450,22 @@ static long long realtime_ns(void) {
 /* Fixed numeric fields keep the protocol independent of a JSON parser. */
 static int window_command(char *line, const char *path, int *held,
                           unsigned char *map, size_t map_size, int notify, int tree) {
+    if (!strcmp(line, "clock-state\n")) {
+        FILE *f = fopen("/sys/kernel/harddind_clock", "r");
+        long long state[10]; int count = 0, error = errno;
+        if (f) {
+            while (count < 10 && fscanf(f, "%lld", &state[count]) == 1) count++;
+            error = ferror(f) ? errno : EIO;
+            fclose(f);
+        }
+        if (count != 10) printf("{\"rc\":-1,\"errno\":%d}\n", error);
+        else {
+            printf("{\"rc\":0,\"harddind_clock\":[");
+            for (int i = 0; i < 10; i++) printf("%s%lld", i ? "," : "", state[i]);
+            puts("]}");
+        }
+        return 1;
+    }
     if (!strcmp(line, "clock\n")) {
         long long start = realtime_ns(), end = realtime_ns();
         printf("{\"rc\":0,\"start_ns\":%lld,\"end_ns\":%lld}\n", start, end);
@@ -569,16 +585,15 @@ WINDOW_FIELDS = ('rc', 'errno', 'byte', 'size', 'mode', 'mtime_ns', 'found_rc', 
 
 
 def clock_offset(samples):
-    """NTP midpoint estimate from the least delayed exchange."""
+    """NTP midpoint and conservative half-RTT uncertainty, in nanoseconds."""
     assert samples, 'missing clock exchanges'
     for a, b, g, h in samples:
         assert all(isinstance(v, int) and not isinstance(v, bool) for v in (a, b, g, h))
         assert a <= b and g <= h and b - a >= h - g, 'invalid clock exchange'
     a, b, g, h = min(samples, key=lambda s: s[1] - s[0] - (s[3] - s[2]))
     offset = ((g - a) + (h - b)) // 2
-    result = {'offset_ns': offset, 'rtt_ns': b - a - (h - g), 'samples': samples}
-    assert abs(offset) <= 500_000, result
-    return result
+    rtt = b - a - (h - g)
+    return {'offset_ns': offset, 'rtt_ns': rtt, 'uncertainty_ns': (rtt + 1) // 2, 'samples': samples}
 
 
 class WindowPeer(ProbePeer):
@@ -612,15 +627,25 @@ class WindowPeer(ProbePeer):
             raise
 
     def calibrate(self):
-        samples = []
-        for _ in range(9):
-            a = time.time_ns()
-            self.send('clock')
-            row = self.receive()
-            b = time.time_ns()
-            samples.append((a, b, row['start_ns'], row['end_ns']))
-        self.offset = clock_offset(samples)['offset_ns']
-        self.c.write('coherence_clock: ' + json.dumps({'mode': self.mode, **clock_offset(samples)}))
+        sync_state = self.ask('clock-state', ok=False)
+        for attempt in range(6):  # Initial calibration plus at most five retries.
+            samples = []
+            for _ in range(9):
+                a = time.time_ns()
+                self.send('clock')
+                row = self.receive()
+                b = time.time_ns()
+                samples.append((a, b, row['start_ns'], row['end_ns']))
+            estimate = clock_offset(samples)
+            self.c.write('coherence_clock: ' + json.dumps({'mode': self.mode, 'attempt': attempt + 1,
+                         'sync_state': sync_state, **estimate}))
+            if estimate['uncertainty_ns'] <= 5_000_000:
+                self.offset = estimate['offset_ns']
+                self.uncertainty = estimate['uncertainty_ns']
+                self.rtt = estimate['rtt_ns']
+                return
+        raise AssertionError({'reason': 'test-channel clock uncertainty exceeds 5 ms after five retries',
+                              **{key: estimate[key] for key in ('offset_ns', 'uncertainty_ns', 'rtt_ns')}})
 
     def window(self, command, expected, started_ns, ended_ns=None):
         ended_ns = time.time_ns() if ended_ns is None else ended_ns
@@ -644,12 +669,15 @@ class WindowPeer(ProbePeer):
             except (TimeoutError, AssertionError) as error:
                 raise AssertionError({'deadline': 'host 1s', 'reads': len(rows),
                     'last_read': rows[-1] if rows else None,
-                    'staleness_ms': max(0, rows[-1]['start_ns'] - self.offset - ended_ns) / 1e6 if rows else None,
+                    'staleness_ms': max(0, rows[-1]['start_ns'] - self.offset + self.uncertainty - ended_ns) / 1e6 if rows else None,
+                    'bound': 'upper', 'offset_ns': self.offset, 'uncertainty_ns': self.uncertainty,
+                    'rtt_ns': self.rtt,
                     'error': str(error)}) from error
             rows.append(row)
             if row['last']:
                 break
-        result = change_window(rows, self.window_values, self.window_mask, started_ns, ended_ns, self.offset)
+        result = change_window(rows, self.window_values, self.window_mask, started_ns, ended_ns,
+                               self.offset, self.uncertainty)
         self.c.write('coherence_sample: ' + json.dumps({'mode': self.mode, **result}, sort_keys=True))
         return result
 
@@ -680,8 +708,9 @@ def metadata_churn(peer, path, rounds=32):
     return samples
 
 
-def change_window(reads, expected, mask, started_ns, ended_ns, offset_ns=0):
-    """Score stale observations in the peer clock, excluding channel latency."""
+def change_window(reads, expected, mask, started_ns, ended_ns, offset_ns=0, uncertainty_ns=0):
+    """Upper-bound stale read starts using the calibrated clock uncertainty."""
+    assert isinstance(uncertainty_ns, int) and not isinstance(uncertainty_ns, bool) and uncertainty_ns >= 0
     assert started_ns <= ended_ns and reads, 'missing change or observations'
     stale, last_stale, previous, fresh = 0, 0, None, False
     for row in reads:
@@ -693,10 +722,11 @@ def change_window(reads, expected, mask, started_ns, ended_ns, offset_ns=0):
         fresh = all(not mask & (1 << i) or v == expected[i] for i, v in enumerate(value))
         if not fresh:
             stale += 1
-            last_stale = max(0, start - ended_ns)
+            last_stale = max(0, start + uncertainty_ns - ended_ns)
     result = {'origin': 'outer_change_end', 'change_start_ns': started_ns, 'change_end_ns': ended_ns,
               'first_access': stale == 0, 'stale_reads': stale, 'staleness_ms': last_stale / 1e6,
-              'fresh': fresh, 'last_read': reads[-1], 'offset_ns': offset_ns}
+              'fresh': fresh, 'last_read': reads[-1], 'offset_ns': offset_ns,
+              'bound': 'upper', 'uncertainty_ns': uncertainty_ns}
     assert fresh and last_stale <= 50_000_000 and previous <= ended_ns + 1_000_000_000, result
     return result
 
@@ -708,7 +738,7 @@ def window_summary(samples):
     windows = sorted(row['staleness_ms'] for row in samples)
     assert all(isinstance(v, (int, float)) and not isinstance(v, bool)
                and math.isfinite(v) and v >= 0 for v in windows), windows
-    return {'origin': 'outer_change_end', 'rounds': len(samples),
+    return {'origin': 'outer_change_end', 'bound': 'upper', 'rounds': len(samples),
             'first_access_misses': sum(not row['first_access'] for row in samples),
             'samples_ms': [row['staleness_ms'] for row in samples],
             'p50_staleness_ms': windows[(len(windows) - 1) // 2],
