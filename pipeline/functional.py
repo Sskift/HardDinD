@@ -1189,18 +1189,21 @@ def core_startup_pressure(c):
                               BASE, 'sh', '-ec', 'for n in 1 2 3 4; do /bin/true; done; echo startup-ok',
                               timeout=c.remaining(120))
         return name, result
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        for name, result in pool.map(run, names):
-            c.write(name + '\n' + result.stdout + result.stderr)
-            require(result.returncode == 0 and result.stdout.strip() == 'startup-ok', 'runner startup failed')
-            c.forget_removed(('rm', name))
-    output, error = burn.communicate(timeout=c.remaining(40))
-    require(burn.returncode == 0 and not error, 'host pressure failed: ' + error)
-    row = json.loads(output)
-    require(row['schema'] == 'hd.core-pressure/1' and row['verified'] is True and row['threads'] > 0, row)
-    after, cpu_after = counters(), throttle()
-    c.write(json.dumps({'pressure': row, 'throttle_before': cpu_before, 'throttle_after': cpu_after,
-                       'syscalls': {k: after[k] - v for k, v in before.items() if k in after and k != 'enabled'}}))
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            for name, result in pool.map(run, names):
+                c.write(name + '\n' + result.stdout + result.stderr)
+                require(result.returncode == 0 and result.stdout.strip() == 'startup-ok', 'runner startup failed')
+                c.forget_removed(('rm', name))
+        output, error = burn.communicate(timeout=c.remaining(40))
+        require(burn.returncode == 0 and not error, 'host pressure failed: ' + error)
+        row = json.loads(output)
+        require(row['schema'] == 'hd.core-pressure/1' and row['verified'] is True and row['threads'] > 0, row)
+        after, cpu_after = counters(), throttle()
+        c.write(json.dumps({'pressure': row, 'throttle_before': cpu_before, 'throttle_after': cpu_after,
+                           'syscalls': {k: after[k] - v for k, v in before.items() if k in after and k != 'enabled'}}))
+    finally:
+        c.write(json.dumps({'throttle_before': cpu_before, 'throttle_after': throttle()}))
     require(cpu_before and cpu_after and cpu_after[1] > cpu_before[1],
             'host quota pressure was not established')
 
