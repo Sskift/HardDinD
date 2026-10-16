@@ -2,6 +2,7 @@
 
 | run | revision | functional | key | important | other |
 |---|---|---|---|---|---|
+| 20261015-234159-ef2f21b1-ci-norseq-faultaround | ef2f21b1 | 152/154 | 7/10 | 4/13 | 3/7 |
 | 20261015-214804-61ab7d1e-ci-faultaround2 | 61ab7d1e | 144/146 | 6/10 | 5/13 | 3/7 |
 | 20261015-213510-8c64e357-ci-clock-rseq-net3 | 8c64e357 | 136/139 | 4/10 | 4/13 | 3/7 |
 | 20261015-172709-fc0d109c-ci-vnet-default | fc0d109c | 132/136 | 5/10 | 3/13 | 2/7 |

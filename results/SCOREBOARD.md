@@ -1,46 +1,46 @@
-# Scorecard `20261015-214804-61ab7d1e-ci-faultaround2`
+# Scorecard `20261015-234159-ef2f21b1-ci-norseq-faultaround`
 
-revision `61ab7d1efa82` Merge codex/fault: fault-around only after two adjacent ascending write faults (sparse 384 MiB heap touched every 32 pages: resident 384 -> 12 MiB)
+revision `ef2f21b19984` Turn rseq back off: fork+exec in guests regressed from ~2 ms to ~85 ms
 candidates: anon-faultaround, core-faultaround-edges; kernel args: uml_faultaround=5 uml_faultaround_edges=1
 
-**Functional**: 144/146 pass, 2 fail, 0 not tested → FAIL
+**Functional**: 152/154 pass, 2 fail, 0 not tested → FAIL
 
-**Performance** (guest/native, higher is better): key 6/10, important 5/13, other 3/7
+**Performance** (guest/native, higher is better): key 7/10, important 4/13, other 3/7
 
 `~noisy`: native samples varied by more than 30%, or the outer container was CPU-throttled in more than 10% of quota periods during a sample (host contention).
 
 | tier | metric | native | guest | ratio | target | pair range | Δ prev | status |
 |---|---|---:|---:|---:|---:|---|---:|---|
-| key | cpu.single | 4,135,145,350 | 4,100,769,070 ops/s | 0.995 | 0.80 | 0.65–1.03 | +2% | pass |
-| key | cpu.multi | 14,164,201,100 | 14,003,159,900 ops/s | 0.979 | 0.80 | 0.91–1.00 | +6% | pass ~noisy |
-| key | mem.bandwidth | 4.61 | 4.24 GB/s | 1.02 | 0.80 | 0.77–1.10 | +5% | pass ~noisy |
-| key | mem.touch | 1.23 | 0.605 GB/s | 0.493 | 0.80 | 0.31–0.53 | +488% | fail ~noisy |
-| key | disk.seq_write | 123.4 | 134.0 MB/s | 1.1 | 0.80 | 0.70–1.24 | +18% | pass ~noisy |
-| key | disk.seq_read | 3,758 | 2,983 MB/s | 0.754 | 0.80 | 0.64–0.79 | +3% | fail |
-| key | disk.volume_write | 157.1 | 136.9 MB/s | 0.882 | 0.80 | 0.66–1.14 | +28% | pass ~noisy |
-| key | net.publish_stream | 1,194 | 948.9 MB/s | 0.818 | 0.80 | 0.66–0.98 | +14% | pass ~noisy |
-| key | net.egress_stream | 2,027 | 581.2 MB/s | 0.236 | 0.80 | 0.18–0.34 | +25% | fail ~noisy |
-| key | net.bridge_stream | 3,266 | 1,553 MB/s | 0.461 | 0.80 | 0.42–0.84 | +15% | fail ~noisy |
+| key | cpu.single | 4,125,330,290 | 3,806,164,600 ops/s | 0.934 | 0.80 | 0.84–1.06 | -4% | pass |
+| key | cpu.multi | 14,962,697,600 | 15,653,547,200 ops/s | 0.973 | 0.80 | 0.96–1.08 | +14% | pass |
+| key | mem.bandwidth | 3.63 | 3.73 GB/s | 1.03 | 0.80 | 0.91–1.19 | +3% | pass ~noisy |
+| key | mem.touch | 1.35 | 0.47 GB/s | 0.321 | 0.80 | 0.28–0.52 | +61% | fail ~noisy |
+| key | disk.seq_write | 142.6 | 138.9 MB/s | 0.893 | 0.80 | 0.83–1.16 | +2% | pass ~noisy |
+| key | disk.seq_read | 2,682 | 2,419 MB/s | 0.939 | 0.80 | 0.58–1.19 | +48% | pass ~noisy |
+| key | disk.volume_write | 152.8 | 150.4 MB/s | 0.975 | 0.80 | 0.94–1.03 | -4% | pass |
+| key | net.publish_stream | 1,172 | 1,148 MB/s | 1.01 | 0.80 | 0.58–1.03 | +39% | pass ~noisy |
+| key | net.egress_stream | 3,466 | 757.9 MB/s | 0.221 | 0.80 | 0.15–0.25 | -15% | fail |
+| key | net.bridge_stream | 3,584 | 1,148 MB/s | 0.32 | 0.80 | 0.29–0.42 | -27% | fail |
 | key | gpu.compute | - | -  | - | 0.80 | - | - | not_tested |
 | key | gpu.h2d | - | -  | - | 0.80 | - | - | not_tested |
 | key | gpu.d2h | - | -  | - | 0.80 | - | - | not_tested |
-| important | app.compile | 3.36 | 18.4 seconds | 0.186 | 0.50 | 0.17–0.24 | -11% | fail ~noisy |
-| important | app.untar | 2.15 | 4.15 seconds | 0.519 | 0.50 | 0.45–1.09 | +24% | pass ~noisy |
-| important | app.gzip | 2.02 | 3.49 seconds | 0.583 | 0.50 | 0.47–0.62 | -5% | pass ~noisy |
-| important | fs.metadata | 58,803 | 19,523 ops/s | 0.319 | 0.50 | 0.31–0.35 | +47% | fail ~noisy |
-| important | disk.bind_write | 162.2 | 142.3 MB/s | 0.789 | 0.50 | 0.71–0.98 | -10% | pass |
-| important | disk.bind_read | 3,536 | 1,317 MB/s | 0.402 | 0.50 | 0.22–0.48 | +2% | fail |
-| important | fs.bind_metadata | 57,187 | 644.5 ops/s | 0.0124 | 0.50 | 0.01–0.01 | -23% | fail ~noisy |
-| important | net.publish_rr | 22,056 | 5,080 round trips/s | 0.251 | 0.50 | 0.13–0.32 | -1% | fail ~noisy |
-| important | net.bridge_rr | 50,728 | 7,747 round trips/s | 0.153 | 0.50 | 0.13–0.22 | +7% | fail ~noisy |
-| important | docker.run | ref 0.4 | 1.94 seconds | 0.206 | 0.50 | - | +9% | fail |
-| important | docker.exec | ref 0.08 | 0.314 seconds | 0.255 | 0.50 | - | +40% | fail |
-| important | docker.build_cached | ref 0.6 | 1.02 seconds | 0.587 | 0.50 | - | +14% | pass ~noisy |
-| important | docker.lifecycle | ref 1.2 | 2.25 seconds | 0.533 | 0.50 | - | -1% | pass ~noisy |
-| other | micro.syscall | 1,965,374 | 238,055 ops/s | 0.123 | 0.20 | 0.11–0.14 | +18% | fail ~noisy |
-| other | micro.forkexec | 3,914 | 11.9 ops/s | 0.0029 | 0.20 | 0.00–0.00 | +12% | fail ~noisy |
-| other | micro.mmap | 190,842 | 24,397 ops/s | 0.137 | 0.20 | 0.11–0.15 | +147% | fail ~noisy |
-| other | micro.clock | 35,919,058 | 25,701,133 ops/s | 0.708 | 0.20 | 0.64–0.84 | -15% | pass |
-| other | micro.thread | 25,453 | 5,630 ops/s | 0.216 | 0.20 | 0.19–0.27 | +2% | pass ~noisy |
-| other | micro.pipe | 117,384 | 13,853 round trips/s | 0.133 | 0.20 | 0.11–0.20 | +15% | fail ~noisy |
-| other | micro.signal | 402,758 | 89,121 ops/s | 0.221 | 0.20 | 0.21–0.24 | +5% | pass ~noisy |
+| important | app.compile | 3.5 | 13.5 seconds | 0.25 | 0.50 | 0.23–0.29 | +63% | fail |
+| important | app.untar | 2.03 | 5.46 seconds | 0.378 | 0.50 | 0.31–0.47 | -31% | fail ~noisy |
+| important | app.gzip | 2.02 | 3.28 seconds | 0.621 | 0.50 | 0.60–0.64 | +3% | pass |
+| important | fs.metadata | 75,172 | 15,419 ops/s | 0.208 | 0.50 | 0.19–0.23 | -45% | fail |
+| important | disk.bind_write | 139.4 | 130.0 MB/s | 0.93 | 0.50 | 0.90–0.93 | +0% | pass |
+| important | disk.bind_read | 4,033 | 1,538 MB/s | 0.383 | 0.50 | 0.38–0.40 | -14% | fail |
+| important | fs.bind_metadata | 72,915 | 723.0 ops/s | 0.01 | 0.50 | 0.01–0.01 | -28% | fail |
+| important | net.publish_rr | 22,358 | 4,822 round trips/s | 0.259 | 0.50 | 0.16–0.32 | -25% | fail ~noisy |
+| important | net.bridge_rr | 42,983 | 7,872 round trips/s | 0.168 | 0.50 | 0.14–0.23 | +13% | fail ~noisy |
+| important | docker.run | ref 0.4 | 1.44 seconds | 0.277 | 0.50 | - | +23% | fail |
+| important | docker.exec | ref 0.08 | 0.285 seconds | 0.281 | 0.50 | - | +26% | fail |
+| important | docker.build_cached | ref 0.6 | 0.753 seconds | 0.797 | 0.50 | - | +28% | pass |
+| important | docker.lifecycle | ref 1.2 | 1.77 seconds | 0.68 | 0.50 | - | +17% | pass |
+| other | micro.syscall | 2,144,836 | 259,296 ops/s | 0.121 | 0.20 | 0.09–0.12 | -4% | fail |
+| other | micro.forkexec | 4,485 | 420.9 ops/s | 0.097 | 0.20 | 0.08–0.10 | +3364% | fail |
+| other | micro.mmap | 184,393 | 9,940 ops/s | 0.055 | 0.20 | 0.05–0.06 | -60% | fail |
+| other | micro.clock | 38,529,190 | 32,816,356 ops/s | 0.852 | 0.20 | 0.81–0.95 | +20% | pass |
+| other | micro.thread | 26,424 | 5,976 ops/s | 0.218 | 0.20 | 0.20–0.23 | -10% | pass |
+| other | micro.pipe | 124,534 | 13,962 round trips/s | 0.112 | 0.20 | 0.11–0.13 | -20% | fail |
+| other | micro.signal | 420,255 | 98,282 ops/s | 0.234 | 0.20 | 0.22–0.25 | +10% | pass |

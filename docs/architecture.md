@@ -36,7 +36,7 @@ guest 的上游 DNS：外层有可路由的解析器就用外层的；只有回�
 
 1. **时钟 vDSO**（已完成，补丁 0031，默认开启）：guest 内核以宿主不变 TSC 为时钟源，发布只读 vvar，容器所在的 time namespace 也走快路径；`clock_gettime` 从约 5 µs 降到约 25 ns（原生约 18 ns），`micro.clock` 从 0.006 到约 0.6。guest 内核每 100 ms 以宿主时钟为参考校正频率和相位（`harddind_clock_sync=1`，默认开），600 秒长测中 MONOTONIC/REALTIME 与宿主的偏差上界约 0.85 µs，未校正时为 24 ms（约 16 ppm）；宿主 REALTIME 跳变会传播到 guest。`sched_getcpu` 经 rseq（`CONFIG_UML_X86_RSEQ`，补丁 0029）可从约 6 µs 降到约 2.2 ns（原生 1.7 ns），但开启后 fork+exec 从约 2 ms 退化到约 85 ms，暂时关闭，功能检查 `kernel.rseq` 因此失败。
 2. **并行执行稳定化**（0003 起）：并发 fork/exec 下曾丢失宿主进程，根因未证实修复。
-3. **缺页批量映射**：`kernel/candidates/anon-faultaround.patch`，降低 fork/exec 和 mmap 开销。
+3. **缺页批量映射**（已完成，补丁 0036/0037，默认开启）：连续两次相邻递增的匿名写缺页后，一次映射 32 页窗口（裁剪到 VMA 边界）；稀疏写不放大驻留内存。安静宿主上 `mem.touch` 约 0.3–0.5、`micro.mmap` 0.06→0.14。rseq（补丁 0029）开启时 fork+exec 退化 25 倍（420/s → 11/s），已关闭待修。
 4. **系统调用改写**：参考 gVisor systrap，把 `mov sysno,%eax; syscall` 改写为跳到 trampoline，省掉信号投递和 sigreturn。
 5. **网络后端**（进行中）：guest 网卡与后端之间用 vnet 头传 GSO 大段和校验和卸载（补丁 0034），slirp 直接生成 TCP GSO 段，发布端口吞吐 0.17→0.65、请求响应 0.20→0.36、出站 0.03→0.18。容器之间的流量完全在 UML 内核里，受执行核心限制。下一步评估 passt：它可在运行时增删转发（pesto），但缺 IPv4 分片重组、沙箱依赖 namespace，需要补丁。
 6. **GPU**（次要）：控制通道和映射已在四卡上完成真实计算与校验；还缺 `--gpus all` 接入、并发上下文、显存生命周期和性能。辅助进程以 CLONE_VM 共享 guest 地址空间，ioctl 内嵌指针天然有效；NVIDIA ABI 可参考 gVisor nvproxy 中相邻驱动版本的定义。
