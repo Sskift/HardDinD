@@ -1,0 +1,232 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: sort a window-local page pool for coalesced host mappings
+
+Default off: uml_fault_sorted=1. Requires ascending prefault visitation.
+Ordinary order-0 allocation, clearing and memcg
+charging remain. A task/VMA/range-owned pool exists only within the window;
+unused pages are freed on all nonfatal exits. No reclaim or emergency reserves.
+The transient pool contains at most 512 pages before normal per-page charge.
+
+--- a/arch/um/include/asm/page.h
++++ b/arch/um/include/asm/page.h
+@@ -29,2 +29,7 @@
+ #define copy_user_page(to, from, vaddr, pg)	copy_page(to, from)
++
++struct folio;
++struct vm_area_struct;
++struct folio *uml_vma_alloc_zeroed_movable_folio(struct vm_area_struct *, unsigned long);
++#define vma_alloc_zeroed_movable_folio uml_vma_alloc_zeroed_movable_folio
+ 
+--- a/arch/um/kernel/Makefile
++++ b/arch/um/kernel/Makefile
+@@ -22,2 +22,3 @@
+ obj-$(CONFIG_X86_64) += clock_sync.o
++obj-y += fault-sorted.o
+ 
+--- a/arch/um/kernel/trap.c
++++ b/arch/um/kernel/trap.c
+@@ -8,2 +8,3 @@
+ #include <linux/hardirq.h>
++#include <fault-sorted.h>
+ #include <linux/module.h>
+@@ -285,2 +286,3 @@
+ 	vm_fault_t fault;
++	struct uml_fault_pool pool;
+ 
+@@ -301,2 +303,3 @@
++	uml_fault_pool_begin(&pool, vma, start, end);
+ 	for (addr = start; addr < end; addr += PAGE_SIZE) {
+ 		pmd_t *pmd;
+@@ -309,3 +312,3 @@
+ 		if (fatal_signal_pending(current))
+-			return;
++			goto out;
+ 
+@@ -322,6 +325,6 @@
+ 		if (unlikely(!pmd_present(READ_ONCE(*pmd))))
+-			return;
++			goto out;
+ 		ptep = pte_offset_map_lock(mm, pmd, addr, &ptl);
+ 		if (unlikely(!ptep))
+-			return;
++			goto out;
+ 		empty = pte_none(READ_ONCE(*ptep));
+@@ -345,4 +348,6 @@
+ 			     VM_FAULT_HWPOISON_LARGE))
+-			return;
+-	}
++			goto out;
++	}
++out:
++	uml_fault_pool_end(&pool);
+ }
+--- /dev/null
++++ b/arch/um/include/shared/fault-sorted.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef UML_FAULT_SORTED_H
++#define UML_FAULT_SORTED_H
++#include <linux/list.h>
++struct page;
++struct task_struct;
++struct vm_area_struct;
++struct uml_fault_pool {
++	struct list_head link;
++	struct task_struct *owner;
++	struct vm_area_struct *vma;
++	struct page **pages;
++	unsigned long start, end;
++	unsigned int count, used;
++};
++void uml_fault_pool_begin(struct uml_fault_pool *, struct vm_area_struct *,
++			  unsigned long, unsigned long);
++void uml_fault_pool_end(struct uml_fault_pool *);
++#endif
+--- /dev/null
++++ b/arch/um/kernel/fault-sorted.c
+@@ -0,0 +1,145 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <linux/export.h>
++#include <linux/gfp.h>
++#include <linux/highmem.h>
++#include <linux/init.h>
++#include <linux/kstrtox.h>
++#include <linux/mm.h>
++#include <linux/sched.h>
++#include <linux/slab.h>
++#include <linux/sort.h>
++#include <linux/spinlock.h>
++#include <asm/pgtable.h>
++#include <fault-sorted.h>
++#include <init.h>
++
++static unsigned int uml_fault_sorted;
++static LIST_HEAD(fault_pools);
++static DEFINE_SPINLOCK(fault_pool_lock);
++
++static bool uml_fault_pool_matches(const struct uml_fault_pool *pool,
++		const struct vm_area_struct *vma, unsigned long address,
++		const struct task_struct *task)
++{
++	return pool->owner == task && pool->vma == vma &&
++	       address >= pool->start && address < pool->end &&
++	       pool->used < pool->count;
++}
++
++static int uml_fault_pfn_compare(const void *left, const void *right)
++{
++	unsigned long a = page_to_pfn(*(struct page * const *)left);
++	unsigned long b = page_to_pfn(*(struct page * const *)right);
++
++	return (a > b) - (a < b);
++}
++
++void uml_fault_pool_begin(struct uml_fault_pool *pool, struct vm_area_struct *vma,
++			  unsigned long start, unsigned long end)
++{
++	unsigned long address, flags;
++	unsigned int count = 0;
++	pmd_t *pmd;
++	pte_t *pte, *entry;
++	spinlock_t *ptl;
++	gfp_t gfp = (GFP_HIGHUSER_MOVABLE & ~__GFP_RECLAIM) |
++		    __GFP_NOWARN | __GFP_NOMEMALLOC;
++
++	pool->pages = NULL;
++	/* Keep VMA/task NUMA policy in the original allocator. */
++	if (!uml_fault_sorted || IS_ENABLED(CONFIG_NUMA) || end <= start ||
++	    end - start > 512 * PAGE_SIZE ||
++	    (start & PMD_MASK) != ((end - PAGE_SIZE) & PMD_MASK))
++		return;
++	pmd = pmd_off(vma->vm_mm, start);
++	if (!pmd_present(READ_ONCE(*pmd)))
++		return;
++	pte = pte_offset_map_lock(vma->vm_mm, pmd, start, &ptl);
++	if (!pte)
++		return;
++	for (address = start, entry = pte; address < end; address += PAGE_SIZE, entry++)
++		count += pte_none(READ_ONCE(*entry));
++	pte_unmap_unlock(pte, ptl);
++	if (count < 4)
++		return;
++	pool->pages = kcalloc(count, sizeof(*pool->pages), GFP_NOWAIT | __GFP_NOWARN);
++	if (!pool->pages)
++		return;
++	pool->count = alloc_pages_bulk(gfp, count, pool->pages);
++	pool->used = 0;
++	sort(pool->pages, pool->count, sizeof(*pool->pages), uml_fault_pfn_compare, NULL);
++	pool->owner = current;
++	pool->vma = vma;
++	pool->start = start;
++	pool->end = end;
++	spin_lock_irqsave(&fault_pool_lock, flags);
++	list_add(&pool->link, &fault_pools);
++	spin_unlock_irqrestore(&fault_pool_lock, flags);
++}
++
++static struct folio *uml_fault_pool_take(struct vm_area_struct *vma, unsigned long address)
++{
++	struct uml_fault_pool *pool;
++	struct page *page = NULL;
++	unsigned long flags;
++
++	if (!uml_fault_sorted)
++		return NULL;
++	spin_lock_irqsave(&fault_pool_lock, flags);
++	list_for_each_entry(pool, &fault_pools, link) {
++		if (uml_fault_pool_matches(pool, vma, address, current)) {
++			page = pool->pages[pool->used++];
++			break;
++		}
++	}
++	spin_unlock_irqrestore(&fault_pool_lock, flags);
++	return page ? page_folio(page) : NULL;
++}
++
++struct folio *uml_vma_alloc_zeroed_movable_folio(struct vm_area_struct *vma,
++					      unsigned long address)
++{
++	struct folio *folio = uml_fault_pool_take(vma, address);
++
++	if (!folio)
++		folio = vma_alloc_folio(GFP_HIGHUSER_MOVABLE, 0, vma, address);
++	if (folio && user_alloc_needs_zeroing())
++		clear_user_highpage(&folio->page, address);
++	return folio;
++}
++EXPORT_SYMBOL(uml_vma_alloc_zeroed_movable_folio);
++
++void uml_fault_pool_end(struct uml_fault_pool *pool)
++{
++	unsigned long flags;
++
++	if (!pool->pages)
++		return;
++	spin_lock_irqsave(&fault_pool_lock, flags);
++	list_del(&pool->link);
++	spin_unlock_irqrestore(&fault_pool_lock, flags);
++	while (pool->used < pool->count)
++		__free_page(pool->pages[pool->used++]);
++	kfree(pool->pages);
++}
++
++static int __init uml_fault_sorted_setup(char *line, int *add)
++{
++	unsigned int enable;
++
++	*add = 0;
++	if (kstrtouint(line, 10, &enable) || enable > 1) {
++		pr_warn("uml_fault_sorted requires 0 or 1\n");
++		return 0;
++	}
++	uml_fault_sorted = enable;
++	return 0;
++}
++__uml_setup("uml_fault_sorted=", uml_fault_sorted_setup,
++"uml_fault_sorted=<0|1>\n"
++"    Default 0. Sort a bounded order-0 page pool by PFN for one anonymous\n"
++"    prefault window, improving host mmap coalescing after reuse.\n"
++"    No reclaim or high-order allocation. Pages are normally cleared and\n"
++"    charged by the anonymous fault path; unused pages are released on\n"
++"    window exit. The temporary pool holds at most 512 pages before charge.\n"
++"    Guest NUMA uses the original allocation policy.\n\n");
