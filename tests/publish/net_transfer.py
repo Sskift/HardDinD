@@ -187,7 +187,17 @@ def binary():
     return build.artifact('net-transfer', key, compile_client) / 'net-transfer'
 
 
-def measure(workloads, metric, address, port, options=(), *, variant="default", repeats=3, traced=False):
+@contextlib.contextmanager
+def host_batch_scope(ctx):
+    old = ctx.forward('stats')['host_batch']
+    try:
+        yield
+    finally:
+        ctx.forward('host_batch ' + ('on' if old else 'off'))
+
+
+def measure(workloads, metric, address, port, options=(), *, variant="default", repeats=3,
+            traced=False, batch_pairs=False):
     """Call after network_samples' yield, while its server/network still exist."""
     ctx, mode = workloads.ctx, 'rr' if metric.endswith('_rr') else 'stream'
     count = 8192 if mode == 'rr' else 1024 ** 3
@@ -195,6 +205,8 @@ def measure(workloads, metric, address, port, options=(), *, variant="default", 
     guest_pid, backend_pid = state['guest_pid'], state['network_pid']
     client = binary()
     with contextlib.ExitStack() as stack:
+        if batch_pairs:
+            stack.enter_context(host_batch_scope(ctx))
         authorization = None
         if traced:
             try:
@@ -220,7 +232,12 @@ def measure(workloads, metric, address, port, options=(), *, variant="default", 
                                 stderr=log, bufsize=0, preexec_fn=lambda: os.sched_setaffinity(0, workloads.cpus))
         try:
             for repeat in range(repeats):
-                entry = {'metric': metric, 'variant': variant, 'repeat': repeat, 'count': count, 'complete': False,
+                setting = 'on' if repeat % 2 else 'off'
+                if batch_pairs:
+                    ctx.forward('host_batch ' + setting)
+                entry = {'metric': metric, 'variant': 'host_batch_' + setting if batch_pairs else variant,
+                         'repeat': repeat, 'pair': repeat // 2 if batch_pairs else None,
+                         'count': count, 'complete': False,
                          'tracer_authorization': authorization,
                          'unix_time': time.time(), 'clock_ticks': os.sysconf('SC_CLK_TCK'),
                          'features': features, 'scope': 'READY/GO to verified DONE; excludes Docker creation/exec setup',
@@ -246,6 +263,8 @@ def measure(workloads, metric, address, port, options=(), *, variant="default", 
                         started = time.monotonic()
                         proc.stdin.write(b'GO\n')
                         entry['workload'] = result(read_line(proc), count)
+                        if batch_pairs and any(entry['workload'].get(k) != 1 for k in ('start_cpu', 'end_cpu')):
+                            raise RuntimeError('guest client cpuset was not honoured')
                         entry['marker_wall_seconds'] = time.monotonic() - started
                         stopped.set()
                         read_start = time.monotonic()
@@ -315,6 +334,8 @@ def run(workloads, metric, address, port, options=()):
             topology(workloads, inspector, metric, 'after')
             if metric.startswith('net.egress'):
                 measure(workloads, metric, address, port, options, variant='backend_trace', repeats=1, traced=True)
+                measure(workloads, metric, address, port, [*options, '--cpuset-cpus', '1'],
+                        variant='host_batch_pair', repeats=6, batch_pairs=True)
                 paths = ['/sys/class/net/vec0/queues/rx-0/rps_cpus',
                          '/sys/class/net/vec0/queues/rx-0/rps_flow_cnt',
                          '/proc/sys/net/core/rps_sock_flow_entries']

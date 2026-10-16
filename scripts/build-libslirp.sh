@@ -64,7 +64,8 @@ for name in ('0001-ipv6-fragmentation.patch',
              '0003-net-vnet-mru.patch',
              '0004-net-window-scale.patch',
              '0005-net-large-tcp.patch',
-             '0006-net-checksum-offload.patch'):
+             '0006-net-checksum-offload.patch',
+             '0007-net-host-write-batch.patch'):
     patch_file = repo / 'third_party' / 'patches' / name
     r = subprocess.run(['patch', '-p1', '--batch', '--fuzz=0', '-d', srcdir,
                         '-i', patch_file], capture_output=True, text=True)
@@ -142,6 +143,8 @@ manifest = {
          'purpose': 'Build TCP GSO superframes with guest MSS, preserve non-TCP MTU'},
         {'file': '0006-net-checksum-offload.patch',
          'purpose': 'Honor TCP checksum offload in both directions without redundant payload scans'},
+        {'file': '0007-net-host-write-batch.patch',
+         'purpose': 'Flush host TCP payload once per already-received vector batch'},
     ],
     'objects': len(objects),
     'host': {'arch': _platform.machine(), 'compiler': 'gcc'},

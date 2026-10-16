@@ -1,0 +1,106 @@
+--- a/arch/um/drivers/vector_kern.c
++++ b/arch/um/drivers/vector_kern.c
+@@ -99,6 +99,7 @@
+ 	{ "rx_csum_offload_errors"},
+ 	{ "sg_ok"},
+ 	{ "sg_linearized"},
++	{ "rx_copybreak" },
+ };
+ 
+ #define VECTOR_NUM_STATS	ARRAY_SIZE(ethtool_stats_keys)
+@@ -115,6 +116,7 @@
+ 	vp->estats.rx_queue_max = 0;
+ 	vp->estats.rx_queue_running_average = 0;
+ 	vp->estats.rx_encaps_errors = 0;
++	vp->estats.rx_copybreak = 0;
+ 	vp->estats.sg_ok = 0;
+ 	vp->estats.sg_linearized = 0;
+ 	spin_unlock(&vp->rx_queue->head_lock);
+@@ -593,6 +595,14 @@
+  * just read into a prepared queue filled with skbuffs.
+  */
+ 
++static bool vector_rx_copybreak;
++
++static int __init vector_rx_copybreak_setup(char *str)
++{
++	return kstrtobool(str, &vector_rx_copybreak) ? 0 : 1;
++}
++__setup("uml_vector_rx_copybreak=", vector_rx_copybreak_setup);
++
+ static struct sk_buff *prep_skb(
+ 	struct vector_private *vp,
+ 	struct user_msghdr *msg)
+@@ -675,7 +685,8 @@
+ 		 * This allows us stop faffing around with a "drop buffer"
+ 		 */
+ 
+-		*skbuff_vector = prep_skb(vp, &mmsg_vector->msg_hdr);
++		if (!*skbuff_vector)
++			*skbuff_vector = prep_skb(vp, &mmsg_vector->msg_hdr);
+ 		skbuff_vector++;
+ 		mmsg_vector++;
+ 	}
+@@ -979,8 +990,26 @@
+ 	atomic_add(packet_count, &qi->queue_depth);
+ 
+ 	for (i = 0; i < packet_count; i++) {
+-		skb = (*skbuff_vector);
+-		if (mmsg_vector->msg_len > vp->header_size) {
++		skb = *skbuff_vector;
++		*skbuff_vector = NULL;
++		if (skb && vector_rx_copybreak &&
++		    mmsg_vector->msg_len > vp->header_size) {
++			unsigned int len = mmsg_vector->msg_len - vp->rx_header_size;
++			struct sk_buff *copy = NULL;
++
++			/* Keep the 64 KiB receive storage for tiny ACK/control frames. */
++			if (len <= 256 && len <= skb_headlen(skb))
++				copy = napi_alloc_skb(&vp->napi, len);
++			if (copy) {
++				skb_put_data(copy, skb->data, len);
++				copy->dev = vp->dev;
++				skb_reset_mac_header(copy);
++				*skbuff_vector = skb;
++				skb = copy;
++				vp->estats.rx_copybreak++;
++			}
++		}
++		if (skb && mmsg_vector->msg_len > vp->header_size) {
+ 			if (vp->header_size > 0) {
+ 				header_check = vp->verify_header(
+ 					mmsg_vector->msg_hdr.msg_iov->iov_base,
+@@ -988,14 +1017,9 @@
+ 					vp
+ 				);
+ 				if (header_check < 0) {
+-				/* Overlay header failed to verify - discard.
+-				 * We can actually keep this skb and reuse it,
+-				 * but that will make the prep logic too
+-				 * complex.
+-				 */
++					/* Discard the frame, retaining only untouched storage. */
+ 					dev_kfree_skb_irq(skb);
+ 					vp->estats.rx_encaps_errors++;
+-					(*skbuff_vector) = NULL;
+ 					mmsg_vector++;
+ 					skbuff_vector++;
+ 					continue;
+@@ -1023,7 +1047,6 @@
+ 			if (skb != NULL)
+ 				dev_kfree_skb_irq(skb);
+ 		}
+-		(*skbuff_vector) = NULL;
+ 		/* Move to the next buffer element */
+ 		mmsg_vector++;
+ 		skbuff_vector++;
+--- a/arch/um/drivers/vector_kern.h
++++ b/arch/um/drivers/vector_kern.h
+@@ -65,6 +65,7 @@
+ 	uint64_t rx_csum_offload_errors;
+ 	uint64_t sg_ok;
+ 	uint64_t sg_linearized;
++	uint64_t rx_copybreak;
+ };
+ 
+ #define VERIFY_HEADER_NOK -1

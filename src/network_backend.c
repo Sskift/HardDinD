@@ -43,8 +43,10 @@ static uint64_t slirp_gso, slirp_gso_bytes;
 static uint64_t coalesced_acks;
 static uint64_t rx_csum_packets, rx_csum_bytes;
 static bool profiling;
+static bool host_batch;
+static uint64_t host_batches, host_batch_frames;
 static uint64_t input_ns, slirp_poll_ns, rx_ns, tx_ns, wait_ns;
-struct io_profile { uint64_t calls, bytes, ns, small, large, blocked, partial, max; };
+struct io_profile { uint64_t calls, bytes, ns, small, large, small_bytes, large_bytes, blocked, partial, max; };
 static struct io_profile host_send, host_recv;
 static struct in_addr guest_addr;
 struct timer { bool used; int64_t expires; SlirpTimerCb cb; void *opaque; };
@@ -224,7 +226,11 @@ static void profile_io(struct io_profile *p, uint64_t start, size_t size, ssize_
     p->calls++;
     if (size < 16384) p->small++; else p->large++;
     if (size > p->max) p->max = size;
-    if (result > 0) p->bytes += (uint64_t)result;
+    if (result > 0) {
+        p->bytes += (uint64_t)result;
+        if (size < 16384) p->small_bytes += (uint64_t)result;
+        else p->large_bytes += (uint64_t)result;
+    }
     if (result >= 0 && (size_t)result < size) p->partial++;
     if (result < 0 && (saved == EAGAIN || saved == EWOULDBLOCK)) p->blocked++;
     errno = saved;
@@ -449,6 +455,7 @@ static int stats(char *buf, size_t len) {
         ",\"tx_gso\":%" PRIu64 ",\"coalesced\":%" PRIu64
         ",\"slirp_gso\":%" PRIu64 ",\"slirp_gso_bytes\":%" PRIu64
         ",\"coalesced_acks\":%" PRIu64
+        ",\"host_batch\":%s,\"host_batches\":%" PRIu64 ",\"host_batch_frames\":%" PRIu64
         ",\"rx_csum_packets\":%" PRIu64 ",\"rx_csum_bytes\":%" PRIu64
         ",\"link_sndbuf\":%d,\"link_rcvbuf\":%d"
         ",\"user_us\":%" PRId64 ",\"system_us\":%" PRId64
@@ -456,18 +463,20 @@ static int stats(char *buf, size_t len) {
         ",\"rx_ns\":%" PRIu64 ",\"tx_ns\":%" PRIu64 ",\"wait_ns\":%" PRIu64
         ",\"host_send_calls\":%" PRIu64 ",\"host_send_bytes\":%" PRIu64 ",\"host_send_ns\":%" PRIu64
         ",\"host_send_small\":%" PRIu64 ",\"host_send_large\":%" PRIu64 ",\"host_send_blocked\":%" PRIu64
+        ",\"host_send_small_bytes\":%" PRIu64 ",\"host_send_large_bytes\":%" PRIu64
         ",\"host_send_partial\":%" PRIu64 ",\"host_send_max\":%" PRIu64
         ",\"host_recv_calls\":%" PRIu64 ",\"host_recv_bytes\":%" PRIu64 ",\"host_recv_ns\":%" PRIu64 "}",
         rx_packets, tx_packets, rx_bytes, tx_bytes, dropped_packets, queued, nforwards,
         inventory_revision, mtu, batch_size, rx_syscalls, tx_syscalls, poll_calls,
         vnet ? "true" : "false", rx_gso, tx_gso, coalesced, slirp_gso, slirp_gso_bytes, coalesced_acks,
+        host_batch ? "true" : "false", host_batches, host_batch_frames,
         rx_csum_packets, rx_csum_bytes,
         sndbuf, rcvbuf,
         (int64_t)usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec,
         (int64_t)usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec,
         input_ns, slirp_poll_ns, rx_ns, tx_ns, wait_ns,
         host_send.calls, host_send.bytes, host_send.ns, host_send.small, host_send.large,
-        host_send.blocked, host_send.partial, host_send.max,
+        host_send.blocked, host_send.small_bytes, host_send.large_bytes, host_send.partial, host_send.max,
         host_recv.calls, host_recv.bytes, host_recv.ns);
 }
 
@@ -583,6 +592,11 @@ static void control(Slirp *slirp) {
         for (char *s = strtok_r(input, " \n", &save); s && count < 7; s = strtok_r(NULL, " \n", &save)) fields[count++] = s;
         if (count == 1 && !strcmp(fields[0], "stats")) {
             stats(output, sizeof(output)); goto reply;
+        }
+        if (count == 2 && !strcmp(fields[0], "host_batch") &&
+            (!strcmp(fields[1], "on") || !strcmp(fields[1], "off"))) {
+            host_batch = !strcmp(fields[1], "on");
+            snprintf(output, sizeof(output), "{\"ok\":true}"); goto reply;
         }
         if (count == 2 && !strcmp(fields[0], "profile") &&
             (!strcmp(fields[1], "on") || !strcmp(fields[1], "off"))) {
@@ -805,6 +819,11 @@ int main(int argc, char **argv) {
                 if (got < 0) { if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) stopping = 1; break; }
                 if (!got) break;
                 if (got > 1) bulk = true;
+                bool write_batch = host_batch && vnet && got > 1;
+                if (write_batch) {
+                    slirp_input_batch(slirp, true);
+                    host_batches++; host_batch_frames += (unsigned)got;
+                }
                 for (int i = 0; i < got; i++) {
                     unsigned len = messages[i].msg_len;
                     if (!len) { stopping = 1; break; }
@@ -819,6 +838,11 @@ int main(int argc, char **argv) {
                     if (len > (unsigned)mtu + 14 || (tail && tail->len > (unsigned)mtu + 14)) bulk = true;
                     /* Bound memory even when one receive batch creates many replies. */
                     if (queued >= MAX_BATCH) flush_frames();
+                }
+                if (write_batch) {
+                    started = profile_start();
+                    slirp_input_batch(slirp, false);
+                    profile_end(started, &input_ns);
                 }
                 received += (unsigned)got;
                 /* Drain bulk traffic across short batches; only isolated small

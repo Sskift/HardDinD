@@ -1,0 +1,71 @@
+--- a/src/slirp.h
++++ b/src/slirp.h
+@@ -132,6 +132,7 @@
+     unsigned time_fasttimo;
+     unsigned last_slowtimo;
+     bool do_slowtimo;
++    bool input_batch;
+ 
+     bool in_enabled, in6_enabled;
+ 
+--- a/src/socket.h
++++ b/src/socket.h
+@@ -66,6 +66,7 @@
+ 
+     uint8_t so_type; /* Type of socket, UDP or TCP */
+     int32_t so_state; /* internal state flags SS_*, below */
++    bool input_pending;
+ 
+     struct tcpcb *so_tcpcb; /* pointer to TCP protocol control block */
+     unsigned so_expire; /* When the socket will expire */
+--- a/src/libslirp.h
++++ b/src/libslirp.h
+@@ -162,6 +162,8 @@
+ /* This is called by the application when the guest emits a packet on the
+  * guest network, to be interpreted by slirp. */
+ void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len);
++/* Batch already-received frames; disabling flushes queued host TCP writes. */
++void slirp_input_batch(Slirp *slirp, bool enabled);
+ /* HardDinD static ABI: caller validated the TCP partial-checksum metadata. */
+ void slirp_input_checksum(Slirp *slirp, const uint8_t *pkt, int pkt_len,
+                           bool tcp_checksum_valid);
+--- a/src/sbuf.c
++++ b/src/sbuf.c
+@@ -76,7 +76,9 @@
+      * We only write if there's nothing in the buffer,
+      * ottherwise it'll arrive out of order, and hence corrupt
+      */
+-    if (!so->so_rcv.sb_cc)
++    if (so->slirp->input_batch && so->s >= 0)
++        so->input_pending = true;
++    else if (!so->so_rcv.sb_cc)
+         ret = slirp_send(so, m->m_data, m->m_len, 0);
+ 
+     if (ret <= 0) {
+--- a/src/slirp.c
++++ b/src/slirp.c
+@@ -983,6 +983,24 @@
+     }
+ }
+ 
++void slirp_input_batch(Slirp *slirp, bool enabled)
++{
++    struct socket *so, *next;
++
++    slirp->input_batch = enabled;
++    if (enabled)
++        return;
++    for (so = slirp->tcb.so_next; so != &slirp->tcb; so = next) {
++        next = so->so_next;
++        if (!so->input_pending)
++            continue;
++        so->input_pending = false;
++        if (so->s >= 0 && !(so->so_state & SS_NOFDREF) && so->so_rcv.sb_cc &&
++            sowrite(so) > 0)
++            tcp_output(sototcpcb(so));
++    }
++}
++
+ void slirp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
+ {
+     slirp_input_checksum(slirp, pkt, pkt_len, false);

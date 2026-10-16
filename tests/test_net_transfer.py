@@ -15,6 +15,17 @@ spec.loader.exec_module(transfer)
 
 
 class TransferTests(unittest.TestCase):
+    def test_batch_setting_restores_after_failed_transfer(self):
+        for original in (False, True):
+            with self.subTest(original=original):
+                ctx = types.SimpleNamespace(forward=mock.Mock(return_value={'host_batch': original}))
+                with self.assertRaisesRegex(RuntimeError, 'transfer failed'):
+                    with transfer.host_batch_scope(ctx):
+                        ctx.forward('host_batch ' + ('off' if original else 'on'))
+                        raise RuntimeError('transfer failed')
+                self.assertEqual(ctx.forward.call_args_list[-1],
+                                 mock.call('host_batch ' + ('on' if original else 'off')))
+
     def test_restore_bypasses_expired_metric_budget(self):
         work = types.SimpleNamespace(docker=mock.Mock(side_effect=RuntimeError('budget exhausted')),
                                      cleanup=mock.Mock())
@@ -33,7 +44,7 @@ class TransferTests(unittest.TestCase):
         ):
             with self.subTest(metric=metric):
                 settings = dict(original)
-                ctx = types.SimpleNamespace(forward=mock.Mock())
+                ctx = types.SimpleNamespace(forward=mock.Mock(return_value={'host_batch': True}))
                 work = types.SimpleNamespace(ctx=ctx, container=lambda *_: contextlib.nullcontext('inspector'))
                 def command(_work, _inspector, script, **_kwargs):
                     args = script.split()
@@ -50,7 +61,7 @@ class TransferTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, 'transfer failed'):
                         transfer.run(work, metric, '10.0.2.2', 1234)
                 self.assertEqual(settings, original)
-                self.assertEqual(ctx.forward.call_args_list, [mock.call('profile on'), mock.call('profile off')])
+                self.assertEqual(ctx.forward.call_args_list[-1], mock.call('profile off'))
 
     def test_counters_validate_identity_and_monotonicity(self):
         before = transfer.counters('cpu tid RX_CALLS SIGIO\n0 123 10 5\n1 456 0 1\n')

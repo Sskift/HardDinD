@@ -35,6 +35,7 @@ class VnetFlows(flows.ForwardedFlows):
         self.assertEqual(stats['dropped_packets'], 0)
 
     def test_optional_host_socket_profile(self):
+        self.assertFalse(self.b.command('stats')['host_batch'])
         port = reserve_port('127.0.0.1')
         self.command_ok(f'add tcp 127.0.0.1 {port} 7777')
         flows.tcp_echo('127.0.0.1', port, 256 * 1024, timeout=20)
@@ -50,6 +51,7 @@ class VnetFlows(flows.ForwardedFlows):
             self.assertGreater(stats[key], 0, key)
         self.assertGreater(stats['host_send_max'], 1460)
         self.assertEqual(stats['host_send_calls'], stats['host_send_small'] + stats['host_send_large'])
+        self.assertEqual(stats['host_send_bytes'], stats['host_send_small_bytes'] + stats['host_send_large_bytes'])
         self.command_ok('profile off')
         stats = self.b.command('stats')
         flows.tcp_echo('127.0.0.1', port, 256 * 1024, timeout=20)
