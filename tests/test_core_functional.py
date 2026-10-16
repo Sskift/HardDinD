@@ -65,7 +65,7 @@ class CoreFunctionalTests(unittest.TestCase):
     def test_rewrite_requires_enabled_path_and_every_semantic_result(self):
         row = {'schema': 'hd.core-patch/1', 'enabled': True, 'sites': 32, 'calls': 131072,
                'signals': 5, 'trampoline_lifetime': True, **{key: True for key in ('fork', 'exec_clean', 'file_clean',
-                   'ptrace', 'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')}}
+                   'ptrace', 'poketext', 'proc_mem', 'single_step', 'alignment_flags', 'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')}}
         f.core_summary(json.dumps(row), 'core_patch', 'rewrite', patch_enabled=True)
         for key in row:
             bad = {k: v for k, v in row.items() if k != key}
@@ -73,6 +73,15 @@ class CoreFunctionalTests(unittest.TestCase):
                 f.core_summary(json.dumps(bad), 'core_patch', 'rewrite', patch_enabled=True)
         with self.assertRaises(AssertionError):
             f.core_summary(json.dumps(row), 'core_patch', 'rewrite', patch_enabled=False)
+
+    def test_dynamic_requires_both_wrappers_and_all_semantics(self):
+        row = {'schema': 'hd.core-dynamic/1', 'calls': 98304, 'enabled': True, 'signals': 4,
+               'prefix_faults': 2, 'restart': True, 'arguments': True, 'fork': True, 'exec': True, 'verified': True}
+        f.core_summary(json.dumps(row), 'core_dynamic', 'registers', patch_enabled=True)
+        for key, value in (('calls', 32768), ('enabled', False), ('signals', 0),
+                           ('prefix_faults', 0), ('restart', False), ('arguments', False), ('fork', False), ('exec', False), ('verified', 1)):
+            with self.subTest(key=key), self.assertRaises(AssertionError):
+                f.core_summary(json.dumps(dict(row, **{key: value})), 'core_dynamic', 'registers', patch_enabled=True)
 
     def test_registered_helpers_use_privileged_container_and_validate(self):
         checks = [row for row in f.CHECKS if row[0] in ('process.core_faults', 'process.core_fpstate')

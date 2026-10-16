@@ -2,6 +2,27 @@ Subject: [CANDIDATE] UML private syscall sites and GS-free runner trampoline
 
 Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 
+Writable __access_remote_vm calls restore affected private sites before mmap_lock,
+holding the per-mm patch mutex through the write. Single stepping restores all
+sites and disables further rewriting in that mm until exec. Guest text readers
+(including ptrace and /proc/pid/mem) can observe patched bytes.
+
+The 0x0606xx06 indirect targets leave an invalid opcode at every stopped
+MOV boundary in the Go register wrapper. Dynamic RAX is saved under a per-mm
+one-try lock before host gettid; contention and lifecycle calls use SIGSYS.
+The host gettid exemption matches only lookup instruction offsets, never the
+slow syscall. The extra host scratch page is reset before cached-broker reuse.
+
+Alignment-check faults at an exact patched jump restore the mm and retry with
+unchanged registers and flags; further rewriting waits until exec. The stub
+registers SIGBUS and clears live AC before C; saved guest flags stay intact.
+
+Runner entry rechecks return-to-user work after the patch lease and allocation,
+releasing the lease before signal/rseq fixups if either wait scheduled.
+
+Faults in copied stack-load prefixes report the original guest instruction
+and preserve its stack pointer, including when a guest signal handler repairs it.
+
 --- a/arch/um/include/asm/mmu.h
 +++ b/arch/um/include/asm/mmu.h
 @@ -10,6 +10,8 @@
@@ -13,7 +34,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #include <linux/spinlock.h>
  #include <mm_id.h>
  
-@@ -20,6 +22,11 @@
+@@ -20,6 +22,12 @@
  	/* Parallel seccomp runners share the broker's host address space. */
  	struct mm_id cpu_ids[NR_CPUS];
  	struct mutex turnstile;
@@ -21,6 +42,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	struct rw_semaphore patch_run;
 +	wait_queue_head_t patch_wait;
 +	int patch_stopping;
++	bool patch_debug;
 +	unsigned long patch_miss[64];
  	struct mm_id gpu_id;
  	struct mutex gpu_lock;
@@ -69,7 +91,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #define STUB_THREAD_DATA(cpu) (STUB_DATA + (STUB_DATA_PAGES + (cpu) * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
 -#define STUB_SIZE ((1 + STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
 +#define STUB_TID_SLOTS 4194304
-+#define STUB_TID_SIZE STUB_TID_SLOTS
++#define STUB_TID_SIZE (STUB_TID_SLOTS + UM_KERN_PAGE_SIZE)
 +#define STUB_TID_TABLE (STUB_DATA + (STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE)
 +#define STUB_SIZE ((STUB_CODE_PAGES + STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE + STUB_TID_SIZE)
  #define STUB_END (STUB_START + STUB_SIZE)
@@ -77,13 +99,13 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,83 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
-+#define UML_PATCH_BASE 0x60000
-+#define UML_PATCH_END 0x70000
-+#define UML_PATCH_SLOT 128
++#define UML_PATCH_BASE 0x06060000
++#define UML_PATCH_END 0x06070000
++#define UML_PATCH_SLOT 256
 +#define UML_FAST_UC 8200
 +#define UML_FAST_MC 8240
 +#define UML_FAST_FP 9216
@@ -103,17 +125,60 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +          ((unsigned long)p[3] << 24);
 +    return imm == nr && p[4] == 0x0f && p[5] == 0x05;
 +}
++static inline int uml_patch_dynamic(const unsigned char *p, unsigned int len)
++{
++    /* Go register ABI; glibc/musl syscall's final stack argument; Go ABI0. */
++    static const unsigned char go[] = {0x49,0x89,0xf2,0x48,0x89,0xfa,
++        0x48,0x89,0xce,0x48,0x89,0xdf,0x0f,0x05};
++    if (len == sizeof(go)) {
++        for (unsigned int i = 0; i < sizeof(go); i++)
++            if (p[i] != go[i]) return 0;
++        return 1;
++    }
++    return len == 7 && (p[0] == 0x4c || p[0] == 0x48) && p[1] == 0x8b &&
++        p[2] == (p[0] == 0x4c ? 0x4c : 0x44) && p[3] == 0x24 &&
++        p[4] == 8 && p[5] == 0x0f && p[6] == 0x05;
++}
++/* A copied stack load must report faults at its original instruction. */
++static inline __attribute__((always_inline)) unsigned long
++uml_patch_prefix_ip(const unsigned char *slot, unsigned long offset)
++{
++    const unsigned char *p = slot + 136;
++    unsigned long end = 0;
++    if (offset != 136 || slot[44] != 1 || slot[88] != 7 ||
++        (p[0] != 0x4c && p[0] != 0x48) || p[1] != 0x8b ||
++        p[2] != (p[0] == 0x4c ? 0x4c : 0x44) || p[3] != 0x24 || p[4] != 8 ||
++        slot[94] != 0x0f || slot[95] != 0x05)
++        return 0;
++    for (unsigned int i = 0; i < 5; i++)
++        if (p[i] != slot[89 + i]) return 0;
++    for (unsigned int i = 0; i < 8; i++)
++        end |= (unsigned long)slot[48 + i] << (i * 8);
++    return end >= 7 ? end - 7 : 0;
++}
++static inline void uml_patch_jump(unsigned char *p, unsigned int len, unsigned long slot)
++{
++    unsigned long target = slot + 6;
++    for (unsigned int i = 0; i < len; i++) p[i] = 0x06;
++    p[0] = 0xff; p[1] = 0x24; p[2] = 0x25;
++    for (unsigned int i = 0; i < 4; i++) p[3 + i] = target >> (i * 8);
++}
 +int uml_patch_boundary(const unsigned char *p, unsigned int before, unsigned int len);
 +extern int uml_syscall_patch;
 +struct uml_pt_regs;
 +struct mm_struct;
++struct task_struct;
 +void uml_patch_syscall(struct uml_pt_regs *r);
 +int uml_patch_fault(struct uml_pt_regs *r);
++int uml_patch_alignment(struct uml_pt_regs *r);
 +void uml_patch_enter(struct mm_struct *mm);
 +void uml_patch_exit(struct mm_struct *mm);
-+void uml_patch_count(void);
++void uml_patch_count(int dynamic);
 +int uml_patch_prepare(int syscall, struct uml_pt_regs *r);
 +void uml_patch_done(void);
++int uml_patch_write_begin(struct mm_struct *mm, unsigned long addr, int len);
++void uml_patch_write_end(struct mm_struct *mm);
++int uml_patch_step(struct task_struct *task);
 +void uml_patch_forget(struct mm_struct *mm, unsigned long start, unsigned long end);
 +int uml_patch_setup(void);
 +#endif
@@ -128,7 +193,13 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	/* Permit the GPU completion-byte write(); 0017 async GPU wait. */
  	int gpu_async;
  
-@@ -170,6 +171,9 @@
+@@ -165,11 +166,15 @@
+ 	 * neither gpu_payload nor syscall_data offsets change. */
+ 	unsigned char gpu_async;
+ 	unsigned char gpu_debug;
++	unsigned char fast_reset;
+ 	int child_socket;
+ 	int memfd_cached;
  	int syscall_fd_num;
  
  	int syscall_data_len;
@@ -146,12 +217,12 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	um_arch.o umid.o kmsg_dump.o capflags.o skas/
 -obj-y += load_file.o gpu.o
 +obj-y += load_file.o gpu.o core-patch.o
+ obj-$(CONFIG_X86_64) += clock_sync.o
  
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
- obj-$(CONFIG_GPROF)	+= gprof_syms.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,421 @@
+@@ -0,0 +1,584 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -162,6 +233,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +#include <linux/seq_file.h>
 +#include <linux/atomic.h>
 +#include <linux/percpu.h>
++#include <linux/uaccess.h>
 +#include <asm/cacheflush.h>
 +#include <asm/unistd.h>
 +#include <as-layout.h>
@@ -172,8 +244,10 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +#include <sysdep/ptrace.h>
 +
 +int uml_syscall_patch;
-+static atomic64_t patched;
++static atomic64_t patched, dynamic_sites;
 +static DEFINE_PER_CPU(unsigned long, patch_calls);
++struct patch_stats { unsigned long sigsys, excluded, cached, pattern, boundary, debug, dynamic; };
++static DEFINE_PER_CPU(struct patch_stats, patch_stats);
 +extern char __syscall_stub_start[], stub_fast_entry[];
 +
 +static int __init patch_setup(char *s)
@@ -295,10 +369,11 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +{
 +	struct mm_struct *mm = current->mm;
 +	unsigned long end = UPT_IP(r), addr, slot, nr = PT_SYSCALL_NR(r->gp);
-+	unsigned char old[9], jump[9] = { 0xff, 0x24, 0x25, 0, 0, 0, 0, 0x06, 0x06 };
++	unsigned char old[14], jump[14];
 +	/* gettid; scale/add lookup base; load runner; jump to common save code. */
 +	unsigned char code[UML_PATCH_SLOT] = {
-+		[8] = 0xb8, 186, 0, 0, 0, 0x0f, 0x05,
++		[136] = 0xb8, 186, 0, 0, 0, 0x0f, 0x05,
++        0x48, 0x8d, 0x89, 0x80, 0xff, 0xff, 0xff,
 +		0x48, 0x03, 0x41, 49, 0x0f, 0xb6, 0x00,
 +		0x48, 0xc1, 0xe0, 14, 0x48, 0x03, 0x41, 57,
 +		0xff, 0x61, 65,
@@ -306,33 +381,56 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	struct patch_header h;
 +	struct page *text = NULL, *entry = NULL, *header = NULL, *previous = NULL;
 +	struct vm_area_struct *vma;
-+	unsigned char window[23];
++	unsigned char window[28];
 +	unsigned int before = 14, offset, split;
 +	void *bytes;
 +	u64 value;
 +	u32 imm;
 +	unsigned int len = 7;
++    bool dynamic = false;
 +
-+    if (!uml_syscall_patch || r->fast_syscall || !parallel_userspace || !mm || !eligible(nr) ||
-+        end < UML_PATCH_END + sizeof(old) || end >= TASK_SIZE)
++    if (!parallel_userspace || !mm || r->fast_syscall)
 +        return;
-+    if (READ_ONCE(mm->context.patch_miss[(end >> 3) & 63]) == end)
++    this_cpu_inc(patch_stats.sigsys);
++    if (!uml_syscall_patch || (UPT_EFLAGS(r) & (1UL << 18)) || end < sizeof(old) || end >= TASK_SIZE ||
++        (end > UML_PATCH_BASE && end - sizeof(old) < UML_PATCH_END))
 +        return;
++    if (!eligible(nr)) {
++        this_cpu_inc(patch_stats.excluded);
++        return;
++    }
++    if (READ_ONCE(mm->context.patch_miss[(end >> 3) & 63]) == end) {
++        this_cpu_inc(patch_stats.cached);
++        return;
++    }
 +    WRITE_ONCE(mm->context.patch_miss[(end >> 3) & 63], end);
-+    /* A seven-byte site may begin at a VMA boundary: do not read before it. */
-+    if (access_process_vm(current, end - 7, old + 2, 7, FOLL_FORCE) != 7)
++    /* Do not read preceding unmapped bytes just to find a longer form. */
++    if (access_process_vm(current, end - 7, old + 7, 7, FOLL_FORCE) != 7)
 +        return;
-+    if (!uml_patch_pattern(old + 2, 7, nr)) {
-+        if (access_process_vm(current, end - 9, old, 9, FOLL_FORCE) != 9 ||
-+            !uml_patch_pattern(old, 9, nr))
++    if (!uml_patch_pattern(old + 7, 7, nr)) {
++        if (uml_patch_dynamic(old + 7, 7)) {
++            dynamic = true;
++        } else if (access_process_vm(current, end - 9, old + 5, 9, FOLL_FORCE) == 9 &&
++                   uml_patch_pattern(old + 5, 9, nr)) {
++            len = 9;
++        } else if (access_process_vm(current, end - 14, old, 14, FOLL_FORCE) == 14 &&
++                   uml_patch_dynamic(old, 14)) {
++            len = 14;
++            dynamic = true;
++        } else {
++            this_cpu_inc(patch_stats.pattern);
 +            return;
-+        len = 9;
++        }
 +    }
 +    imm = nr;
 +	addr = end - len;
 +	if (offset_in_page(addr) + len > PAGE_SIZE)
 +		return;
 +	mutex_lock(&mm->context.patch_lock);
++	if (mm->context.patch_debug) {
++		this_cpu_inc(patch_stats.debug);
++		goto unlock;
++	}
 +	if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
 +	    h.magic != PATCH_MAGIC || h.next < 1 || h.next >= (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
 +		goto unlock;
@@ -373,6 +471,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	bytes = kmap_local_page(text);
 +	memcpy(window + split, bytes + (offset + split - before), before + len - split);
 +	if (!uml_patch_boundary(window, before, len)) {
++		this_cpu_inc(patch_stats.boundary);
 +		kunmap_local(bytes);
 +		resume_mm(mm);
 +		goto out;
@@ -383,19 +482,43 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +		goto out;
 +	}
 +	kunmap_local(bytes);
-+	value = slot + 8; memcpy(code, &value, 8);
++	value = slot + 136; memcpy(code + 6, &value, 8);
 +	memcpy(code + 40, &imm, 4);
 +	value = end; memcpy(code + 48, &value, 8);
-+	code[88] = len; memcpy(code + 89, old + sizeof(old) - len, len);
++	code[44] = dynamic;
++    code[88] = len; memcpy(code + 89, old + sizeof(old) - len, len);
 +	value = STUB_TID_TABLE; memcpy(code + 64, &value, 8);
 +	value = STUB_THREAD_DATA(0) - STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE;
 +	memcpy(code + 72, &value, 8);
 +	value = STUB_CODE + (unsigned long)stub_fast_entry - (unsigned long)__syscall_stub_start;
 +	memcpy(code + 80, &value, 8);
++    if (dynamic) {
++        unsigned int at = 136 + len - 2;
++        /* MOV/XCHG/JRCXZ preserve flags and never touch the guest stack.
++         * One try only: a descheduled owner cannot make peers spin. */
++        unsigned char acquire[] = {0x49,0xbb,0,0,0,0,0,0,0,0,
++            0xb9,1,0,0,0,0x49,0x87,0x0b,0xe3,5,0xe9,0,0,0,0,
++            0x49,0x89,0x43,8};
++        s32 relative = 232 - (at + 25);
++        value = STUB_TID_TABLE + STUB_TID_SLOTS;
++        memcpy(acquire + 2, &value, 8);
++        memcpy(acquire + 21, &relative, 4);
++        memset(code + 136, 0x90, 96);
++        memcpy(code + 136, old + sizeof(old) - len, len - 2);
++        memcpy(code + at, acquire, sizeof(acquire));
++        /* Lookup syscall always ends at slot+192; normalize metadata base. */
++        unsigned char lookup[] = {0xb8,186,0,0,0,0x0f,0x05,
++            0x48,0x8d,0x89,0x4f,0xff,0xff,0xff,
++            0x48,0x03,0x41,49,0x0f,0xb6,0x00,
++            0x48,0xc1,0xe0,14,0x48,0x03,0x41,57,0xff,0x61,65};
++        memcpy(code + 185, lookup, sizeof(lookup));
++        code[232] = 0x0f; code[233] = 0x05;
++        code[234] = 0x0f; code[235] = 0x0b;
++    }
 +	write_bytes(mm, entry, slot, code, sizeof(code));
 +	h.next++;
 +	write_bytes(mm, header, UML_PATCH_BASE, &h, sizeof(h));
-+	imm = slot; memcpy(jump + 3, &imm, 4);
++	uml_patch_jump(jump, len, slot);
 +	/* Stop-before-write also covers a runner already past the original MOV.
 +	 * The byte at its old SYSCALL remains invalid in the final jump. */
 +	old[0] = 0x06;
@@ -410,6 +533,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +            WRITE_ONCE(d->fast_enabled, READ_ONCE(d->fast_enabled) | 2);
 +    }
 +    atomic64_inc(&patched);
++    if (dynamic) atomic64_inc(&dynamic_sites);
 +	resume_mm(mm);
 +out:
 +	if (previous) put_page(previous);
@@ -421,69 +545,38 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +	mutex_unlock(&mm->context.patch_lock);
 +}
 +
-+/* Keep the patch mutex through a mapping syscall so another thread cannot
-+ * install a new site after restoration but before the VMA is moved. */
-+int uml_patch_prepare(int syscall, struct uml_pt_regs *r)
++/* Return with patch_lock held, including when this mm has no patch table. */
++static int patch_restore(struct mm_struct *mm, unsigned long start, unsigned long end, bool all)
 +{
-+    struct mm_struct *mm = current->mm;
 +    struct patch_header h;
-+    unsigned long start = UPT_SYSCALL_ARG1(r), size = UPT_SYSCALL_ARG2(r), end;
-+    bool all = false;
 +    int error = 0;
 +
-+    if (!uml_syscall_patch || !parallel_userspace || !mm)
-+        return 0;
-+    size = PAGE_ALIGN(size);
-+    end = size > ULONG_MAX - start ? ULONG_MAX : start + size;
-+    switch (syscall) {
-+    case __NR_mremap:
-+        if ((UPT_SYSCALL_ARG4(r) & MREMAP_FIXED) &&
-+            UPT_SYSCALL_ARG5(r) < UML_PATCH_END &&
-+            UPT_SYSCALL_ARG3(r) > UML_PATCH_BASE - min(UPT_SYSCALL_ARG5(r), (unsigned long)UML_PATCH_BASE))
-+            all = true;
-+        break;
-+    case __NR_mmap:
-+        if (!(UPT_SYSCALL_ARG4(r) & MAP_FIXED))
-+            return 0;
-+        fallthrough;
-+    case __NR_mprotect: case __NR_pkey_mprotect:
-+        if (UPT_SYSCALL_ARG3(r) & PROT_WRITE)
-+            break;
-+        fallthrough;
-+    case __NR_munmap: case __NR_madvise:
-+        if (start >= UML_PATCH_END || end <= UML_PATCH_BASE)
-+            return 0;
-+        break;
-+    default:
-+        return 0;
-+    }
-+    all |= start < UML_PATCH_END && end > UML_PATCH_BASE;
 +    mutex_lock(&mm->context.patch_lock);
-+    if (access_process_vm(current, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
++    if (access_remote_vm(mm, UML_PATCH_BASE, &h, sizeof(h), FOLL_FORCE) != sizeof(h) ||
 +        h.magic != PATCH_MAGIC || h.next < 1 || h.next > (UML_PATCH_END - UML_PATCH_BASE) / UML_PATCH_SLOT)
 +        return 1;
 +    for (unsigned long i = 1; i < h.next; i++) {
-+        unsigned char code[UML_PATCH_SLOT], jump[9] = {0xff,0x24,0x25,0,0,0,0,0x06,0x06};
++        unsigned char code[UML_PATCH_SLOT], jump[14];
 +        unsigned long slot = UML_PATCH_BASE + i * UML_PATCH_SLOT, addr;
 +        unsigned int len;
 +        struct vm_area_struct *vma;
 +        struct page *page = NULL;
 +        u64 return_ip;
-+        u32 imm = slot, nr;
++        u32 nr;
 +        void *bytes;
 +
-+        if (access_process_vm(current, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
++        if (access_remote_vm(mm, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
 +            continue;
 +        memcpy(&return_ip, code + 48, 8);
 +        memcpy(&nr, code + 40, 4);
 +        len = code[88];
-+        if (!uml_patch_pattern(code + 89, len, nr) || return_ip < UML_PATCH_END + len ||
-+            return_ip >= TASK_SIZE)
++        if ((!uml_patch_pattern(code + 89, len, nr) && !uml_patch_dynamic(code + 89, len)) || return_ip < len || return_ip >= TASK_SIZE ||
++            (return_ip > UML_PATCH_BASE && return_ip - len < UML_PATCH_END))
 +            continue;
 +        addr = return_ip - len;
-+        if ((!all && (addr < start || addr >= end)) || offset_in_page(addr) + len > PAGE_SIZE)
++        if ((!all && (addr >= end || return_ip <= start)) || offset_in_page(addr) + len > PAGE_SIZE)
 +            continue;
-+        memcpy(jump + 3, &imm, 4);
++        uml_patch_jump(jump, len, slot);
 +        mmap_read_lock(mm);
 +        vma = find_vma(mm, addr);
 +        if (!vma || vma->vm_start > addr || (vma->vm_flags & VM_SHARED) ||
@@ -523,38 +616,171 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +    return 1;
 +}
 +
++/* Keep the patch mutex through a mapping syscall so another thread cannot
++ * install a new site after restoration but before the VMA is moved. */
++int uml_patch_prepare(int syscall, struct uml_pt_regs *r)
++{
++    struct mm_struct *mm = current->mm;
++    unsigned long start = UPT_SYSCALL_ARG1(r), size = UPT_SYSCALL_ARG2(r), end;
++    bool all = false;
++
++    if (!uml_syscall_patch || !parallel_userspace || !mm)
++        return 0;
++    size = PAGE_ALIGN(size);
++    end = size > ULONG_MAX - start ? ULONG_MAX : start + size;
++    switch (syscall) {
++    case __NR_mremap:
++        if ((UPT_SYSCALL_ARG4(r) & MREMAP_FIXED) &&
++            UPT_SYSCALL_ARG5(r) < UML_PATCH_END &&
++            UPT_SYSCALL_ARG3(r) > UML_PATCH_BASE - min(UPT_SYSCALL_ARG5(r), (unsigned long)UML_PATCH_BASE))
++            all = true;
++        break;
++    case __NR_mmap:
++        if (!(UPT_SYSCALL_ARG4(r) & MAP_FIXED))
++            return 0;
++        fallthrough;
++    case __NR_mprotect: case __NR_pkey_mprotect:
++        if (UPT_SYSCALL_ARG3(r) & PROT_WRITE)
++            break;
++        fallthrough;
++    case __NR_munmap: case __NR_madvise:
++        if (start >= UML_PATCH_END || end <= UML_PATCH_BASE)
++            return 0;
++        break;
++    default:
++        return 0;
++    }
++    all |= start < UML_PATCH_END && end > UML_PATCH_BASE;
++    return patch_restore(mm, start, end, all);
++}
++
++int uml_patch_write_begin(struct mm_struct *mm, unsigned long addr, int len)
++{
++    unsigned long end;
++
++    if (!uml_syscall_patch || !parallel_userspace || len <= 0)
++        return 0;
++    end = len > ULONG_MAX - addr ? ULONG_MAX : addr + len;
++    return patch_restore(mm, addr, end, addr < UML_PATCH_END && end > UML_PATCH_BASE);
++}
++
++void uml_patch_write_end(struct mm_struct *mm)
++{
++    mutex_unlock(&mm->context.patch_lock);
++}
++
++int uml_patch_step(struct task_struct *task)
++{
++    struct mm_struct *mm;
++    int held;
++
++    if (!uml_syscall_patch || !parallel_userspace)
++        return 0;
++    mm = get_task_mm(task);
++    if (!mm)
++        return 0;
++    held = patch_restore(mm, 0, ULONG_MAX, true);
++    if (held > 0) {
++        /* Sticky until exec: another thread must not repatch a stepped site. */
++        mm->context.patch_debug = true;
++        uml_patch_write_end(mm);
++    }
++    mmput(mm);
++    return held < 0 ? held : 0;
++}
++
++/* The indirect target is deliberately unaligned to trap old MOV boundaries.
++ * #AC must retry the original instructions, with the guest flags unchanged. */
++int uml_patch_alignment(struct uml_pt_regs *r)
++{
++    struct mm_struct *mm = current->mm;
++    unsigned long addr = UPT_IP(r), slot;
++    unsigned char jump[14], expected[14], code[UML_PATCH_SLOT];
++    unsigned int len;
++    u32 target, nr;
++    u64 end;
++
++    if (!uml_syscall_patch || !parallel_userspace || !mm || !(UPT_EFLAGS(r) & (1UL << 18)))
++        return 0;
++    if (access_remote_vm(mm, addr, jump, 7, FOLL_FORCE) != 7 ||
++        jump[0] != 0xff || jump[1] != 0x24 || jump[2] != 0x25)
++        return 0;
++    memcpy(&target, jump + 3, 4);
++    slot = target - 6;
++    if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT ||
++        access_remote_vm(mm, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
++        return 0;
++    memcpy(&nr, code + 40, 4);
++    memcpy(&end, code + 48, 8);
++    len = code[88];
++    if ((!uml_patch_pattern(code + 89, len, nr) && !uml_patch_dynamic(code + 89, len)) ||
++        end != addr + len)
++        return 0;
++    uml_patch_jump(expected, len, slot);
++    if (access_remote_vm(mm, addr, jump, len, FOLL_FORCE) != len || memcmp(jump, expected, len))
++        return 0;
++    return !uml_patch_step(current);
++}
++
 +void uml_patch_done(void)
 +{
 +    mutex_unlock(&current->mm->context.patch_lock);
 +}
 +
++/* Decode while the runner lease still excludes site restoration. All source
++ * pages were populated when the site was installed; never fault or sleep. */
 +int uml_patch_fault(struct uml_pt_regs *r)
 +{
-+	unsigned char code[9];
-+	unsigned long ip = UPT_IP(r);
-+	u32 slot;
-+	u64 end;
++    static const unsigned char offsets[] = {3,5,6,7,9,12};
++    unsigned long ip = UPT_IP(r);
 +
-+	if (!uml_syscall_patch || !parallel_userspace || ip < UML_PATCH_END + 7)
-+		return 0;
-+	for (int offset = 5; offset <= 7; offset += 2) {
-+		if (access_process_vm(current, ip - offset, code, offset + 2, FOLL_FORCE) != offset + 2 ||
-+		    code[0] != 0xff || code[1] != 0x24 || code[2] != 0x25 || code[offset] != 0x06)
-+			continue;
-+		memcpy(&slot, code + 3, 4);
-+		if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT)
-+			continue;
-+		if (access_process_vm(current, slot + 48, &end, sizeof(end), FOLL_FORCE) != sizeof(end) || end != ip + 2)
-+			continue;
-+		r->fast_syscall = 1;
-+		UPT_IP(r) = end;
-+		PT_SYSCALL_NR(r->gp) = UPT_AX(r);
-+		return 1;
-+	}
-+	return 0;
++    if (!uml_syscall_patch || !parallel_userspace || ip < 14 || (ip >= UML_PATCH_BASE && ip < UML_PATCH_END))
++        return 0;
++    for (unsigned int i = 0; i < ARRAY_SIZE(offsets); i++) {
++        unsigned int offset = offsets[i], len;
++        unsigned char jump[14], expected[14], code[UML_PATCH_SLOT];
++        unsigned long addr = ip - offset, slot;
++        u32 target, nr;
++        u64 end;
++        if (copy_from_user_nofault(jump, (void __user *)addr, 7) ||
++            jump[0] != 0xff || jump[1] != 0x24 || jump[2] != 0x25)
++            continue;
++        memcpy(&target, jump + 3, 4);
++        slot = target - 6;
++        if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT)
++            continue;
++        if (copy_from_user_nofault(code, (void __user *)slot, sizeof(code)))
++            continue;
++        memcpy(&end, code + 48, 8);
++        memcpy(&nr, code + 40, 4);
++        len = code[88];
++        if ((!uml_patch_pattern(code + 89, len, nr) && !uml_patch_dynamic(code + 89, len)) ||
++            end != addr + len || (offset != len - 2 && (len != 14 || offset % 3)))
++            continue;
++        uml_patch_jump(expected, len, slot);
++        if (copy_from_user_nofault(jump, (void __user *)addr, len) || memcmp(jump, expected, len))
++            continue;
++        /* A parked Go runner may have executed only part of the MOV prefix. */
++        if (len == 14) {
++            if (offset <= 3) UPT_DX(r) = UPT_DI(r);
++            if (offset <= 6) UPT_SI(r) = UPT_CX(r);
++            if (offset <= 9) UPT_DI(r) = UPT_BX(r);
++        }
++        r->fast_syscall = 1;
++        UPT_IP(r) = end;
++        UPT_CX(r) = end;
++        r->gp[HOST_R11] = UPT_EFLAGS(r);
++        PT_SYSCALL_NR(r->gp) = UPT_AX(r);
++        return 1;
++    }
++    return 0;
 +}
 +
-+void uml_patch_count(void) { this_cpu_inc(patch_calls); }
++void uml_patch_count(int dynamic)
++{
++    this_cpu_inc(patch_calls);
++    if (dynamic) this_cpu_inc(patch_stats.dynamic);
++}
 +
 +static int patch_show(struct seq_file *m, void *v)
 +{
@@ -564,6 +790,14 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +		calls += READ_ONCE(per_cpu(patch_calls, cpu));
 +	seq_printf(m, "enabled %d\npatched %lld\nfast_calls %llu\n", uml_syscall_patch,
 +		   atomic64_read(&patched), calls);
++#define SHOW(field) do { \
++    u64 total = 0; \
++    for_each_possible_cpu(cpu) total += READ_ONCE(per_cpu(patch_stats, cpu).field); \
++    seq_printf(m, #field " %llu\n", total); \
++} while (0)
++    SHOW(sigsys); SHOW(excluded); SHOW(cached); SHOW(pattern); SHOW(boundary); SHOW(debug); SHOW(dynamic);
++    seq_printf(m, "dynamic_sites %lld\n", atomic64_read(&dynamic_sites));
++#undef SHOW
 +	return 0;
 +}
 +
@@ -607,6 +841,28 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  	memblock_add(__pa(start), len);
  	memblock_reserve(__pa(start), reserve);
+--- a/arch/um/kernel/ptrace.c
++++ b/arch/um/kernel/ptrace.c
+@@ -4,6 +4,7 @@
+  */
+ 
+ #include <linux/audit.h>
++#include <core-patch.h>
+ #include <linux/ptrace.h>
+ #include <linux/sched.h>
+ #include <linux/uaccess.h>
+@@ -99,6 +100,11 @@
+ 		ret = ptrace_set_thread_area(child, addr, vp);
+ 		break;
+ 
++	case PTRACE_SINGLESTEP:
++		ret = uml_patch_step(child);
++		if (ret)
++			break;
++		fallthrough;
+ 	default:
+ 		ret = ptrace_request(child, request, addr, data);
+ 		if (ret == -EIO)
 --- a/arch/um/kernel/skas/mmu.c
 +++ b/arch/um/kernel/skas/mmu.c
 @@ -84,7 +84,7 @@
@@ -618,10 +874,11 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	if (!err)
  		err = syscall_stub_flush(&ctx->id);
  	if (err || ctx->id.pid < 2)
-@@ -161,6 +161,11 @@
+@@ -161,6 +161,12 @@
  
  	memset(mm->context.cpu_ids, 0, sizeof(mm->context.cpu_ids));
  	mutex_init(&mm->context.turnstile);
++	mm->context.patch_debug = false;
 +	mutex_init(&mm->context.patch_lock);
 +	init_rwsem(&mm->context.patch_run);
 +	init_waitqueue_head(&mm->context.patch_wait);
@@ -640,15 +897,32 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #include <kern.h>
  #include <os.h>
  #include <skas.h>
-@@ -72,6 +73,7 @@
+@@ -72,6 +73,8 @@
  		enter_turnstile(id);
  		return id;
  	}
++retry:
 +	uml_patch_enter(mm);
  	/* Allocate before pinning; allocation can schedule onto another CPU. */
  	for (;;) {
  		preempt_disable();
-@@ -100,8 +102,10 @@
+@@ -93,15 +96,25 @@
+ 		if (err)
+ 			panic("Unable to start parallel userspace runner: %d", err);
+ 	}
+-	if (stack)
++	if (stack) {
+ 		free_pages(stack, ilog2(STUB_THREAD_PAGES));
++		stack = 0;
++	}
++	/* Patch waits and allocation can schedule after interrupt_end(). */
++	if (unlikely(read_thread_flags() & _TIF_WORK_MASK)) {
++		current_mm_exit(id);
++		interrupt_end();
++		goto retry;
++	}
+ 	return id;
+ }
  
  void current_mm_exit(struct mm_id *id)
  {
@@ -689,7 +963,30 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	stub_syscall0(__NR_getpid);
  	stub_syscall1(__NR_exit, 41);
  	__builtin_unreachable();
-@@ -434,6 +445,16 @@
+@@ -367,6 +378,11 @@
+ 		case STUB_SYSCALL_CLONE: {
+ 			struct stub_data *child = (void *)sc->mem.addr;
+ 			child->child_socket = fd_map[sc->mem.fd];
++            if (child->fast_enabled && child->fast_reset) {
++                unsigned long *lock = (void *)get_stub_data() +
++                    (STUB_DATA_PAGES + STUB_THREAD_SLOTS * STUB_THREAD_PAGES) * UM_KERN_PAGE_SIZE + STUB_TID_SLOTS;
++                *lock = 0;
++            }
+ 			d->clone_pid = stub_clone(sc->mem.addr);
+ 			if (d->clone_pid < 0) {
+ 				d->err = d->clone_pid;
+@@ -409,6 +425,10 @@
+ void __section(".__syscall_stub")
+ stub_signal_interrupt(int sig, siginfo_t *info, void *p)
+ {
++#ifdef __x86_64__
++    /* Linux preserves AC on signal entry. Keep it in ucontext, not live C. */
++    asm volatile("pushfq; andq $-262145,(%%rsp); popfq" ::: "cc", "memory");
++#endif
+ 	struct stub_data *d = ((ucontext_t *)p)->uc_stack.ss_sp;
+ 	char rcv_data;
+ 	union {
+@@ -434,6 +454,37 @@
  	int notify = 0;
  	long res;
  
@@ -702,11 +999,32 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +            return;
 +    }
 +#endif
++    if (d->fast_enabled && (sig == SIGSEGV || sig == SIGBUS)) {
++        unsigned long ip = uc->uc_mcontext.gregs[REG_RIP];
++        if (ip >= UML_PATCH_BASE && ip < UML_PATCH_END && ip % UML_PATCH_SLOT == 136) {
++            unsigned long original = uml_patch_prefix_ip((void *)(ip - 136), 136);
++            if (original)
++                uc->uc_mcontext.gregs[REG_RIP] = original;
++        }
++    }
++    if (d->fast_enabled && sig == SIGSYS) {
++        unsigned long ip = uc->uc_mcontext.gregs[REG_RIP];
++        if (ip >= UML_PATCH_BASE && ip < UML_PATCH_END && ip % UML_PATCH_SLOT == 234) {
++            /* This slot page is present: the runner just executed its SYSCALL.
++             * Normalize before publishing, while the mm runner lease is held. */
++            unsigned char *slot = (void *)(ip - 234);
++            if (slot[44] == 1 && slot[232] == 0x0f && slot[233] == 0x05) {
++                unsigned long after = *(unsigned long *)(slot + 48);
++                uc->uc_mcontext.gregs[REG_RIP] = after;
++                uc->uc_mcontext.gregs[REG_RCX] = after;
++            }
++        }
++    }
 +    d->fast_active = 0;
  	d->signal = sig;
  	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
  	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
-@@ -549,3 +570,124 @@
+@@ -549,3 +600,145 @@
  	/* We must not have anything on the stack when doing rt_sigreturn */
  	stub_syscall0(__NR_rt_sigreturn);
  }
@@ -719,6 +1037,16 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +    ucontext_t *uc = (void *)d + UML_FAST_UC;
 +    long res;
 +
++    long nr = uc->uc_mcontext.gregs[REG_RAX];
++    if (nr == __NR_clone || nr == __NR_clone3 || nr == __NR_fork || nr == __NR_vfork ||
++        nr == __NR_execve || nr == __NR_execveat || nr == __NR_rt_sigreturn ||
++        nr == __NR_exit || nr == __NR_exit_group || nr == __NR_restart_syscall) {
++        uc->uc_mcontext.gregs[REG_RIP] = (unsigned long)uc->uc_link + 232;
++        d->fast_active = 0;
++        asm volatile("mov %0,%%rsp; mov $15,%%eax; syscall; ud2"
++                     :: "r"(uc) : "rax", "rcx", "r11", "memory");
++        __builtin_unreachable();
++    }
 +    d->signal = SIGSYS;
 +    if (stub_futex_handoff(&d->futex, FUTEX_IN_KERN)) {
 +        do { res = stub_syscall3(__NR_futex, (unsigned long)&d->futex, FUTEX_WAKE, 1); }
@@ -759,6 +1087,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +    return d;
 +}
 +
++_Static_assert(offsetof(ucontext_t, uc_link) == 8, "fast link offset");
 +_Static_assert(offsetof(struct stub_data, fast_active) == 52, "fast active offset");
 +_Static_assert(offsetof(struct stub_data, fast_xfeatures) == 56, "fast xsave offset");
 +asm(
@@ -780,13 +1109,23 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +    "movq %rdx,8336(%rax)\n"
 +    "movq %rsp,8360(%rax)\n"
 +    "movq %r11,8376(%rax)\n"
++    "cmpb $1,29(%rcx)\n"
++    "je 5f\n"
 +    "movl 25(%rcx),%edx\n"
-+    "movq %rdx,8344(%rax)\n"
++    "jmp 6f\n"
++    "5: movq 49(%rcx),%r11\n"
++    "movq 4194312(%r11),%rdx\n"
++    "movq $0,4194304(%r11)\n"
++    "6: movq %rdx,8344(%rax)\n"
++    "leaq -15(%rcx),%rdx\n"
++    "movq %rdx,8208(%rax)\n"
 +    "movq 33(%rcx),%rdx\n"
 +    "movq %rdx,8192(%rax)\n"
 +    "movq %rdx,8368(%rax)\n"
 +    "movq %rdx,8352(%rax)\n"
-+    "movl $1,52(%rax)\n"
++    "movzbl 29(%rcx),%edx\n"
++    "incl %edx\n"
++    "movl %edx,52(%rax)\n"
 +    "movq %rax,%rdi\n"
 +    "leaq 16384(%rdi),%rsp\n"
 +    "cld\n"
@@ -885,18 +1224,33 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	stub_syscall2(__NR_sigaltstack, (unsigned long)&stack, 0);
  
  	/* register signal handlers */
-@@ -131,6 +141,18 @@
+@@ -123,6 +133,11 @@
+ 				    (unsigned long)&sa, 0, sizeof(sa.sa_mask));
+ 		if (res != 0)
+ 			stub_syscall1(__NR_exit, 20);
++
++		res = stub_syscall4(__NR_rt_sigaction, SIGBUS,
++				    (unsigned long)&sa, 0, sizeof(sa.sa_mask));
++		if (res != 0)
++			stub_syscall1(__NR_exit, 21);
+ 	}
+ 
+ 	/*
+@@ -131,6 +146,21 @@
  	 */
  	if (init_data.seccomp) {
  		struct sock_filter filter[] = {
 +#ifdef __x86_64__
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
-+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, UM_SECCOMP_ARCH_NATIVE, 0, 8),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, UM_SECCOMP_ARCH_NATIVE, 0, 11),
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, instruction_pointer) + 4),
-+            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 0, 6),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 0, 9),
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, instruction_pointer)),
-+            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_BASE, 0, 4),
-+            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_END, 3, 0),
++            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_BASE, 0, 7),
++            BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, UML_PATCH_END, 6, 0),
++            BPF_STMT(BPF_ALU | BPF_AND | BPF_K, UML_PATCH_SLOT - 1),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 143, 1, 0),
++            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 192, 0, 3),
 +            BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
 +            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_gettid, 0, 1),
 +            BPF_STMT(BPF_RET | BPF_K, init_data.syscall_patch ? SECCOMP_RET_ALLOW : SECCOMP_RET_TRAP),
@@ -904,7 +1258,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #if __BITS_PER_LONG > 32
  			/* [0] Load upper 32bit of instruction pointer from seccomp_data */
  			BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-@@ -144,10 +166,10 @@
+@@ -144,10 +174,10 @@
  				 (offsetof(struct seccomp_data, instruction_pointer))),
  
  			/* [3] Mask out lower bits */
@@ -917,7 +1271,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  			/* [5] Trap call, allow */
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
-@@ -175,6 +197,9 @@
+@@ -175,6 +205,9 @@
  			/* Each match is followed by its action: no fragile jump counts. */
  			BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
  			BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP),
@@ -968,7 +1322,22 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  		/*
 --- a/arch/um/kernel/tlb.c
 +++ b/arch/um/kernel/tlb.c
-@@ -263,6 +263,8 @@
+@@ -242,8 +242,12 @@
+ 
+ void um_tlb_sync_if_parallel(struct mm_struct *mm)
+ {
+-	if (parallel_userspace && mm != &init_mm && um_tlb_sync(mm))
+-		panic("Unable to synchronize shared host mappings");
++	if (parallel_userspace && mm != &init_mm) {
++		int err = um_tlb_sync(mm);
++		if (err)
++			panic("Unable to synchronize shared host mappings: error=%d broker=%d queued=%d",
++			      err, mm->context.id.pid, mm->context.id.syscall_data_len);
++	}
+ }
+ 
+ void flush_tlb_all(void)
+@@ -263,6 +267,8 @@
  	struct vm_area_struct *vma;
  	VMA_ITERATOR(vmi, mm, 0);
  
@@ -998,6 +1367,21 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
    }
  
    /*
+--- a/arch/um/os-Linux/process.c
++++ b/arch/um/os-Linux/process.c
+@@ -69,8 +69,10 @@
+ 
+ pid_t os_reap_child(int *status)
+ {
+-	/* Try to reap a child */
+-	return waitpid(-1, status, WNOHANG);
++	pid_t ret;
++
++	CATCH_EINTR(ret = waitpid(-1, status, WNOHANG));
++	return ret;
+ }
+ 
+ /* Don't use the glibc version, which caches the result in TLS. It misses some
 --- a/arch/um/os-Linux/skas/mem.c
 +++ b/arch/um/os-Linux/skas/mem.c
 @@ -16,6 +16,7 @@
@@ -1008,14 +1392,61 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #include <mm_id.h>
  #include <os.h>
  #include <ptrace_user.h>
-@@ -322,6 +323,7 @@
+@@ -150,13 +151,17 @@
+ 		return 0;
+ 
+ 	/* If an error happened already, report it and reset the state. */
+-	if (mm_idp->syscall_data_len < 0) {
++	if (mm_idp->syscall_data_len < 0)
+ 		res = mm_idp->syscall_data_len;
+-		mm_idp->syscall_data_len = 0;
+-		return res;
+-	}
+-
+-	res = do_syscall_stub(mm_idp);
++	else
++		res = do_syscall_stub(mm_idp);
++	if (res) {
++		struct stub_data *data = (void *)mm_idp->stack;
++		printk(UM_KERN_ERR "UML broker flush failed: pid=%d result=%d queued=%d done=%d err=%ld signal=%d phase=%u fds=%d\n",
++		       mm_idp->pid, res, mm_idp->syscall_data_len,
++		       data->syscall_data_len, data->err, data->signal,
++		       stub_futex_phase(&data->futex), mm_idp->syscall_fd_num);
++	}
+ 	mm_idp->syscall_data_len = 0;
+ 
+ 	return res;
+@@ -322,6 +327,8 @@
  		return -errno;
  	child->sock = sockets[0];
  	data->spin_limit = uml_seccomp_spin_limit;
 +	data->fast_enabled = uml_syscall_patch;
++	data->fast_reset = parent->clone_pid == 0;
  	fd = phys_mapping(uml_to_phys((void *)child->stack), &offset);
  	map(broker, addr, STUB_THREAD_PAGES * UM_KERN_PAGE_SIZE,
  	    UM_PROT_READ | UM_PROT_WRITE, fd, offset);
+@@ -339,12 +346,20 @@
+ 		goto fail;
+ 	child->pid = parent->clone_pid;
+ 	if (child->pid < 2) {
++		printk(UM_KERN_ERR "UML runner clone missing: broker=%d clone=%ld err=%ld batch=%d phase=%u\n",
++		       broker->pid, parent->clone_pid, parent->err,
++		       parent->syscall_data_len, stub_futex_phase(&parent->futex));
+ 		err = -ECHILD;
+ 		goto fail;
+ 	}
+ 	close(sockets[1]);
+ 	wait_stub_done_seccomp(child, 1, 1);
+-	return child->pid > 0 && data->err == 0 ? 0 : -ECHILD;
++	if (child->pid > 0 && data->err == 0)
++		return 0;
++	printk(UM_KERN_ERR "UML runner startup failed: broker=%d clone=%ld child=%d err=%ld signal=%d phase=%u\n",
++	       broker->pid, parent->clone_pid, child->pid, data->err,
++	       data->signal, stub_futex_phase(&data->futex));
++	return data->err < 0 ? data->err : -ECHILD;
+ fail:
+ 	close(sockets[0]);
+ 	close(sockets[1]);
 --- a/arch/um/os-Linux/skas/process.c
 +++ b/arch/um/os-Linux/skas/process.c
 @@ -19,6 +19,7 @@
@@ -1026,18 +1457,43 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  #include <init.h>
  #include <kern_util.h>
  #include <mem.h>
-@@ -232,6 +233,10 @@
- 						    WEXITED | WNOHANG | WNOWAIT);
- 				if ((status == 0 && state.si_pid) ||
- 				    (status < 0 && errno == ECHILD)) {
-+					printk(UM_KERN_ERR "UML runner died during handoff: pid=%d waitid=%d errno=%d code=%d status=%d signal=%d fast=%u active=%u\n",
-+					       mm_idp->pid, status, status < 0 ? errno : 0,
-+					       state.si_code, state.si_status, data->signal,
-+					       data->fast_enabled, data->fast_active);
+@@ -147,6 +148,20 @@
+ 	fatal_sigsegv();
+ }
+ 
++/* ECHILD is a wait relationship, not a liveness result. A racing reaper
++ * may consume status before publishing pid=-1; never kill a live runner. */
++static int stub_exited(int pid, siginfo_t *state)
++{
++    int ret;
++    CATCH_EINTR(ret = waitid(P_PID, pid, state, WEXITED | WNOHANG | WNOWAIT | __WALL));
++    if (!ret)
++        return state->si_pid != 0;
++    if (errno != ECHILD)
++        return 0;
++    CATCH_EINTR(ret = kill(pid, 0));
++    return ret < 0 && errno == ESRCH;
++}
++
+ void wait_stub_done_seccomp(struct mm_id *mm_idp, int running, int wait_sigsys)
+ {
+ 	struct stub_data *data = (void *)mm_idp->stack;
+@@ -228,10 +243,10 @@
+ 				      NULL, 0);
+ 			if (ret < 0 && errno == ETIMEDOUT && parallel_userspace && wait_sigsys) {
+ 				siginfo_t state = {};
+-				int status = waitid(P_PID, mm_idp->pid, &state,
+-						    WEXITED | WNOHANG | WNOWAIT);
+-				if ((status == 0 && state.si_pid) ||
+-				    (status < 0 && errno == ECHILD)) {
++				if (stub_exited(mm_idp->pid, &state)) {
++					printk(UM_KERN_ERR "UML runner died during handoff: pid=%d errno=%d code=%d status=%d signal=%d fast=%u active=%u\n",
++					       mm_idp->pid, errno, state.si_code, state.si_status,
++					       data->signal, data->fast_enabled, data->fast_active);
  					mm_idp->pid = -1;
  					goto out_kill;
  				}
-@@ -331,6 +336,7 @@
+@@ -331,6 +346,7 @@
  		 * never widen the filter when gpu_bridge is off. */
  		.gpu_async = uml_gpu_async_wait && uml_gpu_bridge,
  		.stub_start = STUB_START,
@@ -1045,7 +1501,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	};
  	int ret;
  
-@@ -609,6 +615,8 @@
+@@ -609,6 +625,8 @@
  
  	while (1) {
  		struct mm_id *mm_id = current_mm_enter();
@@ -1054,7 +1510,7 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  
  		/*
  		 * At any given time, only one CPU thread can enter the
-@@ -695,7 +703,14 @@
+@@ -695,7 +713,14 @@
  				panic("%s - Invalid siginfo offset from child", __func__);
  
  			si = &si_local;
@@ -1063,22 +1519,25 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
 +				regs->fast_syscall = 1;
 +				memset(si, 0, sizeof(*si));
 +				si->si_syscall = UPT_AX(regs);
-+				uml_patch_count();
++				uml_patch_count(proc_data->fast_active == 2);
 +			} else {
 +				memcpy(si, &proc_data->sigstack[proc_data->si_offset], sizeof(*si));
 +			}
  
  			regs->is_user = 1;
  
-@@ -813,6 +828,8 @@
- 		current_mm_exit(mm_id);
+@@ -810,7 +835,11 @@
+ 			}
+ 		}
  
- 		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
 +		if (sig == SIGILL && uml_patch_fault(regs))
 +			sig = SIGSYS;
+ 		current_mm_exit(mm_id);
++		if (sig == SIGBUS && si->si_code == BUS_ADRALN && uml_patch_alignment(regs))
++			sig = SIGALRM; /* Retry restored text through the normal return path. */
  
- 		if (sig) {
- 			switch (sig) {
+ 		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
+ 
 --- a/arch/x86/um/Makefile
 +++ b/arch/x86/um/Makefile
 @@ -26,7 +26,16 @@
@@ -1250,3 +1709,58 @@ Default off: uml_syscall_patch=1. Work in progress; not correctness-gated.
  	if (mmap_write_lock_killable(mm))
  		return -EINTR;
  
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -41,6 +41,9 @@
+ 
+ #include <linux/kernel_stat.h>
+ #include <linux/mm.h>
++#ifdef CONFIG_UML
++#include <core-patch.h>
++#endif
+ #include <linux/mm_inline.h>
+ #include <linux/sched/mm.h>
+ #include <linux/sched/numa_balancing.h>
+@@ -7017,7 +7020,7 @@
+ /*
+  * Access another process' address space as given in mm.
+  */
+-static int __access_remote_vm(struct mm_struct *mm, unsigned long addr,
++static int access_remote_vm_inner(struct mm_struct *mm, unsigned long addr,
+ 			      void *buf, int len, unsigned int gup_flags)
+ {
+ 	void *old_buf = buf;
+@@ -7095,6 +7098,25 @@
+ 	return buf - old_buf;
+ }
+ 
++/* UML restores private syscall sites before the mmap lock, and keeps its
++ * patch mutex across the write. Reads and other architectures are unchanged. */
++static int __access_remote_vm(struct mm_struct *mm, unsigned long addr,
++                             void *buf, int len, unsigned int gup_flags)
++{
++    int ret;
++#ifdef CONFIG_UML
++    int held = (gup_flags & FOLL_WRITE) ? uml_patch_write_begin(mm, addr, len) : 0;
++    if (held < 0)
++        return 0;
++#endif
++    ret = access_remote_vm_inner(mm, addr, buf, len, gup_flags);
++#ifdef CONFIG_UML
++    if (held)
++        uml_patch_write_end(mm);
++#endif
++    return ret;
++}
++
+ /**
+  * access_remote_vm - access another process' address space
+  * @mm:		the mm_struct of the target address space
+@@ -7107,6 +7129,7 @@
+  *
+  * Return: number of bytes copied from source to destination.
+  */
++
+ int access_remote_vm(struct mm_struct *mm, unsigned long addr,
+ 		void *buf, int len, unsigned int gup_flags)
+ {
