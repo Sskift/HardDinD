@@ -16,6 +16,9 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
 Alignment-check faults at an exact patched jump restore the mm and retry with
 unchanged registers and flags; further rewriting waits until exec.
 
+Runner entry rechecks return-to-user work after the patch lease and allocation,
+releasing the lease before signal/rseq fixups if either wait scheduled.
+
 --- a/arch/um/include/asm/mmu.h
 +++ b/arch/um/include/asm/mmu.h
 @@ -10,6 +10,8 @@
@@ -873,15 +876,32 @@ unchanged registers and flags; further rewriting waits until exec.
  #include <kern.h>
  #include <os.h>
  #include <skas.h>
-@@ -72,6 +73,7 @@
+@@ -72,6 +73,8 @@
  		enter_turnstile(id);
  		return id;
  	}
++retry:
 +	uml_patch_enter(mm);
  	/* Allocate before pinning; allocation can schedule onto another CPU. */
  	for (;;) {
  		preempt_disable();
-@@ -100,8 +102,10 @@
+@@ -93,15 +96,25 @@
+ 		if (err)
+ 			panic("Unable to start parallel userspace runner: %d", err);
+ 	}
+-	if (stack)
++	if (stack) {
+ 		free_pages(stack, ilog2(STUB_THREAD_PAGES));
++		stack = 0;
++	}
++	/* Patch waits and allocation can schedule after interrupt_end(). */
++	if (unlikely(read_thread_flags() & _TIF_WORK_MASK)) {
++		current_mm_exit(id);
++		interrupt_end();
++		goto retry;
++	}
+ 	return id;
+ }
  
  void current_mm_exit(struct mm_id *id)
  {
