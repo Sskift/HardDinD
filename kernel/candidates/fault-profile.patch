@@ -6,6 +6,8 @@ Wall times include preemption; zero and batch times nest inside other totals.
 Counters are machine-wide and include background work. The MMAP stub records
 TSC cycles around the host syscall; convert with the probe's measured tsc_hz.
 Its two fields fit the existing padding before the aligned GPU payload.
+Fork copying, full-mm flushes and context lifetimes have nested counters.
+Munmap/mprotect timing uses the unused command offset, without moving shared data.
 
 --- /dev/null
 +++ b/arch/um/include/shared/fault-profile.h
@@ -357,3 +359,213 @@ Its two fields fit the existing padding before the aligned GPU payload.
  #ifdef __x86_64__
  		case STUB_SYSCALL_CLONE: {
  			struct stub_data *child = (void *)sc->mem.addr;
+--- a/arch/um/include/shared/fault-profile.h
++++ b/arch/um/include/shared/fault-profile.h
+@@ -5,7 +5,11 @@
+ 	X(user_faults) X(user_fault_ns) X(zero_pages) X(zero_ns) \
+ 	X(syncs) X(sync_ns) X(batches) X(batch_ns) X(failed_batches) \
+ 	X(map_requests) X(map_pages) X(map_coalesced) \
+-	X(host_mmap) X(host_mmap_pages) X(host_mmap_cycles) X(host_munmap)
++	X(host_mmap) X(host_mmap_pages) X(host_mmap_cycles) X(host_munmap) \
++	X(host_munmap_pages) X(host_munmap_cycles) X(copy_ranges) X(copy_ns) \
++	X(flush_mm) X(flush_mm_ns) X(context_new) X(context_new_ns) \
++	X(context_destroy) X(context_destroy_ns) X(pte_scanned) X(pte_sync) \
++	X(host_mprotect) X(host_mprotect_pages) X(host_mprotect_cycles)
+ #define UML_FP_ENUM(name) UML_FP_##name,
+ enum { UML_FP_FIELDS(UML_FP_ENUM) UML_FP_COUNT };
+ #undef UML_FP_ENUM
+--- a/arch/um/include/shared/skas/stub-data.h
++++ b/arch/um/include/shared/skas/stub-data.h
+@@ -7,6 +7,7 @@
+ 
+ #ifndef __STUB_DATA_H
+ #define __STUB_DATA_H
++#define STUB_FAULT_PROFILE 1
+ 
+ #include <linux/compiler_types.h>
+ #include <as-layout.h>
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -4,6 +4,7 @@
+  * Copyright (C) 2002 - 2007 Jeff Dike (jdike@{addtoit,linux.intel}.com)
+  */
+ 
++#include <fault-profile.h>
+ #include <linux/mm.h>
+ #include <linux/sched/signal.h>
+ #include <linux/slab.h>
+@@ -153,7 +154,7 @@
+ 	mutex_unlock(__get_turnstile(mm_id));
+ }
+ 
+-int init_new_context(struct task_struct *task, struct mm_struct *mm)
++static int uml_fp_context_new_work(struct task_struct *task, struct mm_struct *mm)
+ {
+ 	struct mm_id *new_id = &mm->context.id;
+ 	unsigned long stack = 0;
+@@ -214,7 +215,7 @@
+ 	return ret;
+ }
+ 
+-void destroy_context(struct mm_struct *mm)
++static void uml_fp_context_destroy_work(struct mm_struct *mm)
+ {
+ 	struct mm_context *mmu = &mm->context;
+ 
+@@ -362,3 +363,19 @@
+ 	return 0;
+ }
+ early_initcall(init_child_tracking)
++
++int init_new_context(struct task_struct *task, struct mm_struct *mm)
++{
++	unsigned long long started = uml_fp_clock();
++	int ret = uml_fp_context_new_work(task, mm);
++	uml_fp_add(UML_FP_context_new, 1);
++	uml_fp_add(UML_FP_context_new_ns, uml_fp_clock() - started);
++	return ret;
++}
++void destroy_context(struct mm_struct *mm)
++{
++	unsigned long long started = uml_fp_clock();
++	uml_fp_context_destroy_work(mm);
++	uml_fp_add(UML_FP_context_destroy, 1);
++	uml_fp_add(UML_FP_context_destroy_ns, uml_fp_clock() - started);
++}
+--- a/arch/um/kernel/skas/stub.c
++++ b/arch/um/kernel/skas/stub.c
+@@ -400,15 +400,19 @@
+ 			break;
+ 		}
+ #endif
+-		case STUB_SYSCALL_MUNMAP:
++		case STUB_SYSCALL_MUNMAP: {
++			unsigned long long started = d->fault_profile_enabled ? stub_fault_clock() : 0;
+ 			res = stub_syscall2(__NR_munmap,
+ 					    sc->mem.addr, sc->mem.length);
++			if (d->fault_profile_enabled)
++				sc->mem.offset = stub_fault_clock() - started;
+ 			if (res) {
+ 				d->err = res;
+ 				d->syscall_data_len = i;
+ 				return -1;
+ 			}
+ 			break;
++		}
+ 		default:
+ 			d->err = -95; /* EOPNOTSUPP */
+ 			d->syscall_data_len = i;
+--- a/arch/um/kernel/tlb.c
++++ b/arch/um/kernel/tlb.c
+@@ -60,9 +60,11 @@
+ 	pte = pte_offset_kernel(pmd, addr);
+ 	do {
+ 		pte_t entry = READ_ONCE(*pte);
++		uml_fp_add(UML_FP_pte_scanned, 1);
+ 		if (!pte_needsync(entry))
+ 			continue;
+ 
++		uml_fp_add(UML_FP_pte_sync, 1);
+ 		if (pte_present(entry)) {
+ 			__u64 offset;
+ 			unsigned long phys = pte_val(entry) & PAGE_MASK;
+@@ -274,8 +276,11 @@
+ {
+ 	struct vm_area_struct *vma;
+ 	VMA_ITERATOR(vmi, mm, 0);
++	unsigned long long started = uml_fp_clock();
+ 
+ 	for_each_vma(vmi, vma)
+ 		um_tlb_mark_sync(mm, vma->vm_start, vma->vm_end);
+ 	um_tlb_sync_if_parallel(mm);
+-}
++	uml_fp_add(UML_FP_flush_mm, 1);
++	uml_fp_add(UML_FP_flush_mm_ns, uml_fp_clock() - started);
++}
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -98,6 +98,7 @@
+ 	int n, i;
+ 	int err, pid = mm_idp->pid;
+ 	unsigned long long fp_start = uml_fp_clock();
++	int fp_count = mm_idp->syscall_data_len;
+ 	if (uml_fault_profile) {
+ 		uml_fp_add(UML_FP_batches, 1);
+ 		for (i = 0; i < mm_idp->syscall_data_len; i++) {
+@@ -107,7 +108,16 @@
+ 				uml_fp_add(UML_FP_host_mmap_pages, sc->mem.length / UM_KERN_PAGE_SIZE);
+ 			} else if (sc->syscall == STUB_SYSCALL_MUNMAP) {
+ 				uml_fp_add(UML_FP_host_munmap, 1);
++				uml_fp_add(UML_FP_host_munmap_pages, sc->mem.length / UM_KERN_PAGE_SIZE);
++				sc->mem.offset = 0;
+ 			}
++#ifdef STUB_HAS_MPROTECT
++			else if (sc->syscall == STUB_SYSCALL_MPROTECT) {
++				uml_fp_add(UML_FP_host_mprotect, 1);
++				uml_fp_add(UML_FP_host_mprotect_pages, sc->mem.length / UM_KERN_PAGE_SIZE);
++				sc->mem.offset = 0;
++			}
++#endif
+ 		}
+ 	}
+ 
+@@ -146,6 +156,16 @@
+ 	 */
+ 	uml_fp_add(UML_FP_batch_ns, uml_fp_clock() - fp_start);
+ 	uml_fp_add(UML_FP_host_mmap_cycles, proc_data->fault_profile_cycles);
++	if (uml_fault_profile)
++		for (i = 0; i < fp_count; i++) {
++			struct stub_syscall *sc = &proc_data->syscall_data[i];
++			if (sc->syscall == STUB_SYSCALL_MUNMAP)
++				uml_fp_add(UML_FP_host_munmap_cycles, sc->mem.offset);
++#ifdef STUB_HAS_MPROTECT
++			else if (sc->syscall == STUB_SYSCALL_MPROTECT)
++				uml_fp_add(UML_FP_host_mprotect_cycles, sc->mem.offset);
++#endif
++		}
+ 	if (proc_data->err < 0) {
+ 		uml_fp_add(UML_FP_failed_batches, 1);
+ 		syscall_stub_dump_error(mm_idp);
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -39,6 +39,9 @@
+  * Aug/Sep 2004 Changed to four level page tables (Andi Kleen)
+  */
+ 
++#ifdef CONFIG_UML
++#include <fault-profile.h>
++#endif
+ #include <linux/kernel_stat.h>
+ #include <linux/mm.h>
+ #include <linux/mm_inline.h>
+@@ -1503,8 +1506,8 @@
+ 	return false;
+ }
+ 
+-int
+-copy_page_range(struct vm_area_struct *dst_vma, struct vm_area_struct *src_vma)
++static int
++uml_fp_copy_page_range(struct vm_area_struct *dst_vma, struct vm_area_struct *src_vma)
+ {
+ 	pgd_t *src_pgd, *dst_pgd;
+ 	unsigned long addr = src_vma->vm_start;
+@@ -1563,6 +1566,19 @@
+ 		raw_write_seqcount_end(&src_mm->write_protect_seq);
+ 		mmu_notifier_invalidate_range_end(&range);
+ 	}
++	return ret;
++}
++
++int copy_page_range(struct vm_area_struct *dst_vma, struct vm_area_struct *src_vma)
++{
++#ifdef CONFIG_UML
++	unsigned long long started = uml_fp_clock();
++#endif
++	int ret = uml_fp_copy_page_range(dst_vma, src_vma);
++#ifdef CONFIG_UML
++	uml_fp_add(UML_FP_copy_ranges, 1);
++	uml_fp_add(UML_FP_copy_ns, uml_fp_clock() - started);
++#endif
+ 	return ret;
+ }
+ 

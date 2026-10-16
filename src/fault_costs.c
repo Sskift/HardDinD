@@ -18,7 +18,7 @@
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "fault_costs:%d: %s errno=%d\n", \
     __LINE__, #x, errno); exit(1); } } while (0)
-#define MAX_FIELDS 32
+#define MAX_FIELDS 64
 #define MAX_SAMPLES 18
 struct fields { char name[MAX_FIELDS][40]; uint64_t value[MAX_FIELDS]; unsigned count; };
 struct sample { const char *name; size_t count; uint64_t ns; long faults; struct fields before, after; };
