@@ -1,6 +1,7 @@
 """Execute the candidate's recovery logic at every old instruction boundary."""
 import pathlib
 import platform
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,44 @@ from pipeline import config
 
 
 class PatchRecoveryTests(unittest.TestCase):
+    def test_stack_prefix_fault_address_requires_exact_metadata(self):
+        compiler = shutil.which('cc')
+        if compiler is None:
+            self.skipTest('C compiler unavailable')
+        patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
+        part = patch.split('+++ b/arch/um/include/shared/core-patch.h\n')[1].split('--- a/')[0]
+        header = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
+        source = '#include <assert.h>\n#include <string.h>\n#include "core-patch.h"\n' + r'''
+int main(void) {
+    unsigned char slot[256];
+    unsigned long end = 0x401007;
+    for (unsigned int form = 0; form < 2; form++) {
+        unsigned char old[] = {form ? 0x48 : 0x4c, 0x8b, form ? 0x44 : 0x4c,
+                               0x24, 8, 0x0f, 0x05};
+        memset(slot, 0, sizeof(slot));
+        slot[44] = 1; slot[88] = 7;
+        memcpy(slot + 48, &end, 8); memcpy(slot + 89, old, 7); memcpy(slot + 136, old, 5);
+        for (unsigned long offset = 0; offset < 256; offset++)
+            assert(uml_patch_prefix_ip(slot, offset) == (offset == 136 ? end - 7 : 0));
+        unsigned int fields[] = {44, 88, 89, 90, 91, 92, 93, 94, 95, 136, 137, 138, 139, 140};
+        for (unsigned int i = 0; i < sizeof(fields)/sizeof(fields[0]); i++) {
+            slot[fields[i]] ^= 1;
+            assert(!uml_patch_prefix_ip(slot, 136));
+            slot[fields[i]] ^= 1;
+        }
+        memset(slot + 48, 0, 8);
+        assert(!uml_patch_prefix_ip(slot, 136));
+    }
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as directory:
+            path = pathlib.Path(directory)
+            (path / 'core-patch.h').write_text(header)
+            (path / 'test.c').write_text(source)
+            subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', path / 'test.c',
+                            '-o', path / 'test'], check=True)
+            subprocess.run([path / 'test'], check=True, timeout=10)
+
     @unittest.skipUnless(sys.platform == 'linux' and platform.machine() == 'x86_64',
                          'Linux low-address mappings')
     def test_fixed_and_go_inflight_registers(self):

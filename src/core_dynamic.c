@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <ucontext.h>
 #include <unistd.h>
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "core dynamic line=%d %s errno=%d\n", \
@@ -88,6 +89,53 @@ static void interrupted_read(call_fn call) {
         CHECK(!close(fd[0]) && !close(fd[1]));
     }
 }
+extern long core_prefix_call(void *, void *);
+__asm__(".text\n.global core_prefix_call\ncore_prefix_call: push %rbx; mov %rsp,%rbx\n"
+        "mov %rsi,%rsp; mov $39,%eax; call *%rdi; mov %rbx,%rsp; pop %rbx; ret\n");
+static unsigned char *fault_site, *fault_address;
+static size_t page_size;
+static volatile sig_atomic_t prefix_faults;
+static void prefix_fault(int sig, siginfo_t *info, void *context) {
+    ucontext_t *uc = context;
+    CHECK(sig == SIGSEGV && info->si_addr == fault_address);
+    CHECK((uintptr_t)uc->uc_mcontext.gregs[REG_RIP] == (uintptr_t)fault_site);
+    CHECK((uintptr_t)uc->uc_mcontext.gregs[REG_RSP] == (uintptr_t)fault_address - 8);
+    CHECK(uc->uc_mcontext.gregs[REG_RAX] == SYS_getpid);
+    CHECK(!mprotect(fault_address, page_size, PROT_READ | PROT_WRITE));
+    prefix_faults++;
+}
+static void stack_load_faults(void) {
+    page_size = (size_t)sysconf(_SC_PAGESIZE);
+    unsigned char *stack = mmap(NULL, page_size * 2, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *signal_stack = mmap(NULL, 65536, PROT_READ | PROT_WRITE,
+                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    CHECK(stack != MAP_FAILED && signal_stack != MAP_FAILED);
+    stack_t alt = {.ss_sp = signal_stack, .ss_size = 65536}, old_stack;
+    struct sigaction sa = {.sa_sigaction = prefix_fault, .sa_flags = SA_SIGINFO | SA_ONSTACK}, old;
+    CHECK(!sigaltstack(&alt, &old_stack) && !sigemptyset(&sa.sa_mask));
+    CHECK(!sigaction(SIGSEGV, &sa, &old));
+    fault_address = stack + page_size;
+    for (unsigned int form = 0; form < 2; form++) {
+        unsigned char code[] = {form ? 0x48 : 0x4c, 0x8b, form ? 0x44 : 0x4c,
+                                0x24, 8, 0x0f, 0x05, 0xc3};
+        unsigned char *text = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
+                                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        CHECK(text != MAP_FAILED);
+        memset(text, 0x90, page_size); fault_site = text + 64;
+        memcpy(fault_site, code, sizeof(code));
+        *(long *)fault_address = SYS_getpid;
+        CHECK(!mprotect(text, page_size, PROT_READ | PROT_EXEC));
+        CHECK(core_prefix_call(fault_site, fault_address) == pid);
+        CHECK((fault_site[0] == 0xff) == enabled);
+        CHECK(!mprotect(fault_address, page_size, PROT_NONE));
+        CHECK(core_prefix_call(fault_site, fault_address) == pid);
+        CHECK(prefix_faults == (sig_atomic_t)form + 1);
+        CHECK(!munmap(text, page_size));
+    }
+    CHECK(!sigaction(SIGSEGV, &old, NULL) && !sigaltstack(&old_stack, NULL));
+    CHECK(!munmap(signal_stack, 65536) && !munmap(stack, page_size * 2));
+}
 int main(int argc, char **argv) {
     FILE *f = fopen("/proc/uml_syscall_patch", "r");
     if (f) {
@@ -134,8 +182,9 @@ int main(int argc, char **argv) {
         }
         wait_ok(child);
     }
+    stack_load_faults();
     printf("{\"schema\":\"hd.core-dynamic/1\",\"enabled\":%s,\"calls\":%d,"
-           "\"signals\":%u,\"restart\":true,\"arguments\":true,\"fork\":true,\"exec\":true,\"verified\":true}\n",
+           "\"signals\":%u,\"prefix_faults\":2,\"restart\":true,\"arguments\":true,\"fork\":true,\"exec\":true,\"verified\":true}\n",
            enabled ? "true" : "false", N * 24, atomic_load(&signals));
     return 0;
 }

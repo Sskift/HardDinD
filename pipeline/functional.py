@@ -1117,7 +1117,8 @@ def core_summary(output, program, mode, count=256, patch_enabled=None):
                         'ptrace_upper_edit': True, 'verified': True}, row)
     elif program == 'core_dynamic':
         require(row['schema'] == 'hd.core-dynamic/1' and row['calls'] == 98304 and
-                row['enabled'] is patch_enabled and type(row['signals']) is int and row['signals'] > 0, row)
+                row['enabled'] is patch_enabled and type(row['signals']) is int and row['signals'] > 0 and
+                row['prefix_faults'] == 2, row)
         require(all(row[k] is True for k in ('restart', 'arguments', 'fork', 'exec', 'verified')), row)
     else:
         expected = {'filters': [('seccomp_allow', 1), ('seccomp_errno', 1)],

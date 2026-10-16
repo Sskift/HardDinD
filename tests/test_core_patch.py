@@ -177,7 +177,7 @@ int main(void) {
         patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
         part = patch.split('+++ b/arch/um/include/shared/core-patch.h\n')[1].split('--- a/')[0]
         header = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
-        source = '#include <assert.h>\n#include <string.h>\n' + header + r"""
+        source = '#include <assert.h>\n#include <string.h>\n#include "core-patch.h"\n' + r"""
 int main(void) {
     unsigned char a[] = {0xb8,39,0,0,0,0x0f,0x05};
     unsigned char b[] = {0x48,0xc7,0xc0,39,0,0,0,0x0f,0x05};
@@ -215,6 +215,7 @@ int main(void) {
 """
         with tempfile.TemporaryDirectory(prefix='.core-test-', dir=config.REPO) as directory:
             path = pathlib.Path(directory)
+            (path / 'core-patch.h').write_text(header)
             (path / 'test.c').write_text(source)
             subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror', path / 'test.c',
                             '-o', path / 'test'], check=True)
@@ -365,6 +366,7 @@ int main(void) {
             row = json.loads(run.stdout)
             self.assertEqual(row['schema'], 'hd.core-dynamic/1')
             self.assertEqual(row['calls'], 98304)
+            self.assertEqual(row['prefix_faults'], 2)
             self.assertGreater(row['signals'], 0)
             for key in ('restart', 'arguments', 'fork', 'exec', 'verified'):
                 self.assertIs(row[key], True)

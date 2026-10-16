@@ -20,6 +20,9 @@ registers SIGBUS and clears live AC before C; saved guest flags stay intact.
 Runner entry rechecks return-to-user work after the patch lease and allocation,
 releasing the lease before signal/rseq fixups if either wait scheduled.
 
+Faults in copied stack-load prefixes report the original guest instruction
+and preserve its stack pointer, including when a guest signal handler repairs it.
+
 --- a/arch/um/include/asm/mmu.h
 +++ b/arch/um/include/asm/mmu.h
 @@ -10,6 +10,8 @@
@@ -96,7 +99,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,66 @@
+@@ -0,0 +1,83 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
@@ -135,6 +138,23 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
 +    return len == 7 && (p[0] == 0x4c || p[0] == 0x48) && p[1] == 0x8b &&
 +        p[2] == (p[0] == 0x4c ? 0x4c : 0x44) && p[3] == 0x24 &&
 +        p[4] == 8 && p[5] == 0x0f && p[6] == 0x05;
++}
++/* A copied stack load must report faults at its original instruction. */
++static inline __attribute__((always_inline)) unsigned long
++uml_patch_prefix_ip(const unsigned char *slot, unsigned long offset)
++{
++    const unsigned char *p = slot + 136;
++    unsigned long end = 0;
++    if (offset != 136 || slot[44] != 1 || slot[88] != 7 ||
++        (p[0] != 0x4c && p[0] != 0x48) || p[1] != 0x8b ||
++        p[2] != (p[0] == 0x4c ? 0x4c : 0x44) || p[3] != 0x24 || p[4] != 8 ||
++        slot[94] != 0x0f || slot[95] != 0x05)
++        return 0;
++    for (unsigned int i = 0; i < 5; i++)
++        if (p[i] != slot[89 + i]) return 0;
++    for (unsigned int i = 0; i < 8; i++)
++        end |= (unsigned long)slot[48 + i] << (i * 8);
++    return end >= 7 ? end - 7 : 0;
 +}
 +static inline void uml_patch_jump(unsigned char *p, unsigned int len, unsigned long slot)
 +{
@@ -966,7 +986,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  	struct stub_data *d = ((ucontext_t *)p)->uc_stack.ss_sp;
  	char rcv_data;
  	union {
-@@ -434,6 +454,29 @@
+@@ -434,6 +454,37 @@
  	int notify = 0;
  	long res;
  
@@ -979,6 +999,14 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
 +            return;
 +    }
 +#endif
++    if (d->fast_enabled && (sig == SIGSEGV || sig == SIGBUS)) {
++        unsigned long ip = uc->uc_mcontext.gregs[REG_RIP];
++        if (ip >= UML_PATCH_BASE && ip < UML_PATCH_END && ip % UML_PATCH_SLOT == 136) {
++            unsigned long original = uml_patch_prefix_ip((void *)(ip - 136), 136);
++            if (original)
++                uc->uc_mcontext.gregs[REG_RIP] = original;
++        }
++    }
 +    if (d->fast_enabled && sig == SIGSYS) {
 +        unsigned long ip = uc->uc_mcontext.gregs[REG_RIP];
 +        if (ip >= UML_PATCH_BASE && ip < UML_PATCH_END && ip % UML_PATCH_SLOT == 234) {
@@ -996,7 +1024,7 @@ releasing the lease before signal/rseq fixups if either wait scheduled.
  	d->signal = sig;
  	d->si_offset = (unsigned long)info - (unsigned long)&d->sigstack[0];
  	d->mctx_offset = (unsigned long)&uc->uc_mcontext - (unsigned long)&d->sigstack[0];
-@@ -549,3 +592,145 @@
+@@ -549,3 +600,145 @@
  	/* We must not have anything on the stack when doing rt_sigreturn */
  	stub_syscall0(__NR_rt_sigreturn);
  }
