@@ -65,7 +65,7 @@ class CoreFunctionalTests(unittest.TestCase):
     def test_rewrite_requires_enabled_path_and_every_semantic_result(self):
         row = {'schema': 'hd.core-patch/1', 'enabled': True, 'sites': 32, 'calls': 131072,
                'signals': 5, 'trampoline_lifetime': True, **{key: True for key in ('fork', 'exec_clean', 'file_clean',
-                   'ptrace', 'poketext', 'proc_mem', 'single_step', 'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')}}
+                   'ptrace', 'poketext', 'proc_mem', 'single_step', 'alignment_flags', 'restart', 'long_form', 'ambiguous_fallback', 'mremap', 'discard_remap_write', 'verified')}}
         f.core_summary(json.dumps(row), 'core_patch', 'rewrite', patch_enabled=True)
         for key in row:
             bad = {k: v for k, v in row.items() if k != key}

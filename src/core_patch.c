@@ -156,6 +156,26 @@ static void debugger_writes(void) {
         verify_site(site);
     }
 }
+extern long core_ac_call(void *site, unsigned long *flags);
+__asm__(".text\n.global core_ac_call\n.type core_ac_call,@function\n"
+        "core_ac_call: pushfq; orq $0x40000,(%rsp); popfq; call *%rdi\n"
+        "pushfq; pop %rdx; push %rdx; andq $-262145,(%rsp); popfq\n"
+        "mov %rdx,(%rsi); ret\n.size core_ac_call,.-core_ac_call\n");
+static void alignment_flags(void) {
+    pid_t child = fork(); CHECK(child >= 0);
+    if (!child) {
+        unsigned long flags = 0;
+        long expected = getpid();
+        verify_site((void *)core_patch_site);
+        CHECK(core_ac_call((void *)core_patch_site, &flags) == expected);
+        CHECK(flags & (1UL << 18));
+        CHECK(is_original((void *)core_patch_site));
+        CHECK(core_patch_site() == expected && is_original((void *)core_patch_site));
+        _exit(0);
+    }
+    wait_ok(child);
+    verify_site((void *)core_patch_site);
+}
 static void restart_and_long_form(void) {
     unsigned char *p = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -314,6 +334,7 @@ int main(int argc, char **argv) {
     wait_ok(child);
     ptrace_after_patch();
     debugger_writes();
+    alignment_flags();
     restart_and_long_form();
     ambiguous_instructions();
     trampoline_lifetime();
@@ -350,7 +371,7 @@ int main(int argc, char **argv) {
     CHECK(!munmap(mapping, SITES * page_size) && !close(fd));
     printf("{\"schema\":\"hd.core-patch/1\",\"enabled\":%s,\"sites\":%d,\"calls\":%d,"
            "\"signals\":%u,\"fork\":true,\"exec_clean\":true,\"file_clean\":true,"
-           "\"ptrace\":true,\"poketext\":true,\"proc_mem\":true,\"single_step\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"mremap\":true,\"trampoline_lifetime\":%s,\"discard_remap_write\":true,\"verified\":true}\n",
+           "\"ptrace\":true,\"poketext\":true,\"proc_mem\":true,\"single_step\":true,\"alignment_flags\":true,\"restart\":true,\"long_form\":true,\"ambiguous_fallback\":true,\"mremap\":true,\"trampoline_lifetime\":%s,\"discard_remap_write\":true,\"verified\":true}\n",
            enabled ? "true" : "false", SITES, SITES * CALLS * 4, atomic_load(&delivered), enabled ? "true" : "false");
     return 0;
 }

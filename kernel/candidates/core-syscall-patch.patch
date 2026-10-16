@@ -13,6 +13,9 @@ one-try lock before host gettid; contention and lifecycle calls use SIGSYS.
 The host gettid exemption matches only lookup instruction offsets, never the
 slow syscall. The extra host scratch page is reset before cached-broker reuse.
 
+Alignment-check faults at an exact patched jump restore the mm and retry with
+unchanged registers and flags; further rewriting waits until exec.
+
 --- a/arch/um/include/asm/mmu.h
 +++ b/arch/um/include/asm/mmu.h
 @@ -10,6 +10,8 @@
@@ -89,7 +92,7 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
  #ifndef __ASSEMBLER__
 --- a/arch/um/include/shared/core-patch.h
 +++ b/arch/um/include/shared/core-patch.h
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,66 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_CORE_PATCH_H
 +#define UML_CORE_PATCH_H
@@ -143,6 +146,7 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
 +struct task_struct;
 +void uml_patch_syscall(struct uml_pt_regs *r);
 +int uml_patch_fault(struct uml_pt_regs *r);
++int uml_patch_alignment(struct uml_pt_regs *r);
 +void uml_patch_enter(struct mm_struct *mm);
 +void uml_patch_exit(struct mm_struct *mm);
 +void uml_patch_count(int dynamic);
@@ -194,7 +198,7 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
  obj-$(CONFIG_BLK_DEV_INITRD) += initrd.o
 --- a/arch/um/kernel/core-patch.c
 +++ b/arch/um/kernel/core-patch.c
-@@ -0,0 +1,551 @@
+@@ -0,0 +1,584 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/init.h>
 +#include <linux/mm.h>
@@ -364,7 +368,7 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
 +    if (!parallel_userspace || !mm || r->fast_syscall)
 +        return;
 +    this_cpu_inc(patch_stats.sigsys);
-+    if (!uml_syscall_patch || end < sizeof(old) || end >= TASK_SIZE ||
++    if (!uml_syscall_patch || (UPT_EFLAGS(r) & (1UL << 18)) || end < sizeof(old) || end >= TASK_SIZE ||
 +        (end > UML_PATCH_BASE && end - sizeof(old) < UML_PATCH_END))
 +        return;
 +    if (!eligible(nr)) {
@@ -659,6 +663,39 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
 +    }
 +    mmput(mm);
 +    return held < 0 ? held : 0;
++}
++
++/* The indirect target is deliberately unaligned to trap old MOV boundaries.
++ * #AC must retry the original instructions, with the guest flags unchanged. */
++int uml_patch_alignment(struct uml_pt_regs *r)
++{
++    struct mm_struct *mm = current->mm;
++    unsigned long addr = UPT_IP(r), slot;
++    unsigned char jump[14], expected[14], code[UML_PATCH_SLOT];
++    unsigned int len;
++    u32 target, nr;
++    u64 end;
++
++    if (!uml_syscall_patch || !parallel_userspace || !mm || !(UPT_EFLAGS(r) & (1UL << 18)))
++        return 0;
++    if (access_remote_vm(mm, addr, jump, 7, FOLL_FORCE) != 7 ||
++        jump[0] != 0xff || jump[1] != 0x24 || jump[2] != 0x25)
++        return 0;
++    memcpy(&target, jump + 3, 4);
++    slot = target - 6;
++    if (slot < UML_PATCH_BASE + UML_PATCH_SLOT || slot >= UML_PATCH_END || slot % UML_PATCH_SLOT ||
++        access_remote_vm(mm, slot, code, sizeof(code), FOLL_FORCE) != sizeof(code))
++        return 0;
++    memcpy(&nr, code + 40, 4);
++    memcpy(&end, code + 48, 8);
++    len = code[88];
++    if ((!uml_patch_pattern(code + 89, len, nr) && !uml_patch_dynamic(code + 89, len)) ||
++        end != addr + len)
++        return 0;
++    uml_patch_jump(expected, len, slot);
++    if (access_remote_vm(mm, addr, jump, len, FOLL_FORCE) != len || memcmp(jump, expected, len))
++        return 0;
++    return !uml_patch_step(current);
 +}
 +
 +void uml_patch_done(void)
@@ -1378,15 +1415,18 @@ slow syscall. The extra host scratch page is reset before cached-broker reuse.
  
  			regs->is_user = 1;
  
-@@ -810,6 +835,8 @@
+@@ -810,7 +835,11 @@
  			}
  		}
  
 +		if (sig == SIGILL && uml_patch_fault(regs))
 +			sig = SIGSYS;
  		current_mm_exit(mm_id);
++		if (sig == SIGBUS && si->si_code == BUS_ADRALN && uml_patch_alignment(regs))
++			sig = SIGALRM; /* Retry restored text through the normal return path. */
  
  		UPT_SYSCALL_NR(regs) = -1; /* Assume: It's not a syscall */
+ 
 --- a/arch/x86/um/Makefile
 +++ b/arch/x86/um/Makefile
 @@ -26,7 +26,16 @@
