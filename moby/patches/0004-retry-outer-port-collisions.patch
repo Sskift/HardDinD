@@ -64,13 +64,14 @@
 +func (e *portInUseError) Is(target error) bool { return target == syscall.EADDRINUSE }
 --- a/daemon/libnetwork/portmappers/nat/harddind_retry_linux_test.go
 +++ b/daemon/libnetwork/portmappers/nat/harddind_retry_linux_test.go
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,122 @@
 +package nat
 +
 +import (
 +	"context"
 +	"errors"
 +	"fmt"
++	"net"
 +	"net/netip"
 +	"syscall"
 +	"testing"
@@ -98,31 +99,67 @@
 +	return func() error { p.removed++; return p.cleanupError }, nil
 +}
 +
++func freeRange(t *testing.T, count uint16) uint16 {
++	t.Helper()
++	for attempt := 0; attempt < 32; attempt++ {
++		first, err := net.Listen("tcp4", "127.0.0.1:0")
++		assert.NilError(t, err)
++		port := first.Addr().(*net.TCPAddr).Port
++		listeners := []net.Listener{first}
++		if port+int(count)-1 <= 65535 {
++			for _, ip := range []string{"127.0.0.1", "127.0.0.2"} {
++				for offset := 0; offset < int(count); offset++ {
++					if ip == "127.0.0.1" && offset == 0 {
++						continue
++					}
++					listener, listenErr := net.Listen("tcp4", fmt.Sprintf("%s:%d", ip, port+offset))
++					if listenErr == nil {
++						listeners = append(listeners, listener)
++					}
++				}
++			}
++		}
++		for _, listener := range listeners {
++			listener.Close()
++		}
++		if len(listeners) == 2*int(count) {
++			return uint16(port)
++		}
++	}
++	t.Fatal("no free port range")
++	return 0
++}
++
 +func TestHardDinDPortRetry(t *testing.T) {
 +	for _, tc := range []struct {
 +		name                   string
-+		start, end             uint16
++		ports                  uint16
 +		failUntil              int
 +		failure, cleanup       error
 +		wantCalls, wantRemoved int
 +		success                bool
 +	}{
-+		{"automatic", 0, 0, 2, syscall.EADDRINUSE, nil, 4, 2, true},
-+		{"range", 49100, 49102, 2, syscall.EADDRINUSE, nil, 4, 2, true},
-+		{"fixed", 49110, 49110, 2, syscall.EADDRINUSE, nil, 2, 1, false},
-+		{"exhausted", 49120, 49121, 1000, syscall.EADDRINUSE, nil, 4, 2, false},
-+		{"bounded", 0, 0, 1000, syscall.EADDRINUSE, nil, 128, 64, false},
-+		{"other error", 0, 0, 2, syscall.EACCES, nil, 2, 1, false},
-+		{"cleanup error", 0, 0, 2, syscall.EADDRINUSE, fmt.Errorf("remove failed"), 2, 1, false},
++		{"automatic", 0, 2, syscall.EADDRINUSE, nil, 4, 3, true},
++		{"range", 3, 2, syscall.EADDRINUSE, nil, 4, 3, true},
++		{"fixed", 1, 2, syscall.EADDRINUSE, nil, 2, 1, false},
++		{"exhausted", 2, 1000, syscall.EADDRINUSE, nil, 4, 2, false},
++		{"bounded", 0, 1000, syscall.EADDRINUSE, nil, 128, 64, false},
++		{"other error", 0, 2, syscall.EACCES, nil, 2, 1, false},
++		{"cleanup error", 0, 2, syscall.EADDRINUSE, fmt.Errorf("remove failed"), 2, 1, false},
 +	} {
 +		t.Run(tc.name, func(t *testing.T) {
++			var start, end uint16
++			if tc.ports != 0 {
++				start = freeRange(t, tc.ports)
++				end = start + tc.ports - 1
++			}
 +			pdc := &retryPDC{fakeAliasPDC: newFakeAliasPDC(), fail: tc.failure,
 +				failUntil: tc.failUntil, cleanupError: tc.cleanup}
 +			pm := NewPortMapper(Config{RlkClient: pdc})
 +			cfg := []portmapperapi.PortBindingReq{reqFor("127.0.0.1"), reqFor("127.0.0.2")}
 +			for i := range cfg {
-+				cfg[i].HostPort = tc.start
-+				cfg[i].HostPortEnd = tc.end
++				cfg[i].HostPort = start
++				cfg[i].HostPortEnd = end
 +			}
 +			bindings, err := pm.MapPorts(context.Background(), cfg)
 +			if tc.success {
@@ -134,12 +171,7 @@
 +				assert.Check(t, errors.Is(err, tc.failure))
 +			}
 +			assert.Equal(t, pdc.calls, tc.wantCalls)
-+			// Successful bindings add two removals; failed attempts add one.
-+			removed := tc.wantRemoved
-+			if tc.success {
-+				removed++
-+			}
-+			assert.Equal(t, pdc.removed, removed)
++			assert.Equal(t, pdc.removed, tc.wantRemoved)
 +			assert.Equal(t, pdc.outstanding(), 0)
 +			// A fixed reallocation proves guest reservation/socket rollback.
 +			pdc.failUntil = 0
