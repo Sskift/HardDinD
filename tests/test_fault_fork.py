@@ -35,7 +35,9 @@ class FaultForkTests(unittest.TestCase):
         data = json.loads(result.stdout)
         self.assertTrue(data['verified'])
         rows = data['samples']
-        self.assertEqual(len(rows), 17)
+        self.assertEqual(len(rows), 20)
         self.assertEqual(rows[0]['count'], 2000)
+        self.assertEqual([r['phase'] for r in rows[1:4]],
+                         ['mmap_step', 'touch_step', 'unmap_step'])
         self.assertEqual({r['action'] for r in rows}, {'none', 'exit', 'exec', 'cow'})
         self.assertTrue(all(r['ns'] > 0 for r in rows))

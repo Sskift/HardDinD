@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -21,7 +22,7 @@ struct snapshot { uint64_t value[FIELDS]; unsigned count; };
 struct row {
     const char *phase, *action;
     unsigned mib, fragmented, round;
-    uint64_t ns, fork_ns, mmap_ns, touch_ns, unmap_ns, count;
+    uint64_t ns, fork_ns, mmap_ticks, touch_ticks, unmap_ticks, count, child_minor;
     struct snapshot before, after;
 };
 static struct row rows[ROWS];
@@ -40,7 +41,7 @@ static uint64_t cycles(void) {
     __asm__ volatile("lfence; rdtsc" : "=a"(lo), "=d"(hi) : : "memory");
     return ((uint64_t)hi << 32) | lo;
 #else
-    return 0;
+    return now();
 #endif
 }
 static unsigned number(const char *s, unsigned limit) {
@@ -95,15 +96,25 @@ static void heap_check(volatile unsigned char *p, size_t pages, unsigned fragmen
 static void mapping_cycles(unsigned count) {
     struct row *r = begin("mmap_cycle", "none", 0, 0, 0); r->count = count;
     for (unsigned i = 0; i < count; i++) {
-        uint64_t t = now();
+        uint64_t t = cycles();
         volatile unsigned char *p = mmap(NULL, PAGE, PROT_READ | PROT_WRITE,
                                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        CHECK(p != MAP_FAILED); r->mmap_ns += now() - t;
-        t = now(); *p = 0x5a; CHECK(*p == 0x5a && p[PAGE - 1] == 0);
-        r->touch_ns += now() - t;
-        t = now(); CHECK(!munmap((void *)p, PAGE)); r->unmap_ns += now() - t;
+        CHECK(p != MAP_FAILED); r->mmap_ticks += cycles() - t;
+        t = cycles(); *p = 0x5a; CHECK(*p == 0x5a && p[PAGE - 1] == 0);
+        r->touch_ticks += cycles() - t;
+        t = cycles(); CHECK(!munmap((void *)p, PAGE)); r->unmap_ticks += cycles() - t;
     }
     end(r);
+}
+static void mapping_steps(void) {
+    struct row *r = begin("mmap_step", "none", 0, 0, 0);
+    volatile unsigned char *p = mmap(NULL, PAGE, PROT_READ | PROT_WRITE,
+                                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    CHECK(p != MAP_FAILED); end(r);
+    r = begin("touch_step", "none", 0, 0, 0);
+    *p = 0x5a; CHECK(*p == 0x5a && p[PAGE - 1] == 0); end(r);
+    r = begin("unmap_step", "none", 0, 0, 0);
+    CHECK(!munmap((void *)p, PAGE)); end(r);
 }
 static void heap_case(unsigned mib, unsigned fragmented, unsigned rounds) {
     size_t pages = (size_t)mib * 1024 * 1024 / PAGE;
@@ -125,6 +136,7 @@ static void heap_case(unsigned mib, unsigned fragmented, unsigned rounds) {
         end(r);
         for (unsigned action = 0; action < 3; action++) {
             int fd[2]; CHECK(!socketpair(AF_UNIX, SOCK_STREAM, 0, fd));
+            struct rusage before, after; CHECK(!getrusage(RUSAGE_CHILDREN, &before));
             r = begin("fork_ready", actions[action], mib, fragmented, round);
             uint64_t t = now(); pid_t child = fork(); CHECK(child >= 0);
             if (!child) {
@@ -146,6 +158,9 @@ static void heap_case(unsigned mib, unsigned fragmented, unsigned rounds) {
             int status; pid_t waited;
             do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
             CHECK(waited == child && WIFEXITED(status) && !WEXITSTATUS(status)); end(r);
+            CHECK(!getrusage(RUSAGE_CHILDREN, &after));
+            CHECK(after.ru_minflt >= before.ru_minflt);
+            r->child_minor = (uint64_t)(after.ru_minflt - before.ru_minflt);
             CHECK(!close(fd[0])); heap_check(p, pages, fragmented);
         }
     }
@@ -163,18 +178,25 @@ int main(int argc, char **argv) {
     guest = access("/proc/uml_fault_profile", F_OK) == 0;
     memset(rows, 0, sizeof(rows));
     uint64_t t = now(), c = cycles();
+    uint64_t clock_ticks = cycles();
+    for (unsigned i = 0; i < 10000; i++) (void)now();
+    clock_ticks = cycles() - clock_ticks;
     mapping_cycles(2000);
+    mapping_steps();
     for (unsigned mib = 16; mib <= maximum; mib *= 4)
         for (unsigned fragmented = 0; fragmented < 2; fragmented++) heap_case(mib, fragmented, rounds);
     double hz = (cycles() - c) * 1e9 / (now() - t);
-    printf("{\"schema\":\"hd.fault-fork/1\",\"verified\":true,\"tsc_hz\":%.0f,\"samples\":[", hz);
+    printf("{\"schema\":\"hd.fault-fork/1\",\"verified\":true,\"tsc_hz\":%.0f,"
+           "\"clock_ns\":%.1f,\"samples\":[", hz, clock_ticks * 1e9 / hz / 10000);
     for (unsigned i = 0; i < nr; i++) {
         struct row *r = &rows[i];
         printf("%s{\"phase\":\"%s\",\"action\":\"%s\",\"mib\":%u,\"fragmented\":%u,\"round\":%u,"
                "\"ns\":%" PRIu64 ",\"fork_ns\":%" PRIu64 ",\"count\":%" PRIu64 ","
-               "\"mmap_ns\":%" PRIu64 ",\"touch_ns\":%" PRIu64 ",\"unmap_ns\":%" PRIu64 ",\"counters\":{",
+               "\"mmap_ns\":%" PRIu64 ",\"touch_ns\":%" PRIu64 ",\"unmap_ns\":%" PRIu64 ","
+               "\"child_minor_total\":%" PRIu64 ",\"counters\":{",
                i ? "," : "", r->phase, r->action, r->mib, r->fragmented, r->round,
-               r->ns, r->fork_ns, r->count, r->mmap_ns, r->touch_ns, r->unmap_ns);
+               r->ns, r->fork_ns, r->count, (uint64_t)(r->mmap_ticks * 1e9 / hz),
+               (uint64_t)(r->touch_ticks * 1e9 / hz), (uint64_t)(r->unmap_ticks * 1e9 / hz), r->child_minor);
         CHECK(r->before.count == r->after.count);
         for (unsigned j = 0; j < fields; j++) {
             CHECK(r->after.value[j] >= r->before.value[j]);

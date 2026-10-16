@@ -6,8 +6,9 @@ Wall times include preemption; zero and batch times nest inside other totals.
 Counters are machine-wide and include background work. The MMAP stub records
 TSC cycles around the host syscall; convert with the probe's measured tsc_hz.
 Its two fields fit the existing padding before the aligned GPU payload.
-Fork copying, full-mm flushes and context lifetimes have nested counters.
-Munmap/mprotect timing uses the unused command offset, without moving shared data.
+
+Fork profiling includes page-table copy, TLB walks and runner/context lifecycle.
+Munmap/mprotect timing uses unused command offsets, without moving shared data.
 
 --- /dev/null
 +++ b/arch/um/include/shared/fault-profile.h
@@ -361,7 +362,7 @@ Munmap/mprotect timing uses the unused command offset, without moving shared dat
  			struct stub_data *child = (void *)sc->mem.addr;
 --- a/arch/um/include/shared/fault-profile.h
 +++ b/arch/um/include/shared/fault-profile.h
-@@ -5,7 +5,11 @@
+@@ -5,7 +5,12 @@
  	X(user_faults) X(user_fault_ns) X(zero_pages) X(zero_ns) \
  	X(syncs) X(sync_ns) X(batches) X(batch_ns) X(failed_batches) \
  	X(map_requests) X(map_pages) X(map_coalesced) \
@@ -370,7 +371,8 @@ Munmap/mprotect timing uses the unused command offset, without moving shared dat
 +	X(host_munmap_pages) X(host_munmap_cycles) X(copy_ranges) X(copy_ns) \
 +	X(flush_mm) X(flush_mm_ns) X(context_new) X(context_new_ns) \
 +	X(context_destroy) X(context_destroy_ns) X(pte_scanned) X(pte_sync) \
-+	X(host_mprotect) X(host_mprotect_pages) X(host_mprotect_cycles)
++	X(host_mprotect) X(host_mprotect_pages) X(host_mprotect_cycles) \
++	X(runner_new) X(runner_new_ns)
  #define UML_FP_ENUM(name) UML_FP_##name,
  enum { UML_FP_FIELDS(UML_FP_ENUM) UML_FP_COUNT };
  #undef UML_FP_ENUM
@@ -526,6 +528,28 @@ Munmap/mprotect timing uses the unused command offset, without moving shared dat
  	if (proc_data->err < 0) {
  		uml_fp_add(UML_FP_failed_batches, 1);
  		syscall_stub_dump_error(mm_idp);
+@@ -332,7 +352,7 @@
+ }
+ 
+ /* Caller serializes the broker and pins its virtual CPU. */
+-int start_userspace_cpu(struct mm_id *broker, struct mm_id *child, unsigned long addr)
++static int uml_fp_runner_new_work(struct mm_id *broker, struct mm_id *child, unsigned long addr)
+ {
+ 	struct stub_data *data = (void *)child->stack;
+ 	struct stub_data *parent = (void *)broker->stack;
+@@ -812,3 +832,12 @@
+ 	fclose(f);
+ 	return found == 3 ? 0 : -EINVAL;
+ }
++
++int start_userspace_cpu(struct mm_id *broker, struct mm_id *child, unsigned long addr)
++{
++	unsigned long long started = uml_fp_clock();
++	int ret = uml_fp_runner_new_work(broker, child, addr);
++	uml_fp_add(UML_FP_runner_new, 1);
++	uml_fp_add(UML_FP_runner_new_ns, uml_fp_clock() - started);
++	return ret;
++}
 --- a/mm/memory.c
 +++ b/mm/memory.c
 @@ -39,6 +39,9 @@
