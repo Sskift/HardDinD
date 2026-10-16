@@ -1,0 +1,86 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: clear dead guest address spaces once before freeing pages
+
+Default off: uml_fault_exit=1 uses one synchronous host unmap at final mmput.
+Only parallel non-GPU address spaces with zero mm_users qualify. Runners can
+no longer execute guest instructions; their stub stacks remain until normal
+context destruction. Guest page freeing, accounting and broker cleanup remain.
+
+--- a/arch/um/include/asm/mmu.h
++++ b/arch/um/include/asm/mmu.h
+@@ -19,2 +19,3 @@
+ 	struct mm_id id;
++	int fault_exit_unmapped;
+ 	/* Parallel seccomp runners share the broker's host address space. */
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -179,2 +179,3 @@
+ 	spin_lock_init(&mm->context.sync_tlb_lock);
++	mm->context.fault_exit_unmapped = 0;
+ 	mm->context.sync_tlb_range_from = 0;
+--- a/arch/um/kernel/tlb.c
++++ b/arch/um/kernel/tlb.c
+@@ -5,2 +5,5 @@
+ 
++#include <linux/init.h>
++#include <linux/string.h>
++#include <init.h>
+ #include <linux/mm.h>
+@@ -26,2 +29,27 @@
+ };
++
++static int uml_fault_exit;
++
++static int __init uml_fault_exit_setup(char *line, int *add)
++{
++	*add = 0;
++	if (!strcmp(line, "1"))
++		uml_fault_exit = 1;
++	else if (!strcmp(line, "0"))
++		uml_fault_exit = 0;
++	else
++		pr_warn("uml_fault_exit requires 0 or 1\n");
++	return 0;
++}
++__uml_setup("uml_fault_exit=", uml_fault_exit_setup,
++"uml_fault_exit=<0|1>\n"
++"    Default 0. Clear an exiting non-GPU address space with one host unmap\n"
++"    before freeing guest pages. Live address spaces use normal TLB sync.\n\n");
++
++static bool uml_fault_dead_mm(struct mm_struct *mm)
++{
++	return uml_fault_exit && parallel_userspace && mm != &init_mm &&
++		!atomic_read(&mm->mm_users) && !mm->context.gpu_id.stack &&
++		mm->context.id.stack && mm->context.id.pid > 1;
++}
+ 
+@@ -177,2 +205,16 @@
+ 	guard(spinlock_irqsave)(&mm->context.sync_tlb_lock);
++
++	if (uml_fault_dead_mm(mm)) {
++		if (!mm->context.fault_exit_unmapped) {
++			ret = unmap(&mm->context.id, 0, STUB_START);
++			if (!ret)
++				ret = syscall_stub_flush(&mm->context.id);
++			if (ret)
++				return ret;
++			mm->context.fault_exit_unmapped = 1;
++		}
++		mm->context.sync_tlb_range_from = 0;
++		mm->context.sync_tlb_range_to = 0;
++		return 0;
++	}
+ 
+@@ -227,3 +269,3 @@
+ 	 */
+-	if (parallel_userspace && mm != &init_mm &&
++	if (parallel_userspace && mm != &init_mm && !uml_fault_dead_mm(mm) &&
+ 	    !READ_ONCE(mm->context.sync_tlb_range_to) &&
+@@ -265,4 +307,5 @@
+ 
+-	for_each_vma(vmi, vma)
+-		um_tlb_mark_sync(mm, vma->vm_start, vma->vm_end);
++	if (!uml_fault_dead_mm(mm))
++		for_each_vma(vmi, vma)
++			um_tlb_mark_sync(mm, vma->vm_start, vma->vm_end);
+ 	um_tlb_sync_if_parallel(mm);

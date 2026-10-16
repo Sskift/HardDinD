@@ -1,0 +1,76 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: suppress redundant host unmaps between broker commands
+
+Default off: uml_fault_unmap=1 remembers the last queued or completed unmap.
+A wholly contained repeat is safe until any other broker command is allocated.
+New address spaces start with an empty cache; failed queues never use it.
+Guest TLB synchronization, page-table freeing and memory accounting stay intact.
+
+--- a/arch/um/include/shared/skas/mm_id.h
++++ b/arch/um/include/shared/skas/mm_id.h
+@@ -23,2 +23,3 @@
+ 	int cached_phys_fd;
++	unsigned long unmap_start, unmap_end;
+ };
+--- a/arch/um/kernel/skas/mmu.c
++++ b/arch/um/kernel/skas/mmu.c
+@@ -193,2 +193,3 @@
+ 	new_id->cached_phys_fd = -1;
++	new_id->unmap_end = 0;
+ 
+--- a/arch/um/os-Linux/skas/mem.c
++++ b/arch/um/os-Linux/skas/mem.c
+@@ -29,2 +29,20 @@
+ 
++static int uml_fault_unmap;
++
++static int __init uml_fault_unmap_setup(char *line, int *add)
++{
++	*add = 0;
++	if (!strcmp(line, "1"))
++		uml_fault_unmap = 1;
++	else if (!strcmp(line, "0"))
++		uml_fault_unmap = 0;
++	else
++		printk(UM_KERN_WARNING "uml_fault_unmap requires 0 or 1\n");
++	return 0;
++}
++__uml_setup("uml_fault_unmap=", uml_fault_unmap_setup,
++"uml_fault_unmap=<0|1>\n"
++"    Default 0. Suppress repeated unmaps of an already cleared range,\n"
++"    forgetting it whenever another broker command is allocated.\n\n");
++
+ extern char __syscall_stub_start[];
+@@ -131,2 +149,3 @@
+ 		syscall_stub_dump_error(mm_idp);
++		mm_idp->unmap_end = 0;
+ 
+@@ -168,2 +187,5 @@
+ 	struct stub_data *proc_data = (struct stub_data *) mm_idp->stack;
++
++	if (uml_fault_unmap)
++		mm_idp->unmap_end = 0;
+ 
+@@ -291,3 +313,22 @@
+ 
++static int unmap_work(struct mm_id *mm_idp, unsigned long addr, unsigned long len);
++
+ int unmap(struct mm_id *mm_idp, unsigned long addr, unsigned long len)
++{
++	int ret;
++
++	if (uml_fault_unmap && mm_idp->syscall_data_len >= 0 &&
++	    addr >= mm_idp->unmap_start && addr < mm_idp->unmap_end &&
++	    len <= mm_idp->unmap_end - addr)
++		return 0;
++	ret = unmap_work(mm_idp, addr, len);
++	if (uml_fault_unmap && !ret && mm_idp->syscall_data_len >= 0 &&
++	    len <= ~0UL - addr) {
++		mm_idp->unmap_start = addr;
++		mm_idp->unmap_end = addr + len;
++	}
++	return ret;
++}
++
++static int unmap_work(struct mm_id *mm_idp, unsigned long addr, unsigned long len)
+ {
