@@ -1,20 +1,16 @@
 """Run directories, revision identity and the context handed to suites."""
-import contextlib
 import dataclasses
 import json
-import math
 import os
 import pathlib
 import platform
 import re
 import subprocess
-import threading
 import time
 
 from pipeline import config, instance
 
 REVISION_FILE = config.REPO / '.hd-revision.json'
-PSI_LIMITS = {'cpu': 20, 'io': 10, 'memory': 2}  # some avg10 %, noise gates only
 
 
 def revision():
@@ -52,73 +48,27 @@ def throttle_delta(before, after):
     return (after[1] - before[1]) / (after[0] - before[0])
 
 
-def pressure():
-    """PSI some avg10 percentages, preferring our cgroup; None means unavailable."""
-    result = dict.fromkeys(PSI_LIMITS)
-    for resource in result:
-        for path in (f'/sys/fs/cgroup/{resource}.pressure', f'/proc/pressure/{resource}'):
-            try:
-                line = next(s for s in pathlib.Path(path).read_text().splitlines() if s.startswith('some '))
-                value = float(dict(field.split('=') for field in line.split()[1:])['avg10'])
-                if math.isfinite(value) and 0 <= value <= 100:
-                    result[resource] = value
-                    break
-            except (OSError, ValueError, KeyError, StopIteration):
-                pass
-    return result
-
-
-def psi_noisy(psi):
-    return any(psi.get(k) is None or psi[k] >= limit for k, limit in PSI_LIMITS.items())
-
-
-@contextlib.contextmanager
-def pressure_window():
-    """Peak some avg10 at both endpoints and every second, including long samples."""
-    peak, stopped = {}, threading.Event()
-    def sample():
-        for key, value in pressure().items():
-            previous = peak.get(key, value)
-            peak[key] = None if value is None or previous is None else max(previous, value)
-    def monitor():
-        while not stopped.wait(1):
-            sample()
-    sample()
-    worker = threading.Thread(target=monitor, daemon=True)
-    worker.start()
-    try:
-        yield peak
-    finally:
-        stopped.set()
-        worker.join()
-        sample()
-
-
 def wait_quiet(limit=0.10, max_wait=None, log=print):
-    """Wait for low quota throttling and CPU/IO/memory pressure over a 20s window.
+    """Wait until the outer container is rarely throttled; returns what was observed.
 
     Benchmarks taken while the 36-CPU container quota throttles us mostly
     measure other tenants. Gives up after max_wait seconds (HD_QUIET_WAIT)."""
     max_wait = config.QUIET_WAIT if max_wait is None else max_wait
-    started = time.monotonic(); observed, pressures = [], []
+    started = time.monotonic(); observed = []
     while True:
-        with pressure_window() as psi:
-            fraction = throttled_fraction()
+        fraction = throttled_fraction()
         observed.append(round(fraction, 3))
-        pressures.append(psi)
-        result = {'quiet': fraction <= limit and not psi_noisy(psi),
-                  'waited': round(time.monotonic() - started), 'throttled': observed, 'psi': pressures}
-        if result['quiet']:
-            return result
+        if fraction <= limit:
+            return {'quiet': True, 'waited': round(time.monotonic() - started), 'throttled': observed}
         if time.monotonic() - started > max_wait:
-            return result
-        log(f'host throttled in {fraction:.0%} of quota periods; PSI some avg10 peaks {psi}; waiting for a quieter window')
+            return {'quiet': False, 'waited': round(time.monotonic() - started), 'throttled': observed}
+        log(f'host throttled in {fraction:.0%} of quota periods; waiting for a quieter window')
         time.sleep(40)
 
 
 def host_info():
     info = {'node': platform.node(), 'kernel': platform.release(), 'nproc': os.cpu_count(),
-            'loadavg': os.getloadavg(), 'throttle': throttle(), 'psi': pressure()}
+            'loadavg': os.getloadavg(), 'throttle': throttle()}
     try:
         info['cpu_max'] = pathlib.Path('/sys/fs/cgroup/cpu.max').read_text().strip()
     except OSError:

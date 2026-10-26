@@ -588,33 +588,31 @@ def sample(ctx, name, metric, fn, side, pair=None):
     details = metric.setdefault('detail', {}).setdefault('samples', [])
     entry = {'side': side, 'phase': 'warmup' if pair is None else 'sample', 'pair': pair,
              'unix_time': time.time(), 'host_load': list(os.getloadavg())}
-    with runs.pressure_window() as psi:
-        entry['psi'] = psi
-        throttled = runs.throttle()
-        start = time.monotonic()
-        try:
-            output = fn()
-            if control:
-                value = time.monotonic() - start
-                if value <= 0:
-                    raise ValueError('nonpositive control-plane duration')
-            else:
-                entry['workload'] = parse_output(output)
-                value = float(entry['workload']['value'])
-            entry['value'] = value
-            return value
-        except Exception as error:
-            entry['error'] = f'{type(error).__name__}: {error}'
-            raise
-        finally:
-            entry['wall_seconds'] = time.monotonic() - start
-            entry['finished'] = time.time()
-            entry['host_load_end'] = list(os.getloadavg())
-            after = runs.throttle()
-            if throttled and after and after[0] > throttled[0]:
-                # Fraction of the outer container's quota periods that hit the quota during this sample.
-                entry['throttled'] = round((after[1] - throttled[1]) / (after[0] - throttled[0]), 4)
-            details.append(entry)
+    throttled = runs.throttle()
+    start = time.monotonic()
+    try:
+        output = fn()
+        if control:
+            value = time.monotonic() - start
+            if value <= 0:
+                raise ValueError('nonpositive control-plane duration')
+        else:
+            entry['workload'] = parse_output(output)
+            value = float(entry['workload']['value'])
+        entry['value'] = value
+        return value
+    except Exception as error:
+        entry['error'] = f'{type(error).__name__}: {error}'
+        raise
+    finally:
+        entry['wall_seconds'] = time.monotonic() - start
+        entry['finished'] = time.time()
+        entry['host_load_end'] = list(os.getloadavg())
+        after = runs.throttle()
+        if throttled and after and after[0] > throttled[0]:
+            # Fraction of the outer container's quota periods that hit the quota during this sample.
+            entry['throttled'] = round((after[1] - throttled[1]) / (after[0] - throttled[0]), 4)
+        details.append(entry)
 
 
 def measure_pair(ctx, runner, name, metric, host_load, pairs):

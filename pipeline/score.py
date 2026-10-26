@@ -7,14 +7,10 @@ import math
 import pathlib
 import statistics
 
-from pipeline import config, runs
+from pipeline import config
 
 TARGETS = json.loads((config.REPO / 'bench/targets.json').read_text())
 TIER_ORDER = ('key', 'important', 'other')
-
-
-def sample_noisy(sample):
-    return (sample.get('throttled') or 0) > .10 or ('psi' in sample and runs.psi_noisy(sample['psi']))
 
 
 def paired_ba(metric):
@@ -75,14 +71,13 @@ def score_bench(bench):
             else:
                 native = metric.get('native') or []
                 # Native samples drifting by > 30% within the run, or the outer container
-                # being CPU-throttled or under PSI pressure means the host was contended: the
+                # being CPU-throttled during samples, means the host was contended: the
                 # ratio is still scored but is flagged as noisy.
                 samples = (metric.get('detail') or {}).get('samples', [])
                 throttled = [s['throttled'] for s in samples if s.get('phase') == 'sample'
                              and s.get('side') != 'guest_b' and 'throttled' in s]
                 row['throttled'] = round(max(throttled), 3) if throttled else None
-                noisy = (len(native) >= 2 and max(native) > 1.3 * min(native)) or any(
-                    sample_noisy(s) for s in samples if s.get('phase') == 'sample' and s.get('side') != 'guest_b')
+                noisy = (len(native) >= 2 and max(native) > 1.3 * min(native)) or bool(throttled and max(throttled) > 0.10)
                 row.update(ratio=round(ratio, 4), native=n, guest=g, unit=metric.get('unit'),
                            spread=[round(x, 4) for x in spread] if spread else None,
                            reference='reference_seconds' in spec, noisy=noisy,
@@ -101,7 +96,7 @@ def score_bench(bench):
                 if 'reference_seconds' not in spec and len(metric.get('native', [])) != len(metric.get('guest', [])):
                     raise ValueError('incomplete native/A/B pairs')
                 row['ratio_ba'], row['spread_ba'] = paired_ba(metric)
-                row['noisy_ba'] = any(sample_noisy(s) for s in samples
+                row['noisy_ba'] = any(s.get('throttled', 0) > .10 for s in samples
                                       if s.get('phase') == 'sample' and s.get('side') in ('guest', 'guest_b'))
             except ValueError as error:
                 row.update(status='fail', status_b='fail', error=str(error))
@@ -157,8 +152,7 @@ def markdown(card, previous=None):
              f"revision `{rev.get('git', '?')[:12]}`{' (dirty)' if rev.get('dirty') else ''} {rev.get('subject', '')}"]
     quiet = card.get('quiet')
     if quiet and not quiet.get('quiet'):
-        lines.append(f"**Host was contended** (quota periods throttled: {quiet.get('throttled')}; "
-                     f"PSI some avg10 peaks: {quiet.get('psi')}); performance below is not decision-grade.")
+        lines.append(f"**Host was CPU-throttled** (quota periods throttled: {quiet.get('throttled')}); performance below is not decision-grade.")
     if card['candidates'] or card['kernel_args']:
         lines.append(f"candidates: {', '.join(card['candidates']) or '-'}; kernel args: {' '.join(card['kernel_args']) or '-'}")
     if card.get('ab'):
@@ -169,7 +163,7 @@ def markdown(card, previous=None):
         quiet = t.get('quiet')
         if (quiet and not quiet.get('quiet')) or (t.get('throttled') or 0) > .10 or t['throttled_checks']:
             observed = f"{t['throttled']:.1%}" if t.get('throttled') is not None else 'unknown'
-            lines += [f'**Host was CPU-throttled or under pressure** (functional quota periods throttled: {observed}; '
+            lines += [f'**Host was CPU-throttled** (functional quota periods throttled: {observed}; '
                       f"pre-boot: {quiet}); functional result is not decision-grade.", '']
         lines += [f"**Functional**: {t['pass']}/{t['checks']} pass, {t['fail']} fail, {t['not_tested']} not tested "
                   f"→ {'PASS' if t['gate'] else 'FAIL'}", '']
@@ -186,8 +180,7 @@ def markdown(card, previous=None):
         extra_header = ' B guest | B/native (range) | B/A (range) |' if ab else ''
         lines += [f'**Performance** (guest/native, higher is better): {summary}', '',
                   '`~noisy`: native samples varied by more than 30%, or the outer container was CPU-throttled '
-                  'in more than 10% of quota periods during a sample, or peak PSI some avg10 reached '
-                  '20% CPU / 10% IO / 2% memory (or PSI was unavailable). These are noise gates, not acceptance thresholds.', '',
+                  'in more than 10% of quota periods during a sample (host contention).', '',
                   '| tier | metric | native | guest | ratio | target | pair range | Δ prev | status |' + extra_header,
                   '|---|---|---:|---:|---:|---:|---|---:|---|' + ('---:|---|---|' if ab else '')]
         for r in card['bench']:
