@@ -165,6 +165,64 @@ static void denied(volatile unsigned char *p, int write_access, int sig) {
     expected = 0;
     CHECK(caught == sig);
 }
+struct fault_writer {
+    pthread_barrier_t *gate;
+    unsigned char *mapping;
+    size_t pages;
+    unsigned index;
+};
+static void *fault_writer(void *arg) {
+    struct fault_writer *w = arg;
+    barrier(w->gate);
+    for (size_t i = 0; i < w->pages; i++)
+        w->mapping[i * page + w->index] = pattern(i + w->index);
+    return NULL;
+}
+static void concurrent_faults(void) {
+    const size_t pages = 1025, bytes = pages * page;
+    unsigned char *p = anonymous(bytes);
+    for (unsigned round = 0; round < 3; round++) {
+        pthread_barrier_t gate;
+        pthread_t threads[4];
+        struct fault_writer writers[4];
+        CHECK(!pthread_barrier_init(&gate, NULL, 5));
+        for (unsigned j = 0; j < 4; j++) {
+            writers[j] = (struct fault_writer){&gate, p, pages, j};
+            CHECK(!pthread_create(&threads[j], NULL, fault_writer, writers + j));
+        }
+        barrier(&gate);
+        /* Fork races real first writes in one VMA. Child values may precede
+         * or follow each write; its own COW writes must stay private. */
+        pid_t child = fork();
+        CHECK(child >= 0);
+        if (!child) {
+            for (size_t i = 0; i < pages; i++) {
+                for (unsigned j = 0; j < 4; j++) {
+                    unsigned char value = p[i * page + j];
+                    CHECK(value == 0 || value == pattern(i + j));
+                    p[i * page + j] = 0xa5;
+                }
+                CHECK(p[i * page + page - 1] == 0);
+                p[i * page + page - 1] = 0x7c;
+            }
+            for (size_t i = 0; i < pages; i++) {
+                for (unsigned j = 0; j < 4; j++) CHECK(p[i * page + j] == 0xa5);
+                CHECK(p[i * page + page - 1] == 0x7c);
+            }
+            _exit(0);
+        }
+        for (unsigned j = 0; j < 4; j++) CHECK(!pthread_join(threads[j], NULL));
+        child_ok(child);
+        CHECK(!pthread_barrier_destroy(&gate));
+        for (size_t i = 0; i < pages; i++) {
+            for (unsigned j = 0; j < 4; j++) CHECK(p[i * page + j] == pattern(i + j));
+            for (size_t j = 4; j < page; j++) CHECK(p[i * page + j] == 0);
+        }
+        CHECK(!madvise(p, bytes, MADV_DONTNEED));
+    }
+    CHECK(!munmap(p, bytes));
+    puts("CORE_CHECK concurrent_fault_fork_zero_reuse pass");
+}
 static void semantics(void) {
     const size_t pages = 513, bytes = pages * page;
     struct sigaction sa = {.sa_handler = fault};
@@ -247,6 +305,7 @@ static void semantics(void) {
     for (size_t i = 0; i < bytes; i++) CHECK(p[i] == 0);
     CHECK(!munmap(p, bytes));
     puts("CORE_CHECK file_cow_dirty_truncate_fixed pass");
+    concurrent_faults();
     measure("getpid4", 8);
     puts("CORE_CHECK parallel_syscall_handshake pass");
     puts("CORE_SEMANTICS_END status=0");

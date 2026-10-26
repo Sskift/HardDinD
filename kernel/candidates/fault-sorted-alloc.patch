@@ -5,7 +5,11 @@ Default off: uml_fault_sorted=1. Requires ascending prefault visitation.
 Ordinary order-0 allocation, clearing and memcg
 charging remain. A task/VMA/range-owned pool exists only within the window;
 unused pages are freed on all nonfatal exits. No reclaim or emergency reserves.
-The transient pool contains at most 512 pages before normal per-page charge.
+The pool is task-local, so allocation does not acquire a machine-wide lock for
+every page. A 32-page inline array avoids heap allocation for the default window.
+INIT_THREAD clears the pointer before a fork/clone child can run. Nested attempts
+leave an existing pool alone. The transient pool contains at most 512 pages
+before normal per-page charge.
 
 --- a/arch/um/include/asm/page.h
 +++ b/arch/um/include/asm/page.h
@@ -17,6 +21,24 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +struct folio *uml_vma_alloc_zeroed_movable_folio(struct vm_area_struct *, unsigned long);
 +#define vma_alloc_zeroed_movable_folio uml_vma_alloc_zeroed_movable_folio
  
+--- a/arch/um/include/asm/processor-generic.h
++++ b/arch/um/include/asm/processor-generic.h
+@@ -20,6 +20,7 @@
+ struct mm_struct;
+ 
+ struct thread_struct {
++	struct uml_fault_pool *fault_pool;
+ 	struct pt_regs *segv_regs;
+ 	struct task_struct *prev_sched;
+ 	struct arch_thread arch;
+@@ -39,6 +40,7 @@
+ #define INIT_THREAD \
+ { \
+ 	.regs		   	= EMPTY_REGS,	\
++	.fault_pool		= NULL, \
+ 	.prev_sched		= NULL, \
+ 	.arch			= INIT_ARCH_THREAD, \
+ 	.request		= { } \
 --- a/arch/um/kernel/Makefile
 +++ b/arch/um/kernel/Makefile
 @@ -22,2 +22,3 @@
@@ -62,19 +84,18 @@ The transient pool contains at most 512 pages before normal per-page charge.
  }
 --- /dev/null
 +++ b/arch/um/include/shared/fault-sorted.h
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,18 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef UML_FAULT_SORTED_H
 +#define UML_FAULT_SORTED_H
-+#include <linux/list.h>
 +struct page;
 +struct task_struct;
 +struct vm_area_struct;
 +struct uml_fault_pool {
-+	struct list_head link;
 +	struct task_struct *owner;
 +	struct vm_area_struct *vma;
 +	struct page **pages;
++	struct page *local_pages[32];
 +	unsigned long start, end;
 +	unsigned int count, used;
 +};
@@ -84,7 +105,7 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +#endif
 --- /dev/null
 +++ b/arch/um/kernel/fault-sorted.c
-@@ -0,0 +1,145 @@
+@@ -0,0 +1,141 @@
 +// SPDX-License-Identifier: GPL-2.0
 +#include <linux/export.h>
 +#include <linux/gfp.h>
@@ -95,14 +116,11 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +#include <linux/sched.h>
 +#include <linux/slab.h>
 +#include <linux/sort.h>
-+#include <linux/spinlock.h>
 +#include <asm/pgtable.h>
 +#include <fault-sorted.h>
 +#include <init.h>
 +
 +static unsigned int uml_fault_sorted;
-+static LIST_HEAD(fault_pools);
-+static DEFINE_SPINLOCK(fault_pool_lock);
 +
 +static bool uml_fault_pool_matches(const struct uml_fault_pool *pool,
 +		const struct vm_area_struct *vma, unsigned long address,
@@ -124,7 +142,7 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +void uml_fault_pool_begin(struct uml_fault_pool *pool, struct vm_area_struct *vma,
 +			  unsigned long start, unsigned long end)
 +{
-+	unsigned long address, flags;
++	unsigned long address;
 +	unsigned int count = 0;
 +	pmd_t *pmd;
 +	pte_t *pte, *entry;
@@ -134,7 +152,8 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +
 +	pool->pages = NULL;
 +	/* Keep VMA/task NUMA policy in the original allocator. */
-+	if (!uml_fault_sorted || IS_ENABLED(CONFIG_NUMA) || end <= start ||
++	if (!uml_fault_sorted || current->thread.fault_pool ||
++	    IS_ENABLED(CONFIG_NUMA) || end <= start ||
 +	    end - start > 512 * PAGE_SIZE ||
 +	    (start & PMD_MASK) != ((end - PAGE_SIZE) & PMD_MASK))
 +		return;
@@ -149,7 +168,12 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +	pte_unmap_unlock(pte, ptl);
 +	if (count < 4)
 +		return;
-+	pool->pages = kcalloc(count, sizeof(*pool->pages), GFP_NOWAIT | __GFP_NOWARN);
++	if (count <= ARRAY_SIZE(pool->local_pages)) {
++		pool->pages = pool->local_pages;
++		memset(pool->pages, 0, count * sizeof(*pool->pages));
++	} else {
++		pool->pages = kcalloc(count, sizeof(*pool->pages), GFP_NOWAIT | __GFP_NOWARN);
++	}
 +	if (!pool->pages)
 +		return;
 +	pool->count = alloc_pages_bulk(gfp, count, pool->pages);
@@ -159,28 +183,21 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +	pool->vma = vma;
 +	pool->start = start;
 +	pool->end = end;
-+	spin_lock_irqsave(&fault_pool_lock, flags);
-+	list_add(&pool->link, &fault_pools);
-+	spin_unlock_irqrestore(&fault_pool_lock, flags);
++	/* Only this task consumes the pool. Scheduling preserves the owner;
++	 * copy_thread resets the child's thread through INIT_THREAD. */
++	current->thread.fault_pool = pool;
 +}
 +
 +static struct folio *uml_fault_pool_take(struct vm_area_struct *vma, unsigned long address)
 +{
 +	struct uml_fault_pool *pool;
-+	struct page *page = NULL;
-+	unsigned long flags;
 +
 +	if (!uml_fault_sorted)
 +		return NULL;
-+	spin_lock_irqsave(&fault_pool_lock, flags);
-+	list_for_each_entry(pool, &fault_pools, link) {
-+		if (uml_fault_pool_matches(pool, vma, address, current)) {
-+			page = pool->pages[pool->used++];
-+			break;
-+		}
-+	}
-+	spin_unlock_irqrestore(&fault_pool_lock, flags);
-+	return page ? page_folio(page) : NULL;
++	pool = current->thread.fault_pool;
++	if (!pool || !uml_fault_pool_matches(pool, vma, address, current))
++		return NULL;
++	return page_folio(pool->pages[pool->used++]);
 +}
 +
 +struct folio *uml_vma_alloc_zeroed_movable_folio(struct vm_area_struct *vma,
@@ -198,16 +215,15 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +
 +void uml_fault_pool_end(struct uml_fault_pool *pool)
 +{
-+	unsigned long flags;
-+
 +	if (!pool->pages)
 +		return;
-+	spin_lock_irqsave(&fault_pool_lock, flags);
-+	list_del(&pool->link);
-+	spin_unlock_irqrestore(&fault_pool_lock, flags);
++	/* Unpublish before freeing, including a partially consumed pool on OOM. */
++	current->thread.fault_pool = NULL;
 +	while (pool->used < pool->count)
 +		__free_page(pool->pages[pool->used++]);
-+	kfree(pool->pages);
++	if (pool->pages != pool->local_pages)
++		kfree(pool->pages);
++	pool->pages = NULL;
 +}
 +
 +static int __init uml_fault_sorted_setup(char *line, int *add)
@@ -229,4 +245,5 @@ The transient pool contains at most 512 pages before normal per-page charge.
 +"    No reclaim or high-order allocation. Pages are normally cleared and\n"
 +"    charged by the anonymous fault path; unused pages are released on\n"
 +"    window exit. The temporary pool holds at most 512 pages before charge.\n"
-+"    Guest NUMA uses the original allocation policy.\n\n");
++"    Each task owns its current window; the default 32-page window uses\n"
++"    an inline pointer array. Guest NUMA uses the original allocation policy.\n\n");
