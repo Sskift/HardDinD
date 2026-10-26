@@ -16,10 +16,11 @@ class CorePatchTests(unittest.TestCase):
         compiler = shutil.which('cc')
         if compiler is None:
             self.skipTest('C compiler unavailable')
-        patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
+        patch = (config.REPO / 'kernel/patches/0003-um-shared-vm-runners.patch').read_text()
         part = patch.split('+++ b/arch/um/os-Linux/skas/process.c\n')[1].split('--- a/')[0]
         code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith('+'))
         body = code.split('static int stub_exited(', 1)[1].split('\n}', 1)[0]
+        patch = (config.REPO / 'kernel/candidates/core-syscall-patch.patch').read_text()
         part = patch.split('+++ b/arch/um/os-Linux/process.c\n')[1].split('--- a/')[0]
         code = '\n'.join(line[1:] for line in part.splitlines() if line.startswith(('+', ' ')))
         reap = code.split('pid_t os_reap_child(', 1)[1].split('\n}', 1)[0]
@@ -32,20 +33,21 @@ class CorePatchTests(unittest.TestCase):
 #define __WALL 0x40000000
 #endif
 #define CATCH_EINTR(x) do { x; } while (ret < 0 && errno == EINTR)
-static int interrupts, reaped, live, exited, waits, probes;
+static int interrupts, probe_interrupts, wait_error, probe_error, exited, waits, probes;
 static int test_waitid(int kind, int pid, siginfo_t *state, int flags) {
     assert(kind == P_PID && pid == 42 && flags == (WEXITED | WNOHANG | WNOWAIT | __WALL));
     waits++;
     if (interrupts) { interrupts--; errno = EINTR; return -1; }
-    if (reaped) { errno = ECHILD; return -1; }
+    if (wait_error) { errno = wait_error; return -1; }
     state->si_pid = exited ? pid : 0;
     return 0;
 }
 static int test_kill(int pid, int sig) {
     assert(pid == 42 && !sig);
     probes++;
-    if (live) return 0;
-    errno = ESRCH; return -1;
+    if (probe_interrupts) { probe_interrupts--; errno = EINTR; return -1; }
+    if (probe_error) { errno = probe_error; return -1; }
+    return 0;
 }
 #define waitid test_waitid
 #define kill test_kill
@@ -62,12 +64,30 @@ static int test_waitpid(int pid, int *status, int flags) {
 pid_t os_reap_child(''' + reap + r'''
 }
 int main(void) {
-    for (int phase = 0; phase < 4; phase++) {
+    const struct { int wait_error, probe_error, exited, dead; } cases[] = {
+        {0, 0, 0, 0},                 /* live waitable child */
+        {0, 0, 1, 1},                 /* retained exit status */
+        {ECHILD, 0, 0, 0},            /* live non-waitable runner */
+        {ECHILD, ESRCH, 0, 1},        /* reaped runner */
+        {ECHILD, EPERM, 0, 0},        /* existence probe denied */
+        {ECHILD, EINVAL, 0, 0},       /* unexpected probe failure */
+        {EINVAL, ESRCH, 0, 0},        /* wait failed without exit evidence */
+    };
+    for (unsigned int i = 0; i < sizeof(cases) / sizeof(*cases); i++) {
         siginfo_t state = {0};
-        interrupts = 3; reaped = phase >= 2; live = phase == 2; exited = phase == 1;
+        interrupts = probe_interrupts = 3;
+        wait_error = cases[i].wait_error;
+        probe_error = cases[i].probe_error;
+        exited = cases[i].exited;
         waits = probes = 0;
-        assert(stub_exited(42, &state) == (phase == 1 || phase == 3));
-        assert(waits == 4 && probes == reaped);
+        assert(stub_exited(42, &state) == cases[i].dead);
+        assert(waits == 4 && probes == (wait_error == ECHILD ? 4 : 0));
+    }
+    for (int pid = -1; pid <= 0; pid++) {
+        siginfo_t state = {0};
+        waits = probes = 0;
+        assert(stub_exited(pid, &state));
+        assert(waits == 0 && probes == 0);
     }
     int status = 0;
     waits = 0; interrupts = 3;
