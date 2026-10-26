@@ -2,6 +2,7 @@ From: HardDinD developers
 Subject: [EXPERIMENT] um: retain host mapping identity for protection and lazy fork
 
 Default off: uml_fault_hostmap=1 coalesces permission-only changes with mprotect.
+Applies directly after the default series; no profiling candidate is required.
 uml_fault_lazy=1 defers old PTEs installed into empty slots of a fresh user mm,
 before its first TLB synchronization. Later PFN replacements always use mmap.
 Normal guest fork/COW, memory accounting, and synchronous invalidation remain.
@@ -229,9 +230,10 @@ No user runners or guest address spaces are shared across fork or exec.
  #include <mem_user.h>
 +#include <fault-hostmap.h>
  #include <mem.h>
-@@ -773 +774,20 @@
+@@ -202,6 +203,24 @@
+ 	return NULL;
  }
-+
+ 
 +int uml_host_protect(struct mm_id *mm_idp, unsigned long addr,
 +		     unsigned long len, int prot)
 +{
@@ -250,3 +252,6 @@ No user runners or guest address spaces are shared across fork or exec.
 +	return 0;
 +}
 +
+ static int get_stub_fd(struct mm_id *mm_idp, int fd)
+ {
+ 	int i;
