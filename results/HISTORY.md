@@ -2,6 +2,7 @@
 
 | run | revision | functional | key | important | other |
 |---|---|---|---|---|---|
+| 20261026-054049-05a863d8-ci-runner-exit-fix | 05a863d8 | 172/175 | 5/10 | 4/13 | 3/7 |
 | 20261016-144711-745232c0-ci-fault-share-promoted | 745232c0 | 172/175 | 5/10 | 4/13 | 2/7 |
 | 20261016-050109-23d22b41-ci-rseq-irqwork-moby0004 | 23d22b41 | 158/159 | 6/10 | 5/13 | 4/7 |
 | 20261016-030029-a173e9b9-ci-default-net-promoted | a173e9b9 | 151/154 | 6/10 | 5/13 | 2/7 |
