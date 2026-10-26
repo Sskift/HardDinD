@@ -1,0 +1,112 @@
+From: HardDinD developers
+Subject: [EXPERIMENT] um: allocate exact contiguous chunks inside sorted 32-page pools
+
+Apply after fault-sorted-alloc. Default off: uml_fault_contiguous=1 needs
+uml_fault_sorted=1. Keep the existing window, eligibility and empty-PTE count.
+Only windows of at most 32 pages use high-order allocations. Requests round
+DOWN to the remaining count (30 = 16 + 8 + 4 + 2), never allocating spare pages.
+Each non-compound chunk is immediately split into independently refcounted
+order-0 pages. Normal clearing, anonymous faults and memcg charges follow.
+No reclaim, emergency reserves or smaller-order retry ladder: the first failed
+chunk falls back to the original bulk allocator for only the missing suffix.
+The existing pool end releases every unused order-0 page, including early
+fault failure. NUMA and larger opt-in windows keep the original path.
+
+--- a/arch/um/kernel/fault-sorted.c
++++ b/arch/um/kernel/fault-sorted.c
+@@ -4,6 +4,7 @@
+ #include <linux/highmem.h>
+ #include <linux/init.h>
+ #include <linux/kstrtox.h>
++#include <linux/log2.h>
+ #include <linux/mm.h>
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+@@ -13,6 +14,7 @@
+ #include <init.h>
+ 
+ static unsigned int uml_fault_sorted;
++static unsigned int uml_fault_contiguous;
+ 
+ static bool uml_fault_pool_matches(const struct uml_fault_pool *pool,
+ 		const struct vm_area_struct *vma, unsigned long address,
+@@ -29,6 +31,43 @@
+ 	unsigned long b = page_to_pfn(*(struct page * const *)right);
+ 
+ 	return (a > b) - (a < b);
++}
++
++static unsigned int uml_fault_pool_allocate(gfp_t gfp, unsigned int count,
++		struct page **pages, unsigned long window_pages)
++{
++	unsigned int allocated = 0;
++	gfp_t contiguous_gfp;
++
++	if (!uml_fault_contiguous || IS_ENABLED(CONFIG_NUMA) ||
++	    window_pages > 32 || count > 32)
++		return alloc_pages_bulk(gfp, count, pages);
++
++	/* Do not round up: e.g. 30 missing PTEs use 16 + 8 + 4 + 2 pages.
++	 * No compound folio is published and no reclaim, compaction wakeup
++	 * or emergency reserve is requested for this speculative pool. */
++	contiguous_gfp = (gfp & ~(__GFP_RECLAIM | __GFP_COMP |
++				  __GFP_HIGH | __GFP_MEMALLOC)) |
++			 __GFP_NOWARN | __GFP_NOMEMALLOC;
++	while (count - allocated >= 2) {
++		unsigned int order = ilog2(count - allocated);
++		unsigned int n = 1U << order, i;
++		struct page *page = alloc_pages(contiguous_gfp, order);
++
++		/* A fragmented buddy allocator falls straight back to order-0;
++		 * do not retry a ladder of smaller high-order requests. */
++		if (!page)
++			break;
++		/* alloc_pages without __GFP_COMP supplies a refcounted head.
++		 * split_page gives each tail its own refcount and updates page
++		 * owner/tag metadata before ordinary per-page fault ownership. */
++		split_page(page, order);
++		for (i = 0; i < n; i++)
++			pages[allocated++] = page + i;
++	}
++	if (allocated < count)
++		allocated += alloc_pages_bulk(gfp, count - allocated, pages + allocated);
++	return allocated;
+ }
+ 
+ void uml_fault_pool_begin(struct uml_fault_pool *pool, struct vm_area_struct *vma,
+@@ -68,7 +107,8 @@
+ 	}
+ 	if (!pool->pages)
+ 		return;
+-	pool->count = alloc_pages_bulk(gfp, count, pool->pages);
++	pool->count = uml_fault_pool_allocate(gfp, count, pool->pages,
++					     (end - start) >> PAGE_SHIFT);
+ 	pool->used = 0;
+ 	sort(pool->pages, pool->count, sizeof(*pool->pages), uml_fault_pfn_compare, NULL);
+ 	pool->owner = current;
+@@ -139,3 +179,25 @@
+ "    window exit. The temporary pool holds at most 512 pages before charge.\n"
+ "    Each task owns its current window; the default 32-page window uses\n"
+ "    an inline pointer array. Guest NUMA uses the original allocation policy.\n\n");
++
++static int __init uml_fault_contiguous_setup(char *line, int *add)
++{
++	unsigned int enable;
++
++	*add = 0;
++	if (kstrtouint(line, 10, &enable) || enable > 1) {
++		pr_warn("uml_fault_contiguous requires 0 or 1\n");
++		return 0;
++	}
++	uml_fault_contiguous = enable;
++	return 0;
++}
++__uml_setup("uml_fault_contiguous=", uml_fault_contiguous_setup,
++"uml_fault_contiguous=<0|1>\n"
++"    Default 0. With uml_fault_sorted=1, request contiguous chunks only\n"
++"    within an existing anonymous window of at most 32 pages. Each request\n"
++"    is rounded down to the remaining empty-PTE count, without reclaim\n"
++"    or emergency reserves. Non-compound chunks are immediately split\n"
++"    into normal order-0 pages for the usual clearing and memcg charge.\n"
++"    The first allocation failure falls back to bulk order-0 allocation.\n"
++"    Guest NUMA and larger prefault windows use the original path.\n\n");
