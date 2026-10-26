@@ -749,7 +749,26 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
 +}
 --- a/arch/um/os-Linux/skas/process.c
 +++ b/arch/um/os-Linux/skas/process.c
-@@ -150,6 +150,9 @@
+@@ -150,6 +150,28 @@
++/* ECHILD describes the wait relationship, not whether the runner is alive.
++ * A reaper may also consume status before publishing pid=-1. */
++static int stub_exited(int pid, siginfo_t *state)
++{
++	int ret;
++
++	/* A concurrent reaper may already have invalidated the runner. */
++	if (pid <= 0)
++		return 1;
++	CATCH_EINTR(ret = waitid(P_PID, pid, state,
++				 WEXITED | WNOHANG | WNOWAIT | __WALL));
++	if (!ret)
++		return state->si_pid != 0;
++	if (errno != ECHILD)
++		return 0;
++	CATCH_EINTR(ret = kill(pid, 0));
++	return ret < 0 && errno == ESRCH;
++}
++
  void wait_stub_done_seccomp(struct mm_id *mm_idp, int running, int wait_sigsys)
  {
  	struct stub_data *data = (void *)mm_idp->stack;
@@ -759,7 +778,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  	int ret;
  
  	do {
-@@ -219,7 +222,19 @@
+@@ -219,7 +241,16 @@
  #endif
  			ret = syscall(__NR_futex, &data->futex,
  				      FUTEX_WAIT, FUTEX_IN_CHILD,
@@ -768,10 +787,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
 +				      NULL, 0);
 +			if (ret < 0 && errno == ETIMEDOUT && parallel_userspace && wait_sigsys) {
 +				siginfo_t state = {};
-+				int status = waitid(P_PID, mm_idp->pid, &state,
-+						    WEXITED | WNOHANG | WNOWAIT);
-+				if ((status == 0 && state.si_pid) ||
-+				    (status < 0 && errno == ECHILD)) {
++				if (stub_exited(__READ_ONCE(mm_idp->pid), &state)) {
 +					mm_idp->pid = -1;
 +					goto out_kill;
 +				}
@@ -780,7 +796,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  			if (ret < 0 && errno != EINTR && errno != EAGAIN) {
  				printk(UM_KERN_ERR "%s : FUTEX_WAIT failed, errno = %d\n",
  				       __func__, errno);
-@@ -249,10 +264,11 @@
+@@ -249,10 +280,11 @@
  	return;
  
  out_kill:
@@ -793,7 +809,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  		fatal_sigsegv();
  }
  
-@@ -567,14 +583,14 @@
+@@ -567,14 +599,14 @@
  	interrupt_end();
  
  	while (1) {
@@ -810,7 +826,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  
  		/*
  		 * When we are in time-travel mode, userspace can theoretically
-@@ -610,6 +626,7 @@
+@@ -610,6 +642,7 @@
  			if (err) {
  				printk(UM_KERN_ERR "%s - failed to set regs: %d",
  				       __func__, err);
@@ -818,7 +834,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -621,6 +638,10 @@
+@@ -621,6 +654,10 @@
  			proc_data->syscall_data_len = mm_id->syscall_data_len;
  
  			wait_stub_done_seccomp(mm_id, 0, 0);
@@ -829,7 +845,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  
  			sig = proc_data->signal;
  
-@@ -629,6 +650,7 @@
+@@ -629,6 +666,7 @@
  				       __func__);
  				syscall_stub_dump_error(mm_id);
  				mm_id->syscall_data_len = proc_data->err;
@@ -837,7 +853,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -639,6 +661,7 @@
+@@ -639,6 +677,7 @@
  			if (err) {
  				printk(UM_KERN_ERR "%s - failed to get regs: %d",
  				       __func__, err);
@@ -845,7 +861,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -668,6 +691,7 @@
+@@ -668,6 +707,7 @@
  
  				printk(UM_KERN_ERR "%s - Error flushing stub syscalls: %d",
  					__func__, -err);
@@ -853,7 +869,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -682,12 +706,14 @@
+@@ -682,12 +722,14 @@
  			if (ptrace(PTRACE_SETREGS, pid, 0, regs->gp)) {
  				printk(UM_KERN_ERR "%s - ptrace set regs failed, errno = %d\n",
  				       __func__, errno);
@@ -868,7 +884,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -699,6 +725,7 @@
+@@ -699,6 +741,7 @@
  			if (ptrace(op, pid, 0, 0)) {
  				printk(UM_KERN_ERR "%s - ptrace continue failed, op = %d, errno = %d\n",
  				       __func__, op, errno);
@@ -876,7 +892,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -706,6 +733,7 @@
+@@ -706,6 +749,7 @@
  			if (err < 0) {
  				printk(UM_KERN_ERR "%s - wait failed, errno = %d\n",
  				       __func__, errno);
@@ -884,7 +900,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -713,12 +741,14 @@
+@@ -713,12 +757,14 @@
  			if (ptrace(PTRACE_GETREGS, pid, 0, regs->gp)) {
  				printk(UM_KERN_ERR "%s - PTRACE_GETREGS failed, errno = %d\n",
  				       __func__, errno);
@@ -899,7 +915,7 @@ Opt-in with seccomp_threads=1; not a production or isolation claim.
  				fatal_sigsegv();
  			}
  
-@@ -754,7 +784,7 @@
+@@ -754,7 +800,7 @@
  			}
  		}
  

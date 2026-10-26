@@ -484,7 +484,7 @@ compare enabled and disabled on this same kernel to quantify perturbation.
 +				uml_sp_add(UML_SP_kernel_eagain, 0);
  			if (ret < 0 && errno == ETIMEDOUT && parallel_userspace && wait_sigsys) {
  				siginfo_t state = {};
- 				int status = waitid(P_PID, mm_idp->pid, &state,
+ 				if (stub_exited(__READ_ONCE(mm_idp->pid), &state)) {
 @@ -256,6 +266,24 @@
  		/* We may receive a SIGALRM before SIGSYS, iterate again. */
  	} while (wait_sigsys && data->signal == SIGALRM);

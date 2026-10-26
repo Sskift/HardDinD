@@ -1457,36 +1457,10 @@ and preserve its stack pointer, including when a guest signal handler repairs it
  #include <init.h>
  #include <kern_util.h>
  #include <mem.h>
-@@ -147,6 +148,20 @@
- 	fatal_sigsegv();
- }
- 
-+/* ECHILD is a wait relationship, not a liveness result. A racing reaper
-+ * may consume status before publishing pid=-1; never kill a live runner. */
-+static int stub_exited(int pid, siginfo_t *state)
-+{
-+    int ret;
-+    CATCH_EINTR(ret = waitid(P_PID, pid, state, WEXITED | WNOHANG | WNOWAIT | __WALL));
-+    if (!ret)
-+        return state->si_pid != 0;
-+    if (errno != ECHILD)
-+        return 0;
-+    CATCH_EINTR(ret = kill(pid, 0));
-+    return ret < 0 && errno == ESRCH;
-+}
-+
- void wait_stub_done_seccomp(struct mm_id *mm_idp, int running, int wait_sigsys)
- {
- 	struct stub_data *data = (void *)mm_idp->stack;
-@@ -228,10 +243,10 @@
- 				      NULL, 0);
+@@ -247,6 +248,9 @@
  			if (ret < 0 && errno == ETIMEDOUT && parallel_userspace && wait_sigsys) {
  				siginfo_t state = {};
--				int status = waitid(P_PID, mm_idp->pid, &state,
--						    WEXITED | WNOHANG | WNOWAIT);
--				if ((status == 0 && state.si_pid) ||
--				    (status < 0 && errno == ECHILD)) {
-+				if (stub_exited(mm_idp->pid, &state)) {
+ 				if (stub_exited(__READ_ONCE(mm_idp->pid), &state)) {
 +					printk(UM_KERN_ERR "UML runner died during handoff: pid=%d errno=%d code=%d status=%d signal=%d fast=%u active=%u\n",
 +					       mm_idp->pid, errno, state.si_code, state.si_status,
 +					       data->signal, data->fast_enabled, data->fast_active);
